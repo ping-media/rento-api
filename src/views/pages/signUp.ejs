@@ -1,0 +1,228 @@
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <meta https-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="HandheldFriendly" content="true">
+    <title>SocialXperia</title>
+    <style>
+        *{
+            font-family:Rubik,sans-serif ;
+        }
+        .content-head {
+            display: flex;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .content-footer {
+            display: flex;
+            align-items: center !important;
+            justify-content: center !important;
+            background-color: #f8f9ff;
+            margin-top: 10px;
+        }
+
+        .email-content {
+            background-color: #ffffff;
+
+        }
+
+        .email-template-container {
+            background-color: #f8f9ff;
+        }
+
+        .image_border {
+            /* background: linear-gradient(#222, #222),
+                linear-gradient(to right, rgb(29, 172, 190), purple); */
+            background-origin: padding-box, border-box;
+            background-repeat: no-repeat;
+            /* this is important */
+            border: 2px solid transparent;
+            border-radius: 8px;
+            margin-right: 24px;
+        }
+
+        @media screen and (max-width:768px) {
+            .email-template-container {
+                max-width: 85% !important;
+            }
+        }
+
+        @media only screen and (max-width: 670px),
+        screen and (max-device-width: 670px) {
+            .email-template-container {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+        }
+
+        @media screen and (max-width:575px) {
+            .email-template-container .email-content {
+                margin: 0px !important;
+            }
+
+            .email-template-container {
+                padding: 0px !important;
+            }
+        }
+
+        @media screen and (max-width:475px) {
+            .content-head {
+                padding: 0px 0px !important;
+            }
+
+            .email-header {
+                margin-bottom: 15px !important;
+            }
+
+            .email-content {
+                padding: 15px !important;
+            }
+        }
+
+        @media screen and (max-width:425px) {
+            .email-template-container .verify-link {
+                padding: 12px 35px !important;
+            }
+
+            .social-icons {
+                padding: 15px 0px !important;
+            }
+
+            .email-content .content-body {
+                padding: 15px 0px !important;
+            }
+
+            .email-content .content-footer {
+                padding: 15px 0px 0px !important;
+            }
+        }
+
+        @media screen and (max-width:376px) {
+            .email-template-container .content-head h2 {
+                font-size: 25px !important;
+            }
+
+            .email-content .social-icons a {
+                margin: 0px 10px !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <table class="email-template-container"
+        style="padding: 32px 16px 8px 16px; width: 570px; max-width: 100%; max-height: inherit; margin: auto;  font-family: Roboto Verdana, Geneva, Tahoma, sans-serif; font-size:15px; margin:0 auto"
+        width="638">
+        <tr>
+            <td>
+                <div
+                    style="padding: 30px 30px 40px 30px ; border: 1px solid #ffffff; box-sizing: border-box; background: #fff; border-radius: 8px;">
+                    <table class="email-content">
+                        <tr>
+                            <td>
+                                <div class="content-head" style="display: flex;margin-left: 100px;">
+                                    <h2
+                                        style="font-style: normal; font-weight: 700; font-size: 36px; line-height: 60px; text-align: center; color: #0D2541; margin: 10px 0px; line-height:45px">
+                                        SOCIAL
+                                    </h2>
+
+                                    <img style="width: 50px;height: 45px;"
+                                        src="https://res.cloudinary.com/dbvuwxdtq/image/upload/v1679382376/logox_biy3dt.png"
+                                        alt="logo" />
+
+                                    <h2
+                                        style="font-style: normal; font-weight: 700; font-size: 36px; line-height: 60px; text-align: center; color: #0D2541; margin: 10px 0px; line-height:45px">
+                                        PERIA
+                                    </h2>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="content-body" style="padding: 30px 0px">
+                                    <p
+                                        style="margin: 10px 0px; font-style: normal; font-weight: normal; font-size: 16px; line-height: 24px; color: #000;">
+                                        Dear <b><%=name%></b>
+
+                                    </p>
+                                    <p
+                                        style="font-family: 'Rubik',sans-serif;margin: 15px 0px; font-style: normal; font-weight:500; font-size: 16px; line-height: 24px; color: #000; ">
+
+                                        We are excited to have you on board SocialXperia! You are just one step away
+                                        from accessing our social media automation platform that will help you save
+                                        time, increase productivity and grow your social media presence.
+
+                                    </p>
+                                    <p
+                                        style="font-family: 'Rubik',sans-serif;margin: 15px 0px; font-style: normal; font-weight: normal; font-size: 16px; line-height: 24px; color: #000; ">
+                                        To complete your registration, please use the following One-Time Password (OTP):
+                                        <b><%=otp%></b>. Enter the OTP in the provided field during the sign-up
+                                        process and you will be all set to start using SocialXperia.
+
+                                    </p>
+
+                                    <p
+                                        style="font-family: 'Rubik',sans-serif;margin: 15px 0px; font-style: normal; font-weight: normal; font-size: 16px; line-height: 24px; color: #000; ">
+                                        Thank you again for your support!
+                                    </p>
+
+                                </div>
+                                <div style="align-items:center">
+                                    <p
+                                        style="font-family: 'Rubik',sans-serif;margin: 0px 0px; font-style: normal; font-weight: normal; font-size: 16px; line-height: 24px; color: #000; ">
+                                        Best regards,
+                                    </p>
+                                    <div class="image_border">
+                                        <img style="width: 96px ; height: 96px;"
+                                            src="https://arokee.com/latest/wp-content/uploads/2022/07/madhu-2.png"
+                                            alt="footer-image" />
+                                    </div>
+                                    <p
+                                        style="font-family: 'Rubik',sans-serif;margin: 0px 0px; font-style: normal; font-weight: normal; font-size: 16px; line-height: 24px; color: #000; ">
+                                        <b>Madhusudhan Dadipeneni</b>
+                                    </p>
+                                    <p
+                                        style="font-family: 'Rubik',sans-serif;margin: 0px 0px; font-style: normal; font-weight: normal; font-size: 16px; line-height: 24px; color: #000; ">
+                                        Founder & Director
+                                    </p>
+                                    <p
+                                        style="font-family: 'Rubik',sans-serif;margin: 0px 0px; font-style: normal; font-weight: normal; font-size: 16px; line-height: 24px; color: #000; ">
+                                        SocialXperia Team
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+
+                    </table>
+
+                </div>
+                <table class="content-footer" style="justify-content:center;">
+                    <tr>
+                        <td>
+                            <div>
+                                <span
+                                    style="text-align: center; font-style: normal; font-weight: normal; font-size: 12px; line-height: 18px; color: #5d5d5d;">
+                                    SocialXperia, 5900 Balcones Drive STE 100 TX 78731
+                                </span>
+                            </div>
+                            <div style=" display: flex; justify-content: center; align-items: center;">
+                                <h6
+                                    style="  font-family: 'Rubik',sans-serif;margin: 10px 0px; font-style: normal; font-weight: normal; font-size: 15px; line-height: 25px; color: #3C3C4C; ">
+                                    <a href="mailto:ihostyourpet@gmail.com" style="text-decoration: none;"> <span
+                                            class="link-text"
+                                            style="font-style: normal; font-weight: 550; font-size: 15px; line-height: 18px; color: #005df3;">Unsubscribe
+                                        </span>
+                                    </a>
+                                </h6>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

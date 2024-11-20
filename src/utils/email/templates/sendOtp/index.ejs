@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Social Xpirea OTP</title>
+    <style>
+      body {
+        background-color: #f6f6f6;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        background-color: #ffffff;
+        border-radius: 4px;
+        box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
+        margin: 50px auto;
+        max-width: 600px;
+        padding: 40px;
+        text-align: center;
+      }
+      h1 {
+        font-size: 28px;
+        margin-bottom: 30px;
+        color: #333333;
+      }
+      p {
+        font-size: 18px;
+        line-height: 1.5;
+        margin-bottom: 30px;
+        color: #666666;
+      }
+      .otp {
+        background-color: #ffffff;
+        border: 2px solid #0080FF;
+        border-radius: 5px;
+        color: #0080FF;
+        display: inline-block;
+        font-size: 36px;
+        font-weight: bold;
+        margin: 0 10px;
+        padding: 10px;
+        text-align: center;
+        width: 100px;
+        box-shadow: 0 0 10px rgba(0, 128, 255, 0.3);
+      }
+      .btn {
+        background-color: #0080FF;
+        border: none;
+        border-radius: 5px;
+        color: #ffffff;
+        display: inline-block;
+        font-size: 18px;
+        font-weight: bold;
+        margin-top: 30px;
+        padding: 10px 20px;
+        text-decoration: none;
+        transition: all 0.3s ease-in-out;
+      }
+      .btn:hover {
+        background-color: #0066CC;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Social Xpirea OTP</h1>
+      <p>Your OTP is:</p>
+      <div class="otp"><%= otp %></div>
+      <p>Please use this OTP to complete your login or signup process.</p>
+    </div>
+  </body>
+</html>
