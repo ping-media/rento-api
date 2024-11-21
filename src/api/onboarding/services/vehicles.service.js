@@ -4,7 +4,6 @@ const {
   createStation,
   createInvoice,
   createPlan,
-  getBookings,
   discountCoupons,
   getVehicleMasterData,
   searchVehicle,
@@ -21,7 +20,10 @@ const {
   getStationData,
   getLocationData,
   getPlanData,
+  getBookings
 } = require("../models/vehicles.model");
+
+const { createCoupon, getCoupons } = require("../models/coupon.model");
 
 exports.getStationData = async (req, res) => {
   try {
@@ -36,6 +38,22 @@ exports.getStationData = async (req, res) => {
     });
   }
 }
+
+exports.getCoupons = async (req, res) => {
+  try {
+    const result = await getCoupons(req.query);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
+
+
 exports.getVehicleTblData = async (req, res) => {
   try {
     const result = await getVehicleTblData(req.query);
@@ -49,6 +67,7 @@ exports.getVehicleTblData = async (req, res) => {
     });
   }
 }
+
 exports.getPlanData = async (req, res) => {
   try {
     const result = await getPlanData(req.body);
@@ -80,6 +99,20 @@ exports.getLocationData = async (req, res) => {
 exports.createVehicle = async (req, res) => {
   try {
     const result = await createVehicle(req.body);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
+
+exports.createCoupon = async (req, res) => {
+  try {
+    const result = await createCoupon(req.body);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({

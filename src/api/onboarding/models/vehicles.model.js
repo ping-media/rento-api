@@ -16,12 +16,18 @@ const Coupon = require("../../../db/schemas/onboarding/coupons.schema");
 const InvoiceTbl = require("../../../db/schemas/onboarding/invoice-tbl.schema");
 const VehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
-const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const plan = require("../../../db/schemas/onboarding/plan.schema");
 const location = require("../../../db/schemas/onboarding/location.schema");
 const station = require("../../../db/schemas/onboarding/station.schema");
 const order = require("../../../db/schemas/onboarding/order.schema");
-const { emailValidation, contactValidation } = require("../../../constant");
+const { emailValidation, contactValidation } = require("../../../constant"); 
+//const {generateRandomId } = require('../../../utils/help-scripts/help-functions');
+
+
+function generateRandomId() {
+  return Math.floor(100000 + Math.random() * 900000).toString(); // Generates a 6-digit random number
+}
+
 
 const createBookingDuration = async ({ bookingDuration, attachedVehicles, bookingId }) => {
   const obj = { status: 200, message: "data fetched successfully", data: [] }
@@ -80,10 +86,11 @@ const createBookingDuration = async ({ bookingDuration, attachedVehicles, bookin
 }
 
 
-async function createVehicle({ _id, vehicleId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus, vehiclePlan }) {
+async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus, vehiclePlan }) {
   const response = { status: "200", message: "data fetched successfully", data: [] }
   try {
-    if (_id || (vehicleId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber && freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate && kmsRun && isBooked && condition)) {
+    if (_id || (vehicleMasterId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber && freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate && kmsRun && isBooked && condition)) {
+      
       if (stationId) {
         const findStation = await Station.findOne({ stationId })
         if (!findStation) {
@@ -91,19 +98,19 @@ async function createVehicle({ _id, vehicleId, stationId, vehicleNumber, freeKms
           response.message = "Invalid stationId"
           return response
         }
-      }
-      if (vehiclePlan && vehiclePlan.length == 24) {
-        const findPlan = await Plan.findOne({ _id: ObjectId(vehiclePlan) })
-        if (!findPlan) {
-          response.status = 401
-          response.message = "Invalid vehicle plan"
-          return response
-        }
-      } else {
-        response.status = 401
-        response.message = "Invalid vehicle plan"
-        return response
-      }
+            }
+      // if (vehiclePlan && vehiclePlan.length == 24) {
+      //   const findPlan = await Plan.findOne({ _id: ObjectId(vehiclePlan) })
+      //   if (!findPlan) {
+      //     response.status = 401
+      //     response.message = "Invalid vehicle plan"
+      //     return response
+      //   }
+      // } else {
+      //   response.status = 401
+      //   response.message = "Invalid vehicle plan"
+      //   return response
+      // }
       if (isBooked) {
         let statusCheck = ["false", "true"].includes(isBooked.toString())
         if (!statusCheck) {
@@ -165,7 +172,7 @@ async function createVehicle({ _id, vehicleId, stationId, vehicleNumber, freeKms
         }
       }
       const o = {
-        vehicleBookingStatus, vehicleStatus, vehicleId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition, vehiclePlan
+        vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition, vehiclePlan
       }
       if (_id) {
         const find = await VehicleTable.findOne({ _id: ObjectId(_id) })
@@ -191,7 +198,7 @@ async function createVehicle({ _id, vehicleId, stationId, vehicleNumber, freeKms
         response.message = "Vehicle Table updated successfully"
         response.data = o
       } else {
-        if (vehicleId && vehicleBookingStatus && vehicleStatus && freeKms && extraKmsCharges && stationId && vehicleNumber && vehicleModel && vehicleColor && perDayCost && lastServiceDate && kmsRun && isBooked && condition) {
+        if (vehicleMasterId && vehicleBookingStatus && vehicleStatus && freeKms && extraKmsCharges && stationId && vehicleNumber && vehicleModel && vehicleColor && perDayCost && lastServiceDate && kmsRun && isBooked && condition) {
           const find = await VehicleTable.findOne({ vehicleNumber })
           if (!find) {
             const SaveVehicleTable = new VehicleTable(o)
@@ -214,9 +221,12 @@ async function createVehicle({ _id, vehicleId, stationId, vehicleNumber, freeKms
     }
     return response
   } catch (error) {
-    throw new Error(error);
+    throw new Error(error.message);
   }
 }
+
+
+
 
 async function booking({ vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
   discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
@@ -570,12 +580,14 @@ async function createLocation({ locationName, locationImage, deleteRec, _id }) {
   return obj
 }
 
-async function createPlan({ planName, planPrice, stationId, _id, deleteRec, planDuration }) {
+
+
+async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec }) {
   const obj = { status: 200, message: "plan created successfully", data: [] }
   try {
-    if (_id || (planName && planPrice && stationId && planDuration)) {
-      let o = { planName, planPrice, stationId, planDuration }
-      if (isNaN(planDuration)) {
+    if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId)) {
+      let o = { _id, planName, planPrice, stationId, planDuration, vehicleMasterId }
+      if (planDuration && isNaN(planDuration)) {
         obj.status = 401
         obj.message = "invalid plan duration"
         return obj
@@ -593,6 +605,14 @@ async function createPlan({ planName, planPrice, stationId, _id, deleteRec, plan
         if (!find) {
           obj.status = 401
           obj.message = "invalid station id"
+          return obj
+        }
+      }
+      if (vehicleMasterId) {
+        const find = await VehicleMaster.findOne({ vehicleMasterId })
+        if (!find) {
+          obj.status = 401
+          obj.message = "invalid vehicle master id"
           return obj
         }
       }
@@ -635,7 +655,6 @@ async function createPlan({ planName, planPrice, stationId, _id, deleteRec, plan
   } catch (err) {
     console.log(err)
   }
-
   return obj
 }
 
@@ -807,107 +826,157 @@ async function discountCoupons({ couponName, vehicleType, allowedUsers, usageAll
   return obj
 }
 
+async function createStation({ 
+  stationId, 
+  stationName, 
+  locationId, 
+  state, 
+  city, 
+  userId, 
+  address, 
+  pinCode, 
+  latitude, 
+  longitude, 
+  _id, 
+  deleteRec 
+}) {
+  const response = { status: 200, message: "Operation successful", data: [] };
 
+  const stationData = {
+    country: "India", 
+    stationId, 
+    locationId, 
+    state, 
+    city, 
+    address, 
+    pinCode, 
+    latitude, 
+    longitude, 
+    userId
+  };
 
-
-async function createStation({ stationId, stationName, locationId, state, city, userId, address, pinCode, latitude, longitude, _id, deleteRec }) {
-  const obj = { status: 200, message: "location created successfully", data: [] }
-  const o = { country: "India", stationId, stationName, locationId, state, city, address, pinCode, latitude, longitude, userId }
-  if (_id && _id.length !== 24) {
-    obj.status = 401
-    obj.message = "invalid _id"
-    return obj
-  }
-  if(_id && stationId){
-    obj.status = 401
-    obj.message = "station id cant be updated"
-    return obj
-  }
-  if (userId) {
-    if (userId.length !== 24) {
-      obj.status = 401
-      obj.message = "invalid user id"
-      return obj
+  try {
+    // Validate _id if provided
+    if (_id) {
+      if (_id.length !== 24) {
+        response.status = 401;
+        response.message = "Invalid _id";
+        return response;
+      }
+      const station = await Station.findOne({ _id: ObjectId(_id) });
+      if (!station) {
+        response.status = 401;
+        response.message = "Station not found";
+        return response;
+      }
+      if (deleteRec) {
+        await Station.deleteOne({ _id: ObjectId(_id) });
+        response.message = "Station deleted successfully";
+        return response;
+      }
+      if (stationId) {
+        response.status = 401;
+        response.message = "Station ID cannot be updated";
+        return response;
+      }
+      // Update station
+      await Station.updateOne({ _id: ObjectId(_id) }, { $set: stationData });
+      response.message = "Station updated successfully";
+      response.data = stationData;
+      return response;
     }
-    const find = await User.findOne({ _id: ObjectId(userId) })
-    if (!find) {
-      obj.status = 401
-      obj.message = "invalid user id"
-      return obj
-    } else {
-      let userType = find._doc.userType
-      if (userType !== "manager") {
-        obj.status = 401
-        obj.message = "user is not manager"
-        return obj
+
+    // Validate required parameters
+    const missingParams = [];
+    if (!stationName) missingParams.push("stationName");
+    if (!locationId) missingParams.push("locationId");
+    if (!state) missingParams.push("state");
+    if (!city) missingParams.push("city");
+    if (!address) missingParams.push("address");
+    if (!pinCode) missingParams.push("pinCode");
+    if (!userId) missingParams.push("userId");
+    if (missingParams.length > 0) {
+      response.status = 401;
+      response.message = `Missing required parameters: ${missingParams.join(", ")}`;
+      return response;
+    }
+
+    // Validate userId
+    if (userId.length !== 24) {
+      response.status = 401;
+      response.message = "Invalid user ID";
+      return response;
+    }
+    const user = await User.findOne({ _id: ObjectId(userId) });
+    if (!user) {
+      response.status = 401;
+      response.message = "User not found";
+      return response;
+    }
+    if (user.userType !== "manager") {
+      response.status = 401;
+      response.message = "User is not a manager";
+      return response;
+    }
+
+    // Validate locationId
+    if (locationId.length !== 24) {
+      response.status = 401;
+      response.message = "Invalid location ID";
+      return response;
+    }
+    const location = await Location.findOne({ _id: ObjectId(locationId) });
+    if (!location) {
+      response.status = 401;
+      response.message = "Location not found";
+      return response;
+    }
+
+    // Validate pinCode
+    if (pinCode.length !== 6 || isNaN(pinCode)) {
+      response.status = 401;
+      response.message = "Invalid pin code";
+      return response;
+    }
+
+     // Generate a random stationId if not provided
+     if (!stationId) {
+      let isUnique = false;
+      while (!isUnique) {
+        const generatedId = generateRandomId;
+        const existingStation = await Station.findOne({ stationId });
+        if (!existingStation) {
+          stationId = generatedId;
+          isUnique = true;
+        }
       }
     }
+
+    // Validate stationId
+    if (stationId.length !== 6 || isNaN(stationId)) {
+      response.status = 401;
+      response.message = "Invalid station ID";
+      return response;
+    }
+    const stationExists = await Station.findOne({ stationId });
+    if (stationExists) {
+      response.status = 401;
+      response.message = "Station already exists";
+      return response;
+    }
+
+    // Save a new station
+    const newStation = new Station(stationData);
+    await newStation.save();
+    response.message = "Station created successfully";
+    response.data = stationData;
+
+  } catch (error) {
+    response.status = 500;
+    response.message = `Server error: ${error.message}`;
   }
-  if (locationId) {
-    if (locationId.length !== 24) {
-      obj.status = 401
-      obj.message = "invalid location id"
-      return obj
-    }
-    const find = await Location.findOne({ _id: ObjectId(locationId) })
-    if (!find) {
-      obj.status = 401
-      obj.message = "invalid location id"
-      return obj
-    }
-  }
-  if (pinCode && pinCode.length == 6) {
-    if (isNaN(pinCode)) {
-      obj.status = 401
-      obj.message = "invalid pincode"
-      return obj
-    }
-  } else {
-    obj.status = 401
-    obj.message = "invalid pincode"
-    return obj
-  }
-  if (stationId && stationId.length == 6 && !isNaN(stationId) && !_id) {
-    const find = await Station.findOne({ stationId })
-    if (find) {
-      obj.status = 401
-      obj.message = "station already exists"
-      return obj
-    }
-  }
-  if (_id) {
-    const find = await Station.findOne({ _id: ObjectId(_id) })
-    if (!find) {
-      obj.status = 401
-      obj.message = "Invalid _id"
-      return obj
-    }
-    if (deleteRec) {
-      await Station.deleteOne({ _id: ObjectId(_id) })
-      obj.message = "station deleted successfully"
-      return obj
-    }
-    await Station.updateOne(
-      { _id: ObjectId(_id) },
-      {
-        $set: o
-      },
-      { new: true }
-    );
-    obj.message = "station updated successfully"
-    obj.data = o
-  } else {
-    if (stationName && locationId && stationId && state && city && address && pinCode && userId) {
-      const SaveStation = new Station(o)
-      SaveStation.save()
-      obj.message = "data saved successfully"
-      obj.data = o
-    } else {
-      obj.status = 401
-      obj.message = "Missing Station details"
-    }
-  }
-  return obj
+
+  return response;
 }
 
 async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, vehicleImage, deleteRec, _id }) {
@@ -1097,7 +1166,7 @@ const getVehicleMasterData = async (query) => {
   if (filter._id) {
     filter._id = ObjectId(query._id)
   }
-  const response = await vehicleMaster.find({ ...filter })
+  const response = await VehicleMaster.find({ ...filter })
   if (response) {
     obj.data = response
   } else {
@@ -1107,8 +1176,28 @@ const getVehicleMasterData = async (query) => {
   return obj
 }
 
-
+//get All Booking 
 const getBookings = async (query) => {
+  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+  try {
+    const bookings = await Booking.find(); // Fetch bookings from DB
+    if(!bookings){
+      obj.message = "No Records Found"
+      return obj
+    }
+
+    obj.message = "Data Fetched Successfully"
+    obj.data = bookings
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    obj.message = "error"
+  }
+
+  return obj
+};
+
+
+const getBookings_bk = async (query) => {
   const obj = { status: 200, message: "data fetched successfully", data: [] }
   const {
     vehicleTableId, bookingStartDate, bookingEndDate, bookingStartTime, bookingEndTime, bookingPrice, bookingStatus, paymentStatus, rideStatus, paymentMethod, payInitFrom, paySuccessId,
@@ -1130,6 +1219,7 @@ const getBookings = async (query) => {
   let tax = null
   let roundPrice = null
   let extraAddonPrice = null
+  
   if (bookingPrice) {
     totalPrice = bookingPrice.totalPrice
     vehiclePrice = bookingPrice.vehiclePrice
@@ -1160,9 +1250,8 @@ const getBookings = async (query) => {
     for (let i = 0; i < response.length; i++) {
       const { _doc } = response[i]
       let o = _doc
-      if (o.bookingId == "564f1e1f-4a52-494e-ba8e-4cd2d71bd29e") {
-        console.log(o)
-      }
+  
+      console.log(response)
       let find1 = null
       let find2 = null
       let find3 = null
@@ -1203,7 +1292,7 @@ const getBookings = async (query) => {
         vehicleName ? obj.vehicleName = vehicleName : null
         vehicleType ? obj.vehicleType = vehicleType : null
         vehicleBrand ? obj.vehicleBrand = vehicleBrand : null
-        find4 = await vehicleMaster.findOne({ ...obj })
+        find4 = await VehicleMaster.findOne({ ...obj })
       }
       let obj3 = { _id: ObjectId(o.userId) }
       contact ? obj3.contact = contact : null
@@ -1239,7 +1328,7 @@ const getBookings = async (query) => {
 
 const getVehicleTblData = async (query) => {
   const obj = { status: 200, message: "data fetched successfully", data: [] }
-  const { vehicleName, vehicleType, vehicleBrand, locationName, locationId, stationId, pinCode, planIds, stationName, startDate, startTime, endDate, endTime } = query
+  const { vehicleName,vehicleType, vehicleBrand, locationName, locationId, stationId, pinCode, planIds, stationName, startDate, startTime, endDate, endTime } = query
   let momStartTime = moment(startTime ? startTime : "00:00 AM", "hh:mm A");
   let momEndTime = moment(endTime ? endTime : "00:00 AM", "hh:mm A");
   let getStartDate = startDate
@@ -1312,7 +1401,7 @@ const getVehicleTblData = async (query) => {
       vehicleName ? obj1.vehicleName = vehicleName : null
       vehicleType ? obj1.vehicleType = vehicleType : null
       vehicleBrand ? obj1.vehicleBrand = vehicleBrand : null
-      const find1 = await vehicleMaster.findOne({ ...obj1 }, {_id: 0})
+      const find1 = await VehicleMaster.findOne({ ...obj1 }, {_id: 0})
 
       let obj3 = { stationId: o.stationId }
       stationName ? obj3.stationName = stationName : null
@@ -1374,6 +1463,47 @@ const getPlanData = async (query) => {
   }
   return obj
 }
+
+// async function getPlanData({ _id }) {
+//   const response = { status: 200, message: "Plans retrieved successfully", data: [] };
+
+//   try {
+//     // Fetch a specific plan if _id is provided
+//     if (_id) {
+//       if (_id.length !== 24) {
+//         response.status = 401;
+//         response.message = "Invalid _id format";
+//         return response;
+//       }
+
+//       const plan = await Plan.findOne({ _id: ObjectId(_id) });
+//       if (!plan) {
+//         response.status = 404;
+//         response.message = "Plan not found";
+//         return response;
+//       }
+
+//       response.data = plan;
+//       response.message = "Plan retrieved successfully";
+//       return response;
+//     }
+
+//     // Fetch all plans if _id is not provided
+//     const allPlans = await Plan.find({});
+//     if (allPlans.length === 0) {
+//       response.message = "No plans available";
+//     } else {
+//       response.data = allPlans;
+//     }
+//   } catch (err) {
+//     console.error("Error in getPlans:", err);
+//     response.status = 500;
+//     response.message = `Server error: ${err.message}`;
+//   }
+
+//   return response;
+// }
+
 
 const getLocationData = async (query) => {
   const obj = { status: 200, message: "data fetched successfully", data: [] }
@@ -1505,17 +1635,25 @@ async function getOrders() {
 
 
 async function getAllBookingDuration() {
-  const obj = { status: 200, message: "data fetched successfully", data: [] }
-  const result = await BookingDuration.find({});
-  if (result) {
-    obj.status = 200
-    obj.data = result
-    obj.message = "data get successfully"
-  } else {
-    obj.status = 401
-    obj.message = "data get successfully"
+  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+
+  try {
+    // Fetch all booking durations
+    const result = await BookingDuration.find({});
+    if (result && result.length > 0) {
+      obj.data = result;
+      obj.message = "Data retrieved successfully";
+    } else {
+      obj.status = 404;
+      obj.message = "No booking durations available";
+    }
+  } catch (err) {
+    console.error("Error in getAllBookingDuration:", err);
+    obj.status = 500;
+    obj.message = `Server error: ${err.message}`;
   }
-  return obj
+
+  return obj;
 }
 
 

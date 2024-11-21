@@ -7,21 +7,20 @@ const couponSchema = new Schema({
       required: true,
       unique: true
     },
-    vehicleType: {
-      type: String,
-      required: true,
-      enum: ['all', 'gear', 'non-gear']
-    },
     allowedUsers: {
-      type: Array
+      type: Array,
     },
     usageAllowed: {
       type: String,
-      required: true
     },
     discountType: {
       type: String,
       enum: ['percentage', 'fixed'],
+      required: true      
+    },
+    discount: {
+      type: String,
+
       required: true      
     },
     isCouponActive: {

@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const vehiclesService = require("../services/vehicles.service");
 const auth = require("../../../middlewares/auth/index");
+const Booking=require("../../../api/./onboarding/./models/./booking.model")
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -25,6 +26,10 @@ router.post("/createInvoice", async (req, res) => {
 
 router.post("/discountCoupons", async (req, res) => {
   vehiclesService.discountCoupons(req, res);
+})
+
+router.post("/createCoupon", async (req, res) => {
+  vehiclesService.createCoupon(req, res);
 })
 
 router.post("/createStation", async (req, res) => {
@@ -76,6 +81,8 @@ router.get("/getBookings", async (req, res) => {
   vehiclesService.getBookings(req, res);
 })
 
+
+
 router.post("/createOrder", async (req, res) => {
   vehiclesService.createOrder(req, res);
 })
@@ -88,6 +95,10 @@ router.get("/getOrders", async (req, res) => {
   vehiclesService.getOrders(req, res);
 })
 
+//getCoupons 
 
+router.get("/getCoupons", async (req, res) => {
+  vehiclesService.getCoupons(req, res);
+})
 
 module.exports = router;

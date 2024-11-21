@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const vehicleTableSchema = new Schema({
-    vehicleId: {
+    vehicleMasterId: {
         type: Schema.Types.ObjectId,
-        ref: 'vehicleMaster',
+        ref: 'vehicle-master',
         required: true
     },
     vehicleBookingStatus: {

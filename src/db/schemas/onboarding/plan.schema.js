@@ -5,7 +5,7 @@ const planSchema = new Schema({
     planName: {
       type: String,
       required: true,
-      unique: true
+       unique: true
     },
     planDuration: {
       type: String,
@@ -18,6 +18,11 @@ const planSchema = new Schema({
     stationId: {
       type: String,
       ref: 'station',
+      required: true      
+    },
+    vehicleMasterId: {
+      type: String,
+      ref: 'vehicle-master',
       required: true      
     }
   }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
