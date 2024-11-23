@@ -2,6 +2,8 @@ const router = require("express").Router();
 const vehiclesService = require("../services/vehicles.service");
 const auth = require("../../../middlewares/auth/index");
 const Booking=require("../../../api/./onboarding/./models/./booking.model")
+const {handleFileUpload} = require("../services/vehicles.service")
+
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -32,6 +34,10 @@ router.post("/createCoupon", async (req, res) => {
   vehiclesService.createCoupon(req, res);
 })
 
+router.post("/VehicleBookrecode", async (req, res) => {
+  vehiclesService.VehicleBookrecode(req, res);
+})
+
 router.post("/createStation", async (req, res) => {
   vehiclesService.createStation(req, res);
 })
@@ -55,6 +61,8 @@ router.get("/getLocations", async (req, res) => {
 router.get("/getLocationData", async (req, res) => {
   vehiclesService.getLocationData(req, res);
 })
+
+
 router.get("/getPlanData", async (req, res) => {
   vehiclesService.getPlanData(req, res);
 })
@@ -95,10 +103,15 @@ router.get("/getOrders", async (req, res) => {
   vehiclesService.getOrders(req, res);
 })
 
-//getCoupons 
+//getCoupons bookingAvailability
 
 router.get("/getCoupons", async (req, res) => {
   vehiclesService.getCoupons(req, res);
 })
+
+router.get("/getVehicleBookrecode", async (req, res) => {
+  vehiclesService.getVehicleBookrecode(req, res);
+})
+
 
 module.exports = router;

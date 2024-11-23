@@ -26,7 +26,7 @@ const server = app.listen(
 const io = require("socket.io")(server, {
   //pingTimeout: 60000,
   cors: {
-    origin: ['http://localhost:3000', 'https://promise-web.pages.dev', 'https://rento.indyside.com', 'http://localhost:3001', 'http://192.168.1.16:5173', 'http://192.168.1.16:5174', 'https://rent-moto-admin.vercel.app', 'https://rent-moto-front-end.vercel.app']
+    origin: ['http://localhost:3000', 'https://promise-web.pages.dev', 'https://rento.indyside.com', 'http://localhost:3001','http://localhost:5174', 'http://192.168.1.16:5173', 'http://192.168.1.16:5174', 'https://rent-moto-admin.vercel.app', 'https://rent-moto-front-end.vercel.app']
   },
 });
 const startServer = async () => {

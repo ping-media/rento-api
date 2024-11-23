@@ -20,14 +20,30 @@ const {
   getStationData,
   getLocationData,
   getPlanData,
-  getBookings
+  
 } = require("../models/vehicles.model");
 
 const { createCoupon, getCoupons } = require("../models/coupon.model");
+const {getBookings}= require("../models/booking.model")
+const {getVehicleBookrecode,VehicleBookrecode}= require("../models/Vehicle.Bookrecode.module")
 
 exports.getStationData = async (req, res) => {
   try {
     const result = await getStationData(req.query);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
+
+exports.getVehicleBookrecode = async (req, res) => {
+  try {
+    const result = await getVehicleBookrecode(req.query);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({
@@ -113,6 +129,20 @@ exports.createVehicle = async (req, res) => {
 exports.createCoupon = async (req, res) => {
   try {
     const result = await createCoupon(req.body);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
+
+exports.VehicleBookrecode = async (req, res) => {
+  try {
+    const result = await VehicleBookrecode(req.body);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({
@@ -381,5 +411,8 @@ exports.getAllVehicles = async (req, res) => {
     });
   }
 }
+
+
+
 
 

@@ -21,6 +21,7 @@ const location = require("../../../db/schemas/onboarding/location.schema");
 const station = require("../../../db/schemas/onboarding/station.schema");
 const order = require("../../../db/schemas/onboarding/order.schema");
 const { emailValidation, contactValidation } = require("../../../constant"); 
+const { query } = require("express");
 //const {generateRandomId } = require('../../../utils/help-scripts/help-functions');
 
 
@@ -852,7 +853,8 @@ async function createStation({
     pinCode, 
     latitude, 
     longitude, 
-    userId
+    userId,
+    stationName
   };
 
   try {
@@ -979,11 +981,12 @@ async function createStation({
   return response;
 }
 
+
 async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, vehicleImage, deleteRec, _id }) {
   const response = { status: "200", message: "data fetched successfully", data: [] }
   try {
     const obj = {
-      vehicleName, vehicleType, vehicleBrand, vehicleImage
+      vehicleName, vehicleType, vehicleBrand, vehicleImage, _id
     }
     if (vehicleType) {
       let statusCheck = ["gear", "non-gear"].includes(vehicleType)
@@ -1176,25 +1179,6 @@ const getVehicleMasterData = async (query) => {
   return obj
 }
 
-//get All Booking 
-const getBookings = async (query) => {
-  const obj = { status: 200, message: "Data fetched successfully", data: [] };
-  try {
-    const bookings = await Booking.find(); // Fetch bookings from DB
-    if(!bookings){
-      obj.message = "No Records Found"
-      return obj
-    }
-
-    obj.message = "Data Fetched Successfully"
-    obj.data = bookings
-  } catch (error) {
-    console.error("Error fetching bookings:", error);
-    obj.message = "error"
-  }
-
-  return obj
-};
 
 
 const getBookings_bk = async (query) => {
@@ -1326,184 +1310,203 @@ const getBookings_bk = async (query) => {
   return obj
 }
 
-const getVehicleTblData = async (query) => {
-  const obj = { status: 200, message: "data fetched successfully", data: [] }
-  const { vehicleName,vehicleType, vehicleBrand, locationName, locationId, stationId, pinCode, planIds, stationName, startDate, startTime, endDate, endTime } = query
-  let momStartTime = moment(startTime ? startTime : "00:00 AM", "hh:mm A");
-  let momEndTime = moment(endTime ? endTime : "00:00 AM", "hh:mm A");
-  let getStartDate = startDate
-  let getStartTime = { hours: new Date(momStartTime).getHours(), minutes: new Date(momStartTime).getMinutes() }
-  let getEndDate = endDate
-  let getEndTime = { hours: new Date(momEndTime).getHours(), minutes: new Date(momEndTime).getMinutes() }
-  let filter = {}
-  if (query && Object.keys(query).length) {
-    filter = JSON.parse(JSON.stringify(query))
-    delete filter.planIds
-    let checkPlanIds = planIds ? JSON.parse(planIds) : []
-    if (checkPlanIds && checkPlanIds.length) {
-      filter.vehiclePlan = { $in: checkPlanIds }
-    }
-    if (filter._id) {
-      filter._id = ObjectId(query._id)
-    }
-  }
-  const response = await vehicleTable.find(filter)
-  if (response) {
-    const arr = []
-    for (let i = 0; i < response.length; i++) {
-      const { _doc } = response[i]
-      let bookingFlag = false
-      let o = _doc
-      if (o && o.vehiclePlan) {
-        const findPlan = await Plan.findOne({ _id: ObjectId(o.vehiclePlan) }, { stationId: 0, _id: 0 })
-        o = { ...o, ...findPlan._doc }
-      }
-      let vehicleCount = 0
-      if (o.isBooked == "true") {
-        const find = await Booking.findOne({ vehicleTableId: o._id }, { BookingStartDateAndTime: 1, BookingEndDateAndTime: 1, _id: 0 })
-        if (find) {
-          let _doc = find._doc
-          let BookingStartDateAndTime = _doc.BookingStartDateAndTime
-          let BookingEndDateAndTime = _doc.BookingEndDateAndTime
-          if (BookingEndDateAndTime && BookingStartDateAndTime) {
-            const { startDate, startTime } = BookingStartDateAndTime
-            const { endDate, endTime } = BookingEndDateAndTime
-            let bookingStartHours = new Date(moment(startTime, "hh:mm A")).getHours()
-            let bookingEndHours = new Date(moment(endTime, "hh:mm A")).getHours()
-            let bookingStartMinutes = new Date(moment(startTime, "hh:mm A")).getMinutes()
-            let bookingEndMinutes = new Date(moment(endTime, "hh:mm A")).getMinutes()
-            let bookingStartDate = moment(startDate).add(bookingStartHours, 'hours').add(bookingStartMinutes, 'minutes')
-            bookingStartDate = new Date(bookingStartDate.format()).getTime()
-            let currentStartDate = moment(getStartDate).add(getStartTime.hours, 'hours').add(getStartTime.minutes, 'minutes')
-            currentStartDate = new Date(currentStartDate.format()).getTime()
-            let currentEndDate = moment(getEndDate).add(getEndTime.hours, 'hours').add(getEndTime.minutes, 'minutes')
-            currentEndDate = new Date(currentEndDate.format()).getTime()
-            let bookingEndDate = moment(endDate).add(bookingEndHours, 'hours').add(bookingEndMinutes, 'minutes')
-            bookingEndDate = new Date(bookingEndDate.format()).getTime()
-            if (currentStartDate >= bookingStartDate && currentStartDate <= bookingEndDate) {
-              bookingFlag = true
-            } else if (currentEndDate >= bookingStartDate && currentStartDate <= bookingEndDate) {
-              bookingFlag = true
-            } else {
-              bookingFlag = false
-            }
-            if (!bookingFlag) {
-              vehicleCount = vehicleCount + 1
-            }
-          } else {
-            obj.status = 401
-            obj.message = "Something went wrong"
-            return obj
-          }
-        }
-      }
-      let obj1 = { _id: ObjectId(o.vehicleId) }
-      vehicleName ? obj1.vehicleName = vehicleName : null
-      vehicleType ? obj1.vehicleType = vehicleType : null
-      vehicleBrand ? obj1.vehicleBrand = vehicleBrand : null
-      const find1 = await VehicleMaster.findOne({ ...obj1 }, {_id: 0})
-
-      let obj3 = { stationId: o.stationId }
-      stationName ? obj3.stationName = stationName : null
-      locationId ? obj3.locationId = locationId : null
-      pinCode ? obj3.pinCode = pinCode : null
-      const find3 = await station.findOne({ ...obj3 }, {_id: 0})
-      let find2 = null
-      if (find3) {
-        const obj = { _id: ObjectId(find3._doc.locationId) }
-        locationName ? obj.locationName = locationName : null
-        find2 = await Location.findOne({ ...obj }, {_id: 0})
-      }
-      if (find1 && find2 && find3) {
-        let find = null
-        if (arr.length) {
-          find = arr.find(ele => ele.stationId === find3._doc.stationId && ele.vehicleName === find1._doc.vehicleName)
-          if (find && !bookingFlag) {
-            //if (find) {
-            find.vehicleCount = find.vehicleCount + 1
-            const index = arr.findIndex(ele => ele.stationId === find3._doc.stationId && vehicleName === find1._doc.vehicleName)
-            arr[index] = find
-          }
-        }
-        if (!find) {
-          o = {
-            ...o,
-            ...find1?._doc,
-            ...find2?._doc,
-            ...find3?._doc,
-            vehicleCount: 1
-          }
-          arr.push(o)
-        }
-      }
-    }
-    obj.data = arr
-    if (!obj.data.length) {
-      obj.message = "data not found"
-    }
-  } else {
-    obj.status = 401
-    obj.message = "data not found"
-  }
-  return obj
-}
-
-const getPlanData = async (query) => {
-  const obj = { status: 200, message: "data fetched successfully", data: [] }
-  let filter = query
-  if (filter._id) {
-    filter._id = ObjectId(query._id)
-  }
-  const response = await plan.find({ ...filter })
-  if (response) {
-    obj.data = response
-  } else {
-    obj.status = 401
-    obj.message = "data not found"
-  }
-  return obj
-}
-
-// async function getPlanData({ _id }) {
-//   const response = { status: 200, message: "Plans retrieved successfully", data: [] };
-
-//   try {
-//     // Fetch a specific plan if _id is provided
-//     if (_id) {
-//       if (_id.length !== 24) {
-//         response.status = 401;
-//         response.message = "Invalid _id format";
-//         return response;
-//       }
-
-//       const plan = await Plan.findOne({ _id: ObjectId(_id) });
-//       if (!plan) {
-//         response.status = 404;
-//         response.message = "Plan not found";
-//         return response;
-//       }
-
-//       response.data = plan;
-//       response.message = "Plan retrieved successfully";
-//       return response;
+// const getVehicleTblData = async (query) => {
+//   const obj = { status: 200, message: "data fetched successfully", data: [] }
+//   const { vehicleName,vehicleType, vehicleBrand, locationName, locationId, stationId, pinCode, planIds, stationName, startDate, startTime, endDate, endTime } = query
+//   let momStartTime = moment(startTime ? startTime : "00:00 AM", "hh:mm A");
+//   let momEndTime = moment(endTime ? endTime : "00:00 AM", "hh:mm A");
+//   let getStartDate = startDate
+//   let getStartTime = { hours: new Date(momStartTime).getHours(), minutes: new Date(momStartTime).getMinutes() }
+//   let getEndDate = endDate
+//   let getEndTime = { hours: new Date(momEndTime).getHours(), minutes: new Date(momEndTime).getMinutes() }
+//   let filter = {}
+//   if (query && Object.keys(query).length) {
+//     filter = JSON.parse(JSON.stringify(query))
+//     delete filter.planIds
+//     let checkPlanIds = planIds ? JSON.parse(planIds) : []
+//     if (checkPlanIds && checkPlanIds.length) {
+//       filter.vehiclePlan = { $in: checkPlanIds }
 //     }
-
-//     // Fetch all plans if _id is not provided
-//     const allPlans = await Plan.find({});
-//     if (allPlans.length === 0) {
-//       response.message = "No plans available";
-//     } else {
-//       response.data = allPlans;
+//     if (filter._id) {
+//       filter._id = ObjectId(query._id)
 //     }
-//   } catch (err) {
-//     console.error("Error in getPlans:", err);
-//     response.status = 500;
-//     response.message = `Server error: ${err.message}`;
 //   }
+//   const response = await vehicleTable.find(filter)
+//   if (response) {
+//     const arr = []
+//     for (let i = 0; i < response.length; i++) {
+//       const { _doc } = response[i]
+//       let bookingFlag = false
+//       let o = _doc
+//       if (o && o.vehiclePlan) {
+//         const findPlan = await Plan.findOne({ _id: ObjectId(o.vehiclePlan) }, { stationId: 0, _id: 0 })
+//         o = { ...o, ...findPlan._doc }
+//       }
+//       let vehicleCount = 0
+//       if (o.isBooked == "true") {
+//         const find = await Booking.findOne({ vehicleTableId: o._id }, { BookingStartDateAndTime: 1, BookingEndDateAndTime: 1, _id: 0 })
+//         if (find) {
+//           let _doc = find._doc
+//           let BookingStartDateAndTime = _doc.BookingStartDateAndTime
+//           let BookingEndDateAndTime = _doc.BookingEndDateAndTime
+//           if (BookingEndDateAndTime && BookingStartDateAndTime) {
+//             const { startDate, startTime } = BookingStartDateAndTime
+//             const { endDate, endTime } = BookingEndDateAndTime
+//             let bookingStartHours = new Date(moment(startTime, "hh:mm A")).getHours()
+//             let bookingEndHours = new Date(moment(endTime, "hh:mm A")).getHours()
+//             let bookingStartMinutes = new Date(moment(startTime, "hh:mm A")).getMinutes()
+//             let bookingEndMinutes = new Date(moment(endTime, "hh:mm A")).getMinutes()
+//             let bookingStartDate = moment(startDate).add(bookingStartHours, 'hours').add(bookingStartMinutes, 'minutes')
+//             bookingStartDate = new Date(bookingStartDate.format()).getTime()
+//             let currentStartDate = moment(getStartDate).add(getStartTime.hours, 'hours').add(getStartTime.minutes, 'minutes')
+//             currentStartDate = new Date(currentStartDate.format()).getTime()
+//             let currentEndDate = moment(getEndDate).add(getEndTime.hours, 'hours').add(getEndTime.minutes, 'minutes')
+//             currentEndDate = new Date(currentEndDate.format()).getTime()
+//             let bookingEndDate = moment(endDate).add(bookingEndHours, 'hours').add(bookingEndMinutes, 'minutes')
+//             bookingEndDate = new Date(bookingEndDate.format()).getTime()
+//             if (currentStartDate >= bookingStartDate && currentStartDate <= bookingEndDate) {
+//               bookingFlag = true
+//             } else if (currentEndDate >= bookingStartDate && currentStartDate <= bookingEndDate) {
+//               bookingFlag = true
+//             } else {
+//               bookingFlag = false
+//             }
+//             if (!bookingFlag) {
+//               vehicleCount = vehicleCount + 1
+//             }
+//           } else {
+//             obj.status = 401
+//             obj.message = "Something went wrong"
+//             return obj
+//           }
+//         }
+//       }
+//       let obj1 = { _id: ObjectId(o.vehicleId) }
+//       vehicleName ? obj1.vehicleName = vehicleName : null
+//       vehicleType ? obj1.vehicleType = vehicleType : null
+//       vehicleBrand ? obj1.vehicleBrand = vehicleBrand : null
+//       const find1 = await VehicleMaster.findOne({ ...obj1 }, {_id: 0})
 
-//   return response;
+//       let obj3 = { stationId: o.stationId }
+//       stationName ? obj3.stationName = stationName : null
+//       locationId ? obj3.locationId = locationId : null
+//       pinCode ? obj3.pinCode = pinCode : null
+//       const find3 = await station.findOne({ ...obj3 }, {_id: 0})
+//       let find2 = null
+//       if (find3) {
+//         const obj = { _id: ObjectId(find3._doc.locationId) }
+//         locationName ? obj.locationName = locationName : null
+//         find2 = await Location.findOne({ ...obj }, {_id: 0})
+//       }
+//       if (find1 && find2 && find3) {
+//         let find = null
+//         if (arr.length) {
+//           find = arr.find(ele => ele.stationId === find3._doc.stationId && ele.vehicleName === find1._doc.vehicleName)
+//           if (find && !bookingFlag) {
+            //if (find) {
+//             find.vehicleCount = find.vehicleCount + 1
+//             const index = arr.findIndex(ele => ele.stationId === find3._doc.stationId && vehicleName === find1._doc.vehicleName)
+//             arr[index] = find
+//           }
+//         }
+//         if (!find) {
+//           o = {
+//             ...o,
+//             ...find1?._doc,
+//             ...find2?._doc,
+//             ...find3?._doc,
+//             vehicleCount: 1
+//           }
+//           arr.push(o)
+//         }
+//       }
+//     }
+//     obj.data = arr
+//     if (!obj.data.length) {
+//       obj.message = "data not found"
+//     }
+//   } else {
+//     obj.status = 401
+//     obj.message = "data not found"
+//   }
+//   return obj
 // }
 
+const getVehicleTblData = async (query) => {
+  const obj = { status: 200, message: "data fetched successfully", data: [] };
+
+  try {
+    const { vehicleName, stationName, startDate, startTime, endDate, endTime } = query;
+    let filter = {};
+
+    if (query && Object.keys(query).length) {
+      filter = JSON.parse(JSON.stringify(query));
+      if (filter._id) {
+        filter._id = ObjectId(filter._id); // Ensure proper format
+      }
+    }
+
+    console.log("Filter:", filter); // Debug filter
+
+    const response = await vehicleTable.find(filter);
+    console.log("Database Response:", response); // Debug database response
+
+    if (response && response.length) {
+      obj.data = response;
+    } else {
+      obj.message = "No data found"; // This message appears if no records are returned
+    }
+  } catch (error) {
+    console.error("Error in getVehicleTblData:", error);
+    obj.status = 500;
+    obj.message = `Internal server error: ${error.message}`;
+  }
+
+  return obj;
+};
+
+
+
+
+
+const getPlanData= async(query)=>{
+  const obj = { status: 200, message: "Plans retrieved successfully", data: [] };
+  try {
+
+    if (query._id) {
+      if (query._id.length !== 24) {
+        obj.status = 401;
+        obj.message = "Invalid booking ID";
+        return obj;
+      }
+     // Find Plan by _id
+     const booking = await Plan.findById(query._id);
+     if (!booking) {
+       obj.status = 404;
+       obj.message = "Booking not found";
+       return obj;
+     }
+
+     obj.data = [booking]; // Return the single Plan in an array for consistency
+     return obj;
+   }
+
+   const bookings = await Plan.find();
+    if (!bookings.length) {
+      obj.message = "No records found";
+      return obj;
+    }
+
+    obj.data = bookings;
+
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    obj.status = 500;
+    obj.message = "Internal server error";
+  }
+  return obj;
+
+}
 
 const getLocationData = async (query) => {
   const obj = { status: 200, message: "data fetched successfully", data: [] }
@@ -1682,7 +1685,7 @@ module.exports = {
   getPlanData,
   createInvoice,
   discountCoupons,
-  getBookings,
+ 
   createStation,
   searchVehicle,
   getLocations,
