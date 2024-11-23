@@ -1,3 +1,4 @@
+const multer = require("multer");
 const {
   createVehicle,
   createLocation,
@@ -25,7 +26,8 @@ const {
 
 const { createCoupon, getCoupons } = require("../models/coupon.model");
 const {getBookings}= require("../models/booking.model")
-const {getVehicleBookrecode,VehicleBookrecode}= require("../models/Vehicle.Bookrecode.module")
+const {getVehicleBookrecode,VehicleBookrecode}= require("../models/Vehicle.Bookrecode.module");
+const {fileUpload} = require("../models/fileUpload.model")
 
 exports.getStationData = async (req, res) => {
   try {
@@ -298,16 +300,32 @@ exports.getOrders = async (req, res) => {
   }
 }
 
+exports.createLocation = async  (req, res) =>{
+  try {
+    // Check content type
+    const contentType = req.headers["content-type"];
+
+    if (contentType.includes("multipart/form-data")) {
+      fileUpload(req, res)
+    } else {
+      return res.status(400).json({
+        message: "Json data is not allowed",
+        status: 400,
+      });
+    }
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
 
 
-
-
-
-
-
-
-
-exports.createLocation = async (req, res) => {
+exports.createLocation1 = async (req, res) => {
+  const contentType = req.headers["content-type"];
   try {
     const result = await createLocation(req.body);
     return res.status(200).json(result);

@@ -6,7 +6,9 @@ const ObjectId = mongoose.Types.ObjectId;
 const Vehicle = require("../../../db/schemas/onboarding/vehicle.schema");
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const Station = require("../../../db/schemas/onboarding/station.schema");
-const Booking = require("../../../db/schemas/onboarding/booking.schema");
+//const Booking = require("../../../db/schemas/onboarding/booking.schema");
+const Booking = require('../../../db/schemas/onboarding/booking.schema')
+
 const BookingDuration = require("../../../db/schemas/onboarding/bookingDuration.schema");
 const User = require("../../../db/schemas/onboarding/user.schema");
 const Order = require("../../../db/schemas/onboarding/order.schema");
@@ -23,6 +25,7 @@ const order = require("../../../db/schemas/onboarding/order.schema");
 const { emailValidation, contactValidation } = require("../../../constant"); 
 const { query } = require("express");
 //const {generateRandomId } = require('../../../utils/help-scripts/help-functions');
+const Invoice = require('../../../db/schemas/onboarding/invoice-tbl.schema'); // Import the Invoice model
 
 
 function generateRandomId() {
@@ -672,8 +675,10 @@ async function createInvoice({ pdfDoc, _id, deleteRec, bookingId, paidInvoice })
       }
     }
     if (bookingId) {
-      if (bookingId.length == 36) {
+      console.log(bookingId)
+      if (bookingId.length == 24) {
         const find = await Booking.findOne({ bookingId })
+        console.log(find)
         if (!find) {
           obj.status = 401
           obj.message = "invalid order id"
@@ -1666,6 +1671,9 @@ async function getMessages(chatId) {
   const result = await Message.find({ chatId: chatId });
   return result;
 }
+
+
+
 
 
 module.exports = {
