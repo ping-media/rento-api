@@ -1521,10 +1521,10 @@ const getLocationData = async (query) => {
       const { _doc } = response[i]
       let o = _doc
       const find = await station.find({locationId: ObjectId(o._id)})
-      if (find) {
-       o.stationCount = find.length
+     
+      // o.stationCount = find.length
        arr.push(o)
-      }
+     
     }
     obj.data = arr
   } else {
