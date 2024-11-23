@@ -8,11 +8,11 @@ const Location = require("../../../db/schemas/onboarding/location.schema");
 
 
 // Validate required environment variables
-const { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME } = process.env;
-if (!AWS_REGION || !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_BUCKET_NAME) {
-    console.error("Missing required environment variables for AWS configuration.");
-    process.exit(1);
-}
+// const { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME } = process.env;
+// if (!AWS_REGION || !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_BUCKET_NAME) {
+//     console.error("Missing required environment variables for AWS configuration.");
+//     process.exit(1);
+// }
 
 // Configure AWS S3 Client
 // const s3 = new S3Client({
