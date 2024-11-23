@@ -15,13 +15,13 @@ if (!AWS_REGION || !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_BUCKET_N
 }
 
 // Configure AWS S3 Client
-const s3 = new S3Client({
-    region: AWS_REGION,
-    credentials: {
-        accessKeyId: AWS_ACCESS_KEY_ID,
-        secretAccessKey: AWS_SECRET_ACCESS_KEY,
-    },
-});
+// const s3 = new S3Client({
+//     region: AWS_REGION,
+//     credentials: {
+//         accessKeyId: AWS_ACCESS_KEY_ID,
+//         secretAccessKey: AWS_SECRET_ACCESS_KEY,
+//     },
+// });
 
 // Configure Multer to use Memory Storage
 const upload = multer({
