@@ -2,8 +2,12 @@ const router = require("express").Router();
 const vehiclesService = require("../services/vehicles.service");
 const auth = require("../../../middlewares/auth/index");
 const Booking=require("../../../api/./onboarding/./models/./booking.model")
-const {handleFileUpload} = require("../services/vehicles.service")
+const multer = require('multer');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const path = require('path');
+require('dotenv').config();
 
+const {fileUpload} = require ("../models/fileUpload.model")
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -14,9 +18,7 @@ router.post("/createBookingDuration", async (req, res) => {
   vehiclesService.createBookingDuration(req, res);
 })
 
-router.post("/createLocation", async (req, res) => {
-  vehiclesService.createLocation(req, res);
-})
+
 
 router.post("/createPlan", async (req, res) => {
   vehiclesService.createPlan(req, res);
@@ -112,6 +114,38 @@ router.get("/getCoupons", async (req, res) => {
 router.get("/getVehicleBookrecode", async (req, res) => {
   vehiclesService.getVehicleBookrecode(req, res);
 })
+
+
+
+
+
+
+// Configure Multer to use Memory Storage
+const upload = multer({
+  storage: multer.memoryStorage(), // Store files in memory for manual upload to S3
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB file size limit
+});
+
+
+router.post("/createLocation", upload.single('image'), async (req, res) => {
+  if (!req.file) {
+      return res.status(400).json({ message: 'File upload failed. No file provided.' });
+  }
+
+  fileUpload(req, res)
+  // vehiclesService.createLocation(req, res);
+})
+
+// Route to upload the image
+router.post('/upload', upload.single('image'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: 'File upload failed. No file provided.' });
+    }
+    fileUpload(req, res)
+    
+});
+
+
 
 
 module.exports = router;
