@@ -34,23 +34,14 @@ const upload = multer({
 const fileUpload =async (req, res) => {
     try {
 
-      //  let _id= req.body._id
-    
-        if(req.body && !req.body.locationName){
-            return res.status(500).json({
-                message: 'Location name required',
-            });
-        }
-
+        let _id= req.body._id;
+        let deleteRec=req.body.deleteRec
         let locationName = req.body.locationName
 
-        const find = await Location.findOne({ locationName })
-        if (find) {
-            return res.status(401).json({
-                message: 'Location exists',
-            });
-        }
-
+        
+    
+        
+       
         
         // Generate safe file name
         const timestamp = Date.now();
@@ -69,13 +60,58 @@ const fileUpload =async (req, res) => {
         // Construct the file URL
         const imageUrl = `https://${AWS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${safeFileName}`;
 
-        const SaveLocation = new Location({ locationName, locationImage: imageUrl })
+        if (_id && _id.length == 24) {
+            const find = await Location.findOne({ _id })
+    if (!find) {
+     
+      return res.status(401).json({
+        message: 'Invalid _id',
+    });
+    }
+    if (deleteRec) {
+      await Location.deleteOne({ _id})
+      
+      return res.status(401).json({
+        message: 'location deleted successfully',
+    });
+    }
+    
+    if(req.body && !req.body.locationName){
+        return res.status(500).json({
+            message: 'Location name required',
+        });
+    }
+
+
+    const findName = await Location.findOne({ locationName })
+    if (findName) {
+        return res.status(401).json({
+            message: 'Location exists',
+        });
+    }
+    await Location.updateOne(
+        { _id },
+        {
+          $set: { locationName, locationImage:imageUrl }
+        },
+        { new: true }
+      );
+     
+      return res.status(200).json({
+        message: 'location updated successfully',
+    });
+}
+        else{
+            const SaveLocation = new Location({ locationName, locationImage: imageUrl,_id })
         SaveLocation.save()
         
         return res.status(200).json({
             message: 'File uploaded successfully',
             imageUrl,
         });
+        }
+
+        
     } catch (error) {
         console.error('Error uploading file:', error);
         return res.status(500).json({

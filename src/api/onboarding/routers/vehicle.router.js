@@ -7,7 +7,7 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
 require('dotenv').config();
 
-const {fileUpload} = require ("../models/fileUpload.model")
+const {fileUpload} = require ("../models/locationUpload.model")
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -131,19 +131,9 @@ router.post("/createLocation", upload.single('image'), async (req, res) => {
   if (!req.file) {
       return res.status(400).json({ message: 'File upload failed. No file provided.' });
   }
-
   fileUpload(req, res)
   // vehiclesService.createLocation(req, res);
 })
-
-// Route to upload the image
-router.post('/upload', upload.single('image'), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ message: 'File upload failed. No file provided.' });
-    }
-    fileUpload(req, res)
-    
-});
 
 
 

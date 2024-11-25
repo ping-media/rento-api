@@ -27,7 +27,7 @@ const {
 const { createCoupon, getCoupons } = require("../models/coupon.model");
 const {getBookings}= require("../models/booking.model")
 const {getVehicleBookrecode,VehicleBookrecode}= require("../models/Vehicle.Bookrecode.module");
-const {fileUpload} = require("../models/fileUpload.model")
+const {fileUpload} = require("../models/locationUpload.model")
 
 exports.getStationData = async (req, res) => {
   try {
