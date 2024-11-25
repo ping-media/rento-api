@@ -1315,151 +1315,90 @@ const getBookings_bk = async (query) => {
   return obj
 }
 
-// const getVehicleTblData = async (query) => {
-//   const obj = { status: 200, message: "data fetched successfully", data: [] }
-//   const { vehicleName,vehicleType, vehicleBrand, locationName, locationId, stationId, pinCode, planIds, stationName, startDate, startTime, endDate, endTime } = query
-//   let momStartTime = moment(startTime ? startTime : "00:00 AM", "hh:mm A");
-//   let momEndTime = moment(endTime ? endTime : "00:00 AM", "hh:mm A");
-//   let getStartDate = startDate
-//   let getStartTime = { hours: new Date(momStartTime).getHours(), minutes: new Date(momStartTime).getMinutes() }
-//   let getEndDate = endDate
-//   let getEndTime = { hours: new Date(momEndTime).getHours(), minutes: new Date(momEndTime).getMinutes() }
-//   let filter = {}
-//   if (query && Object.keys(query).length) {
-//     filter = JSON.parse(JSON.stringify(query))
-//     delete filter.planIds
-//     let checkPlanIds = planIds ? JSON.parse(planIds) : []
-//     if (checkPlanIds && checkPlanIds.length) {
-//       filter.vehiclePlan = { $in: checkPlanIds }
-//     }
-//     if (filter._id) {
-//       filter._id = ObjectId(query._id)
-//     }
-//   }
-//   const response = await vehicleTable.find(filter)
-//   if (response) {
-//     const arr = []
-//     for (let i = 0; i < response.length; i++) {
-//       const { _doc } = response[i]
-//       let bookingFlag = false
-//       let o = _doc
-//       if (o && o.vehiclePlan) {
-//         const findPlan = await Plan.findOne({ _id: ObjectId(o.vehiclePlan) }, { stationId: 0, _id: 0 })
-//         o = { ...o, ...findPlan._doc }
-//       }
-//       let vehicleCount = 0
-//       if (o.isBooked == "true") {
-//         const find = await Booking.findOne({ vehicleTableId: o._id }, { BookingStartDateAndTime: 1, BookingEndDateAndTime: 1, _id: 0 })
-//         if (find) {
-//           let _doc = find._doc
-//           let BookingStartDateAndTime = _doc.BookingStartDateAndTime
-//           let BookingEndDateAndTime = _doc.BookingEndDateAndTime
-//           if (BookingEndDateAndTime && BookingStartDateAndTime) {
-//             const { startDate, startTime } = BookingStartDateAndTime
-//             const { endDate, endTime } = BookingEndDateAndTime
-//             let bookingStartHours = new Date(moment(startTime, "hh:mm A")).getHours()
-//             let bookingEndHours = new Date(moment(endTime, "hh:mm A")).getHours()
-//             let bookingStartMinutes = new Date(moment(startTime, "hh:mm A")).getMinutes()
-//             let bookingEndMinutes = new Date(moment(endTime, "hh:mm A")).getMinutes()
-//             let bookingStartDate = moment(startDate).add(bookingStartHours, 'hours').add(bookingStartMinutes, 'minutes')
-//             bookingStartDate = new Date(bookingStartDate.format()).getTime()
-//             let currentStartDate = moment(getStartDate).add(getStartTime.hours, 'hours').add(getStartTime.minutes, 'minutes')
-//             currentStartDate = new Date(currentStartDate.format()).getTime()
-//             let currentEndDate = moment(getEndDate).add(getEndTime.hours, 'hours').add(getEndTime.minutes, 'minutes')
-//             currentEndDate = new Date(currentEndDate.format()).getTime()
-//             let bookingEndDate = moment(endDate).add(bookingEndHours, 'hours').add(bookingEndMinutes, 'minutes')
-//             bookingEndDate = new Date(bookingEndDate.format()).getTime()
-//             if (currentStartDate >= bookingStartDate && currentStartDate <= bookingEndDate) {
-//               bookingFlag = true
-//             } else if (currentEndDate >= bookingStartDate && currentStartDate <= bookingEndDate) {
-//               bookingFlag = true
-//             } else {
-//               bookingFlag = false
-//             }
-//             if (!bookingFlag) {
-//               vehicleCount = vehicleCount + 1
-//             }
-//           } else {
-//             obj.status = 401
-//             obj.message = "Something went wrong"
-//             return obj
-//           }
-//         }
-//       }
-//       let obj1 = { _id: ObjectId(o.vehicleId) }
-//       vehicleName ? obj1.vehicleName = vehicleName : null
-//       vehicleType ? obj1.vehicleType = vehicleType : null
-//       vehicleBrand ? obj1.vehicleBrand = vehicleBrand : null
-//       const find1 = await VehicleMaster.findOne({ ...obj1 }, {_id: 0})
+ 
 
-//       let obj3 = { stationId: o.stationId }
-//       stationName ? obj3.stationName = stationName : null
-//       locationId ? obj3.locationId = locationId : null
-//       pinCode ? obj3.pinCode = pinCode : null
-//       const find3 = await station.findOne({ ...obj3 }, {_id: 0})
-//       let find2 = null
-//       if (find3) {
-//         const obj = { _id: ObjectId(find3._doc.locationId) }
-//         locationName ? obj.locationName = locationName : null
-//         find2 = await Location.findOne({ ...obj }, {_id: 0})
-//       }
-//       if (find1 && find2 && find3) {
-//         let find = null
-//         if (arr.length) {
-//           find = arr.find(ele => ele.stationId === find3._doc.stationId && ele.vehicleName === find1._doc.vehicleName)
-//           if (find && !bookingFlag) {
-            //if (find) {
-//             find.vehicleCount = find.vehicleCount + 1
-//             const index = arr.findIndex(ele => ele.stationId === find3._doc.stationId && vehicleName === find1._doc.vehicleName)
-//             arr[index] = find
-//           }
-//         }
-//         if (!find) {
-//           o = {
-//             ...o,
-//             ...find1?._doc,
-//             ...find2?._doc,
-//             ...find3?._doc,
-//             vehicleCount: 1
-//           }
-//           arr.push(o)
-//         }
-//       }
-//     }
-//     obj.data = arr
-//     if (!obj.data.length) {
-//       obj.message = "data not found"
-//     }
-//   } else {
-//     obj.status = 401
-//     obj.message = "data not found"
-//   }
-//   return obj
-// }
+
 
 const getVehicleTblData = async (query) => {
-  const obj = { status: 200, message: "data fetched successfully", data: [] };
+  const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
   try {
-    const { vehicleName, stationName, startDate, startTime, endDate, endTime } = query;
-    let filter = {};
+    const { stationId, vehicleModel, condition, vehicleColor, startDate, startTime, endDate, endTime, _id} = query;
 
-    if (query && Object.keys(query).length) {
-      filter = JSON.parse(JSON.stringify(query));
-      if (filter._id) {
-        filter._id = ObjectId(filter._id); // Ensure proper format
-      }
-    }
+    // Parsing start and end date-time values
+    const startDateTime = startDate && startTime ? new Date(`${startDate}T${startTime}`) : null;
+    const endDateTime = endDate && endTime ? new Date(`${endDate}T${endTime}`) : null;
 
-    console.log("Filter:", filter); // Debug filter
+   // let id=stationId;
+console.log(_id)
+    // Build the aggregation pipeline dynamically
+    const pipeline = [
+      {
+        $lookup: {
+          from: "vehiclebookrecodes", 
+          localField: "_id", 
+          foreignField: "bookingId", 
+          as: "bookings", 
+        },
+      },
+      {
+        $match: {
+          $or: [
+            { bookings: { $size: 0 } }, // No bookings for this vehicle
+            ...(startDateTime && endDateTime
+              ? [
+                  {
+                    bookings: {
+                      $not: {
+                        $elemMatch: {
+                          $and: [
+                            { startDate: { $lte: endDateTime } },
+                            { endDate: { $gte: startDateTime } },
+                          ],
+                        },
+                      },
+                    },
+                  },
+                ]
+              : []), 
+          ],
+          
+          ...(stationId ? { stationId: stationId } : {}),
+          ...(vehicleModel ? { vehicleModel: vehicleModel } : {}),
+          ...(condition ? { condition: condition } : {}),
+          ...(vehicleColor ? { vehicleColor: vehicleColor } : {}),
+        },
+      },
+      {
+        $project: {
+          _id: 1, 
+          vehicleMasterId: 1, 
+          vehicleBookingStatus: 1, 
+          vehicleStatus: 1, 
+          freeKms: 1, 
+          extraKmsCharges: 1, 
+          stationId: 1, 
+          vehicleNumber: 1, 
+          vehicleModel: 1, 
+          vehicleColor: 1, 
+          perDayCost: 1, 
+          lastServiceDate: 1, 
+          kmsRun: 1, 
+          isBooked: 1, 
+          condition: 1, 
+          
+        },
+      },
+    ];
 
-    const response = await vehicleTable.find(filter);
-    console.log("Database Response:", response); // Debug database response
+    // Execute the aggregation pipeline
+    const response = await vehicleTable.aggregate(pipeline);
 
+    // If response data exists, return it, else return a message
     if (response && response.length) {
       obj.data = response;
     } else {
-      obj.message = "No data found"; // This message appears if no records are returned
+      obj.message = "No available vehicles found";
     }
   } catch (error) {
     console.error("Error in getVehicleTblData:", error);
@@ -1469,6 +1408,7 @@ const getVehicleTblData = async (query) => {
 
   return obj;
 };
+
 
 
 
