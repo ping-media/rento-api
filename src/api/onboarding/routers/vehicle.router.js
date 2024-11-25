@@ -8,6 +8,7 @@ const path = require('path');
 require('dotenv').config();
 
 const {fileUpload} = require ("../models/locationUpload.model")
+const{VehicalfileUpload} = require ("../models/createVehicleMasterUpload")
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -97,9 +98,9 @@ router.post("/createOrder", async (req, res) => {
   vehiclesService.createOrder(req, res);
 })
 
-router.post("/createVehicleMaster", async (req, res) => {
-  vehiclesService.createVehicleMaster(req, res);
-})
+// router.post("/createVehicleMaster", async (req, res) => {
+//   vehiclesService.createVehicleMaster(req, res);
+// })
 
 router.get("/getOrders", async (req, res) => {
   vehiclesService.getOrders(req, res);
@@ -132,6 +133,14 @@ router.post("/createLocation", upload.single('image'), async (req, res) => {
       return res.status(400).json({ message: 'File upload failed. No file provided.' });
   }
   fileUpload(req, res)
+  // vehiclesService.createLocation(req, res);
+})
+
+router.post("/createVehicleMaster", upload.single('image'), async (req, res) => {
+  if (!req.file) {
+      return res.status(400).json({ message: 'File upload failed. No file provided.' });
+  }
+  VehicalfileUpload(req, res)
   // vehiclesService.createLocation(req, res);
 })
 

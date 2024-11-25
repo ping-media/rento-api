@@ -106,8 +106,9 @@ const fileUpload =async (req, res) => {
         SaveLocation.save()
         
         return res.status(200).json({
+            status:200,
             message: 'File uploaded successfully',
-            imageUrl,
+            imageUrl, locationName, _id
         });
         }
 
