@@ -34,7 +34,7 @@ const upload = multer({
 const fileUpload =async (req, res) => {
     try {
 
-        let _id= req.body._id
+      //  let _id= req.body._id
     
         if(req.body && !req.body.locationName){
             return res.status(500).json({
