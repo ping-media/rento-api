@@ -56,12 +56,12 @@ const fileUpload =async (req, res) => {
         const timestamp = Date.now();
         const safeFileName = `${timestamp}-${path.basename(req.file.originalname)}`;
 
-        // const params = {
-        //     Bucket: AWS_BUCKET_NAME, // Your bucket name
-        //     Key: safeFileName, // File name in the bucket
-        //     Body: req.file.buffer, // File content
-        //     ContentType: req.file.mimetype, // File MIME type
-        // };
+        const params = {
+            Bucket: AWS_BUCKET_NAME, // Your bucket name
+            Key: safeFileName, // File name in the bucket
+            Body: req.file.buffer, // File content
+            ContentType: req.file.mimetype, // File MIME type
+        };
 
         // Upload to S3
         await s3.send(new PutObjectCommand(params));
