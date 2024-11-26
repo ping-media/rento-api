@@ -17,11 +17,11 @@ const bookingSchema = new Schema({
         required: true
     },
     BookingStartDateAndTime: {
-        type: Object,
+        type: String,
         required: true
     },
     BookingEndDateAndTime: {
-        type: Object,
+        type: String,
         required: true
     },
     bookingPrice: {
