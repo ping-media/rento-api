@@ -1027,6 +1027,7 @@ async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, veh
         },
         { new: true }
       );
+      response.status = 200
       response.message = "vehicle master updated successfully"
       response.data = obj
     } else {
@@ -1318,96 +1319,161 @@ const getBookings_bk = async (query) => {
  
 
 
-
 const getVehicleTblData = async (query) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
   try {
-    const { stationId, vehicleModel, condition, vehicleColor, startDate, startTime, endDate, endTime, _id} = query;
+    const {
+      stationId,
+      vehicleModel,
+      condition,
+      vehicleColor,
+      startDate,
+      startTime,
+      endDate,
+      endTime,
+    } = query;
 
-    // Parsing start and end date-time values
-    const startDateTime = startDate && startTime ? new Date(`${startDate}T${startTime}`) : null;
-    const endDateTime = endDate && endTime ? new Date(`${endDate}T${endTime}`) : null;
+    // Parse start and end date-time
+    const startDateTime =
+      startDate && startTime
+        ? moment(`${startDate} ${startTime}`, "DD/MM/YYYY hh:mm A").toDate()
+        : null;
+    const endDateTime =
+      endDate && endTime
+        ? moment(`${endDate} ${endTime}`, "DD/MM/YYYY hh:mm A").toDate()
+        : null;
 
-   // let id=stationId;
-console.log(_id)
-    // Build the aggregation pipeline dynamically
+    if (!startDateTime || !endDateTime) {
+      obj.status = 400;
+      obj.message = "Start date/time and end date/time are required";
+      console.error("Missing date/time:", { startDateTime, endDateTime });
+      return obj;
+    }
+
+    console.log("Start DateTime:", startDateTime, "End DateTime:", endDateTime);
+
+    // Build aggregation pipeline
     const pipeline = [
       {
-        $lookup: {
-          from: "vehiclebookrecodes", 
-          localField: "_id", 
-          foreignField: "bookingId", 
-          as: "bookings", 
+        $match: {
+          ...(stationId ? { stationId } : {}),
+          ...(vehicleModel ? { vehicleModel } : {}),
+          ...(condition ? { condition } : {}),
+          ...(vehicleColor ? { vehicleColor } : {}),
         },
       },
+      // Join bookings with the vehicleTable
+      {
+        $lookup: {
+          from: "bookings", // Name of the bookings collection
+          localField: "_id", // Field in vehicleTable
+          foreignField: "vehicleTableId", // Field in bookings
+          as: "bookings", // Resulting array field
+        },
+      },
+      // Filter vehicles with conflicting bookings
+      {
+        $addFields: {
+          conflictingBookings: {
+            $filter: {
+              input: "$bookings",
+              as: "booking",
+              cond: {
+                $and: [
+                  // Booking status should not be "pending" or "approved"
+                  { $not: { $in: ["$$booking.bookingStatus", ["pending", "approved"]] } },
+                  // Overlapping booking date-time ranges
+                  {
+                    $or: [
+                      {
+                        $and: [
+                          {
+                            $lte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$booking.BookingStartDateAndTime.startDate",
+                                  format: "%d/%m/%Y",
+                                },
+                              },
+                              endDateTime,
+                            ],
+                          },
+                          {
+                            $gte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$booking.BookingEndDateAndTime.endDate",
+                                  format: "%d/%m/%Y",
+                                },
+                              },
+                              startDateTime,
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+      // Match only vehicles without conflicting bookings
       {
         $match: {
-          $or: [
-            { bookings: { $size: 0 } }, // No bookings for this vehicle
-            ...(startDateTime && endDateTime
-              ? [
-                  {
-                    bookings: {
-                      $not: {
-                        $elemMatch: {
-                          $and: [
-                            { startDate: { $lte: endDateTime } },
-                            { endDate: { $gte: startDateTime } },
-                          ],
-                        },
-                      },
-                    },
-                  },
-                ]
-              : []), 
-          ],
-          
-          ...(stationId ? { stationId: stationId } : {}),
-          ...(vehicleModel ? { vehicleModel: vehicleModel } : {}),
-          ...(condition ? { condition: condition } : {}),
-          ...(vehicleColor ? { vehicleColor: vehicleColor } : {}),
+          conflictingBookings: { $size: 0 },
         },
       },
+      // Project final fields for the result
       {
         $project: {
-          _id: 1, 
-          vehicleMasterId: 1, 
-          vehicleBookingStatus: 1, 
-          vehicleStatus: 1, 
-          freeKms: 1, 
-          extraKmsCharges: 1, 
-          stationId: 1, 
-          vehicleNumber: 1, 
-          vehicleModel: 1, 
-          vehicleColor: 1, 
-          perDayCost: 1, 
-          lastServiceDate: 1, 
-          kmsRun: 1, 
-          isBooked: 1, 
-          condition: 1, 
-          
+          _id: 1,
+          vehicleMasterId: 1,
+          vehicleBookingStatus: 1,
+          vehicleStatus: 1,
+          freeKms: 1,
+          extraKmsCharges: 1,
+          stationId: 1,
+          vehicleNumber: 1,
+          vehicleModel: 1,
+          vehicleColor: 1,
+          perDayCost: 1,
+          lastServiceDate: 1,
+          kmsRun: 1,
+          isBooked: 1,
+          condition: 1,
         },
       },
     ];
+    
 
-    // Execute the aggregation pipeline
-    const response = await vehicleTable.aggregate(pipeline);
 
-    // If response data exists, return it, else return a message
-    if (response && response.length) {
-      obj.data = response;
+
+    // Execute aggregation pipeline
+    const availableVehicles = await vehicleTable.aggregate(pipeline);
+
+    // Return result
+    if (availableVehicles.length) {
+      obj.data = availableVehicles;
     } else {
-      obj.message = "No available vehicles found";
+      obj.message = "No available vehicles found for the selected dates and times";
     }
   } catch (error) {
-    console.error("Error in getVehicleTblData:", error);
+    console.error("Error in getVehicleTblData:", error.message);
     obj.status = 500;
     obj.message = `Internal server error: ${error.message}`;
   }
 
   return obj;
 };
+
+
+
+
+
+
 
 
 

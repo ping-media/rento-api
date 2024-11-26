@@ -65,7 +65,7 @@ const VehicalfileUpload =async (req, res) => {
 
         let vehicleImage=imageUrl
 
-        console.log(_id,deleteRec,vehicleBrand,vehicleName,vehicleType,vehicleImage)
+        //console.log(_id,deleteRec,vehicleBrand,vehicleName,vehicleType,vehicleImage)
 
 
         if (vehicleType) {

@@ -9,6 +9,11 @@ require('dotenv').config();
 
 const {fileUpload} = require ("../models/locationUpload.model")
 const{VehicalfileUpload} = require ("../models/createVehicleMasterUpload")
+const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
+const Location = require("../../../db/schemas/onboarding/location.schema");
+const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
+
+
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -136,13 +141,154 @@ router.post("/createLocation", upload.single('image'), async (req, res) => {
   // vehiclesService.createLocation(req, res);
 })
 
+
+
+
+// Update Location (image is optional)
+router.put("/updateLocation/", upload.single('image'), async (req, res) => {
+  try {
+    // If an image is provided, handle the file upload
+    if (req.file) {
+      await fileUpload(req, res);
+      // Add logic to update the image URL in the database (e.g., vehiclesService.updateLocationImage)
+    }
+    const _id= req.body._id;
+    const locationName = req.body.locationName; 
+    const deleteRec=req.body.deleteRec;
+     if (_id) {
+            const find = await Location.findOne({ _id})
+            if (!find) {
+              
+              return res.status(401).json({
+                message: "Invalid vehicle _id",
+                           });
+            }
+         
+            await Location.updateOne(
+              { _id },
+              {
+                $set: {locationName}
+              },
+              { new: true }
+            );
+            
+            return res.status(200).json({
+                message: "location updated successfully",
+                           });
+          }
+
+  } catch (error) {
+    console.error("Error updating location:", error.message);
+    res.status(500).json({ message: 'An error occurred while updating location' });
+  }
+});
+
+
+
+router.delete("/deleteLocation", async (req, res) => {
+  try {
+    let _id= req.query._id;
+   // console.log(_id)
+    if (!_id) {
+      return res.status(400).json({ message: "Location _id is required" });
+    }
+
+    const find = await Location.findOne({ _id });
+
+    if (!find) {
+      return res.status(404).json({ message: "Location with the given _id not found" });
+    }
+
+    await Location.deleteOne({ _id });
+
+    return res.status(200).json({ message: "Location deleted successfully" });
+
+  } catch (error) {
+    console.error("Error in deleteLocation:", error.message);
+    return res.status(500).json({ message: "An error occurred while deleting Location" });
+  }
+});
+
+
+
 router.post("/createVehicleMaster", upload.single('image'), async (req, res) => {
+  
+  
   if (!req.file) {
       return res.status(400).json({ message: 'File upload failed. No file provided.' });
   }
   VehicalfileUpload(req, res)
   // vehiclesService.createLocation(req, res);
 })
+
+
+// Update Location (image is optional)
+router.put("/updateVehicleMaster", upload.single('image'), async (req, res) => {
+  try {
+    // If an image is provided, handle the file upload
+    if (req.file) {
+      await VehicalfileUpload(req, res);
+    }
+
+    let _id= req.body._id;
+    let vehicleName = req.body.vehicleName;
+    let vehicleType = req.body.vehicleType;
+    let vehicleBrand = req.body.vehicleBrand;
+
+
+     if (_id) {
+            const find = await vehicleMaster.findOne({ _id})
+            if (!find) {
+              
+              return res.status(401).json({
+                message: "Invalid vehicle _id",
+                           });
+            }
+            
+            await vehicleMaster.updateOne(
+              { _id },
+              {
+                $set: {vehicleName,vehicleBrand,vehicleType}
+              },
+              { new: true }
+            );
+            
+            return res.status(200).json({
+                message: "VehicleMaster updated successfully",
+                           });
+          }
+
+  } catch (error) {
+    console.error("Error updating VehicleMaster:", error.message);
+    res.status(500).json({ message: 'An error occurred while updating VehicleMaster' });
+  }
+});
+
+
+
+router.delete("/deleteVehicleMaster", async (req, res) => {
+  try {
+    let _id= req.query._id;
+   // console.log(_id)
+    if (!_id) {
+      return res.status(400).json({ message: "Vehicle _id is required" });
+    }
+
+    const find = await vehicleMaster.findOne({ _id });
+
+    if (!find) {
+      return res.status(404).json({ message: "VehicleMaster with the given _id not found" });
+    }
+
+    await vehicleMaster.deleteOne({ _id });
+
+    return res.status(200).json({ message: "VehicleMaster deleted successfully" });
+
+  } catch (error) {
+    console.error("Error in deleteVehicleMaster:", error.message);
+    return res.status(500).json({ message: "An error occurred while deleting VehicleMaster" });
+  }
+});
 
 
 
