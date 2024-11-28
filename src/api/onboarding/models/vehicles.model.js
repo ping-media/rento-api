@@ -237,7 +237,7 @@ async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, f
 async function booking({
   vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
   discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-  deleteRec, _id, discountPrice
+  deleteRec, _id, discountPrice,vehicleMasterId
 }) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -271,7 +271,7 @@ async function booking({
   const o = {
     vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
     discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-    bookingId: Math.floor(100000 + Math.random() * 900000),
+    bookingId: Math.floor(100000 + Math.random() * 900000),vehicleMasterId
   };
 
   // Validation for `_id`
@@ -312,7 +312,7 @@ async function booking({
     if (
       vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
       bookingPrice && bookingStatus && paymentStatus && rideStatus &&
-      paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax
+      paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax,vehicleMasterId
     ) {
       const SaveBooking = new Booking(o);
       await SaveBooking.save();

@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const bookingSchema = new Schema({
+    vehicleMasterId: {
+        type: Schema.Types.ObjectId,
+        ref: 'vehicleMaster',
+        required: true
+    },
     vehicleTableId: {
         type: Schema.Types.ObjectId,
         ref: 'vehicleTable',

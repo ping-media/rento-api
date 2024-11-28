@@ -134,10 +134,11 @@ async function saveUser({ _id, userType, status, altContact, firstName, lastName
         response.message = "Invalid user type"
         return response
       } else {
+        if(!_id){
         if ((userType == "admin" || userType == "manager") && !password) {
           response.status = 401
           response.message = "password is required here if you are admin or manager"
-          return response
+          return response}
         } else {
           checkUserType = userType
         }
@@ -323,6 +324,7 @@ async function sendOtp(o) {
           obj.data = contact
           obj.message = "otp sent successfully on your regoistered contact number"
         } else {
+          obj.status=401;
           flag = false
           obj.message = "user does not exist"
           return obj
