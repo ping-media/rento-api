@@ -606,93 +606,163 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
   return obj
 }
 
-async function createInvoice({ invoiceNumber, _id, deleteRec, bookingId, paidInvoice,userId }) {
-  function generateInvoiceNumber() {
-    const currentYear = new Date().getFullYear();
-    const staticPrefix = "Inv";
-  
-   
-    const InvoiceNumber = `${staticPrefix}${currentYear}${bookingId}`;
+async function createInvoice({  _id, deleteRec, bookingId, paidInvoice, userId }) {
+  const obj = { status: 200, message: "Invoice created successfully", data: [] };
+  const o = { userId, bookingId, paidInvoice };
 
-  
-    return InvoiceNumber;
-  }
- invoiceNumber = generateInvoiceNumber();
-  const obj = { status: 200, message: "invoice created successfully", data: [] }
-  const o = { userId, bookingId, paidInvoice,invoiceNumber }
   try {
     if (paidInvoice) {
-      let check = ['paid', 'unpaid', 'partialpaid'].includes(paidInvoice)
-      if (!check) {
-        obj.status = 401
-        obj.message = "Invalid paidInvoice"
-        return obj
+      const isValidStatus = ['paid', 'unpaid', 'partialpaid'].includes(paidInvoice);
+      if (!isValidStatus) {
+        obj.status = 401;
+        obj.message = "Invalid paidInvoice";
+        return obj;
       }
     }
+
     if (bookingId) {
-      console.log(bookingId)
-      if (bookingId.length == 24) {
-        const find = await Booking.findOne({ _id: ObjectId(bookingId) })
-        console.log(find)
+      if (bookingId.length === 24) {
+        const find = await Booking.findOne({ _id: ObjectId(bookingId) });
+        //obj.data=find;
         if (!find) {
-          obj.status = 401
-          obj.message = "invalid order id"
-          return obj
+          obj.status = 401;
+          obj.message = "Invalid bookingId";
+          return obj;
         }
       } else {
-        obj.status = 401
-        obj.message = "invalid order id"
-        return obj
+        obj.status = 401;
+        obj.message = "Invalid bookingId";
+        return obj;
       }
     }
+
     if (_id) {
       if (_id.length !== 24) {
-        obj.status = 401
-        obj.message = "invalid _id"
-        return obj
+        obj.status = 401;
+        obj.message = "Invalid _id";
+        return obj;
       }
-      const find = await InvoiceTbl.findOne({ _id: ObjectId(_id) })
+
+      const find = await InvoiceTbl.findOne({ _id: ObjectId(_id) });
       if (!find) {
-        obj.status = 401
-        obj.message = "Invalid _id"
-        return obj
+        obj.status = 401;
+        obj.message = "Invalid _id";
+        return obj;
       }
-      // if (deleteRec) {
-      //   await InvoiceTbl.deleteOne({ _id: ObjectId(_id) })
-      //   obj.message = "invoice deleted successfully"
-      //   return obj
-      // }
-      delete o.invoiceNumber
+
+      if (deleteRec) {
+        await InvoiceTbl.deleteOne({ _id: ObjectId(_id) });
+        obj.message = "Invoice deleted successfully";
+        return obj;
+      }
+
+      delete o.invoiceNumber; // Don't update invoice number
       await InvoiceTbl.updateOne(
         { _id: ObjectId(_id) },
-        {
-          $set: o
-        },
+        { $set: o },
         { new: true }
       );
-      obj.message = "invoice updated successfully"
-      obj.data = o
+      obj.message = "Invoice updated successfully";
+      obj.data = o;
     } else {
-     
-     if (bookingId) {
-      //  o.invoiceNumber = Math.floor(100000 + Math.random() * 900000)
-      
-        const SavePlan = new InvoiceTbl(o)
-        SavePlan.save()
-        obj.message = "new invoice saved successfully"
-        obj.data = o
+      // Create new invoice
+      if (bookingId) {
+
+        const find = await InvoiceTbl.findOne({bookingId});
+        if (find) {
+          obj.status = 401;
+          obj.message = "Invoice Number allready exists";
+          return obj;
+        }
+        else{
+
+          const currentYear = new Date().getFullYear();
+
+        // Get the last invoice number for the year
+        const lastInvoice = await InvoiceTbl.findOne({})
+          .sort({ createdAt: -1 }) // Sort by latest created
+          .select('invoiceNumber');
+
+        let sequence = 1; // Default sequence
+        if (lastInvoice && lastInvoice.invoiceNumber) {
+          const match = lastInvoice.invoiceNumber.match(new RegExp(`INV-${currentYear}-(\\d{5})`));
+          if (match) {
+            sequence = parseInt(match[1], 10) + 1;
+          }
+        }
+
+        // Generate new invoice number
+        const newInvoiceNumber = `INV-${currentYear}-${sequence.toString().padStart(5, '0')}`;
+        o.invoiceNumber = newInvoiceNumber;
+
+        const newInvoice = new InvoiceTbl(o);
+        await newInvoice.save();
+
+        obj.message = "New invoice created successfully";
+        obj.data = o;
+        }
+        
       } else {
-        obj.status = 401
-        obj.message = "Invalid data"
-     }
+        obj.status = 401;
+        obj.message = "Invalid data";
+      }
     }
-    return obj
+    return obj;
   } catch (error) {
-    response.status = 500;
-    response.message = `Server error: ${error.message}`;
+    obj.status = 500;
+    obj.message = `Server error: ${error.message}`;
+    return obj;
+  }
+}
+
+async function getAllInvoice(query) {
+  const obj = { status: 200, message: "Invoices retrieved successfully", data: [] };
+  const { 
+    _id, 
+    bookingId, 
+    userId, 
+    paidInvoice, 
+    page = 1, 
+    limit = 10, 
+    sortBy = 'createdAt', 
+    order = 'asc' 
+  } = query;
+
+  try {
+    // Create filter object for query
+    const filter = {};
+    if (_id) filter._id = _id;
+    if (bookingId) filter.bookingId = bookingId;
+    if (userId) filter.userId = userId;
+    if (paidInvoice) filter.paidInvoice = paidInvoice;
+
+    const sort = {};
+    sort[sortBy] = order === 'asc' ? 1 : -1;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const invoices = await InvoiceTbl.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+   const totalRecords = await InvoiceTbl.find(filter);
+    obj.data=invoices;
+    
+    obj.currentPage = parseInt(page);
+    obj.totalPages = Math.ceil(totalRecords.length / parseInt(limit));
+    
+    obj.message = "Invoices retrieved successfully";
+  } catch (error) {
+    console.error("Error fetching invoices:", error.message);
+    obj.status = 500;
+    obj.message = `Server error: ${error.message}`;
   }
 
+  return obj;
 }
+
+
 
 async function discountCoupons({ couponName, vehicleType, allowedUsers, usageAllowed, discountType, _id, deleteRec, isCouponActive }) {
   const obj = { status: 200, message: "invoice created successfully", data: [] }
@@ -1624,7 +1694,7 @@ module.exports = {
   getPlanData,
   createInvoice,
   discountCoupons,
- 
+  getAllInvoice,
   createStation,
   searchVehicle,
   getLocations,

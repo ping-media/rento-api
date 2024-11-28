@@ -21,6 +21,7 @@ const {
   getStationData,
   getLocationData,
   getPlanData,
+  getAllInvoice
   
 } = require("../models/vehicles.model");
 
@@ -430,6 +431,19 @@ exports.getAllVehicles = async (req, res) => {
   }
 }
 
+exports.getAllInvoice = async (req, res) => {
+  try {
+    const result = await getAllInvoice(req.query);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
 
 
 
