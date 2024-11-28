@@ -39,7 +39,7 @@ const vehicleTableSchema = new Schema({
         required: true
     },    
     vehicleColor: {
-        enum: ["white", "black", "red", "blue", "green", "yellow"],
+        
         type: String,
         required: true
     },

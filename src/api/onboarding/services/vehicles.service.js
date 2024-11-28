@@ -88,7 +88,7 @@ exports.getVehicleTblData = async (req, res) => {
 
 exports.getPlanData = async (req, res) => {
   try {
-    const result = await getPlanData(req.body);
+    const result = await getPlanData(req.query);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({

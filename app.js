@@ -8,6 +8,8 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const _ = require("lodash");
 require("dotenv").config();
+const { MongoClient } = require('mongodb');
+
 
 // adding routers
 const onboardingRouters = require("./src/api/onboarding/routers/routers.model");
@@ -114,3 +116,5 @@ const startServer = async () => {
 };
 
 startServer();
+
+

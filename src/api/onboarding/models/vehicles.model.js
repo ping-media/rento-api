@@ -606,12 +606,23 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
   return obj
 }
 
-async function createInvoice({ pdfDoc, _id, deleteRec, bookingId, paidInvoice }) {
+async function createInvoice({ invoiceNumber, _id, deleteRec, bookingId, paidInvoice,userId }) {
+  function generateInvoiceNumber() {
+    const currentYear = new Date().getFullYear();
+    const staticPrefix = "Inv";
+  
+   
+    const InvoiceNumber = `${staticPrefix}${currentYear}${bookingId}`;
+
+  
+    return InvoiceNumber;
+  }
+ invoiceNumber = generateInvoiceNumber();
   const obj = { status: 200, message: "invoice created successfully", data: [] }
-  const o = { pdfDoc, bookingId, paidInvoice }
+  const o = { userId, bookingId, paidInvoice,invoiceNumber }
   try {
     if (paidInvoice) {
-      let check = ['paid', 'unpaid'].includes(paidInvoice)
+      let check = ['paid', 'unpaid', 'partialpaid'].includes(paidInvoice)
       if (!check) {
         obj.status = 401
         obj.message = "Invalid paidInvoice"
@@ -621,7 +632,7 @@ async function createInvoice({ pdfDoc, _id, deleteRec, bookingId, paidInvoice })
     if (bookingId) {
       console.log(bookingId)
       if (bookingId.length == 24) {
-        const find = await Booking.findOne({ bookingId })
+        const find = await Booking.findOne({ _id: ObjectId(bookingId) })
         console.log(find)
         if (!find) {
           obj.status = 401
@@ -646,11 +657,11 @@ async function createInvoice({ pdfDoc, _id, deleteRec, bookingId, paidInvoice })
         obj.message = "Invalid _id"
         return obj
       }
-      if (deleteRec) {
-        await InvoiceTbl.deleteOne({ _id: ObjectId(_id) })
-        obj.message = "invoice deleted successfully"
-        return obj
-      }
+      // if (deleteRec) {
+      //   await InvoiceTbl.deleteOne({ _id: ObjectId(_id) })
+      //   obj.message = "invoice deleted successfully"
+      //   return obj
+      // }
       delete o.invoiceNumber
       await InvoiceTbl.updateOne(
         { _id: ObjectId(_id) },
@@ -662,8 +673,10 @@ async function createInvoice({ pdfDoc, _id, deleteRec, bookingId, paidInvoice })
       obj.message = "invoice updated successfully"
       obj.data = o
     } else {
-      if (pdfDoc && bookingId) {
-        o.invoiceNumber = Math.floor(100000 + Math.random() * 900000)
+     
+     if (bookingId) {
+      //  o.invoiceNumber = Math.floor(100000 + Math.random() * 900000)
+      
         const SavePlan = new InvoiceTbl(o)
         SavePlan.save()
         obj.message = "new invoice saved successfully"
@@ -671,11 +684,12 @@ async function createInvoice({ pdfDoc, _id, deleteRec, bookingId, paidInvoice })
       } else {
         obj.status = 401
         obj.message = "Invalid data"
-      }
+     }
     }
     return obj
-  } catch (err) {
-    console.log(err)
+  } catch (error) {
+    response.status = 500;
+    response.message = `Server error: ${error.message}`;
   }
 
 }
@@ -1391,7 +1405,7 @@ const getVehicleTblData = async (query) => {
 const getPlanData= async(query)=>{
   const obj = { status: 200, message: "Plans retrieved successfully", data: [] };
   try {
-
+console.log(query._id)
     if (query._id) {
       if (query._id.length !== 24) {
         obj.status = 401;
