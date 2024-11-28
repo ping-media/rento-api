@@ -178,7 +178,7 @@ router.put("/updateLocation/", upload.single('image'), async (req, res) => {
             
                 obj.message="location updated successfully";
                 obj.status=200;
-                return res.status(400).json(obj);
+                return res.status(200).json(obj);
                           
           }
 

@@ -13,8 +13,7 @@ const invoiceSchema = new Schema({
     },
     userId: {
       type: String,
-      ref: '',
-
+      ref: 'users',
       required: true      
     },
     paidInvoice: {
