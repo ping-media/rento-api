@@ -255,6 +255,9 @@ async function booking({
     return formattedDate.toISOString();
   };
 
+  // BookingStartDateAndTime=convertToISOFormat();
+
+  // BookingStartDateAndTime=convertToISOFormat()
   // Convert start and end date-time into ISO 8601 format (string)
   if (BookingStartDateAndTime && BookingStartDateAndTime.startDate && BookingStartDateAndTime.startTime) {
     const { startDate, startTime } = BookingStartDateAndTime;
@@ -1261,7 +1264,7 @@ const getBookings_bk = async (query) => {
 
 
 const getVehicleTblData = async (query) => {
-  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+  const response = { status: 200, message: "Data fetched successfully", data: [] };
 
   try {
     const {
@@ -1273,44 +1276,40 @@ const getVehicleTblData = async (query) => {
       BookingEndDateAndTime,
     } = query;
 
-    // Check if both start and end date-time are provided
-    // if (!BookingStartDateAndTime || !BookingEndDateAndTime) {
-    //   obj.status = 400;
-    //   obj.message = "Start date/time and end date/time are required";
-    //   console.error("Missing or invalid date/time:", { BookingStartDateAndTime, BookingEndDateAndTime });
-    //   return obj;
-    // }
 
-    // Check if start date/time is earlier than end date/time
-    if (new Date(BookingStartDateAndTime) >= new Date(BookingEndDateAndTime)) {
-      obj.status = 400;
-      obj.message = "Start date/time must be earlier than end date/time";
-      console.error("Invalid range:", { BookingStartDateAndTime, BookingEndDateAndTime });
-      return obj;
+    // Validate mandatory query parameters
+    if (!BookingStartDateAndTime || !BookingEndDateAndTime) {
+      return {
+        status: 400,
+        message: "Booking start and end dates are required.",
+        data: [],
+      };
     }
 
-    console.log("Start DateTime:", BookingStartDateAndTime, "End DateTime:", BookingEndDateAndTime);
+    const startDate = query.BookingStartDateAndTime;// moment(BookingStartDateAndTime, moment.ISO_8601, true).toDate();
+    const endDate = query.BookingEndDateAndTime; //moment(BookingEndDateAndTime, moment.ISO_8601, true).toDate();
+    
+    
+
 
     // Build aggregation pipeline
     const pipeline = [
       {
         $match: {
-          ...(stationId ? { stationId } : {}),
-          ...(vehicleModel ? { vehicleModel } : {}),
-          ...(condition ? { condition } : {}),
-          ...(vehicleColor ? { vehicleColor } : {}),
+          ...(stationId && { stationId }),
+          ...(vehicleModel && { vehicleModel }),
+          ...(condition && { condition }),
+          ...(vehicleColor && { vehicleColor }),
         },
       },
-      // Join bookings with the vehicleTable
       {
         $lookup: {
-          from: "bookings", // Name of the bookings collection
-          localField: "_id", // Field in vehicleTable
-          foreignField: "vehicleTableId", // Field in bookings
-          as: "bookings", // Resulting array field
+          from: "bookings",
+          localField: "_id",
+          foreignField: "vehicleTableId",
+          as: "bookings",
         },
       },
-      // Add conflicting bookings
       {
         $addFields: {
           conflictingBookings: {
@@ -1319,45 +1318,24 @@ const getVehicleTblData = async (query) => {
               as: "booking",
               cond: {
                 $and: [
+                  { $in: ["$$booking.bookingStatus", ["pending", "complete"]] },
                   {
-                    $not: {
-                      $in: ["$$booking.bookingStatus", ["pending", "approved"]], // Ignore pending or approved bookings
-                    },
+                    $and: [
+                      { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
+                      { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
+                    ],
                   },
-                  // Check overlapping booking range by comparing the date-times
-                  // {
-                  //   $or: [
-                  //     {
-                  //       $and: [
-                  //         {
-                  //           $lte: [
-                  //             "$$booking.BookingStartDateAndTime", // Start time of the booking
-                  //             BookingEndDateAndTime, // The end time we are querying
-                  //           ],
-                  //         },
-                  //         {
-                  //           $gte: [
-                  //             "$$booking.BookingEndDateAndTime", // End time of the booking
-                  //             BookingStartDateAndTime, // The start time we are querying
-                  //           ],
-                  //         },
-                  //       ],
-                  //     },
-                  //   ],
-                  // },
                 ],
               },
             },
           },
         },
       },
-      // Filter vehicles without conflicts
       {
         $match: {
-          "conflictingBookings.0": { $exists: false }, // If no conflicting bookings, include the vehicle
+          "conflictingBookings.0": { $exists: false },
         },
       },
-      // Project final fields
       {
         $project: {
           _id: 1,
@@ -1382,20 +1360,20 @@ const getVehicleTblData = async (query) => {
     // Execute the pipeline
     const availableVehicles = await vehicleTable.aggregate(pipeline);
 
-    // Return result
     if (availableVehicles.length) {
-      obj.data = availableVehicles;
+      response.data = availableVehicles;
     } else {
-      obj.message = "No available vehicles found for the selected dates and times";
+      response.message = "No available vehicles found for the selected dates and times.";
     }
   } catch (error) {
     console.error("Error in getVehicleTblData:", error.message);
-    obj.status = 500;
-    obj.message = `Internal server error: ${error.message}`;
+    response.status = 500;
+    response.message = `Internal server error: ${error.message}`;
   }
 
-  return obj;
+  return response;
 };
+
 
 
 
