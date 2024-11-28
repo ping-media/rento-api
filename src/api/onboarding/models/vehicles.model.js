@@ -825,11 +825,11 @@ async function createStation({
         response.message = "Station deleted successfully";
         return response;
       }
-      if (stationId) {
-        response.status = 401;
-        response.message = "Station ID cannot be updated";
-        return response;
-      }
+      // if (stationId) {
+      //   response.status = 401;
+      //   response.message = "Station ID cannot be updated";
+      //   return response;
+      // }
       // Update station
       await Station.updateOne({ _id: ObjectId(_id) }, { $set: stationData });
       response.message = "Station updated successfully";

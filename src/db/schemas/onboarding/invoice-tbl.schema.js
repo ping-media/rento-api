@@ -11,8 +11,10 @@ const invoiceSchema = new Schema({
       type: String,
       required: true  
     },
-    pdfDoc: {
+    userId: {
       type: String,
+      ref: '',
+
       required: true      
     },
     paidInvoice: {

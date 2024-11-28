@@ -266,9 +266,9 @@ router.put("/updateVehicleMaster", upload.single('image'), async (req, res) => {
             if (!find) {
               obj.message="Invalid vehicle _id"
               obj.status=401
-              return res.status(401).json({
+              return res.status(401).json(
                 obj
-                           });
+                           );
             }
             
             await vehicleMaster.updateOne(
@@ -279,11 +279,11 @@ router.put("/updateVehicleMaster", upload.single('image'), async (req, res) => {
               { new: true }
             );
             
-            obj.message="VehicleMaster deleted successfully"
+            obj.message="VehicleMaster upadate successfully"
               obj.status=200
-              return res.status(401).json({
+              return res.status(200).json(
                 obj
-                           });
+                           );
           }
 
   } catch (error) {
@@ -306,7 +306,7 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
     if (!_id) {
       obj.message="Invalid vehicle _id"
       obj.status=400
-      return res.status(400).json({ obj });
+      return res.status(400).json( obj );
     }
 
     const find = await vehicleMaster.findOne({ _id });
@@ -314,13 +314,13 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
     if (!find) {
       obj.message="VehicleMaster with the given _id not found"
       obj.status=400
-      return res.status(404).json({obj });
+      return res.status(404).json(obj );
     }
 
     await vehicleMaster.deleteOne({ _id });
     obj.message="VehicleMaster deleted successfully"
     obj.status=200
-    return res.status(200).json({ obj });
+    return res.status(200).json( obj );
 
   } catch (error) {
     console.error("Error in deleteVehicleMaster:", error.message);

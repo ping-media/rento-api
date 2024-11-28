@@ -33,18 +33,18 @@ const getAllVehiclesData = async (req, res) => {
       obj.data= vehicles
       obj.currentPage= parseInt(page)
       obj.totalPages= Math.ceil(totalRecords.length / parseInt(limit))
-    return res.status(200).json({
+    return res.status(200).json(
       obj
-    });
+    );
 
     
   } catch (error) {
     console.error('Error fetching vehicleTable records:', error.message);
     obj.status = 500;
     obj.message = "An error occurred while fetching vehicleTable records";
-    return res.status(500).json({
+    return res.status(500).json(
     obj
-    });
+    );
   }
  // return obj
 };
