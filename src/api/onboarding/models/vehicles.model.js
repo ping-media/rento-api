@@ -537,7 +537,6 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
     if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId)) {
       let o = { planName, planPrice, stationId, planDuration, vehicleMasterId };
 
-      console.log(_id)
 
       // Handle update or delete
       if (_id) {
@@ -579,9 +578,10 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
         }
       } else {
         // Handle create (with validation)
-        if (planDuration && isNaN(planDuration)) {
+        const planDurationExists = await Plan.findOne({ planName });
+        if (planDurationExists ) {
           obj.status = 401;
-          obj.message = "Invalid plan duration";
+          obj.message = "plan durationmalredy exists";
           return obj;
         }
 
@@ -592,7 +592,7 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
           return obj;
         }
 
-        const stationExists = await Station.findOne({ _id: ObjectId(stationId) });
+        const stationExists = await Station.findOne({ stationId });
         if (!stationExists) {
           obj.status = 401;
           obj.message = "Invalid station ID";

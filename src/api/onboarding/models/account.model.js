@@ -87,6 +87,7 @@ async function getAllUsers(query) {
       lastName,
       contact,
       email,
+      search,
       page = 1, 
       limit = 10, 
       sortBy = 'createdAt', 
@@ -101,6 +102,18 @@ async function getAllUsers(query) {
     if (email) filter.email = email;
     if (contact) filter.contact = contact;
     if (userType) filter.userType = userType;
+
+
+    if (search) {
+      filter.$or = [
+        { firstName: { $regex: search, $options: "i" } },       // Search in `name` (case-insensitive)
+        { email: { $regex: search, $options: "i" } },      // Search in `email` (case-insensitive)
+        { lastName: { $regex: search, $options: "i" } } ,// Example for vehicle number
+        { contact: { $regex: search, $options: "i" } }, // Example for vehicle number
+        { userType: { $regex: search, $options: "i" } } // Example for vehicle number
+
+      ];
+    }
 
     // Define sorting logic
     const sort = {};
