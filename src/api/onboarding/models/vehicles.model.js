@@ -1474,10 +1474,9 @@ const getVehicleTblData = async (query) => {
 
     const enrichedVehicles = availableVehicles.map(vehicle =>
     {
-      const {vehicleMasterId, stationId, ...rest} = vehicle;
       return({
-        rest,
-      vehicleMasterData,
+       ...vehicle,
+        vehicleMasterData,
       stationData,
     })
     }
