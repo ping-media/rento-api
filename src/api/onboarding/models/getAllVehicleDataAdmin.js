@@ -26,13 +26,13 @@ const getAllVehiclesData = async (req, res) => {
       .limit(parseInt(limit))
       
 
-    const totalRecords = await vehicleTable.find(filter);
+    const totalRecords = await vehicleTable.count(filter);
     // Return the result
     obj.status= 200
     obj.message= 'Vehicles retrieved successfully'
       obj.data= vehicles
       obj.currentPage= parseInt(page)
-      obj.totalPages= Math.ceil(totalRecords.length / parseInt(limit))
+      obj.totalPages= Math.ceil(totalRecords / parseInt(limit))
     return res.status(200).json(
       obj
     );

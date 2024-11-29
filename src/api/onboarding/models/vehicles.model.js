@@ -26,6 +26,7 @@ const { emailValidation, contactValidation } = require("../../../constant");
 const { query } = require("express");
 //const {generateRandomId } = require('../../../utils/help-scripts/help-functions');
 const Invoice = require('../../../db/schemas/onboarding/invoice-tbl.schema'); // Import the Invoice model
+const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 
 
 function generateRandomId() {
@@ -288,7 +289,6 @@ async function booking({
     return obj;
   }
 
-  // Other validations (these sections remain unchanged in your logic)
   if (_id) {
     const find = await Booking.findOne({ _id: ObjectId(_id) });
     if (!find) {
@@ -766,11 +766,11 @@ async function getAllInvoice(query) {
       .skip(skip)
       .limit(parseInt(limit));
 
-   const totalRecords = await InvoiceTbl.find(filter);
+   const totalRecords = await InvoiceTbl.count(filter);
     obj.data=invoices;
     
     obj.currentPage = parseInt(page);
-    obj.totalPages = Math.ceil(totalRecords.length / parseInt(limit));
+    obj.totalPages = Math.ceil(totalRecords / parseInt(limit));
     
     obj.message = "Invoices retrieved successfully";
   } catch (error) {
@@ -1372,7 +1372,6 @@ const getVehicleTblData = async (query) => {
 
   try {
     const {
-      stationId,
       vehicleModel,
       condition,
       vehicleColor,
@@ -1389,7 +1388,7 @@ const getVehicleTblData = async (query) => {
         data: [],
       };
     }
-
+   // console.log(stationId)
     const startDate = query.BookingStartDateAndTime;// moment(BookingStartDateAndTime, moment.ISO_8601, true).toDate();
     const endDate = query.BookingEndDateAndTime; //moment(BookingEndDateAndTime, moment.ISO_8601, true).toDate();
     
@@ -1400,7 +1399,7 @@ const getVehicleTblData = async (query) => {
     const pipeline = [
       {
         $match: {
-          ...(stationId && { stationId }),
+         // ...(stationId && { stationId }),
           ...(vehicleModel && { vehicleModel }),
           ...(condition && { condition }),
           ...(vehicleColor && { vehicleColor }),
@@ -1462,10 +1461,29 @@ const getVehicleTblData = async (query) => {
     ];
 
     // Execute the pipeline
-    const availableVehicles = await vehicleTable.aggregate(pipeline);
+    let availableVehicles = await vehicleTable.aggregate(pipeline);
+    
 
-    if (availableVehicles.length) {
-      response.data = availableVehicles;
+
+    const { vehicleMasterId, stationId } = availableVehicles[0];
+
+    const [vehicleMasterData, stationData] = await Promise.all([
+      VehicleMaster.findById(vehicleMasterId).lean(), // Fetch `VehicleMaster` data
+      station.findOne({ stationId }).lean(),          // Fetch station data
+    ]);
+
+    const enrichedVehicles = availableVehicles.map(vehicle =>
+    {
+      const {vehicleMasterId, stationId, ...rest} = vehicle;
+      return({
+        rest,
+      vehicleMasterData,
+      stationData,
+    })
+    }
+     );    
+    if (enrichedVehicles.length) {
+      response.data = enrichedVehicles;
     } else {
       response.message = "No available vehicles found for the selected dates and times.";
     }

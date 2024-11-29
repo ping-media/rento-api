@@ -107,33 +107,29 @@ async function getAllUsers(query) {
     if (search) {
       filter.$or = [
         { firstName: { $regex: search, $options: "i" } },       // Search in `name` (case-insensitive)
-        { email: { $regex: search, $options: "i" } },      // Search in `email` (case-insensitive)
-        { lastName: { $regex: search, $options: "i" } } ,// Example for vehicle number
-        { contact: { $regex: search, $options: "i" } }, // Example for vehicle number
-        { userType: { $regex: search, $options: "i" } } // Example for vehicle number
-
+        { email: { $regex: search, $options: "i" } },      
+        { lastName: { $regex: search, $options: "i" } } ,
+        { contact: { $regex: search, $options: "i" } }, 
+        { userType: { $regex: search, $options: "i" } } 
+        
       ];
     }
 
-    // Define sorting logic
     const sort = {};
     sort[sortBy] = order === 'asc' ? 1 : -1;
 
-    // Pagination logic
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Fetch users with filters, pagination, and sorting
     const response = await User.find(filter, { otp: 0, password: 0 }) // Exclude sensitive fields
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit));
 
-    // Handle response
-    if (response && response.length) {
+     if (response && response.length) {
       obj.data = response;
       obj.currentPage = parseInt(page);
-      const Recod=await User.find(filter)
-      obj.totalPages = Math.ceil((Recod.length) / parseInt(limit));
+      const Recod=await User.count(filter)
+      obj.totalPages = Math.ceil((Recod) / parseInt(limit));
     } else {
       obj.status = 404;
       obj.message = "No data found";
