@@ -108,6 +108,7 @@ const VehicalfileUpload =async (req, res) => {
             );
             
             return res.status(200).json({
+                status: 200,
                 message: "vehicle master updated successfully",
                            });
           } else {

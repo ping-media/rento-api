@@ -82,12 +82,14 @@ const fileUpload =async (req, res) => {
         });
     }
 
-
+  if (!_id){
     const findName = await Location.findOne({ locationName })
     if (findName) {
         return res.status(401).json({
             message: 'Location exists',
         });
+  }
+    
     }
     await Location.updateOne(
         { _id },
