@@ -65,17 +65,75 @@ async function updateUser({ _id, userType, firstName, contact, lastName, email }
   }
 }
 
-async function getAllUsers(o) {
-  const obj = { status: 200, message: "data fetched successfully", data: [] }
-  const response = await User.find({ ...o }, { otp: 0, password: 0})
-  if (response && response.length) {
-    obj.data = response
-  } else {
-    obj.status = 401
-    obj.message = "data not found"
+async function getAllUsers(query) {
+  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+
+  try {
+    // Destructure query parameters
+    const { 
+      _id, 
+      userType, 
+      otp, 
+      password, 
+      isEmailVerified, 
+      isContactVerified, 
+      kycApproved,
+      userDocuments,
+      status,
+      altContact,
+      firstName,
+      idProof,
+      addressProof,
+      lastName,
+      contact,
+      email,
+      page = 1, 
+      limit = 10, 
+      sortBy = 'createdAt', 
+      order = 'desc' 
+    } = query;
+
+    // Build the filter object based on query parameters
+    const filter = {};
+    if (_id) filter._id = _id;
+    if (firstName) filter.firstName = firstName;
+    if (lastName) filter.lastName = lastName;
+    if (email) filter.email = email;
+    if (contact) filter.contact = contact;
+    if (userType) filter.userType = userType;
+
+    // Define sorting logic
+    const sort = {};
+    sort[sortBy] = order === 'asc' ? 1 : -1;
+
+    // Pagination logic
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Fetch users with filters, pagination, and sorting
+    const response = await User.find(filter, { otp: 0, password: 0 }) // Exclude sensitive fields
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Handle response
+    if (response && response.length) {
+      obj.data = response;
+      obj.currentPage = parseInt(page);
+      const Recod=await User.find(filter)
+      obj.totalPages = Math.ceil((Recod.length) / parseInt(limit));
+    } else {
+      obj.status = 404;
+      obj.message = "No data found";
+    }
+  } catch (error) {
+    console.error("Error fetching users:", error.message);
+    obj.status = 500;
+    obj.message = `Server error: ${error.message}`;
   }
-  return obj
+
+  return obj;
 }
+
 
 async function getAllDataCount() {
   const obj = { status: 200, message: "data fetched successfully", data: [] }

@@ -531,80 +531,100 @@ async function createLocation({ locationName, locationImage, deleteRec, _id }) {
 
 
 async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec }) {
-  const obj = { status: 200, message: "plan created successfully", data: [] }
+  const obj = { status: 200, message: "Plan created successfully", data: [] };
+
   try {
     if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId)) {
-      let o = { _id, planName, planPrice, stationId, planDuration, vehicleMasterId }
-      if (planDuration && isNaN(planDuration)) {
-        obj.status = 401
-        obj.message = "invalid plan duration"
-        return obj
-      }
-      if (planName) {
-        const find = await Plan.findOne({ planName })
-        if (find) {
-          obj.status = 401
-          obj.message = "plan already exists"
-          return obj
-        }
-      }
-      if (stationId) {
-        const find = await Station.findOne({ stationId })
-        if (!find) {
-          obj.status = 401
-          obj.message = "invalid station id"
-          return obj
-        }
-      }
-      if (vehicleMasterId) {
-        const find = await VehicleMaster.findOne({ vehicleMasterId })
-        if (!find) {
-          obj.status = 401
-          obj.message = "invalid vehicle master id"
-          return obj
-        }
-      }
-      if (_id && _id.length !== 24) {
-        obj.status = 401
-        obj.message = "invalid _id"
-        return obj
-      }
+      let o = { planName, planPrice, stationId, planDuration, vehicleMasterId };
+
+      console.log(_id)
+
+      // Handle update or delete
       if (_id) {
+        if (_id.length !== 24) {
+          obj.status = 401;
+          obj.message = "Invalid _id";
+          return obj;
+        }
+        
+
+        const planExists = await Plan.findOne({ planName });
+        const planDurationExists = await Plan.findOne({ planDuration });
+
+        if (planExists || planDurationExists) {
+          obj.status = 401;
+          obj.message = "Plan name and Plan Duuration already exists";
+          return obj;
+        }
         const result = await Plan.findOne({ _id: ObjectId(_id) });
         if (result) {
+          // Handle deletion
           if (deleteRec) {
-            await Plan.deleteOne({ _id: ObjectId(_id) })
-            obj.message = "plan deleted successfully"
-            return obj
+            await Plan.deleteOne({ _id: ObjectId(_id) });
+            obj.message = "Plan deleted successfully";
+            return obj;
           }
+
+          // Handle update without additional validation
           await Plan.updateOne(
             { _id: ObjectId(_id) },
-            {
-              $set: o
-            },
+            { $set: o },
             { new: true }
           );
-          obj.message = "plan updated successfully"
-          obj.data = o
+          obj.message = "Plan updated successfully";
+          obj.data = o;
         } else {
-          obj.status = 401
-          obj.message = "Invalid data"
+          obj.status = 404;
+          obj.message = "Plan not found";
         }
       } else {
-        const SavePlan = new Plan(o)
-        SavePlan.save()
-        obj.message = "new plan saved successfully"
-        obj.data = o
+        // Handle create (with validation)
+        if (planDuration && isNaN(planDuration)) {
+          obj.status = 401;
+          obj.message = "Invalid plan duration";
+          return obj;
+        }
+
+        const planExists = await Plan.findOne({ planName });
+        if (planExists) {
+          obj.status = 401;
+          obj.message = "Plan name already exists";
+          return obj;
+        }
+
+        const stationExists = await Station.findOne({ _id: ObjectId(stationId) });
+        if (!stationExists) {
+          obj.status = 401;
+          obj.message = "Invalid station ID";
+          return obj;
+        }
+
+        const vehicleMasterExists = await VehicleMaster.findOne({ _id: ObjectId(vehicleMasterId) });
+        if (!vehicleMasterExists) {
+          obj.status = 401;
+          obj.message = "Invalid vehicle master ID";
+          return obj;
+        }
+
+        // Save the new plan
+        const newPlan = new Plan(o);
+        await newPlan.save();
+        obj.message = "New plan saved successfully";
+        obj.data = newPlan;
       }
     } else {
-      obj.status = 401
-      obj.message = "Invalid data"
+      obj.status = 400;
+      obj.message = "Invalid data";
     }
   } catch (err) {
-    console.log(err)
+    console.log(err);
+    obj.status = 500;
+    obj.message = err.message;
   }
-  return obj
+
+  return obj;
 }
+
 
 async function createInvoice({  _id, deleteRec, bookingId, paidInvoice, userId }) {
   const obj = { status: 200, message: "Invoice created successfully", data: [] };
