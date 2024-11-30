@@ -238,7 +238,7 @@ async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, f
 async function booking({
   vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
   discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-  deleteRec, _id, discountPrice,vehicleMasterId
+  deleteRec, _id, discountPrice,vehicleMasterId,vehicleBrand,vehicleImage,vehicleName,stationName
 }) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -272,7 +272,7 @@ async function booking({
   const o = {
     vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
     discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-    bookingId: Math.floor(100000 + Math.random() * 900000),vehicleMasterId
+    bookingId: Math.floor(100000 + Math.random() * 900000),vehicleMasterId,vehicleBrand,vehicleImage,vehicleName,stationName
   };
 
   // Validation for `_id`
@@ -312,7 +312,7 @@ async function booking({
     if (
       vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
       bookingPrice && bookingStatus && paymentStatus && rideStatus &&
-      paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax,vehicleMasterId
+      paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax && vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName
     ) {
       const SaveBooking = new Booking(o);
       await SaveBooking.save();
@@ -1378,13 +1378,15 @@ const getVehicleTblData = async (query) => {
       BookingStartDateAndTime,
       BookingEndDateAndTime,
       _id, // Vehicle ID
+      vehicleBrand,
+      vehicleType,
     } = query;
 
     // Validate mandatory query parameters
     if (!_id && (!BookingStartDateAndTime || !BookingEndDateAndTime)) {
       return {
         status: 400,
-        message: "Booking start and end dates are required unless querying by vehicle ID (_id).",
+        message: "Booking start and end dates are required ",
         data: [],
       };
     }
@@ -1401,6 +1403,8 @@ const getVehicleTblData = async (query) => {
       if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
       if (condition) matchFilter.condition = condition;
       if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
+      if (vehicleType) matchFilter.vehicleType = vehicleType;
+      if (vehicleBrand) matchFilter.vehicleBrand = vehicleBrand;
     }
 
     // Build aggregation pipeline
@@ -1424,7 +1428,9 @@ const getVehicleTblData = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                  { $in: ["$$booking.bookingStatus", ["pending", "complete"]] },
+                //  { $eq: ["$$booking.bookingStatus", "canceled"] },
+
+                  { $in: ["$$booking.bookingStatus", ["pending", "completed"]] },
                   {
                     $and: [
                       { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
@@ -1467,9 +1473,9 @@ const getVehicleTblData = async (query) => {
       {
         $project: {
           _id: 1,
-          vehicleMasterId: 1,
           vehicleStatus: 1,
           freeKms: 1,
+          vehicleMasterId:1,
           extraKmsCharges: 1,
           vehicleNumber: 1,
           vehicleModel: 1,

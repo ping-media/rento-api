@@ -65,6 +65,22 @@ const bookingSchema = new Schema({
         type: String,
         required: true
     },
+    vehicleBrand: {
+        type: String,
+        required: true
+    },
+    vehicleImage: {
+        type: String,
+        required: true
+    },
+    vehicleName: {
+        type: String,
+        required: true
+    },
+    stationName: {
+        type: String,
+        required: true
+    },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
 const booking = mongoose.model('booking', bookingSchema);
