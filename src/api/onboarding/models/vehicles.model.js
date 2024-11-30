@@ -1377,96 +1377,36 @@ const getVehicleTblData = async (query) => {
       vehicleColor,
       BookingStartDateAndTime,
       BookingEndDateAndTime,
+      _id, // Vehicle ID
     } = query;
 
-
     // Validate mandatory query parameters
-    if (!BookingStartDateAndTime || !BookingEndDateAndTime) {
+    if (!_id && (!BookingStartDateAndTime || !BookingEndDateAndTime)) {
       return {
         status: 400,
-        message: "Booking start and end dates are required.",
+        message: "Booking start and end dates are required unless querying by vehicle ID (_id).",
         data: [],
       };
     }
-   // console.log(stationId)
-    const startDate = query.BookingStartDateAndTime;// moment(BookingStartDateAndTime, moment.ISO_8601, true).toDate();
-    const endDate = query.BookingEndDateAndTime; //moment(BookingEndDateAndTime, moment.ISO_8601, true).toDate();
-    
-    
 
+    const startDate = BookingStartDateAndTime; // Date filters
+    const endDate = BookingEndDateAndTime;
+
+    // Build the initial match filter
+    const matchFilter = {};
+    if (_id) {
+      matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id; // Ensure valid ObjectId
+    } else {
+      // Add other filters only if _id is not provided
+      if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
+      if (condition) matchFilter.condition = condition;
+      if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
+    }
 
     // Build aggregation pipeline
-    // const pipeline = [
-    //   {
-    //     $match: {
-    //      // ...(stationId && { stationId }),
-    //       ...(vehicleModel && { vehicleModel }),
-    //       ...(condition && { condition }),
-    //       ...(vehicleColor && { vehicleColor }),
-    //     },
-    //   },
-    //   {
-    //     $lookup: {
-    //       from: "bookings",
-    //       localField: "_id",
-    //       foreignField: "vehicleTableId",
-    //       as: "bookings",
-    //     },
-    //   },
-    //   {
-    //     $addFields: {
-    //       conflictingBookings: {
-    //         $filter: {
-    //           input: "$bookings",
-    //           as: "booking",
-    //           cond: {
-    //             $and: [
-    //               { $in: ["$$booking.bookingStatus", ["pending", "complete"]] },
-    //               {
-    //                 $and: [
-    //                   { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
-    //                   { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
-    //                 ],
-    //               },
-    //             ],
-    //           },
-    //         },
-    //       },
-    //     },
-    //   },
-    //   {
-    //     $match: {
-    //       "conflictingBookings.0": { $exists: false },
-    //     },
-    //   },
-    //   {
-    //     $project: {
-    //       _id: 1,
-    //       vehicleMasterId: 1,
-    //       vehicleBookingStatus: 1,
-    //       vehicleStatus: 1,
-    //       freeKms: 1,
-    //       extraKmsCharges: 1,
-    //       stationId: 1,
-    //       vehicleNumber: 1,
-    //       vehicleModel: 1,
-    //       vehicleColor: 1,
-    //       perDayCost: 1,
-    //       lastServiceDate: 1,
-    //       kmsRun: 1,
-    //       isBooked: 1,
-    //       condition: 1,
-    //     },
-    //   },
-    // ];
     const pipeline = [
       {
-        $match: {
-          // ...(stationId && { stationId }), // Uncomment if needed
-          ...(vehicleModel && { vehicleModel }),
-          ...(condition && { condition }),
-          ...(vehicleColor && { vehicleColor }),
-        },
+        $match: matchFilter,
       },
       {
         $lookup: {
@@ -1504,23 +1444,22 @@ const getVehicleTblData = async (query) => {
       },
       {
         $lookup: {
-          from: "vehiclemasters", // Assuming vehicleMasterId data is in the "vehicleMasters" collection
-          localField: "vehicleMasterId", // Field in the current collection
-          foreignField: "_id", // Field in the "vehicleMasters" collection
-          as: "vehicleMasterData", // Alias for the data
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
         },
       },
       {
         $lookup: {
-          from: "stations", // Assuming stationId data is in the "stations" collection
-          localField: "stationId", // Field in the current collection
-          foreignField: "stationId", // Field in the "stations" collection
-          as: "stationData", // Alias for the data
+          from: "stations",
+          localField: "stationId",
+          foreignField: "stationId",
+          as: "stationData",
         },
       },
       {
         $addFields: {
-          // Extract the necessary data from the arrays returned by the $lookup stage
           vehicleMaster: { $arrayElemAt: ["$vehicleMasterData", 0] },
           station: { $arrayElemAt: ["$stationData", 0] },
         },
@@ -1540,40 +1479,25 @@ const getVehicleTblData = async (query) => {
           kmsRun: 1,
           isBooked: 1,
           condition: 1,
-         "station.stationName":1,
-         "vehicleMaster.vehicleName":1,
-         "vehicleMaster.vehicleType":1,
-         "vehicleMaster.vehicleBrand":1,
-         "vehicleMaster.vehicleImage":1,
-        },
-      },
+          "station.stationName": 1,
+          "vehicleMaster.vehicleName": 1,
+          "vehicleMaster.vehicleType": 1,
+          "vehicleMaster.vehicleBrand": 1,
+          "vehicleMaster.vehicleImage": 1,
+        },
+      },
     ];
-    
+
     // Execute the pipeline
-    let availableVehicles = await vehicleTable.aggregate(pipeline);
-    
+    const availableVehicles = await vehicleTable.aggregate(pipeline);
 
-
-    // const { vehicleMasterId, stationId } = availableVehicles[0];
-
-    // const [vehicleMasterData, stationData] = await Promise.all([
-    //   VehicleMaster.findById(vehicleMasterId).lean(), // Fetch `VehicleMaster` data
-    //   station.findOne({ stationId }).lean(),          // Fetch station data
-    // ]);
-
-    // const enrichedVehicles = availableVehicles.map(vehicle =>
-    // {
-    //   return({
-    //    ...vehicle,
-    //     vehicleMasterData,
-    //   stationData,
-    // })
-    // }
-    //  );    
+    // Prepare the response
     if (availableVehicles.length) {
       response.data = availableVehicles;
     } else {
-      response.message = "No available vehicles found for the selected dates and times.";
+      response.message = _id
+        ? "No vehicle found with the given ID."
+        : "No available vehicles found for the selected dates and times.";
     }
   } catch (error) {
     console.error("Error in getVehicleTblData:", error.message);

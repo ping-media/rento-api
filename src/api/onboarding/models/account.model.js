@@ -299,9 +299,9 @@ async function saveUser({ _id, userType, status, altContact, firstName, lastName
         SaveUser.save()
         response.message = "data saved successfully"
         response.data = SaveUser._doc
-        await User.updateOne({ _id: ObjectId('67419043ac5f170ad136a75d')} ,{
-          $inc: {value:1}
-        })
+        // await User.updateOne({ _id: ObjectId('67419043ac5f170ad136a75d')} ,{
+        //   $inc: {value:1}
+        // })
       } else {
         response.status = 401
         response.message = "some details are missing"
