@@ -1463,14 +1463,15 @@ const getVehicleTblData = async (query) => {
       },
       {
         $addFields: {
-          vehicleMaster: { $arrayElemAt: ["$vehicleMasterData", 0] },
-          station: { $arrayElemAt: ["$stationData", 0] },
+          // Extract single documents from the lookup results
+          vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
+          stationData: { $arrayElemAt: ["$stationData", 0] },
         },
       },
       {
         $match: {
-          ...(vehicleBrand && { "vehicleMaster.vehicleBrand": vehicleBrand }),
-          ...(vehicleType && { "vehicleMaster.vehicleType": vehicleType }),
+          ...(vehicleBrand && { "vehicleMasterData.vehicleBrand": vehicleBrand }),
+          ...(vehicleType && { "vehicleMasterData.vehicleType": vehicleType }),
         },
       },
       {
@@ -1489,15 +1490,15 @@ const getVehicleTblData = async (query) => {
           isBooked: 1,
           condition: 1,
           stationId: 1,
-          "station.stationName": 1,
-          "vehicleMaster.vehicleName": 1,
-          "vehicleMaster.vehicleType": 1,
-          "vehicleMaster.vehicleBrand": 1,
-          "vehicleMaster.vehicleImage": 1,
+          stationName: "$stationData.stationName",
+          vehicleName: "$vehicleMasterData.vehicleName",
+          vehicleType: "$vehicleMasterData.vehicleType",
+          vehicleBrand: "$vehicleMasterData.vehicleBrand",
+          vehicleImage: "$vehicleMasterData.vehicleImage",
         },
       },
     ];
-
+    
     // Execute the pipeline
     const availableVehicles = await vehicleTable.aggregate(pipeline);
 
