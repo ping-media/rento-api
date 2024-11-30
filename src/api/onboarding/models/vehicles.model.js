@@ -1380,13 +1380,14 @@ const getVehicleTblData = async (query) => {
       _id, // Vehicle ID
       vehicleBrand,
       vehicleType,
+      stationId,
     } = query;
 
     // Validate mandatory query parameters
     if (!_id && (!BookingStartDateAndTime || !BookingEndDateAndTime)) {
       return {
         status: 400,
-        message: "Booking start and end dates are required ",
+        message: "Booking start and end dates are required.",
         data: [],
       };
     }
@@ -1399,12 +1400,10 @@ const getVehicleTblData = async (query) => {
     if (_id) {
       matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id; // Ensure valid ObjectId
     } else {
-      // Add other filters only if _id is not provided
       if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
       if (condition) matchFilter.condition = condition;
       if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
-      if (vehicleType) matchFilter.vehicleType = vehicleType;
-      if (vehicleBrand) matchFilter.vehicleBrand = vehicleBrand;
+      if (stationId) matchFilter.stationId = stationId;
     }
 
     // Build aggregation pipeline
@@ -1428,8 +1427,6 @@ const getVehicleTblData = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                //  { $eq: ["$$booking.bookingStatus", "canceled"] },
-
                   { $in: ["$$booking.bookingStatus", ["pending", "completed"]] },
                   {
                     $and: [
@@ -1445,7 +1442,7 @@ const getVehicleTblData = async (query) => {
       },
       {
         $match: {
-          "conflictingBookings.0": { $exists: false },
+          "conflictingBookings.0": { $exists: false }, // Exclude vehicles with conflicting bookings
         },
       },
       {
@@ -1471,11 +1468,17 @@ const getVehicleTblData = async (query) => {
         },
       },
       {
+        $match: {
+          ...(vehicleBrand && { "vehicleMaster.vehicleBrand": vehicleBrand }),
+          ...(vehicleType && { "vehicleMaster.vehicleType": vehicleType }),
+        },
+      },
+      {
         $project: {
           _id: 1,
           vehicleStatus: 1,
           freeKms: 1,
-          vehicleMasterId:1,
+          vehicleMasterId: 1,
           extraKmsCharges: 1,
           vehicleNumber: 1,
           vehicleModel: 1,
@@ -1485,6 +1488,7 @@ const getVehicleTblData = async (query) => {
           kmsRun: 1,
           isBooked: 1,
           condition: 1,
+          stationId: 1,
           "station.stationName": 1,
           "vehicleMaster.vehicleName": 1,
           "vehicleMaster.vehicleType": 1,
@@ -1503,7 +1507,7 @@ const getVehicleTblData = async (query) => {
     } else {
       response.message = _id
         ? "No vehicle found with the given ID."
-        : "No available vehicles found for the selected dates and times.";
+        : "No available vehicles found for the selected criteria.";
     }
   } catch (error) {
     console.error("Error in getVehicleTblData:", error.message);
@@ -1513,6 +1517,7 @@ const getVehicleTblData = async (query) => {
 
   return response;
 };
+
 
 
 
