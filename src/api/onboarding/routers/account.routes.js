@@ -29,7 +29,7 @@ router.post("/getUsersByContact", async (req, res) => {
 });
 
 router.post("/sendOtp", async (req, res) => {
-  accountService.sendOtp(req, res);
+  accountService.sendOtps(req, res);
 });
 
 router.post("/verifyOtp", async (req, res) => {

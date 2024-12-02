@@ -1,4 +1,4 @@
-const { getTokens,verify, getAllUsers, getAllDataCount, sendOtp, getUserPeersData, earlyAccess, pushNotification, updateUser, saveUser, getUserProfile, createConfig, getConfig, getPreferences, updatePreferences, createPlan, searchUser, updateImage, getUserByContact } = require("../models/account.model");
+const { getTokens,verify, getAllUsers, getAllDataCount, sendOtps, getUserPeersData, earlyAccess, pushNotification, updateUser, saveUser, getUserProfile, createConfig, getConfig, getPreferences, updatePreferences, createPlan, searchUser, updateImage, getUserByContact } = require("../models/account.model");
 
 exports.updateUser = async (req, res) => {
   try {
@@ -89,11 +89,11 @@ exports.getUserByContact = async (req, res) => {
   }
 }
 
-exports.sendOtp = async (req, res) => {
+exports.sendOtps = async (req, res) => {
   try {
     //req.body['userId'] = req.user.id
     const {contact} = req.body;
-    const result = await sendOtp(contact);
+    const result = await sendOtps(contact);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({
