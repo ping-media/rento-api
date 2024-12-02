@@ -13,6 +13,8 @@ const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.sch
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const {getAllVehiclesData}=require("../models/getAllVehicleDataAdmin")
+const {documentUpload, getDocument} = require ("../models/DocumentUpload")
+const {getAllDocument} = require ("../models/getAllDocumentAdmin")
 
 
 // create messages
@@ -339,5 +341,23 @@ router.get("/getAllInvoice", async (req, res) => {
 })
 
 
+
+router.post("/uploadDocument", upload.single('image'), async (req, res) => {
+  
+  
+  if (!req.file) {
+      return res.status(400).json({ message: 'File upload failed. No file provided.' });
+  }
+  documentUpload(req, res)
+})
+
+router.get("/getDocument", async (req, res) => {
+  getDocument(req, res);
+})
+
+
+router.get("/getAllDocument", async (req, res) => {
+  getAllDocument(req, res);
+})
 
 module.exports = router;

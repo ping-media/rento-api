@@ -93,7 +93,7 @@ const createBookingDuration = async ({ bookingDuration, attachedVehicles, bookin
 }
 
 
-async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus, vehiclePlan }) {
+async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, locationId, perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus, vehiclePlan }) {
   const response = { status: "200", message: "data fetched successfully", data: [] }
   try {
     if (_id || (vehicleMasterId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber && freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate && kmsRun && isBooked && condition)) {
@@ -179,7 +179,7 @@ async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, f
         }
       }
       const o = {
-        vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition, vehiclePlan
+        locationId, vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition, vehiclePlan
       }
       if (_id) {
         const find = await VehicleTable.findOne({ _id: ObjectId(_id) })
@@ -1377,13 +1377,13 @@ const getVehicleTblData = async (query) => {
       vehicleColor,
       BookingStartDateAndTime,
       BookingEndDateAndTime,
-      _id, // Vehicle ID
+      _id, 
       vehicleBrand,
       vehicleType,
       stationId,
+      locationId,
     } = query;
 
-    // Validate mandatory query parameters
     if (!_id && (!BookingStartDateAndTime || !BookingEndDateAndTime)) {
       return {
         status: 400,
@@ -1392,10 +1392,9 @@ const getVehicleTblData = async (query) => {
       };
     }
 
-    const startDate = BookingStartDateAndTime; // Date filters
+    const startDate = BookingStartDateAndTime; 
     const endDate = BookingEndDateAndTime;
 
-    // Build the initial match filter
     const matchFilter = {};
     if (_id) {
       matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id; // Ensure valid ObjectId
@@ -1404,9 +1403,9 @@ const getVehicleTblData = async (query) => {
       if (condition) matchFilter.condition = condition;
       if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
       if (stationId) matchFilter.stationId = stationId;
+      if (locationId) matchFilter.locationId = locationId;
     }
 
-    // Build aggregation pipeline
     const pipeline = [
       {
         $match: matchFilter,
@@ -1417,6 +1416,23 @@ const getVehicleTblData = async (query) => {
           localField: "_id",
           foreignField: "vehicleTableId",
           as: "bookings",
+        },
+      },
+
+      {
+        $lookup: {
+          from: "stations",
+          localField: "stationId",
+          foreignField: "stationId",
+          as: "stationData",
+        },
+      },
+      {
+        $lookup: {
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
         },
       },
       {
@@ -1445,22 +1461,22 @@ const getVehicleTblData = async (query) => {
           "conflictingBookings.0": { $exists: false }, // Exclude vehicles with conflicting bookings
         },
       },
-      {
-        $lookup: {
-          from: "vehiclemasters",
-          localField: "vehicleMasterId",
-          foreignField: "_id",
-          as: "vehicleMasterData",
-        },
-      },
-      {
-        $lookup: {
-          from: "stations",
-          localField: "stationId",
-          foreignField: "stationId",
-          as: "stationData",
-        },
-      },
+      // {
+      //   $lookup: {
+      //     from: "vehiclemasters",
+      //     localField: "vehicleMasterId",
+      //     foreignField: "_id",
+      //     as: "vehicleMasterData",
+      //   },
+      // },
+      // {
+      //   $lookup: {
+      //     from: "stations",
+      //     localField: "stationId",
+      //     foreignField: "stationId",
+      //     as: "stationData",
+      //   },
+      // },
       {
         $addFields: {
           // Extract single documents from the lookup results
@@ -1489,6 +1505,7 @@ const getVehicleTblData = async (query) => {
           kmsRun: 1,
           isBooked: 1,
           condition: 1,
+          locationId: 1,
           stationId: 1,
           stationName: "$stationData.stationName",
           vehicleName: "$vehicleMasterData.vehicleName",
@@ -1499,10 +1516,8 @@ const getVehicleTblData = async (query) => {
       },
     ];
     
-    // Execute the pipeline
     const availableVehicles = await vehicleTable.aggregate(pipeline);
 
-    // Prepare the response
     if (availableVehicles.length) {
       response.data = availableVehicles;
     } else {

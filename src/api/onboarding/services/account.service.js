@@ -92,7 +92,8 @@ exports.getUserByContact = async (req, res) => {
 exports.sendOtp = async (req, res) => {
   try {
     //req.body['userId'] = req.user.id
-    const result = await sendOtp(req.body);
+    const {contact} = req.body;
+    const result = await sendOtp(contact);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({

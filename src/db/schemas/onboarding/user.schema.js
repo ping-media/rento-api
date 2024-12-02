@@ -36,6 +36,11 @@ const userSchema = new mongoose.Schema({
     enum: ["active", "inactive"],
     required: true
   },
+  gender: {
+    type: String,
+    enum: ["male", "female", "not specified"],
+    default:"not specified"
+  },
   altContact: {
     type: String,
     trim: true
@@ -75,6 +80,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true
+  },
+  dateofbirth: {
+    type: String,
+   
   }
 }, { timestamps: true });
 

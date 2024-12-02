@@ -23,6 +23,9 @@ const invoiceTbl = require("../../../db/schemas/onboarding/invoice-tbl.schema");
 const plan = require("../../../db/schemas/onboarding/plan.schema");
 const order = require("../../../db/schemas/onboarding/order.schema");
 const location = require("../../../db/schemas/onboarding/location.schema");
+const Otps = require("../../../db/schemas/onboarding/logOtp");
+
+const unirest = require("unirest");
 
 
 const transporter = nodemailer.createTransport({
@@ -160,7 +163,7 @@ async function getAllDataCount() {
   return obj
 }
 
-async function saveUser({ _id, userType, status, altContact, firstName, lastName, contact, email, password, deleteRec, kycApproved, isEmailVerified, isContactVerified, drivingLicence, idProof, addressProof }) {
+async function saveUser({ _id, userType, status, altContact, firstName, lastName, contact, email, password, deleteRec, kycApproved, isEmailVerified, isContactVerified, drivingLicence, idProof, addressProof, dateofbirth, gender }) {
   const response = { status: "200", message: "data fetched successfully", data: [] }
   try {
     if (_id && _id.length !== 24) {
@@ -371,76 +374,167 @@ async function getUserByContact(body) {
   }
 }
 
-async function sendOtp(o) {
-  const obj = { status: 200, message: "data fetched successfully", data: [] };
-  const { email, contact } = o
+// async function sendOtp(o) {
+//   const obj = { status: 200, message: "data fetched successfully", data: [] };
+//   const { email, contact } = o
+//   try {
+//     if (contact) {
+//       const isValidContact = contactValidation(contact)
+//       if (isValidContact) {
+//         const findUser = await User.findOne({ contact })
+//         if (findUser) {
+//           const contactOtp = Math.floor(100000 + Math.random() * 900000)
+//           await User.updateOne(
+//             { contact },
+//             {
+//               $set: { otp: contactOtp }
+//             },
+//             { new: true }
+//           );
+//           obj.data = contact
+//           obj.message = "otp sent successfully on your regoistered contact number"
+//         } else {
+//           obj.status=401;
+//           flag = false
+//           obj.message = "user does not exist"
+//           return obj
+//         }
+//       } else {
+//         flag = false
+//         obj.message = "contact is invalid"
+//         obj.data = contact
+//         return obj
+//       }
+//     } else if (email) {
+//       const random = Math.floor(100000 + Math.random() * 900000)
+//       let receiver = {
+//         from: "kashyapshivram512@gmail.com",
+//         to: email,
+//         subject: "Rent moto user verification with otp service",
+//         text: "Hi " + email + ", " + "Your verification otp is " + random
+//       };
+//       const response = await transporter.sendMail(receiver)
+//       if (response) {
+//         obj.data = response
+//         const user = await User.findOne({ email })
+//         if (user) {
+//           await User.updateOne(
+//             { email },
+//             {
+//               $set: { otp: random }
+//             },
+//             { new: true }
+//           );
+//         }
+//         obj.message = "otp sent successfully on your registered email"
+//         obj.data = email
+//       } else {
+//         obj.status = 401
+//         obj.data = email
+//         obj.message = "data not found"
+//       }
+//     } else {
+//       obj.status = 401
+//       obj.message = "invalid email or contact"
+//       obj.data = contact
+//       return obj
+//     }
+//     return obj;
+//   } catch (error) {
+//     throw new Error(error);
+//   }
+// }
+
+
+async function sendOtp(contact) {
+  const response = { status: 200, message: "Data fetched successfully", data: [] };
+
   try {
-    if (contact) {
-      const isValidContact = contactValidation(contact)
-      if (isValidContact) {
-        const findUser = await User.findOne({ contact })
-        if (findUser) {
-          const contactOtp = Math.floor(100000 + Math.random() * 900000)
-          await User.updateOne(
-            { contact },
-            {
-              $set: { otp: contactOtp }
-            },
-            { new: true }
-          );
-          obj.data = contact
-          obj.message = "otp sent successfully on your regoistered contact number"
-        } else {
-          obj.status=401;
-          flag = false
-          obj.message = "user does not exist"
-          return obj
-        }
-      } else {
-        flag = false
-        obj.message = "contact is invalid"
-        obj.data = contact
-        return obj
-      }
-    } else if (email) {
-      const random = Math.floor(100000 + Math.random() * 900000)
-      let receiver = {
-        from: "kashyapshivram512@gmail.com",
-        to: email,
-        subject: "Rent moto user verification with otp service",
-        text: "Hi " + email + ", " + "Your verification otp is " + random
+    // Validate contact input
+    if (!contact) {
+      return {
+        status: 400,
+        message: "Contact number is required",
+        data: null,
       };
-      const response = await transporter.sendMail(receiver)
-      if (response) {
-        obj.data = response
-        const user = await User.findOne({ email })
-        if (user) {
-          await User.updateOne(
-            { email },
-            {
-              $set: { otp: random }
-            },
-            { new: true }
-          );
-        }
-        obj.message = "otp sent successfully on your registered email"
-        obj.data = email
-      } else {
-        obj.status = 401
-        obj.data = email
-        obj.message = "data not found"
-      }
-    } else {
-      obj.status = 401
-      obj.message = "invalid email or contact"
-      obj.data = contact
-      return obj
     }
-    return obj;
+
+    // Check if the user exists
+    const user = await User.findOne({ contact });
+    if (!user) {
+      return {
+        status: 404,
+        message: "User does not exist",
+        data: null,
+      };
+    }
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000);
+
+    // Save OTP to database
+    const newOtp = new Otps({ contactNumber:contact, otp });
+    await newOtp.save();
+
+
+    // Send OTP using Fast2SMS
+    const smsResponse = await sendOtpViaFast2Sms(contact, otp);
+    if (smsResponse.error) {
+      console.error(`Failed to send OTP to ${contact}:`, smsResponse.error);
+      return {
+        status: 500,
+        message: "Failed to send OTP",
+      };
+    }
+
+    return {
+      status: 200,
+      message: "OTP sent successfully to your registered contact number",
+    };
   } catch (error) {
-    throw new Error(error);
+    console.error("Error in sendOtp:", error.message);
+    return {
+      status: 500,
+      message: "An error occurred while processing the request",
+      data: null,
+    };
   }
 }
+
+
+// Function to send OTP via Fast2SMS
+function sendOtpViaFast2Sms(contact,contactOtp) {
+  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+
+  return new Promise((resolve, reject) => {
+    const req = unirest("POST", "https://www.fast2sms.com/dev/bulkV2");
+
+
+
+    req.headers({
+      "authorization": "BfpRMOEvrPt9eV2kdD7ln3Kicb8oFHS50jxhTLXJQ1aumYqAzZGydpUt9FRkCnjxbi4XWAmJ6PMrSuvK", // Ensure API key is stored in environment variables
+    });
+
+    req.json({
+      "flash":"0",
+      "sender_id": "DNRJFN", // Replace with your DLT-approved sender ID
+      "message": "171382", // Customize the OTP message
+      "route": "dlt",
+      "numbers": contact,
+      "variables_values":contactOtp
+        });
+
+    req.end((res) => {
+      if (res.error) {
+        console.error("Error sending OTP via Fast2SMS:", res.error.message);
+        return reject(res.error);
+      }
+      console.log("Fast2SMS Response:", res.body);
+      return resolve(res.body);
+    });
+  });
+}
+
 
 async function verify({ type, otp, contact }) {
   const obj = { status: 200, message: "data fetched successfully", data: [] };
@@ -484,6 +578,9 @@ async function verify({ type, otp, contact }) {
   }
   return obj;
 }
+
+
+
 
 
 

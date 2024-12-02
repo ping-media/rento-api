@@ -63,6 +63,11 @@ const vehicleTableSchema = new Schema({
         type: String,
         required: true
     },
+    locationId: {
+        type: Schema.Types.ObjectId,
+        ref: 'location',
+        required: true
+      },
     condition: {
         enum: ["old", "new"],
         type: String,

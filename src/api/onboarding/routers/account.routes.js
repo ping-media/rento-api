@@ -36,4 +36,6 @@ router.post("/verifyOtp", async (req, res) => {
   accountService.verify(req, res);
 });
 
+
+
 module.exports = router;
