@@ -154,162 +154,350 @@ async function getAllDataCount() {
   return obj
 }
 
-async function saveUser({ _id, userType, status, altContact, firstName, lastName, contact, email, password, deleteRec, kycApproved, isEmailVerified, isContactVerified, drivingLicence, idProof, addressProof, dateofbirth, gender }) {
-  const response = { status: "200", message: "data fetched successfully", data: [] }
+// async function saveUser({
+//   _id,
+//   userType,
+//   status,
+//   altContact,
+//   firstName,
+//   lastName,
+//   contact,
+//   email,
+//   password,
+//   deleteRec,
+//   kycApproved,
+//   isEmailVerified,
+//   isContactVerified,
+//   drivingLicence,
+//   idProof,
+//   addressProof,
+//   dateofbirth,
+//   gender,
+//   otp,
+// }) {
+//   const response = { status: 200, message: "Data processed successfully", data: [] };
+
+//   try {
+//     // Validate _id
+//     if (_id && _id.length !== 24) {
+//       response.status = 400;
+//       response.message = "Invalid _id";
+//       return response;
+//     }
+
+//     // Validate contact
+//     if (contact) {
+//       const isValid = contactValidation(contact);
+//       if (!isValid) {
+//         response.status = 400;
+//         response.message = "Invalid phone number";
+//         return response;
+//       }
+//       if (!_id) {
+//         const existingUser = await User.findOne({ contact });
+//         if (existingUser) {
+//           response.status = 409; // Conflict
+//           response.message = "This contact number already exists";
+//           return response;
+//         }
+//       }
+//     }
+
+//     // Validate altContact
+//     if (altContact) {
+//       const isValid = contactValidation(altContact);
+//       if (!isValid) {
+//         response.status = 400;
+//         response.message = "Invalid alternative contact number";
+//         return response;
+//       }
+//     }
+
+//     // Validate userType
+//     const validUserTypes = ["manager", "customer", "admin"];
+//     let checkUserType = "customer";
+//     if (userType) {
+//       if (!validUserTypes.includes(userType)) {
+//         response.status = 400;
+//         response.message = "Invalid user type";
+//         return response;
+//       }
+//       if ((userType === "admin" || userType === "manager") && !password && !_id) {
+//         response.status = 400;
+//         response.message = "Password is required for admin or manager";
+//         return response;
+//       }
+//       checkUserType = userType;
+//     }
+
+//     // Validate status
+//     const validStatuses = ["active", "inactive"];
+//     let checkStatus = "active";
+//     if (status) {
+//       if (!validStatuses.includes(status)) {
+//         response.status = 400;
+//         response.message = "Invalid user status";
+//         return response;
+//       }
+//       checkStatus = status;
+//     }
+
+//     // Validate kycApproved
+//     const validKycStatuses = ["yes", "no"];
+//     let checkKycApproved = "no";
+//     if (kycApproved) {
+//       if (!validKycStatuses.includes(kycApproved)) {
+//         response.status = 400;
+//         response.message = "Invalid KYC approval status";
+//         return response;
+//       }
+//       checkKycApproved = kycApproved;
+//     }
+
+//     // Validate isEmailVerified
+//     let checkIsEmailVerified = "no";
+//     if (isEmailVerified && validKycStatuses.includes(isEmailVerified)) {
+//       checkIsEmailVerified = isEmailVerified;
+//     }
+
+//     // Validate isContactVerified
+//     let checkIsContactVerified = "no";
+//     if (isContactVerified && validKycStatuses.includes(isContactVerified)) {
+//       checkIsContactVerified = isContactVerified;
+//     }
+
+//     // Validate email
+//     if (email) {
+//       const isValidEmail = emailValidation(email);
+//       if (!isValidEmail) {
+//         response.status = 400;
+//         response.message = "Invalid email address";
+//         return response;
+//       }
+//     }
+
+//     // Prepare user object
+//     const userObj = {
+//       addressProof,
+//       drivingLicence,
+//       idProof,
+//       isContactVerified: checkIsContactVerified,
+//       isEmailVerified: checkIsEmailVerified,
+//       kycApproved: checkKycApproved,
+//       userType: checkUserType,
+//       status: checkStatus,
+//       altContact,
+//       firstName,
+//       lastName,
+//       contact,
+//       email,
+//       password,
+//       dateofbirth,
+//       gender,
+//     };
+
+//     if (_id) {
+//       // Update or delete user
+//       const existingUser = await User.findById(_id);
+//       if (!existingUser) {
+//         response.status = 404;
+//         response.message = "User not found";
+//         return response;
+//       }
+//       if (deleteRec) {
+//         await User.findByIdAndDelete(_id);
+//         response.message = "User deleted successfully";
+//         response.data = { _id };
+//         return response;
+//       }
+//       // Update user
+//       await User.findByIdAndUpdate(_id, userObj, { new: true });
+//       response.message = "User updated successfully";
+//       response.data = userObj;
+//     } else {
+//       // Validate required fields for new user
+//       if (!firstName || !lastName || !contact || !email) {
+//         response.status = 400;
+//         response.message = "Missing required fields for new user";
+//         return response;
+//       }
+
+//       // OTP verification for customers
+//       if (userType === "customer") {
+//         const otpRecord = await Otp.findOne({ contact });
+//         if (!otpRecord) {
+//           response.status = 404;
+//           response.message = "No OTP found for the given contact number";
+//           return response;
+//         }
+//         if (otp !== otpRecord.otp) {
+//           response.status = 401;
+//           response.message = "Invalid OTP";
+//           return response;
+//         }
+//         await Otp.deleteOne({ contact });
+//       }
+
+//       // Save new user
+//       const newUser = new User(userObj);
+//       await newUser.save();
+//       response.message = "User created successfully";
+//       response.data = newUser.toObject();
+//     }
+//   } catch (error) {
+//     console.error("Error in saveUser:", error.message);
+//     response.status = 500;
+//     response.message = "Internal server error";
+//   }
+
+//   return response;
+// }
+
+
+async function saveUser(userData) {
+  const {
+    _id,
+    userType = "customer",
+    status = "active",
+    altContact,
+    firstName,
+    lastName,
+    contact,
+    email,
+    password,
+    deleteRec,
+    kycApproved = "no",
+    isEmailVerified = "no",
+    isContactVerified = "no",
+    drivingLicence,
+    idProof,
+    addressProof,
+    dateofbirth,
+    gender,
+    otp,
+  } = userData;
+
+  const response = { status: 200, message: "Data processed successfully", data: [] };
+
   try {
-    if (_id && _id.length !== 24) {
-      response.status = 401
-      response.message = "Invalid _id"
-      return response
+    // Validation helpers
+    const validateId = (id) => id && id.length === 24;
+    const isValidContact = (number) => contactValidation(number);
+    const isValidEmail = (email) => emailValidation(email);
+    const isValidEnum = (value, validList) => validList.includes(value);
+
+    // Validate `_id`
+    if (_id && !validateId(_id)) {
+      return { status: 400, message: "Invalid _id" };
     }
+
+    // Validate `contact`
     if (contact) {
-      const isValid = contactValidation(contact)
-      if (!isValid) {
-        response.status = 401
-        response.message = "Invalid phone number"
-        return response
-      } else {
-        if (!_id) {
-          const find = await User.findOne({ contact })
-          if (find) {
-            response.status = 401
-            response.message = "this contact number already exists"
-            return response
-          }
+      if (!isValidContact(contact)) {
+        return { status: 400, message: "Invalid phone number" };
+      }
+      if (!_id) {
+        const existingUser = await User.findOne({ contact });
+        if (existingUser) {
+          return { status: 409, message: "This contact number already exists" };
         }
       }
     }
-    if (altContact) {
-      const isValid = contactValidation(altContact)
-      if (!isValid) {
-        response.status = 401
-        response.message = "Invalid altContact number"
-        return response
-      }
-    }
-    let checkUserType = "customer"
-    if (userType) {
-      let isUserType = ["manager", "customer", "admin"].includes(userType)
-      if (!isUserType) {
-        response.status = 401
-        response.message = "Invalid user type"
-        return response
-      } else {
-        if(!_id){
-        if ((userType == "admin" || userType == "manager") && !password) {
-          response.status = 401
-          response.message = "password is required here if you are admin or manager"
-          return response}
-        } else {
-          checkUserType = userType
-        }
-      }
 
+    // Validate `altContact`
+    if (altContact && !isValidContact(altContact)) {
+      return { status: 400, message: "Invalid alternative contact number" };
     }
-    let checkStatus = "active"
-    if (status) {
-      let statusCheck = ["active", "inactive"].includes(status)
-      if (!statusCheck) {
-        response.status = 401
-        response.message = "Invalid user status"
-        return response
-      } else {
-        checkStatus = status
-      }
+
+    // Validate `userType`
+    const validUserTypes = ["manager", "customer", "admin"];
+    if (!isValidEnum(userType, validUserTypes)) {
+      return { status: 400, message: "Invalid user type" };
     }
-    let checkKycApproved = "no"
-    if (kycApproved) {
-      let check = ["yes", "no"].includes(kycApproved)
-      if (check) {
-        checkKycApproved = kycApproved
-      } else {
-        response.status = 401
-        response.message = "Invalid kyc Approved"
-        return response
-      }
+    if ((userType === "admin" || userType === "manager") && !password && !_id) {
+      return { status: 400, message: "Password is required for admin or manager" };
     }
-    let checkIsEmailVerified = "no"
-    if (isEmailVerified) {
-      let check = ["yes", "no"].includes(isEmailVerified)
-      if (check) {
-        checkIsEmailVerified = isEmailVerified
-      } else {
-        response.status = 401
-        response.message = "Invalid isEmailVerified"
-        return response
-      }
+
+    // Validate `status`
+    const validStatuses = ["active", "inactive"];
+    if (!isValidEnum(status, validStatuses)) {
+      return { status: 400, message: "Invalid user status" };
     }
-    let checkIsContactVerified = "no"
-    if (isContactVerified) {
-      let check = ["yes", "no"].includes(isContactVerified)
-      if (check) {
-        checkIsContactVerified = isContactVerified
-      } else {
-        response.status = 401
-        response.message = "Invalid isContactVerified"
-        return response
-      }
+
+    // Validate `kycApproved`, `isEmailVerified`, and `isContactVerified`
+    const validKycStatuses = ["yes", "no"];
+    if (!isValidEnum(kycApproved, validKycStatuses)) {
+      return { status: 400, message: "Invalid KYC approval status" };
     }
-    if (email) {
-      const isValidEmail = emailValidation(email)
-      if (!isValidEmail) {
-        response.status = 401
-        response.message = "Invalid email address"
-        return response
-      }
+    if (!isValidEnum(isEmailVerified, validKycStatuses)) {
+      return { status: 400, message: "Invalid email verification status" };
     }
-    const obj = {
-      addressProof, drivingLicence, idProof, isContactVerified: checkIsContactVerified, isEmailVerified: checkIsEmailVerified, kycApproved: checkKycApproved, userType: checkUserType, status: checkStatus, altContact, firstName, lastName, contact, email, password, dateofbirth, gender
+    if (!isValidEnum(isContactVerified, validKycStatuses)) {
+      return { status: 400, message: "Invalid contact verification status" };
     }
+
+    // Validate `email`
+    if (email && !isValidEmail(email)) {
+      return { status: 400, message: "Invalid email address" };
+    }
+
+    // Prepare user object
+    const userObj = {
+      addressProof,
+      drivingLicence,
+      idProof,
+      isContactVerified,
+      isEmailVerified,
+      kycApproved,
+      userType,
+      status,
+      altContact,
+      firstName,
+      lastName,
+      contact,
+      email,
+      password,
+      dateofbirth,
+      gender,
+    };
+
+    // Handle user update or creation
     if (_id) {
-      const find = await User.findOne({ _id: ObjectId(_id) })
-      if (!find) {
-        response.status = 401
-        response.message = "Invalid user id"
-        return response
-      } else {
-        if (deleteRec) {
-          await User.deleteOne({ _id: ObjectId(_id) })
-          response.message = "user deleted successfully"
-          response.status = 200
-          response.data = { _id }
-          return response
-        }
-        delete obj._id
-        await User.updateOne(
-          { _id: ObjectId(_id) },
-          {
-            $set: obj
-          },
-          { new: true }
-        );
-        response.message = "user updated successfully"
-        response.data = obj
+      const existingUser = await User.findById(_id);
+      if (!existingUser) {
+        return { status: 404, message: "User not found" };
       }
-
+      if (deleteRec) {
+        await User.findByIdAndDelete(_id);
+        return { status: 200, message: "User deleted successfully", data: { _id } };
+      }
+      await User.findByIdAndUpdate(_id, userObj, { new: true });
+      return { status: 200, message: "User updated successfully", data: userObj };
     } else {
-      if (firstName && lastName && contact && email) {
-
-        
-      
-        const SaveUser = new User(obj)
-        SaveUser.save()
-        response.message = "data saved successfully"
-        response.data = SaveUser._doc
-        // await User.updateOne({ _id: ObjectId('67419043ac5f170ad136a75d')} ,{
-        //   $inc: {value:1}
-        // })
-      } else {
-        response.status = 401
-        response.message = "some details are missing"
+      if (!firstName || !lastName || !contact || !email) {
+        return { status: 400, message: "Missing required fields for new user" };
       }
+
+      if (userType === "customer") {
+        const otpRecord = await Otp.findOne({ contact });
+        if (!otpRecord || otpRecord.otp !== otp) {
+          return {
+            status: otpRecord ? 401 : 404,
+            message: otpRecord ? "Invalid OTP" : "No OTP found for the given contact number",
+          };
+        }
+        await Otp.deleteOne({ contact });
+      }
+
+      const newUser = new User(userObj);
+      await newUser.save();
+      return { status: 201, message: "User created successfully", data: newUser.toObject() };
     }
   } catch (error) {
-    throw new Error(error);
+    console.error("Error in saveUser:", error.message);
+    return { status: 500, message: "Internal server error" };
   }
-  return response
 }
-
 
 
 
