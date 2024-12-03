@@ -350,17 +350,29 @@ router.get("/getAllInvoice", async (req, res) => {
 //   }
 //   documentUpload(req, res)
 // })
-router.post("/uploadDocument", async(req, res) => {
-  if(!req.body.documentType) return res.status(400).json({ message: 'Document Type is not defined .' });
- 
-  const fieldName = req.body.documentType || 'image';
-  upload.single(fieldName)
-    if (!req.file) {
-        return res.status(400).json({ message: 'File upload failed. No file provided.' });
+router.post("/uploadDocument", (req, res) => {
+  // Middleware to handle file uploads
+  const uploadHandler = upload.single(req.body.documentType || 'image');
+
+  uploadHandler(req, res, function (err) {
+    if (err) {
+      return res.status(400).json({ message: 'File upload failed.', error: err.message });
     }
-    documentUpload(req, res)
-  
-})
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'File upload failed. No file provided.' });
+    }
+
+    if (!req.body.documentType) {
+      return res.status(400).json({ message: 'Document Type is not defined.' });
+    }
+
+    // Handle the uploaded document as needed
+    documentUpload(req, res); // Assuming documentUpload is your custom handler
+    res.status(200).json({ message: 'File uploaded successfully', file: req.file });
+  });
+});
+
 
 
 

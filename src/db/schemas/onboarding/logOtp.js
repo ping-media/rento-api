@@ -11,6 +11,9 @@ const otpLogSchema = new Schema({
         type: String,
         required: true
     },
+    obj: { //
+        type: Object,
+    },
    
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 

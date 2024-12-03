@@ -28,15 +28,6 @@ const Otp = require("../../../db/schemas/onboarding/logOtp");
 
 
 
-const transporter = nodemailer.createTransport({
-  port: 465,
-  service: "gmail",
-  secure: true,
-  auth: {
-    user: 'kashyapshivram512@gmail.com',
-    pass: 'kmbc nqqe cavl eyma'
-  },
-});
 
 async function updateUser({ _id, userType, firstName, contact, lastName, email }) {
   const o = { status: 200, message: "data fetched successfully", data: [] }
@@ -323,31 +314,7 @@ async function saveUser({ _id, userType, status, altContact, firstName, lastName
 
 
 
-async function sendOtpByEmail(email, otp) {
-  try {
-    // Send mail with defined transport object
-    const info = await transporter.sendMail({
-      from: '"Rento-Moto Support" <support@rentomoto.com>', // Sender address
-      to: email, // Recipient's email
-      subject: "Your OTP Code", // Email subject
-      html: `<p>Your OTP code is <strong>${otp}</strong>. This code is valid for 5 minutes.</p>`, // HTML body
-    });
 
-    console.log("Message sent: %s", info.messageId);
-    return {
-      success: true,
-      message: `OTP sent to ${email}`,
-      messageId: info.messageId,
-    };
-  } catch (error) {
-    console.error("Error sending OTP email:", error.message);
-    return {
-      success: false,
-      message: "Failed to send OTP",
-      error: error.message,
-    };
-  }
-}
 
 
 

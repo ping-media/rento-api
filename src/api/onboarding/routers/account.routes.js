@@ -3,6 +3,7 @@ const accountService = require("../services/account.service");
 const auth = require("../../../middlewares/auth/index")
 const upload = require('../../../utils/file-upload/file-upload');
 const {optGernet, verify} = require('../models/otp.model');
+const {emailOtp} = require('../models/otpSendByEmail');
 
 
 // Update User
@@ -36,6 +37,10 @@ router.post("/optGernet", async (req, res) => {
 
 router.post("/verifyOtp", async (req, res) => {
   verify(req, res);
+});
+
+router.post("/emailOtp", async (req, res) => {
+  emailOtp(req, res);
 });
 
 
