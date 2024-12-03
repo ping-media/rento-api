@@ -18,8 +18,8 @@ const transporter = nodemailer.createTransport({
 
   async function emailOtp(req, res) {
     try {
-    const  obj = req.body;
     const  contact = req.body.contact;
+    const  email = req.body.email;
   
     
       const user = await User.findOne({ contact });
@@ -36,15 +36,15 @@ const transporter = nodemailer.createTransport({
       // Save OTP using upsert to avoid duplicates
       await Otp.updateOne(
         { contact }, // Filter by contact
-        { obj, otp, createdAt: new Date(), expiresAt: new Date(Date.now() + 5 * 60 * 1000) }, // Update fields
+        { contact, otp, createdAt: new Date(), expiresAt: new Date(Date.now() + 5 * 60 * 1000) }, // Update fields
         { upsert: true } 
       );
   
   
       // Send OTP using Fast2SMS
-      const smsResponse = await sendOtpByEmail(contact, otp);
+      const smsResponse = await sendOtpByEmail(email, otp);
       if (smsResponse.error) {
-        console.error(`Failed to send OTP to ${contact}:`, smsResponse.error);
+        console.error(`Failed to send OTP to ${email}:`, smsResponse.error);
         return res.status(500).json({
           status: 500,
           message: "Failed to send OTP",

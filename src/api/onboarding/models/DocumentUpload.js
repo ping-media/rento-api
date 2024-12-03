@@ -60,7 +60,12 @@ const documentUpload = async (req, res) => {
 
         if (existingDocument) {
             // Update the document if it exists
-            await Document.updateOne({ userId }, { $set: { documentType: imageUrl } });
+            if(documentType == "aadhar"){
+              await Document.updateOne({ userId }, { $set: { AadharImage: imageUrl } });
+            }else{
+              await Document.updateOne({ userId }, { $set: { LicenseImage: imageUrl } });
+            }
+            // await Document.updateOne({ userId }, { $set: { LicenseImage: imageUrl } });
             return res.status(200).json({
                 status: 200,
                 message: "File uploaded  successfully.",
@@ -69,7 +74,12 @@ const documentUpload = async (req, res) => {
         }
 
         // Create a new document if none exists
-        const newDocument = new Document({ userId }, { $set: { documentType: imageUrl } });
+        let newDocument;
+        if(documentType == "aadhar"){
+          newDocument = new Document({ userId, AadharImage: imageUrl });
+        }else{
+          newDocument = new Document({ userId, LicenseImage: imageUrl });
+        }
         await newDocument.save();
 
         return res.status(200).json({
