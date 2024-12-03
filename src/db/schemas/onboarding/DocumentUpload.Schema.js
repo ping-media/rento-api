@@ -5,7 +5,6 @@ const documentSchema = new Schema(
   {
     AadharImage: {
       type: String, // Define Image as a generic object
-      required: true,
     },
     LicenseImage: {
       type: String, // Define Image as a generic object
