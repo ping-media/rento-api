@@ -24,6 +24,7 @@ const plan = require("../../../db/schemas/onboarding/plan.schema");
 const order = require("../../../db/schemas/onboarding/order.schema");
 const location = require("../../../db/schemas/onboarding/location.schema");
 const Otps = require("../../../db/schemas/onboarding/logOtp");
+const SibApiV3Sdk = require('sib-api-v3-sdk'); // Using Brevo for email
 
 const unirest = require("unirest");
 
@@ -298,6 +299,18 @@ async function saveUser({ _id, userType, status, altContact, firstName, lastName
 
     } else {
       if (firstName && lastName && contact && email) {
+
+        
+      // Send OTP to email
+      // const otp = Math.floor(100000 + Math.random() * 900000);
+      // const emailResponse = await sendOtpByEmail(email, otp);
+
+      // if (!emailResponse.success) {
+      //   response.status = 500;
+      //   response.message = 'Failed to send OTP';
+      //   return response;
+      // }
+
         const SaveUser = new User(obj)
         SaveUser.save()
         response.message = "data saved successfully"
@@ -315,6 +328,164 @@ async function saveUser({ _id, userType, status, altContact, firstName, lastName
   }
   return response
 }
+
+
+
+// async function saveUser({
+//   _id,
+//   userType,
+//   status,
+//   altContact,
+//   firstName,
+//   lastName,
+//   contact,
+//   email,
+//   password,
+//   deleteRec,
+//   kycApproved,
+//   isEmailVerified,
+//   isContactVerified,
+//   drivingLicence,
+//   idProof,
+//   addressProof,
+//   dateofbirth,
+//   gender,
+// }) {
+//   const response = { status: 200, message: 'Data fetched successfully', data: [] };
+
+//   try {
+//     // Validate user inputs
+//     if (_id && _id.length !== 24) {
+//       response.status = 401;
+//       response.message = 'Invalid _id';
+//       return response;
+//     }
+
+//     // Validate contact
+//     if (contact) {
+//       const isValid = contactValidation(contact);
+//       if (!isValid) {
+//         response.status = 401;
+//         response.message = 'Invalid phone number';
+//         return response;
+//       }
+//       if (!_id) {
+//         const find = await User.findOne({ contact });
+//         if (find) {
+//           response.status = 401;
+//           response.message = 'This contact number already exists';
+//           return response;
+//         }
+//       }
+//     }
+
+//     // Validate email
+//     if (email) {
+//       const isValidEmail = emailValidation(email);
+//       if (!isValidEmail) {
+//         response.status = 401;
+//         response.message = 'Invalid email address';
+//         return response;
+//       }
+//     }
+
+//     // Build the user object
+//     const obj = {
+//       addressProof,
+//       drivingLicence,
+//       idProof,
+//       isContactVerified: isContactVerified || 'no',
+//       isEmailVerified: isEmailVerified || 'no',
+//       kycApproved: kycApproved || 'no',
+//       userType: userType || 'customer',
+//       status: status || 'active',
+//       altContact,
+//       firstName,
+//       lastName,
+//       contact,
+//       email,
+//       password,
+//       dateofbirth,
+//       gender,
+//     };
+
+//     // Update or delete user logic
+//     if (_id) {
+//       const find = await User.findOne({ _id: ObjectId(_id) });
+//       if (!find) {
+//         response.status = 401;
+//         response.message = 'Invalid user id';
+//         return response;
+//       }
+
+//       if (deleteRec) {
+//         await User.deleteOne({ _id: ObjectId(_id) });
+//         response.message = 'User deleted successfully';
+//         response.data = { _id };
+//         return response;
+//       }
+
+//       delete obj._id;
+//       await User.updateOne({ _id: ObjectId(_id) }, { $set: obj }, { new: true });
+//       response.message = 'User updated successfully';
+//       response.data = obj;
+//       return response;
+//     }
+
+//     // New user creation logic
+//     if (firstName && lastName && contact && email) {
+//       const otp = Math.floor(100000 + Math.random() * 900000);
+
+//       // Send OTP to email
+//       const emailResponse = await sendOtpByEmail(email, otp);
+//       if (!emailResponse.success) {
+//         response.status = 500;
+//         response.message = 'Failed to send OTP';
+//         return response;
+//       }
+
+//       const SaveUser = new User(obj);
+//       SaveUser.save();
+
+//       response.message = 'OTP sent to email.';
+//       response.data = SaveUser._doc;
+//     } else {
+//       response.status = 401;
+//       response.message = 'Some details are missing';
+//     }
+//   } catch (error) {
+//     console.error('Error in saveUser:', error.message);
+//     response.status = 500;
+//     response.message = 'An error occurred while processing the request';
+//   }
+
+//   return response;
+// }
+
+// Function to send OTP via Brevo
+// async function sendOtpByEmail(email, otp) {
+//   try {
+//     const defaultClient = SibApiV3Sdk.ApiClient.instance;
+//     const apiKey = defaultClient.authentications['api-key'];
+
+//     const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+//     const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail({
+//       to: [{ email }],
+//       sender: { email: 'noreply@yourdomain.com', name: 'Your Company' },
+//       subject: 'Your OTP Code',
+//       htmlContent: `<p>Your OTP code is <strong>${otp}</strong>. This code is valid for 10 minutes.</p>`,
+//     });
+
+//     const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+//     console.log('OTP email sent successfully:', response);
+//     return { success: true };
+//   } catch (error) {
+//     console.error('Error sending OTP email:', error.message);
+//     return { success: false };
+//   }
+// }
+
+
 
 async function updateImage(req) {
   const obj = { status: 200, message: "image updated successfully", data: "" };

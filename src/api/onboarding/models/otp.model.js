@@ -44,7 +44,7 @@ async function optGernet(req, res) {
 
     return res.status(200).json({
       status: 200,
-      message: "OTP sent successfully to your registered contact number",
+      message: "OTP sent successfully ",
     });
   } catch (error) {
     console.error("Error in optGernet:", error.message);
@@ -104,12 +104,14 @@ function sendOtpViaFast2Sms(contact, otp) {
   
   
       // Verify OTP
-      if (otp === record.otp) {
+      if (otp === record.otp) { 
+        const find = await User.findOne({contact})
         await Otp.deleteOne({ contact });
   
         return res.status(200).json({
           status: 200,
           message: "OTP verified successfully",
+          data: find
         });
       } else {
         return res.status(401).json({
