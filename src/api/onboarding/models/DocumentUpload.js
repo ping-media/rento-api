@@ -69,7 +69,7 @@ const documentUpload = async (req, res) => {
         }
 
         // Create a new document if none exists
-        const newDocument = new Document({ userId, documentType: imageUrl });
+        const newDocument = new Document({ userId }, { $set: { documentType: imageUrl } });
         await newDocument.save();
 
         return res.status(200).json({

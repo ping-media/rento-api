@@ -19,10 +19,10 @@ const transporter = nodemailer.createTransport({
   async function emailOtp(req, res) {
     try {
     const  obj = req.body;
-    const  email = req.body.contact;
+    const  contact = req.body.contact;
   
     
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ contact });
       if (user) {
         return res.status(404).json({
           status: 404,
@@ -35,7 +35,7 @@ const transporter = nodemailer.createTransport({
   
       // Save OTP using upsert to avoid duplicates
       await Otp.updateOne(
-        { email }, // Filter by contact
+        { contact }, // Filter by contact
         { obj, otp, createdAt: new Date(), expiresAt: new Date(Date.now() + 5 * 60 * 1000) }, // Update fields
         { upsert: true } 
       );
