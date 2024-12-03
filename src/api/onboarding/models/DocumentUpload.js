@@ -30,7 +30,7 @@ const upload = multer({
 // Function to upload document
 const documentUpload = async (req, res) => {
     try {
-        const { _id, userId } = req.body;
+        const { _id, userId, documentType } = req.body;
 
         // Validate userId
         if (!userId || userId.length !== 24) {
@@ -60,7 +60,7 @@ const documentUpload = async (req, res) => {
 
         if (existingDocument) {
             // Update the document if it exists
-            await Document.updateOne({ userId }, { $set: { LicenseImage: imageUrl } });
+            await Document.updateOne({ userId }, { $set: { documentType: imageUrl } });
             return res.status(200).json({
                 status: 200,
                 message: "File uploaded  successfully.",
@@ -69,7 +69,7 @@ const documentUpload = async (req, res) => {
         }
 
         // Create a new document if none exists
-        const newDocument = new Document({ userId, AadharImage: imageUrl });
+        const newDocument = new Document({ userId, documentType: imageUrl });
         await newDocument.save();
 
         return res.status(200).json({

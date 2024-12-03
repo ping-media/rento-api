@@ -342,14 +342,27 @@ router.get("/getAllInvoice", async (req, res) => {
 
 
 
-router.post("/uploadDocument", upload.single('image'), async (req, res) => {
+// router.post("/uploadDocument", upload.single('image'), async (req, res) => {
   
   
-  if (!req.file) {
-      return res.status(400).json({ message: 'File upload failed. No file provided.' });
-  }
-  documentUpload(req, res)
+//   if (!req.file) {
+//       return res.status(400).json({ message: 'File upload failed. No file provided.' });
+//   }
+//   documentUpload(req, res)
+// })
+router.post("/uploadDocument", async(req, res) => {
+  if(!req.body.documentType) return res.status(400).json({ message: 'Document Type is not defined .' });
+ 
+  const fieldName = req.body.documentType || 'image';
+  upload.single(fieldName)
+    if (!req.file) {
+        return res.status(400).json({ message: 'File upload failed. No file provided.' });
+    }
+    documentUpload(req, res)
+  
 })
+
+
 
 router.get("/getDocument", async (req, res) => {
   getDocument(req, res);
