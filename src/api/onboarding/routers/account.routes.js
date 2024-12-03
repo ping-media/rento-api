@@ -2,6 +2,8 @@ const router = require("express").Router();
 const accountService = require("../services/account.service");
 const auth = require("../../../middlewares/auth/index")
 const upload = require('../../../utils/file-upload/file-upload');
+const {optGernet, verify} = require('../models/otp.model');
+
 
 // Update User
 router.post("/profile", async (req, res) => {
@@ -28,12 +30,12 @@ router.post("/getUsersByContact", async (req, res) => {
   accountService.getUserByContact(req, res);
 });
 
-router.post("/sendOtp", async (req, res) => {
-  accountService.sendOtps(req, res);
+router.post("/optGernet", async (req, res) => {
+  optGernet(req, res);
 });
 
 router.post("/verifyOtp", async (req, res) => {
-  accountService.verify(req, res);
+  verify(req, res);
 });
 
 

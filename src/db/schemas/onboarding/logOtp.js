@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const otpLogSchema = new Schema({
-    contactNumber: { //
+    contact: { //
         type: String,
         unique: true,
         required: true
