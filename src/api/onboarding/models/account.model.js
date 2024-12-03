@@ -268,7 +268,7 @@ async function saveUser({ _id, userType, status, altContact, firstName, lastName
       }
     }
     const obj = {
-      addressProof, drivingLicence, idProof, isContactVerified: checkIsContactVerified, isEmailVerified: checkIsEmailVerified, kycApproved: checkKycApproved, userType: checkUserType, status: checkStatus, altContact, firstName, lastName, contact, email, password
+      addressProof, drivingLicence, idProof, isContactVerified: checkIsContactVerified, isEmailVerified: checkIsEmailVerified, kycApproved: checkKycApproved, userType: checkUserType, status: checkStatus, altContact, firstName, lastName, contact, email, password, dateofbirth, gender
     }
     if (_id) {
       const find = await User.findOne({ _id: ObjectId(_id) })
