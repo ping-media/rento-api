@@ -1,23 +1,47 @@
 const Coupon = require('../../../db/schemas/onboarding/coupons.schema')
 
+const mongoose = require("mongoose"); // Ensure mongoose is imported
+
 const getCoupons = async (query) => {
     const obj = { status: 200, message: "Data fetched successfully", data: [] };
+
     try {
-      const Coupons = await Coupon.find(); // Fetch bookings from DB
-      if(!Coupons){
-        obj.message = "No Records Found"
-        return obj
-      }
-  
-      obj.message = "Data Fetched Successfully"
-      obj.data = Coupons
+        const { _id } = query;
+
+        // Fetch by ID if provided
+        if (_id) {
+            if (!mongoose.Types.ObjectId.isValid(_id)) {
+                obj.status = 400;
+                obj.message = "Invalid _id format";
+                return obj;
+            }
+
+            const coupon = await Coupon.findById(_id); // Fetch by ID
+            if (!coupon) {
+                obj.message = "No Records Found";
+                return obj;
+            }
+
+            obj.data = [coupon]; // Return as an array for consistency
+            return obj;
+        }
+
+        // Fetch all coupons if no _id provided
+        const coupons = await Coupon.find();
+        if (!coupons.length) {
+            obj.message = "No Records Found";
+            return obj;
+        }
+
+        obj.data = coupons;
     } catch (error) {
-      console.error("Error fetching Coupons:", error);
-      obj.message = "error"
+        console.error("Error fetching coupons:", error);
+        obj.status = 500;
+        obj.message = "Internal Server Error";
     }
-  
-    return obj
-  };
+
+    return obj;
+};
 
 
 

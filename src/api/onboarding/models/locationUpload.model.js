@@ -40,7 +40,12 @@ const fileUpload =async (req, res) => {
 
         
     
-        
+        const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp"];
+        if (!allowedMimeTypes.includes(req.file.mimetype)) {
+            return res.status(400).json({
+                message: "Invalid file format. Only PNG, JPG, and WEBP are allowed.",
+            });
+        }
        
         
         // Generate safe file name

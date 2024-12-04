@@ -14,25 +14,25 @@ const getAllVehiclesData = async (req, res) => {
     if (condition) filter.condition = condition;
     if (_id) filter._id=_id
 
-    const sort = {};
-    sort[sortBy] = order === 'asc' ? 1 : -1;
+    // const sort = {};
+    // sort[sortBy] = order === 'asc' ? 1 : -1;
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    // const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const vehicles = await vehicleTable
       .find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit))
+      // .sort(sort)
+      // .skip(skip)
+      // .limit(parseInt(limit))
       
 
-    const totalRecords = await vehicleTable.count(filter);
+  //  const totalRecords = await vehicleTable.count(filter);
     // Return the result
     obj.status= 200
     obj.message= 'Vehicles retrieved successfully'
       obj.data= vehicles
-      obj.currentPage= parseInt(page)
-      obj.totalPages= Math.ceil(totalRecords / parseInt(limit))
+      // obj.currentPage= parseInt(page)
+      // obj.totalPages= Math.ceil(totalRecords / parseInt(limit))
     return res.status(200).json(
       obj
     );

@@ -45,7 +45,7 @@ const documentUpload = async (req, res) => {
 
       // Loop through files and upload to S3
       for (const file of req.files) {
-           fileName = docType;
+           fileName = `${docType}`;
           const params = {
               Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
               Key: fileName, // File Name

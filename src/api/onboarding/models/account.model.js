@@ -109,21 +109,21 @@ async function getAllUsers(query) {
       ];
     }
 
-    const sort = {};
-    sort[sortBy] = order === 'asc' ? 1 : -1;
+    // const sort = {};
+    // sort[sortBy] = order === 'asc' ? 1 : -1;
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    // const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const response = await User.find(filter, { otp: 0, password: 0 }) // Exclude sensitive fields
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit));
+      // .sort(sort)
+      // .skip(skip)
+      // .limit(parseInt(limit));
 
      if (response && response.length) {
       obj.data = response;
-      obj.currentPage = parseInt(page);
-      const Recod=await User.count(filter)
-      obj.totalPages = Math.ceil((Recod) / parseInt(limit));
+      // obj.currentPage = parseInt(page);
+      // const Recod=await User.count(filter)
+      // obj.totalPages = Math.ceil((Recod) / parseInt(limit));
     } else {
       obj.status = 404;
       obj.message = "No data found";
@@ -491,7 +491,7 @@ async function saveUser(userData) {
 
       const newUser = new User(userObj);
       await newUser.save();
-      return { status: 201, message: "User created successfully", data: newUser.toObject() };
+      return { status: 200, message: "User created successfully", data: newUser.toObject() };
     }
   } catch (error) {
     console.error("Error in saveUser:", error.message);

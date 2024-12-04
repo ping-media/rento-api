@@ -224,7 +224,7 @@ router.delete("/deleteLocation", async (req, res) => {
     return res.status(200).json(obj); // Return the response with status 200
 
   } catch (error) {
-    console.error("Error in deleteLocation:", error.message);
+    // console.error("Error in deleteLocation:", error.message);
 
     
     obj.status = 500; 

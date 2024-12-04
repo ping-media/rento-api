@@ -142,14 +142,7 @@ async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, f
           return response
         }
       }
-      if (vehicleColor) {
-        let statusCheck = ["white", "black", "red", "blue", "green", "yellow"].includes(vehicleColor)
-        if (!statusCheck) {
-          response.status = 401
-          response.message = "Invalid vehicle color"
-          return response
-        }
-      }
+      
       if (vehicleStatus) {
         let statusCheck = ["active", "inActive"].includes(vehicleStatus)
         if (!statusCheck) {
@@ -202,7 +195,7 @@ async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, f
           },
           { new: true }
         );
-        response.message = "Vehicle Table updated successfully"
+        response.message = "Vehicle  updated successfully"
         response.data = o
       } else {
         if (vehicleMasterId && vehicleBookingStatus && vehicleStatus && freeKms && extraKmsCharges && stationId && vehicleNumber && vehicleModel && vehicleColor && perDayCost && lastServiceDate && kmsRun && isBooked && condition) {
@@ -210,7 +203,7 @@ async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, f
           if (!find) {
             const SaveVehicleTable = new VehicleTable(o)
             SaveVehicleTable.save()
-            response.message = "data saved successfully"
+            response.message = "Vehicle saved successfully"
             response.data = o
           } else {
             response.status = 401
@@ -742,10 +735,10 @@ async function getAllInvoice(query) {
     bookingId, 
     userId, 
     paidInvoice, 
-    page = 1, 
-    limit = 10, 
-    sortBy = 'createdAt', 
-    order = 'asc' 
+    // page = 1, 
+    // limit = 10, 
+    // sortBy = 'createdAt', 
+    // order = 'asc' 
   } = query;
 
   try {
@@ -756,21 +749,21 @@ async function getAllInvoice(query) {
     if (userId) filter.userId = userId;
     if (paidInvoice) filter.paidInvoice = paidInvoice;
 
-    const sort = {};
-    sort[sortBy] = order === 'asc' ? 1 : -1;
+    // const sort = {};
+    // sort[sortBy] = order === 'asc' ? 1 : -1;
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    // const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const invoices = await InvoiceTbl.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit));
+      // .sort(sort)
+      // .skip(skip)
+      // .limit(parseInt(limit));
 
-   const totalRecords = await InvoiceTbl.count(filter);
+  // const totalRecords = await InvoiceTbl.count(filter);
     obj.data=invoices;
     
-    obj.currentPage = parseInt(page);
-    obj.totalPages = Math.ceil(totalRecords / parseInt(limit));
+    // obj.currentPage = parseInt(page);
+    // obj.totalPages = Math.ceil(totalRecords / parseInt(limit));
     
     obj.message = "Invoices retrieved successfully";
   } catch (error) {

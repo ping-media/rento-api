@@ -27,10 +27,10 @@ const userSchema = new mongoose.Schema({
     enum: ["yes", "no"],
     default: "no"
   },
-  userDocuments: {
-    type: Array,
-    default: []
-  },
+  // userDocuments: {
+  //   type: Array,
+  //   default: []
+  // },
   status: {
     type: String,
     enum: ["active", "inactive"],
