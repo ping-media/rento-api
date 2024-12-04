@@ -25,10 +25,10 @@ async function optGernet(req, res) {
     }
 
 
-    const excludedContacts = ["9389046742", "8433408211"]; 
+   // const excludedContacts = ["9389046742", "8433408211"]; 
 
     // Check if the contact is in the exclusion list
-    if (excludedContacts.includes(contact)) {
+    if (contact=="9389046742" || contact=="8433408211") {
       return res.status(200).json({
         status: 200,
         message: "Login allowed without OTP validation",
