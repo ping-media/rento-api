@@ -342,12 +342,12 @@ router.get("/getAllInvoice", async (req, res) => {
 
 
 
-router.post("/uploadDocument", upload.single('image'), async (req, res) => {
+router.post("/uploadDocument", upload.array('images',5), async (req, res) => {
   
   
-  if (!req.file) {
-      return res.status(400).json({ message: 'File upload failed. No file provided.' });
-  }
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).send({ message: 'File upload failed. No files provided.' });
+    }
   documentUpload(req, res)
 })
 

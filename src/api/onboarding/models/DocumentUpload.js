@@ -29,72 +29,87 @@ const upload = multer({
 
 // Function to upload document
 const documentUpload = async (req, res) => {
-    try {
-        const { _id, userId, documentType } = req.body;
+  try {
+      const { _id, userId, documentType } = req.body;
 
-        // Validate userId
-        if (!userId || userId.length !== 24) {
-            return res.status(400).json({ message: "Invalid user ID provided." });
-        }
+      // Validate userId
+      if (!userId || userId.length !== 24) {
+          return res.status(400).json({ message: "Invalid user ID provided." });
+      }
 
-        // Generate unique file name
-        const timestamp = Date.now();
-        const safeFileName = `${timestamp}-${path.basename(req.file.originalname)}`;
+    
+      // Prepare an array to store uploaded file details
+      const uploadedFiles = [];
 
-        // S3 upload parameters
-        const params = {
-            Bucket: AWS_BUCKET_NAME,
-            Key: safeFileName,
-            Body: req.file.buffer,
-            ContentType: req.file.mimetype,
-        };
+      // Loop through files and upload to S3
+      for (const file of req.files) {
+          const fileName = `${Date.now()}-${file.originalname}`;
+          const params = {
+              Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
+              Key: fileName, // File Name
+              Body: file.buffer, // File Content
+              ContentType: file.mimetype, // MIME Type
+          };
 
-        // Upload file to S3
-        await s3.send(new PutObjectCommand(params));
+          // Upload to S3
+          await s3.send(new PutObjectCommand(params));
 
-        // Construct file URL
-        const imageUrl = `https://${AWS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${safeFileName}`;
+          // Construct the S3 File URL
+          const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+          uploadedFiles.push({ fileName, imageUrl });
+      }
 
-        // Check if a document already exists for the user
-        const existingDocument = await Document.findOne({ userId });
+      // Check if a document already exists for the user
+      const existingDocument = await Document.findOne({ userId });
 
-        if (existingDocument) {
-            // Update the document if it exists
-            if(documentType == "aadhar"){
-              await Document.updateOne({ userId }, { $set: { AadharImage: imageUrl } });
-            }else{
-              await Document.updateOne({ userId }, { $set: { LicenseImage: imageUrl } });
-            }
-            // await Document.updateOne({ userId }, { $set: { LicenseImage: imageUrl } });
-            return res.status(200).json({
-                status: 200,
-                message: "File uploaded  successfully.",
-                imageUrl,
-            });
-        }
+      if (existingDocument) {
+          // Update the document fields dynamically based on documentType
+          const updateData = {};
 
-        // Create a new document if none exists
-        let newDocument;
-        if(documentType == "aadhar"){
-          newDocument = new Document({ userId, AadharImage: imageUrl });
-        }else{
-          newDocument = new Document({ userId, LicenseImage: imageUrl });
-        }
-        await newDocument.save();
+          uploadedFiles.forEach(({ fileName, imageUrl }) => {
+              if (documentType === "aadhar") {
+                  updateData.AadharImage = imageUrl;
+              } else if (documentType === "license") {
+                  updateData.LicenseImage = imageUrl;
+              }
+          });
 
-        return res.status(200).json({
-            status: 200,
-            message: "File uploaded successfully.",
-            imageUrl,
-        });
-    } catch (error) {
-        console.error('Error uploading file:', error);
-        return res.status(500).json({
-            message: "Failed to upload file to S3.",
-            error: error.message,
-        });
-    }
+          await Document.updateOne({ userId }, { $set: updateData });
+          return res.status(200).json({
+              status: 200,
+              message: "Files uploaded successfully.",
+              uploadedFiles,
+          });
+      }
+
+      // Create a new document if none exists
+      const newDocumentData = { userId };
+
+      uploadedFiles.forEach(({ fileName, imageUrl }) => {
+          if (documentType === "aadhar") {
+              newDocumentData.AadharImage = imageUrl;
+          } else if (documentType === "license") {
+              newDocumentData.LicenseImage = imageUrl;
+          }
+      });
+
+      const newDocument = new Document(newDocumentData);
+      await newDocument.save();
+
+      return res.status(200).json({
+          status: 200,
+          message: "Files uploaded successfully.",
+          uploadedFiles,
+      });
+  } catch (error) {
+      console.error("Error uploading files:", error);
+      return res.status(500).json({
+          message: "Failed to upload files to S3.",
+          error: error.message,
+      });
+  }
 };
+
 
 const getDocument = async (req, res) => {
     try {
