@@ -12,7 +12,7 @@ async function optGernet(req, res) {
         message: "Contact number is required",
       });
     }
-
+   
     const user = await User.findOne({ contact });
     if (!user) {
       return res.status(400).json({
