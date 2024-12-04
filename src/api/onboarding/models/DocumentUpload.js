@@ -30,20 +30,22 @@ const upload = multer({
 // Function to upload document
 const documentUpload = async (req, res) => {
   try {
-      const { _id, userId, documentType } = req.body;
+      const { userId, docType } = req.body;
+      
 
       // Validate userId
       if (!userId || userId.length !== 24) {
           return res.status(400).json({ message: "Invalid user ID provided." });
       }
 
-    
+      
+
       // Prepare an array to store uploaded file details
       const uploadedFiles = [];
 
       // Loop through files and upload to S3
       for (const file of req.files) {
-          const fileName = `${Date.now()}-${file.originalname}`;
+           fileName = docType;
           const params = {
               Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
               Key: fileName, // File Name
@@ -60,21 +62,14 @@ const documentUpload = async (req, res) => {
       }
 
       // Check if a document already exists for the user
-      const existingDocument = await Document.findOne({ userId });
+      const existingDocument = await Document.findOne({ userId }).maxTimeMS(30000); // 30 seconds timeout
 
       if (existingDocument) {
-          // Update the document fields dynamically based on documentType
-          const updateData = {};
+          // Append new files to the existing document
+          const updatedFiles = existingDocument.files || [];
+          updatedFiles.push(...uploadedFiles);
 
-          uploadedFiles.forEach(({ fileName, imageUrl }) => {
-              if (documentType === "aadhar") {
-                  updateData.AadharImage = imageUrl;
-              } else if (documentType === "license") {
-                  updateData.LicenseImage = imageUrl;
-              }
-          });
-
-          await Document.updateOne({ userId }, { $set: updateData });
+          await Document.updateOne({ userId }, { $set: { files: updatedFiles } });
           return res.status(200).json({
               status: 200,
               message: "Files uploaded successfully.",
@@ -83,17 +78,10 @@ const documentUpload = async (req, res) => {
       }
 
       // Create a new document if none exists
-      const newDocumentData = { userId };
-
-      uploadedFiles.forEach(({ fileName, imageUrl }) => {
-          if (documentType === "aadhar") {
-              newDocumentData.AadharImage = imageUrl;
-          } else if (documentType === "license") {
-              newDocumentData.LicenseImage = imageUrl;
-          }
+      const newDocument = new Document({
+          userId,
+          files: uploadedFiles,
       });
-
-      const newDocument = new Document(newDocumentData);
       await newDocument.save();
 
       return res.status(200).json({
@@ -109,6 +97,7 @@ const documentUpload = async (req, res) => {
       });
   }
 };
+
 
 
 const getDocument = async (req, res) => {

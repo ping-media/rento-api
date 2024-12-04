@@ -3,17 +3,17 @@ const Schema = mongoose.Schema;
 
 const documentSchema = new Schema(
   {
-    AadharImage: {
-      type: String, // Define Image as a generic object
-    },
-    LicenseImage: {
-      type: String, // Define Image as a generic object
-    },
     userId: {
       type: String,
       ref: 'users',
       required: true,
     },
+    files: [
+      {
+        fileName: { type: String, required: true }, // Name of the file
+        imageUrl: { type: String, required: true }, // URL of the file in S3
+      },
+    ],
   },
   {
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' },
@@ -21,6 +21,5 @@ const documentSchema = new Schema(
 );
 
 const Document = mongoose.model('Document', documentSchema);
-
 
 module.exports = Document;

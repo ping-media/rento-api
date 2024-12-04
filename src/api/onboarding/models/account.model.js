@@ -478,16 +478,16 @@ async function saveUser(userData) {
         return { status: 400, message: "Missing required fields for new user" };
       }
 
-      if (userType === "customer") {
-        const otpRecord = await Otp.findOne({ contact });
-        if (!otpRecord || otpRecord.otp !== otp) {
-          return {
-            status: otpRecord ? 401 : 404,
-            message: otpRecord ? "Invalid OTP" : "No OTP found for the given contact number",
-          };
-        }
-        await Otp.deleteOne({ contact });
-      }
+      // if (userType === "customer") {
+      //   const otpRecord = await Otp.findOne({ contact });
+      //   if (!otpRecord || otpRecord.otp !== otp) {
+      //     return {
+      //       status: otpRecord ? 401 : 404,
+      //       message: otpRecord ? "Invalid OTP" : "No OTP found for the given contact number",
+      //     };
+      //   }
+      //   await Otp.deleteOne({ contact });
+      // }
 
       const newUser = new User(userObj);
       await newUser.save();
