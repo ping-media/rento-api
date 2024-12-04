@@ -15,9 +15,10 @@ async function optGernet(req, res) {
 
     const user = await User.findOne({ contact });
     if (!user) {
-      return res.status(404).json({
-        status: 404,
+      return res.status(400).json({
+        status: 400,
         message: "User does not exist",
+        success: false
       });
     }
 
@@ -102,10 +103,17 @@ function sendOtpViaFast2Sms(contact, otp) {
         });
       }
   
-  
+      
       // Verify OTP
       if (otp === record.otp) { 
         const find = await User.findOne({contact})
+      
+        if(find.isContactVerified == "no"){
+         const _id= find._id;
+         
+          await User.findByIdAndUpdate(_id, find.isContactVerified = "yes", { new: true });
+          //return { status: 200, message: "User updated successfully", data: userObj };
+        }
         await Otp.deleteOne({ contact });
   
         return res.status(200).json({
@@ -119,6 +127,10 @@ function sendOtpViaFast2Sms(contact, otp) {
           message: "Invalid OTP",
         });
       }
+
+     
+
+
     } catch (error) {
       console.error("Error in verify function:", error.message);
       return res.status(500).json({
