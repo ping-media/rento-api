@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
+const vehiclemasters = require("../../schemas/onboarding/vehicle-master.schema")
 const Schema = mongoose.Schema;
 
 const vehicleTableSchema = new Schema({
     vehicleMasterId: {
         type: Schema.Types.ObjectId,
-        ref: 'vehicle-master',
+        ref: 'vehiclemasters',
         required: true
     },
     vehicleBookingStatus: {

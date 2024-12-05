@@ -1,35 +1,39 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const planSchema = new Schema({
+const planSchema = new Schema(
+  {
     planName: {
       type: String,
       required: true,
-       unique: true
+      unique: true,
     },
     planDuration: {
       type: String,
-      required: true
+      required: true,
     },
     planPrice: {
       type: String,
-      required: true      
+      required: true,
     },
     stationId: {
       type: String,
-      ref: 'station',
-      required: true      
+      ref: "station", // Reference the 'Station' model
+      required: true,
+    },
+    locationId: {
+      type: Schema.Types.ObjectId,
+      ref: "location", // Reference the 'Location' model
     },
     vehicleMasterId: {
-      type: String,
-      ref: 'vehicle-master',
-      required: true      
-    }
-  }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
-  
-  const plan = mongoose.model('plan', planSchema);
-  
-  module.exports = plan;
-  
+      type: Schema.Types.ObjectId,
+      ref: 'vehicleMaster',
+      required: true
+  },
+  },
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+);
 
-  
+const Plan = mongoose.model("Plan", planSchema);
+
+module.exports = Plan;

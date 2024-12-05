@@ -38,7 +38,7 @@ const userSchema = new mongoose.Schema({
   },
   gender: {
     type: String,
-    enum: ["male", "female", "not specified"],
+    enum: ["male", "female", "not specified", "other"],
     default:"not specified"
   },
   altContact: {
@@ -79,7 +79,6 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    trim: true
   },
   dateofbirth: {
     type: String,

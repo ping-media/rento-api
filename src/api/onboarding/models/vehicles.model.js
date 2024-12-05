@@ -96,7 +96,7 @@ const createBookingDuration = async ({ bookingDuration, attachedVehicles, bookin
 async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, locationId, perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus, vehiclePlan }) {
   const response = { status: "200", message: "data fetched successfully", data: [] }
   try {
-    if (_id || (vehicleMasterId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber && freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate && kmsRun && isBooked && condition)) {
+    if (_id || (vehicleMasterId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber && freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate && kmsRun && isBooked && condition && locationId)) {
       
       if (stationId) {
         const findStation = await Station.findOne({ stationId })
@@ -523,33 +523,40 @@ async function createLocation({ locationName, locationImage, deleteRec, _id }) {
 
 
 
-async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec }) {
+
+async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec,locationId }) {
   const obj = { status: 200, message: "Plan created successfully", data: [] };
 
   try {
     if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId)) {
-      let o = { planName, planPrice, stationId, planDuration, vehicleMasterId };
-
+      let o = { planName, planPrice, stationId, planDuration, vehicleMasterId, locationId };
 
       // Handle update or delete
+     // console.log(o)
       if (_id) {
         if (_id.length !== 24) {
           obj.status = 401;
           obj.message = "Invalid _id";
           return obj;
         }
+
         
 
-        const planExists = await Plan.findOne({ planName });
-        const planDurationExists = await Plan.findOne({ planDuration });
+        // Check if plan exists for the same station with the same name or duration
+        const duplicatePlan = await Plan.findOne({
+          stationId,
+          $or: [{ planName }, { planDuration }],
+          _id: { $ne: ObjectId(_id) }, // Exclude the current plan being updated
+        });
 
-        if (planExists || planDurationExists) {
+        if (duplicatePlan) {
           obj.status = 401;
-          obj.message = "Plan name and Plan Duuration already exists";
+          obj.message = "A plan with the same name or duration already exists for this station";
           return obj;
         }
-        const result = await Plan.findOne({ _id: ObjectId(_id) });
-        if (result) {
+
+        const existingPlan = await Plan.findOne({ _id: ObjectId(_id) });
+        if (existingPlan) {
           // Handle deletion
           if (deleteRec) {
             await Plan.deleteOne({ _id: ObjectId(_id) });
@@ -557,12 +564,8 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
             return obj;
           }
 
-          // Handle update without additional validation
-          await Plan.updateOne(
-            { _id: ObjectId(_id) },
-            { $set: o },
-            { new: true }
-          );
+          // Handle update
+          await Plan.updateOne({ _id: ObjectId(_id) }, { $set: o }, { new: true });
           obj.message = "Plan updated successfully";
           obj.data = o;
         } else {
@@ -570,32 +573,31 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
           obj.message = "Plan not found";
         }
       } else {
-        // Handle create (with validation)
-        const planDurationExists = await Plan.findOne({ planName });
-        if (planDurationExists ) {
-          obj.status = 401;
-          obj.message = "plan durationmalredy exists";
-          return obj;
-        }
-
-        const planExists = await Plan.findOne({ planName });
-        if (planExists) {
-          obj.status = 401;
-          obj.message = "Plan name already exists";
-          return obj;
-        }
-
-        const stationExists = await Station.findOne({ stationId });
+        // Validate station ID
+        const stationExists = await Station.findOne({stationId });
         if (!stationExists) {
           obj.status = 401;
           obj.message = "Invalid station ID";
           return obj;
         }
 
-        const vehicleMasterExists = await VehicleMaster.findOne({ _id: ObjectId(vehicleMasterId) });
+        // Validate vehicle master ID
+        const vehicleMasterExists = await VehicleMaster.findOne({ vehicleMasterId });
         if (!vehicleMasterExists) {
           obj.status = 401;
           obj.message = "Invalid vehicle master ID";
+          return obj;
+        }
+
+        // Check for duplicate plan name or duration within the same station
+        const duplicatePlan = await Plan.findOne({
+          stationId,
+          $or: [{ planName }, { planDuration }],
+        });
+
+        if (duplicatePlan) {
+          obj.status = 401;
+          obj.message = "A plan with the same name or duration already exists for this station";
           return obj;
         }
 
@@ -610,13 +612,14 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
       obj.message = "Invalid data";
     }
   } catch (err) {
-    console.log(err);
+    console.error("Error in createPlan:", err.message);
     obj.status = 500;
-    obj.message = err.message;
+    obj.message = "An internal error occurred";
   }
 
   return obj;
 }
+
 
 
 async function createInvoice({  _id, deleteRec, bookingId, paidInvoice, userId }) {
@@ -1542,44 +1545,127 @@ const getVehicleTblData = async (query) => {
 
 
 
-const getPlanData= async(query)=>{
+// const getPlanData = async (query) => {
+//   const obj = { status: 200, message: "Plans retrieved successfully", data: [] };
+
+//   try {
+//     const { _id, stationId, locationId } = query;
+
+//     // Fetch by _id
+//     if (_id) {
+//       if (_id.length !== 24) {
+//         obj.status = 401;
+//         obj.message = "Invalid plan ID";
+//         return obj;
+//       }
+
+      
+//     }
+
+//     const filter = {};
+//     if (stationId) filter.stationId = stationId;
+//     if (locationId) filter.locationId = locationId;
+//     if (_id) filter._id = _id;
+
+//     // Fetch plans based on the filter
+//     const find=await Station.find({stationId})
+//     console.log(find)
+//     const plans = await Plan.find(filter)
+//    // .populate("stationId") // Populate station data
+//     .populate("vehicleMasterId"); // Populate vehicle data
+    
+//     if (!plans.length) {
+//       obj.message = "No records found";
+//       obj.status = 401;
+
+//       return obj;
+//     }
+
+//     obj.data = plans;
+//   } catch (error) {
+//     console.error("Error fetching plans:", error.message);
+//     obj.status = 500;
+//     obj.message = "Internal server error";
+//   }
+
+//   return obj;
+// };
+
+const getPlanData = async (query) => {
   const obj = { status: 200, message: "Plans retrieved successfully", data: [] };
+
   try {
-console.log(query._id)
-    if (query._id) {
-      if (query._id.length !== 24) {
+    const { _id, stationId, locationId } = query;
+
+    // Validate _id
+    if (_id) {
+      if (_id.length !== 24) {
         obj.status = 401;
-        obj.message = "Invalid booking ID";
+        obj.message = "Invalid plan ID";
         return obj;
       }
-     // Find Plan by _id
-     const booking = await Plan.findById(query._id);
-     if (!booking) {
-       obj.status = 404;
-       obj.message = "Booking not found";
-       return obj;
-     }
+    }
 
-     obj.data = [booking]; // Return the single Plan in an array for consistency
-     return obj;
-   }
+    const filter = [];
+    if (stationId) filter.push({ $match: { stationId } });
+    if (locationId) filter.push({ $match: { locationId } });
+    if (_id) filter.push({ $match: { _id: new mongoose.Types.ObjectId(_id) } });
 
-   const bookings = await Plan.find();
-    if (!bookings.length) {
+    // Aggregation pipeline to perform join-like operations
+    const plans = await Plan.aggregate([
+      ...filter, // Apply the filters based on query parameters
+      {
+        $lookup: {
+          from: "stations", // Join with the Station collection
+          localField: "stationId", // The field in Plan collection to match with
+          foreignField: "stationId", // The field in Station collection to match with
+          as: "stationData", // Output array of matching station data
+        },
+      },
+      {
+        $lookup: {
+          from: "vehiclemasters", // Join with the VehicleMaster collection
+          localField: "vehicleMasterId", // The field in Plan collection to match with
+          foreignField: "_id", // The field in VehicleMaster collection to match with
+          as: "vehicleMasterData", // Output array of matching vehicle data
+        },
+      },
+      {
+        $unwind: { path: "$stationData", preserveNullAndEmptyArrays: true }, // Flatten the stationData array
+      },
+      {
+        $unwind: { path: "$vehicleMasterData", preserveNullAndEmptyArrays: true }, // Flatten the vehicleMasterData array
+      },
+      {
+        $project: {
+          planName: 1,
+          planDuration:1,
+          planPrice: 1,
+          stationId: 1,
+          vehicleMasterId:1,
+          locationId: 1,
+          planDetails: 1, 
+          stationName:  "$stationData.stationName",
+          vehicleName: "$vehicleMasterData.vehicleName",
+        },
+      },
+    ]);
+
+    if (!plans.length) {
       obj.message = "No records found";
+      obj.status = 401;
       return obj;
     }
 
-    obj.data = bookings;
-
+    obj.data = plans;
   } catch (error) {
-    console.error("Error fetching bookings:", error);
+    console.error("Error fetching plans:", error.message);
     obj.status = 500;
     obj.message = "Internal server error";
   }
-  return obj;
 
-}
+  return obj;
+};
 
 const getLocationData = async (query) => {
   const obj = { status: 200, message: "data fetched successfully", data: [] }
