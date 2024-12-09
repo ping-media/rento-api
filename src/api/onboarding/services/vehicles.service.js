@@ -247,8 +247,11 @@ exports.getBookings = async (req, res) => {
 exports.booking = async (req, res) => {
   try {
     const result = await booking(req.body);
+    
     return res.status(200).json(result);
   } catch (err) {
+    console.log(err.message)
+
     return res.status(400).json({
       message: err.message,
       name: err.name,

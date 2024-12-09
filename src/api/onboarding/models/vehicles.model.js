@@ -231,7 +231,7 @@ async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, f
 async function booking({
   vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
   discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-  deleteRec, _id, discountPrice,vehicleMasterId,vehicleBrand,vehicleImage,vehicleName,stationName
+  deleteRec, _id, discountPrice, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName
 }) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -249,10 +249,7 @@ async function booking({
     return formattedDate.toISOString();
   };
 
-  // BookingStartDateAndTime=convertToISOFormat();
-
-  // BookingStartDateAndTime=convertToISOFormat()
-  // Convert start and end date-time into ISO 8601 format (string)
+  // Convert start and end date-time into ISO 8601 format
   if (BookingStartDateAndTime && BookingStartDateAndTime.startDate && BookingStartDateAndTime.startTime) {
     const { startDate, startTime } = BookingStartDateAndTime;
     BookingStartDateAndTime = convertToISOFormat(startDate, startTime);
@@ -262,10 +259,20 @@ async function booking({
     BookingEndDateAndTime = convertToISOFormat(endDate, endTime);
   }
 
+  // Generate a new booking ID
+  let sequence = 1; // Default sequence
+  const lastBooking = await Booking.findOne({})
+    .sort({ createdAt: -1 }) // Sort by latest created
+    .select('bookingId');
+
+  if (lastBooking && lastBooking.bookingId) {
+    sequence = parseInt(lastBooking.bookingId, 10) + 1; // Increment the last booking ID
+  }
+  const bookingId = sequence.toString().padStart(6, '0'); // Zero-padded booking ID
   const o = {
     vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
     discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-    bookingId: Math.floor(100000 + Math.random() * 900000),vehicleMasterId,vehicleBrand,vehicleImage,vehicleName,stationName
+    bookingId, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName
   };
 
   // Validation for `_id`
@@ -304,7 +311,7 @@ async function booking({
   } else {
     if (
       vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
-      bookingPrice && bookingStatus && paymentStatus && rideStatus &&
+      bookingPrice && bookingStatus && paymentStatus && rideStatus && bookingId &&
       paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax && vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName
     ) {
       const SaveBooking = new Booking(o);
@@ -320,6 +327,9 @@ async function booking({
 
   return obj;
 }
+
+
+
 
 
 
