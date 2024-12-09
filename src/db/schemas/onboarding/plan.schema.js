@@ -24,6 +24,8 @@ const planSchema = new Schema(
     locationId: {
       type: Schema.Types.ObjectId,
       ref: "location", // Reference the 'Location' model
+      required: true,
+
     },
     vehicleMasterId: {
       type: Schema.Types.ObjectId,

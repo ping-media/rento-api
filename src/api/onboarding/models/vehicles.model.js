@@ -538,7 +538,7 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
   const obj = { status: 200, message: "Plan created successfully", data: [] };
 
   try {
-    if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId)) {
+    if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId && locationId)) {
       let o = { planName, planPrice, stationId, planDuration, vehicleMasterId, locationId };
 
       // Handle update or delete
@@ -1611,14 +1611,17 @@ const getPlanData = async (query) => {
       }
     }
 
-    const filter = [];
-    if (stationId) filter.push({ $match: { stationId } });
-    if (locationId) filter.push({ $match: { locationId } });
-    if (_id) filter.push({ $match: { _id: new mongoose.Types.ObjectId(_id) } });
+    const matchFilter = {};
+    if (_id) {
+      matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id; // Ensure valid ObjectId
+    } else {
+      if (stationId) matchFilter.stationId = stationId;
+      if (locationId) matchFilter.locationId = new ObjectId(locationId);    }
 
     // Aggregation pipeline to perform join-like operations
     const plans = await Plan.aggregate([
-      ...filter, // Apply the filters based on query parameters
+      { $match: matchFilter },
+
       {
         $lookup: {
           from: "stations", // Join with the Station collection
