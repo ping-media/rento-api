@@ -5,7 +5,12 @@ const otpLogSchema = new Schema({
     contact: { //
         type: String,
         unique: true,
-        required: true
+      //  required: true
+    },
+    email: { //
+        type: String,
+      //  unique: true,
+      //  required: true
     },
     otp: { //
         type: String,

@@ -1,6 +1,36 @@
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const mongoose = require("mongoose")
 
+const updateManyVehicles = async (filter, updateData) => {
+  try {
+    if (typeof updateData !== 'object' || Array.isArray(updateData)) {
+      throw new Error('Update data must be an object');
+    }
+
+   
+
+    // Perform the updateMany operation
+    const result = await vehicleTable.updateMany(filter, { $set: updateData });
+
+    
+    
+    return {
+      status: 200,
+      message: `${result.modifiedCount} vehicle(s) updated successfully.`,
+      data: result
+    };
+  } catch (error) {
+    console.error('Error during updateMany:', error.message);
+
+    // Return error response
+    return {
+      status: 500,
+      message: `Error during updateMany: ${error.message}`,
+      data: []
+    };
+  }
+};
+
 const getAllVehiclesData = async (req, res) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -73,4 +103,31 @@ const getAllVehiclesData = async (req, res) => {
   }
 };
 
-module.exports = { getAllVehiclesData };
+const updateMultipleVehicles = async (req, res) => {
+  const { vehicleIds, updateData } = req.body;
+
+  // Ensure valid vehicleIds and updateData
+  if (!Array.isArray(vehicleIds) || vehicleIds.length === 0) {
+    return res.status(400).json({
+      status: 400,
+      message: "Invalid vehicle IDs"
+    });
+  }
+
+  if (!updateData || typeof updateData !== 'object') {
+    return res.status(400).json({
+      status: 400,
+      message: "Invalid update data"
+    });
+  }
+
+  // Filter for the vehicles to be updated
+  const filter = { _id: { $in: vehicleIds.map(id => mongoose.Types.ObjectId(id)) } };
+
+  // Call the updateMany function to update the vehicles
+  const result = await updateManyVehicles(filter, updateData);
+
+  return res.status(result.status).json(result);
+};
+
+module.exports = { getAllVehiclesData, updateMultipleVehicles };

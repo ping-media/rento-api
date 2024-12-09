@@ -8,6 +8,7 @@ const vehicleTableSchema = new Schema({
         ref: 'vehiclemasters',
         required: true
     },
+   
     vehicleBookingStatus: {
         type: String,
         enum: ["available", "booked"],

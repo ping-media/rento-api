@@ -12,14 +12,18 @@ const{VehicalfileUpload} = require ("../models/createVehicleMasterUpload")
 const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
-const {getAllVehiclesData}=require("../models/getAllVehicleDataAdmin")
+const {getAllVehiclesData, updateMultipleVehicles}=require("../models/getAllVehicleDataAdmin")
 const {documentUpload, getDocument} = require ("../models/DocumentUpload")
 const {getAllDocument} = require ("../models/getAllDocumentAdmin")
-
+const {emailOtp, verify} = require ("../models/otpSendByEmail")
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
   vehiclesService.createVehicle(req, res);
+})
+
+router.post("/updateMultipleVehicles", async (req, res) => {
+  updateMultipleVehicles(req, res);
 })
 
 router.post("/createBookingDuration", async (req, res) => {
@@ -336,6 +340,7 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
 router.get("/getAllVehiclesData", async (req, res) => {
   getAllVehiclesData(req, res);
 })
+
 router.get("/getAllInvoice", async (req, res) => {
  vehiclesService.getAllInvoice(req, res);
 })
@@ -362,5 +367,14 @@ router.get("/getDocument", async (req, res) => {
 router.get("/getAllDocument", async (req, res) => {
   getAllDocument(req, res);
 })
+
+
+router.post("/emailOtp", async (req, res) => {
+  emailOtp(req, res);
+ })
+
+router.post("/emailverify", async (req, res) => {
+  verify(req, res);
+ })
 
 module.exports = router;

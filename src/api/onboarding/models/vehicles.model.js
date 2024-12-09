@@ -314,7 +314,7 @@ async function booking({
       bookingPrice && bookingStatus && paymentStatus && rideStatus && bookingId &&
       paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax && vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName
     ) {
-      const SaveBooking = new Booking(o);
+      const SaveBooking = new Booking(o); 
       await SaveBooking.save();
       obj.message = "New booking saved successfully";
       obj.data = o;
@@ -1378,6 +1378,7 @@ const getVehicleTblData = async (query) => {
 
   try {
     const {
+      vehiclePlan,
       vehicleModel,
       condition,
       vehicleColor,
@@ -1388,8 +1389,9 @@ const getVehicleTblData = async (query) => {
       vehicleType,
       stationId,
       locationId,
+      page = 1, // Default page number
+      limit = 20, // Default limit per page
     } = query;
-
     if (!_id && (!BookingStartDateAndTime || !BookingEndDateAndTime)) {
       return {
         status: 400,
@@ -1406,16 +1408,14 @@ const getVehicleTblData = async (query) => {
       matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id; // Ensure valid ObjectId
     } else {
       if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
+      if (vehiclePlan) matchFilter.vehiclePlan = new ObjectId(vehiclePlan);
       if (condition) matchFilter.condition = condition;
       if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
       if (stationId) matchFilter.stationId = stationId;
-      if (locationId) matchFilter.locationId = locationId;
-    }
+      if (locationId) matchFilter.locationId = new ObjectId(locationId);    }
 
     const pipeline = [
-      {
-        $match: matchFilter,
-      },
+      { $match: matchFilter },
       {
         $lookup: {
           from: "bookings",
@@ -1424,7 +1424,6 @@ const getVehicleTblData = async (query) => {
           as: "bookings",
         },
       },
-
       {
         $lookup: {
           from: "stations",
@@ -1462,30 +1461,9 @@ const getVehicleTblData = async (query) => {
           },
         },
       },
-      {
-        $match: {
-          "conflictingBookings.0": { $exists: false }, // Exclude vehicles with conflicting bookings
-        },
-      },
-      // {
-      //   $lookup: {
-      //     from: "vehiclemasters",
-      //     localField: "vehicleMasterId",
-      //     foreignField: "_id",
-      //     as: "vehicleMasterData",
-      //   },
-      // },
-      // {
-      //   $lookup: {
-      //     from: "stations",
-      //     localField: "stationId",
-      //     foreignField: "stationId",
-      //     as: "stationData",
-      //   },
-      // },
+      { $match: { "conflictingBookings.0": { $exists: false } } },
       {
         $addFields: {
-          // Extract single documents from the lookup results
           vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
           stationData: { $arrayElemAt: ["$stationData", 0] },
         },
@@ -1499,6 +1477,7 @@ const getVehicleTblData = async (query) => {
       {
         $project: {
           _id: 1,
+          
           vehicleStatus: 1,
           freeKms: 1,
           vehicleMasterId: 1,
@@ -1520,12 +1499,26 @@ const getVehicleTblData = async (query) => {
           vehicleImage: "$vehicleMasterData.vehicleImage",
         },
       },
+      {
+        $facet: {
+          metadata: [
+            { $count: "total" },
+            { $addFields: { page: parseInt(page, 10), limit: parseInt(limit, 10) } },
+            
+          ],
+          data: [
+            { $skip: (parseInt(page, 10) - 1) * parseInt(limit, 10) },
+            { $limit: parseInt(limit, 10) },
+          ],
+        },
+      },
     ];
-    
-    const availableVehicles = await vehicleTable.aggregate(pipeline);
 
-    if (availableVehicles.length) {
-      response.data = availableVehicles;
+    const results = await vehicleTable.aggregate(pipeline);
+
+    if (results.length && results[0].metadata.length) {
+      response.data = results[0].data;
+      response.pagination = results[0].metadata[0];
     } else {
       response.message = _id
         ? "No vehicle found with the given ID."
@@ -1539,6 +1532,8 @@ const getVehicleTblData = async (query) => {
 
   return response;
 };
+
+
 
 
 

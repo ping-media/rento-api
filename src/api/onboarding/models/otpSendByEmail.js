@@ -21,22 +21,22 @@ const transporter = nodemailer.createTransport({
     const  contact = req.body.contact;
     const  email = req.body.email;
   
-    
-      const user = await User.findOne({ contact });
-      if (user) {
-        return res.status(404).json({
-          status: 404,
-          message: "User alredy  exist",
-        });
-      }
+
+    if (!email) {
+      return res.status(400).json({
+        status: 400,
+        message: "email  is required",
+      });
+    }
+     
   
       const otp = Math.floor(100000 + Math.random() * 900000);
   
   
       // Save OTP using upsert to avoid duplicates
       await Otp.updateOne(
-        { contact }, // Filter by contact
-        { contact, otp, createdAt: new Date(), expiresAt: new Date(Date.now() + 5 * 60 * 1000) }, // Update fields
+        { email }, // Filter by contact
+        { email, otp, createdAt: new Date(), expiresAt: new Date(Date.now() + 5 * 60 * 1000) }, // Update fields
         { upsert: true } 
       );
   
@@ -97,4 +97,63 @@ async function sendOtpByEmail(email, otp) {
     }
   }
 
-  module.exports= {emailOtp}
+  async function verify(req, res) {
+    try {
+      const { email, otp } = req.body;
+  
+      if ( !otp) {
+        return res.status(400).json({
+          status: 400,
+          message: " OTP are required",
+        });
+      }
+
+     
+     
+      const record = await Otp.findOne({ email });
+      if (!record) {
+        return res.status(404).json({
+          status: 404,
+          message: "No OTP found for the given email",
+        });
+      }
+  
+      
+      // Verify OTP
+      if (otp === record.otp) { 
+        const find = await User.findOne({email})
+      
+        if(find.isContactVerified == "no"){
+         const _id= find._id;
+         
+          await User.findByIdAndUpdate(_id, find.isEmailVerified = "yes", { new: true });
+          //return { status: 200, message: "User updated successfully", data: userObj };
+        }
+        await Otp.deleteOne({ email });
+  
+        return res.status(200).json({
+          status: 200,
+          message: "OTP verified successfully",
+          data: find
+        });
+      } else {
+        return res.status(401).json({
+          status: 401,
+          message: "Invalid OTP",
+        });
+      }
+
+     
+
+
+    } catch (error) {
+      console.error("Error in verify function:", error.message);
+      return res.status(500).json({
+        status: 500,
+        message: "An error occurred while processing the request",
+      });
+    }
+  }
+  
+
+  module.exports= {emailOtp, verify}
