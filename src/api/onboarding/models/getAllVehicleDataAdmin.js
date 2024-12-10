@@ -104,7 +104,7 @@ const getAllVehiclesData = async (req, res) => {
 };
 
 const updateMultipleVehicles = async (req, res) => {
-  const { vehicleIds, updateData } = req.body;
+  const { vehicleIds, updateData, deleteRec } = req.body;
 
   // Ensure valid vehicleIds and updateData
   if (!Array.isArray(vehicleIds) || vehicleIds.length === 0) {
@@ -114,12 +114,27 @@ const updateMultipleVehicles = async (req, res) => {
     });
   }
 
+  if (deleteRec){
+    const result = await vehicleTable.deleteMany({
+      _id: { $in: vehicleIds.map(id => mongoose.Types.ObjectId(id)) }
+    });
+  
+    return res.status(200).json({
+      status: 200,
+      message: `${result.deletedCount} vehicle(s) deleted successfully.`,
+      data: result
+    });
+  }
+
   if (!updateData || typeof updateData !== 'object') {
     return res.status(400).json({
       status: 400,
       message: "Invalid update data"
     });
   }
+
+
+
 
   // Filter for the vehicles to be updated
   const filter = { _id: { $in: vehicleIds.map(id => mongoose.Types.ObjectId(id)) } };

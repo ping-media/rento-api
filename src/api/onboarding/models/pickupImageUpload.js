@@ -2,7 +2,7 @@ const path = require('path');
 const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 require('dotenv').config();
-const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
+const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 
 // Validate required environment variables
 const { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME } = process.env;
@@ -28,9 +28,9 @@ const upload = multer({
 });
 
 // Function to upload document
-const documentUpload = async (req, res) => {
+const pickupImageUpload = async (req, res) => {
   try {
-      const { userId, docType } = req.body;
+      const { userId } = req.body;
       
 
       // Validate userId
@@ -62,23 +62,23 @@ const documentUpload = async (req, res) => {
       }
 
       // Check if a document already exists for the user
-      const existingDocument = await Document.findOne({ userId }).maxTimeMS(30000); // 30 seconds timeout
+    //   const existingDocument = await Document.findOne({ userId }).maxTimeMS(30000); // 30 seconds timeout
 
-      if (existingDocument) {
-          // Append new files to the existing document
-          const updatedFiles = existingDocument.files || [];
-          updatedFiles.push(...uploadedFiles);
+    //   if (existingDocument) {
+    //       // Append new files to the existing document
+    //       const updatedFiles = existingDocument.files || [];
+    //       updatedFiles.push(...uploadedFiles);
 
-          await Document.updateOne({ userId }, { $set: { files: updatedFiles } });
-          return res.status(200).json({
-              status: 200,
-              message: "Files uploaded successfully.",
-              uploadedFiles,
-          });
-      }
+        //   await Document.updateOne({ userId }, { $set: { files: updatedFiles } });
+        //   return res.status(200).json({
+        //       status: 200,
+        //       message: "Files uploaded successfully.",
+        //       uploadedFiles,
+        //   });
+     // }
 
       // Create a new document if none exists
-      const newDocument = new Document({
+      const newDocument = new pickupImage({
           userId,
           files: uploadedFiles,
       });
@@ -114,8 +114,8 @@ const getDocument = async (req, res) => {
       const documents = await Document.find({ userId });
   
       if (!documents || documents.length === 0) {
-        return res.status(400).json({
-          status: 400,
+        return res.status(404).json({
+          status: 404,
           message: "No documents found for the provided User ID.",
         });
       }

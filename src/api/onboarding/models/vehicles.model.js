@@ -1392,13 +1392,16 @@ const getVehicleTblData = async (query) => {
       page = 1, // Default page number
       limit = 20, // Default limit per page
     } = query;
-    if (!_id && (!BookingStartDateAndTime || !BookingEndDateAndTime)) {
-      return {
-        status: 400,
-        message: "Booking start and end dates are required.",
-        data: [],
-      };
+    if(!locationId){
+      if (!_id && (!BookingStartDateAndTime || !BookingEndDateAndTime)) {
+        return {
+          status: 400,
+          message: "Booking start and end dates are required.",
+          data: [],
+        };
+      }
     }
+    
 
     const startDate = BookingStartDateAndTime; 
     const endDate = BookingEndDateAndTime;
