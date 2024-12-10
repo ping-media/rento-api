@@ -87,9 +87,9 @@ const getAllVehiclesData = async (req, res) => {
 
     if (!vehicles.length) {
       obj.message = "No records found";
-      obj.status = 404;
+      obj.status = 400;
 
-      return res.status(404).json(obj);
+      return res.json(obj);
     }
 
     obj.data = vehicles;

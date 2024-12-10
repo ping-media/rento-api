@@ -211,13 +211,13 @@ async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, f
           }
         } else {
           response.status = 401
-          response.message = "Something is missing"
+          response.message = "All fields required"
           return response
         }
       }
     } else {
       response.status = 401
-      response.message = "Something is missing"
+      response.message = "All fields required"
     }
     return response
   } catch (error) {
