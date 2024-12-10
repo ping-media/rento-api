@@ -471,6 +471,10 @@ async function saveUser(userData) {
         await User.findByIdAndDelete(_id);
         return { status: 200, message: "User deleted successfully", data: { _id } };
       }
+      if(userType=="customer"){
+        await User.findByIdAndUpdate(_id, {firstName,lastName,gender,altContact,dateofbirth}, { new: true });
+
+      }
       await User.findByIdAndUpdate(_id, userObj, { new: true });
       return { status: 200, message: "User updated successfully", data: userObj };
     } else {
