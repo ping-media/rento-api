@@ -16,6 +16,7 @@ const {getAllVehiclesData, updateMultipleVehicles}=require("../models/getAllVehi
 const {documentUpload, getDocument} = require ("../models/DocumentUpload")
 const {getAllDocument} = require ("../models/getAllDocumentAdmin")
 const {emailOtp, verify} = require ("../models/otpSendByEmail")
+const {getPickupImage, pickupImageUp} = require ("../models/pickupImageUpload")
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -376,5 +377,19 @@ router.post("/emailOtp", async (req, res) => {
 router.post("/emailverify", async (req, res) => {
   verify(req, res);
  })
+
+
+ router.post("/pickupImage", upload.array('images',5), async (req, res) => {
+  
+  
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).send({ message: 'File upload failed. No files provided.' });
+    }
+pickupImageUp(req, res)
+})
+
+router.get("/getPickupImage", async (req, res) => {
+  getPickupImage(req, res);
+})
 
 module.exports = router;

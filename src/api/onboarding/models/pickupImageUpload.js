@@ -28,7 +28,7 @@ const upload = multer({
 });
 
 // Function to upload document
-const pickupImageUpload = async (req, res) => {
+const pickupImageUp = async (req, res) => {
   try {
       const { userId } = req.body;
       
@@ -45,7 +45,7 @@ const pickupImageUpload = async (req, res) => {
 
       // Loop through files and upload to S3
       for (const file of req.files) {
-           fileName = `${docType}`;
+           fileName = `${userId}`;
           const params = {
               Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
               Key: fileName, // File Name
@@ -100,7 +100,7 @@ const pickupImageUpload = async (req, res) => {
 
 
 
-const getDocument = async (req, res) => {
+const getPickupImage = async (req, res) => {
     try {
       const { userId } = req.query;
   
@@ -111,25 +111,25 @@ const getDocument = async (req, res) => {
         });
       }
   
-      const documents = await Document.find({ userId });
+      const documents = await pickupImage.find({ userId });
   
       if (!documents || documents.length === 0) {
         return res.status(404).json({
           status: 404,
-          message: "No documents found for the provided User ID.",
+          message: "No data found for the provided User ID.",
         });
       }
   
       return res.status(200).json({
         status: 200,
-        message: "Documents retrieved successfully.",
+        message: "Image retrieved successfully.",
         data: documents,
       });
     } catch (error) {
       console.error("Error fetching documents:", error);
       return res.status(500).json({
         status: 500,
-        message: "Failed to retrieve documents.",
+        message: "Failed to retrieve Image.",
         error: error.message,
       });
     }
@@ -137,4 +137,4 @@ const getDocument = async (req, res) => {
   
 
 
-module.exports = { documentUpload, getDocument };
+module.exports = { pickupImageUp, getPickupImage };

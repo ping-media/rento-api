@@ -114,7 +114,7 @@ const getDocument = async (req, res) => {
       const documents = await Document.find({ userId });
   
       if (!documents || documents.length === 0) {
-        return res.status(400).json({
+        return res.json({
           status: 400,
           message: "No documents found for the provided User ID.",
         });
