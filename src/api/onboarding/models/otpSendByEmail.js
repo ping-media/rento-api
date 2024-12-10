@@ -97,8 +97,8 @@ async function verify(req, res) {
 
     if (new Date() > record.expiresAt) {
       await Otp.deleteOne({ email });
-      return res.status(410).json({
-        status: 410,
+      return res.status(404).json({
+        status: 404,
         message: "OTP has expired",
       });
     }

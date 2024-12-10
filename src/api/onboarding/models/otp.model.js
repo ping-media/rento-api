@@ -102,60 +102,64 @@ function sendOtpViaFast2Sms(contact, otp) {
     try {
       const { contact, otp } = req.body;
   
+      // Validate inputs
       if (!contact || !otp) {
         return res.status(400).json({
           status: 400,
           message: "Contact number and OTP are required",
         });
       }
-
-      if(contact=="9389046742" || contact=="8433408211"){
-        if(otp=="123456"){
-        const find = await User.findOne({contact})
+  
+      // Hardcoded OTP verification for specific contacts (example for testing purposes)
+      if ((contact === "9389046742" || contact === "8433408211") && otp === "123456") {
+        const user = await User.findOne({ contact });
         return res.status(200).json({
           status: 200,
-          message: "OTP verified successfully",
-          data: find
+          message: "OTP verified successfully (Hardcoded logic)",
+          data: user,
         });
       }
-      }
-     
-      const record = await Otp.findOne({ contact });
-      if (!record) {
+  
+      // Find OTP record for the given contact
+      const otpRecord = await Otp.findOne({ contact });
+      if (!otpRecord) {
         return res.status(404).json({
           status: 404,
           message: "No OTP found for the given contact number",
         });
       }
   
-      
-      // Verify OTP
-      if (otp === record.otp) { 
-        const find = await User.findOne({contact})
-      
-        if(find.isContactVerified == "no"){
-         const _id= find._id;
-         
-          await User.findByIdAndUpdate(_id, find.isContactVerified = "yes", { new: true });
-          //return { status: 200, message: "User updated successfully", data: userObj };
-        }
-        await Otp.deleteOne({ contact });
-  
-        return res.status(200).json({
-          status: 200,
-          message: "OTP verified successfully",
-          data: find
-        });
-      } else {
+      // Check if OTP is correct
+      if (otp !== otpRecord.otp) {
         return res.status(401).json({
           status: 401,
           message: "Invalid OTP",
         });
       }
-
-     
-
-
+  
+      // OTP is valid, proceed with user verification
+      const user = await User.findOne({ contact });
+      if (!user) {
+        return res.status(404).json({
+          status: 404,
+          message: "No user found for the given contact number",
+        });
+      }
+  
+      // Update user's contact verification status if necessary
+      if (user.isContactVerified === "no") {
+        await User.findByIdAndUpdate(user._id, { isContactVerified: "yes" }, { new: true });
+      }
+  
+      // Delete the OTP record after successful verification
+      await Otp.deleteOne({ contact });
+  
+      // Return success response
+      return res.status(200).json({
+        status: 200,
+        message: "OTP verified successfully",
+        data: user,
+      });
     } catch (error) {
       console.error("Error in verify function:", error.message);
       return res.status(500).json({
@@ -164,6 +168,7 @@ function sendOtpViaFast2Sms(contact, otp) {
       });
     }
   }
+  
   
   
 module.exports = {optGernet, verify};

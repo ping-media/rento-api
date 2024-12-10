@@ -297,6 +297,11 @@ async function booking({
       return obj;
     }
     if (deleteRec) {
+      await vehicleTable.updateOne(
+        { vehicleTableId: ObjectId(vehicleTableId) },
+        { $set: {vehicleBookingStatus:"available"} },
+        { new: true }
+      );
       await Booking.deleteOne({ _id: ObjectId(_id) });
       obj.message = "Booking deleted successfully";
       obj.status = 200;
@@ -314,6 +319,11 @@ async function booking({
       bookingPrice && bookingStatus && paymentStatus && rideStatus && bookingId &&
       paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax && vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName
     ) {
+      await vehicleTable.updateOne(
+        { vehicleTableId: ObjectId(vehicleTableId) },
+        { $set: {vehicleBookingStatus:"booked"} },
+        { new: true }
+      );
       const SaveBooking = new Booking(o); 
       await SaveBooking.save();
       obj.message = "New booking saved successfully";
