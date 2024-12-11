@@ -11,6 +11,15 @@ const locationSchema = new Schema({
       required: true
     }
   }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
+
+  locationSchema.pre('save', function (next) {
+    if (this.locationName) {
+      this.locationName = this.locationName.toLowerCase(); 
+    }
+   
+    next();
+  });
+  
   
   const location = mongoose.model('location', locationSchema);
   

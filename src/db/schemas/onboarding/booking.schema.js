@@ -83,6 +83,24 @@ const bookingSchema = new Schema({
     },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
+bookingSchema.pre('save', function (next) {
+    if (this.payInitFrom) {
+      this.payInitFrom = this.payInitFrom.toLowerCase(); 
+    }
+    if (this.stationName) {
+      this.stationName = this.stationName.toLowerCase(); 
+    }
+    if (this.vehicleName) {
+      this.vehicleName = this.vehicleName.toLowerCase(); 
+    }
+    if (this.vehicleBrand) {
+      this.vehicleBrand = this.vehicleBrand.toLowerCase(); 
+    }
+   
+    next();
+  });
+  
+
 const booking = mongoose.model('booking', bookingSchema);
 
 module.exports = booking;

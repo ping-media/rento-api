@@ -22,6 +22,20 @@ const vehicleMasterSchema = new Schema({
     },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
+vehicleMasterSchema.pre('save', function (next) {
+    if (this.vehicleName) {
+      this.vehicleName = this.vehicleName.toLowerCase(); 
+    }
+    if (this.vehicleBrand) {
+      this.vehicleBrand = this.vehicleBrand.toLowerCase(); 
+    }
+    if(this.vehicleType){
+        this.vehicleType = this.vehicleType.toLowerCase();
+    }
+    next();
+  });
+
+
 const vehicleMaster = mongoose.model('vehicleMaster', vehicleMasterSchema);
 
 module.exports = vehicleMaster;

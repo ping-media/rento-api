@@ -47,6 +47,23 @@ const stationSchema = new Schema({
       type: String
     }
   }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
+
+  stationSchema.pre('save', function (next) {
+    if (this.stationName) {
+      this.stationName = this.stationName.toLowerCase(); 
+    }
+    if (this.country) {
+      this.country = this.country.toLowerCase(); 
+    }
+    if (this.state) {
+      this.state = this.state.toLowerCase(); 
+    }
+    if (this.city) {
+      this.city = this.city.toLowerCase(); 
+    }
+   
+    next();
+  });
   
   const station = mongoose.model('station', stationSchema);
   

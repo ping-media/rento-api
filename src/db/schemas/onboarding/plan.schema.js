@@ -36,6 +36,16 @@ const planSchema = new Schema(
   { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
 );
 
+planSchema.pre('save', function (next) {
+  if (this.planName) {
+    this.planName = this.planName.toLowerCase(); 
+  }
+  
+ 
+  next();
+});
+
+
 const Plan = mongoose.model("Plan", planSchema);
 
 module.exports = Plan;

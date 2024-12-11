@@ -30,8 +30,19 @@ const upload = multer({
 // Function to upload document
 const documentUpload = async (req, res) => {
   try {
-      const { userId, docType } = req.body;
+      const { userId, docType, _id, deleteRec} = req.body;
       
+      if(_id){
+        if(deleteRec){
+          await Document.deleteOne({ _id: ObjectId(_id) });
+      obj.message = "Document deleted successfully";
+      obj.status = 200;
+      obj.data = { _id };
+      return obj;
+        }
+      }
+
+
 
       // Validate userId
       if (!userId || userId.length !== 24) {
@@ -45,6 +56,7 @@ const documentUpload = async (req, res) => {
 
       // Loop through files and upload to S3
       for (const file of req.files) {
+
            fileName = `${docType}${userId}`;
           const params = {
               Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name

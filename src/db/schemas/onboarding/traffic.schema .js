@@ -29,6 +29,17 @@ const trafficSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+trafficSchema.pre('save', function (next) {
+  if (this.Name) {
+    this.Name = this.Name.toLowerCase(); 
+  }
+  if (this.Gender) {
+    this.Gender = this.Gender.toLowerCase(); 
+  }
+ 
+  next();
+});
+
 const Traffic = mongoose.model('Traffic', trafficSchema);
 
 module.exports = Traffic;

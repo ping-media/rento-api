@@ -29,6 +29,16 @@ const couponSchema = new Schema({
       required: true      
     }
   }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
+
+  couponSchema.pre('save', function (next) {
+    if (this.couponName) {
+      this.couponName = this.couponName.toLowerCase(); 
+    }
+    
+   
+    next();
+  });
+  
   
   const coupon = mongoose.model('coupon', couponSchema);
   

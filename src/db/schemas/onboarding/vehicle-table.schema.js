@@ -16,7 +16,7 @@ const vehicleTableSchema = new Schema({
     },
     vehicleStatus: {
         type: String,
-        enum: ["active", "inActive"],
+        enum: ["active", "inactive"],
         required: true
     },
     freeKms: {
@@ -76,6 +76,20 @@ const vehicleTableSchema = new Schema({
         required: true
     }
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
+
+// Pre-save middleware to convert fields to lowercase
+vehicleTableSchema.pre('save', function (next) {
+    if (this.name) {
+      this.name = this.name.toLowerCase(); 
+    }
+    if (this.brand) {
+      this.brand = this.brand.toLowerCase(); 
+    }
+    if(this.vehicleColor){
+        this.vehicleColor = this.vehicleColor.toLowerCase();
+    }
+    next();
+  });
 
 const vehicleTable = mongoose.model('vehicleTable', vehicleTableSchema);
 

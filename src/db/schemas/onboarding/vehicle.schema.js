@@ -44,6 +44,18 @@ const VehicleSchema = new Schema({
   }
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
+
+// Pre-save middleware to convert fields to lowercase
+VehicleSchema.pre('save', function (next) {
+  if (this.name) {
+    this.name = this.name.toLowerCase(); // Convert name to lowercase
+  }
+  if (this.brand) {
+    this.brand = this.brand.toLowerCase(); // Convert brand to lowercase
+  }
+  next();
+});
+
 const Vehicle = mongoose.model('Vehicle', VehicleSchema);
 
 module.exports = Vehicle;
