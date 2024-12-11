@@ -2,6 +2,8 @@
 const { sendEmail } = require("../../../utils/email/index");
 
 // import packages
+const JWT = require("jsonwebtoken");
+const bcrypt=require("bcrypt");
 require("dotenv").config();
 const { mongoose } = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
@@ -441,6 +443,8 @@ async function saveUser(userData) {
       return { status: 400, message: "Invalid email address" };
     }
 
+    const hash= bcrypt.hashSync(password,8);
+
     // Prepare user object
     const userObj = {
       addressProof,
@@ -456,7 +460,7 @@ async function saveUser(userData) {
       lastName,
       contact,
       email,
-      password,
+      password:hash,
       dateofbirth,
       gender,
     };

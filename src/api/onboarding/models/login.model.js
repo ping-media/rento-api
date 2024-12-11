@@ -4,6 +4,7 @@ const { sendEmail } = require("../../../utils/email/index");
 // import packages
 require("dotenv").config();
 const JWT = require("jsonwebtoken");
+const bcrypt=require("bcrypt");
 const moment = require("moment");
 const { mongoose } = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
@@ -84,13 +85,25 @@ async function guestLogin({ ip }) {
 
 async function adminLogin({ email, password }) {
   const obj = { status: 200, message: "Admin logged in successfully", data: [], token: "" }
-  if(email && password){
-    const result = await User.findOne({ email, password }, { password: 0 });
+  if (email && password) {
+    // Find the user by email
+    const result = await User.findOne({ email });
+    console.log(result)
     if (!result) {
-      obj.status = 401
-      obj.message = "invalid credentials"
-      return obj
+      obj.status = 401;
+      obj.message = "Invalid credentials";
+      return obj;
     }
+
+    // Compare the provided password with the stored hash
+    const isMatch = bcrypt.compareSync(password, result.password);
+
+    if (!isMatch) {
+      obj.status = 401;
+      obj.message = "Invalid credentials";
+      return obj;
+    }
+
     const token = JWT.sign({ id: result._id }, BCRYPT_TOKEN);
     obj.data = result
     obj.token = token
