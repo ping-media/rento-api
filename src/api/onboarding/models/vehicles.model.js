@@ -270,12 +270,12 @@ async function booking({
   }
   const bookingId = sequence.toString().padStart(6, '0'); // Zero-padded booking ID
   const find= await station.find({stationName})
-  const stationId = find[0].stationId;
+  const stationMasterUserId = find[0].userId;
   //console.log(stationId)
   const o = {
     vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
     discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-    bookingId, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName,stationId
+    bookingId, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName,stationMasterUserId
   };
 
   // Validation for `_id`

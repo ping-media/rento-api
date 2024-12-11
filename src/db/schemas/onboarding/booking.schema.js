@@ -81,7 +81,7 @@ const bookingSchema = new Schema({
         type: String,
         required: true
     },
-    stationId: {
+    stationMasterUserId: {
         type: String,
         required: true
     },
