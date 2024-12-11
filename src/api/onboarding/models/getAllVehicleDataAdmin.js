@@ -77,6 +77,7 @@ const getAllVehiclesData = async (req, res) => {
           "kmsRun": 1,
           "isBooked": 1,
           "condition": 1,
+          "locationId":1,
           "createdAt": 1,
           "updatedAt": 1,
           
