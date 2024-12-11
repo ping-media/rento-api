@@ -269,10 +269,13 @@ async function booking({
     sequence = parseInt(lastBooking.bookingId, 10) + 1; // Increment the last booking ID
   }
   const bookingId = sequence.toString().padStart(6, '0'); // Zero-padded booking ID
+  const find= await station.find({stationName})
+  const stationId = find[0].stationId;
+  //console.log(stationId)
   const o = {
     vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
     discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-    bookingId, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName
+    bookingId, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName,stationId
   };
 
   // Validation for `_id`

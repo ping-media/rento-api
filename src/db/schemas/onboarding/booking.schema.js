@@ -81,6 +81,10 @@ const bookingSchema = new Schema({
         type: String,
         required: true
     },
+    stationId: {
+        type: String,
+        required: true
+    },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
 bookingSchema.pre('save', function (next) {
