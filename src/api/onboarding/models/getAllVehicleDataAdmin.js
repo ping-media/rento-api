@@ -81,7 +81,8 @@ const getAllVehiclesData = async (req, res) => {
           "createdAt": 1,
           "updatedAt": 1,
           
-          "vehicleImage": "$vehicleMasterData.vehicleImage" 
+          "vehicleImage": "$vehicleMasterData.vehicleImage" ,
+          "vehicleName": "$vehicleMasterData.vehicleName" 
         }
       }
     ]);
