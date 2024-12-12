@@ -442,9 +442,7 @@ async function saveUser(userData) {
     if (email && !isValidEmail(email)) {
       return { status: 400, message: "Invalid email address" };
     }
-
-    const hash= bcrypt.hashSync(password,8);
-
+   
     // Prepare user object
     const userObj = {
       addressProof,
@@ -460,7 +458,7 @@ async function saveUser(userData) {
       lastName,
       contact,
       email,
-      password:hash,
+      password,
       dateofbirth,
       gender,
     };
@@ -476,7 +474,7 @@ async function saveUser(userData) {
         return { status: 200, message: "User deleted successfully", data: { _id } };
       }
      
-      await User.findByIdAndUpdate(_id, userObj, { new: true });
+      await User.findByIdAndUpdate(_id, {$set:userObj}, { new: true });
       return { status: 200, message: "User updated successfully", data: userObj };
     } else {
       if (!firstName || !lastName || !contact || !email) {
@@ -493,6 +491,14 @@ async function saveUser(userData) {
       //   }
       //   await Otp.deleteOne({ contact });
       // }
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
+      if (!passwordRegex.test(password)) {
+        return { status: 400, message: "Password validation not match" };
+    }
+  
+      const hash= bcrypt.hashSync(password,8);
+      
+      userObj.password=hash
 
       const newUser = new User(userObj);
       await newUser.save();
