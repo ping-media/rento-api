@@ -1,51 +1,27 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  userType: {
-    type: String,
-    enum: ["manager", "customer", "admin"],
-    required: true
-  },
+ 
   otp: {
     type: Number
   },
   password: {
     type: String
   },
-  isEmailVerified: {
-    type: String,
-    enum: ["yes", "no"],
-    default: "no"
-  },
-  isContactVerified: {
-    type: String,
-    enum: ["yes", "no"],
-    default: "no"
-  },
-  kycApproved: {
-    type: String,
-    enum: ["yes", "no"],
-    default: "no"
-  },
+ 
   // userDocuments: {
   //   type: Array,
   //   default: []
   // },
-  status: {
+  
+ 
+ 
+  firstName: {
     type: String,
-    enum: ["active", "inactive"],
-    required: true
-  },
-  gender: {
-    type: String,
-    enum: ["male", "female", "not specified", "others"],
-    default:"not specified"
-  },
-  altContact: {
-    type: Number,
+    required: true,
     trim: true
   },
-  firstName: {
+  lastName: {
     type: String,
     required: true,
     trim: true
@@ -65,16 +41,16 @@ const userSchema = new mongoose.Schema({
    // required: true,
     trim: true
   },
-  lastName: {
-    type: String,
-    required: true,
-    trim: true
-  },
+ 
   contact: {
     type: Number,
     required: true,
     trim: true,
     unique: true
+  },
+  altContact: {
+    type: Number,
+    trim: true
   },
   email: {
     type: String,
@@ -83,7 +59,38 @@ const userSchema = new mongoose.Schema({
   dateofbirth: {
     type: String,
    
-  }
+  },
+  gender: {
+    type: String,
+    enum: ["male", "female", "not specified", "others"],
+    default:"not specified"
+  },
+  userType: {
+    type: String,
+    enum: ["manager", "customer", "admin"],
+    required: true
+  },
+  
+   isEmailVerified: {
+    type: String,
+    enum: ["yes", "no"],
+    default: "no"
+  },
+  isContactVerified: {
+    type: String,
+    enum: ["yes", "no"],
+    default: "no"
+  },
+  kycApproved: {
+    type: String,
+    enum: ["yes", "no"],
+    default: "no"
+  },
+  status: {
+    type: String,
+    enum: ["active", "inactive"],
+    required: true
+  },
 }, { timestamps: true });
 
 

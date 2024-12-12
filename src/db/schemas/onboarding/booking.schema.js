@@ -65,7 +65,15 @@ const bookingSchema = new Schema({
         required: true
     },
     
-    
+    paymentMethod: {
+        type: String,
+        enum: ['cash', 'card', 'upi', 'wallet'],
+        required: true
+    },
+    invoice: {
+        type: Schema.Types.ObjectId,
+        ref: 'invoice-tbl'
+    },  
     bookingStatus: {
         enum: ['pending', 'completed', 'canceled'],
         type: String,
@@ -81,15 +89,8 @@ const bookingSchema = new Schema({
         type: String,
         required: true
     },
-    invoice: {
-        type: Schema.Types.ObjectId,
-        ref: 'invoice-tbl'
-    },  
-    paymentMethod: {
-        type: String,
-        enum: ['cash', 'card', 'upi', 'wallet'],
-        required: true
-    },
+    
+   
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
 bookingSchema.pre('save', function (next) {
