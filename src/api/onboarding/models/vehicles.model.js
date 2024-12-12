@@ -1501,6 +1501,11 @@ const getVehicleTblData = async (query) => {
       {
         $project: {
           _id: 1,
+          vehicleImage: "$vehicleMasterData.vehicleImage",
+          vehicleBrand: "$vehicleMasterData.vehicleBrand",
+          vehicleName: "$vehicleMasterData.vehicleName",
+          vehicleType: "$vehicleMasterData.vehicleType",
+          stationName: "$stationData.stationName",
           speedLimit:1,
           refundableDeposit:1,
           latefee:1,
@@ -1518,11 +1523,11 @@ const getVehicleTblData = async (query) => {
           condition: 1,
           locationId: 1,
           stationId: 1,
-          stationName: "$stationData.stationName",
-          vehicleName: "$vehicleMasterData.vehicleName",
-          vehicleType: "$vehicleMasterData.vehicleType",
-          vehicleBrand: "$vehicleMasterData.vehicleBrand",
-          vehicleImage: "$vehicleMasterData.vehicleImage",
+         
+        
+          
+          
+          
         },
       },
       {
