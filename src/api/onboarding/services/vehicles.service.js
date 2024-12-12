@@ -35,7 +35,7 @@ exports.getStationData = async (req, res) => {
     const result = await getStationData(req.query);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -49,7 +49,7 @@ exports.getVehicleBookrecode = async (req, res) => {
     const result = await getVehicleBookrecode(req.query);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -63,7 +63,7 @@ exports.getCoupons = async (req, res) => {
     const result = await getCoupons(req.query);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -78,7 +78,7 @@ exports.getVehicleTblData = async (req, res) => {
     const result = await getVehicleTblData(req.query);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -92,7 +92,7 @@ exports.getPlanData = async (req, res) => {
     const result = await getPlanData(req.query);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -105,7 +105,7 @@ exports.getLocationData = async (req, res) => {
     const result = await getLocationData(req.query);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -120,7 +120,7 @@ exports.createVehicle = async (req, res) => {
     const result = await createVehicle(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -134,7 +134,7 @@ exports.createCoupon = async (req, res) => {
     const result = await createCoupon(req.query);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -148,7 +148,7 @@ exports.VehicleBookrecode = async (req, res) => {
     const result = await VehicleBookrecode(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -162,7 +162,7 @@ exports.createBookingDuration = async (req, res) => {
     const result = await createBookingDuration(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -176,7 +176,7 @@ exports.searchVehicle = async (req, res) => {
     const result = await searchVehicle(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -190,7 +190,7 @@ exports.getLocations = async (req, res) => {
     const result = await getLocations(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -204,7 +204,7 @@ exports.getAllBookingDuration = async (req, res) => {
     const result = await getAllBookingDuration(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -218,7 +218,7 @@ exports.getVehicleMasterData = async (req, res) => {
     const result = await getVehicleMasterData(req.query);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -234,7 +234,7 @@ exports.getBookings = async (req, res) => {
     const result = await getBookings(req.query);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -252,7 +252,7 @@ exports.booking = async (req, res) => {
   } catch (err) {
     console.log(err.message)
 
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -266,7 +266,7 @@ exports.createOrder = async (req, res) => {
     const result = await createOrder(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -280,7 +280,7 @@ exports.createVehicleMaster = async (req, res) => {
     const result = await createVehicleMaster(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -295,7 +295,7 @@ exports.getOrders = async (req, res) => {
     const result = await getOrders();
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -312,13 +312,13 @@ exports.createLocation = async  (req, res) =>{
     if (contentType.includes("multipart/form-data")) {
       fileUpload(req, res)
     } else {
-      return res.status(400).json({
+      return res.json({
         message: "Json data is not allowed",
         status: 400,
       });
     }
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -334,7 +334,7 @@ exports.createLocation1 = async (req, res) => {
     const result = await createLocation(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -348,7 +348,7 @@ exports.createPlan = async (req, res) => {
     const result = await createPlan(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -362,7 +362,7 @@ exports.discountCoupons = async (req, res) => {
     const result = await discountCoupons(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -378,7 +378,7 @@ exports.createInvoice = async (req, res) => {
     const result = await createInvoice(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -393,7 +393,7 @@ exports.createStation = async (req, res) => {
     const result = await createStation(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -411,7 +411,7 @@ exports.getMessages = async (req, res) => {
     const result = await getMessages(req.params.chatId);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -425,7 +425,7 @@ exports.getAllVehicles = async (req, res) => {
     const result = await getAllVehicles(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,
@@ -439,7 +439,7 @@ exports.getAllInvoice = async (req, res) => {
     const result = await getAllInvoice(req.query);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(400).json({
+    return res.json({
       message: err.message,
       name: err.name,
       stack: err.stack,

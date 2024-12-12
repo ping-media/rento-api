@@ -14,7 +14,7 @@ const bookingSchema = new Schema({
         required: true
     }, 
     bookingId: {
-        type: Number,
+        type: String,
         required: true
     }, 
     vehicleImage: {

@@ -235,8 +235,12 @@ async function booking({
 }) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
-  // Function to convert date and time strings to ISO 8601 format
-  const convertToISOFormat = (dateString, timeString) => {
+
+  
+
+if(!deleteRec){
+   // Function to convert date and time strings to ISO 8601 format
+   const convertToISOFormat = (dateString, timeString) => {
     const [day, month, year] = dateString.split("-");
     const [hour, minute] = timeString.split(":");
     const ampm = timeString.split(" ")[1]; // AM or PM
@@ -259,24 +263,28 @@ async function booking({
     BookingEndDateAndTime = convertToISOFormat(endDate, endTime);
   }
 
-  // Generate a new booking ID
+  
   let sequence = 1; // Default sequence
   const lastBooking = await Booking.findOne({})
     .sort({ createdAt: -1 }) // Sort by latest created
     .select('bookingId');
-
   if (lastBooking && lastBooking.bookingId) {
     sequence = parseInt(lastBooking.bookingId, 10) + 1; // Increment the last booking ID
   }
-  const bookingId = sequence.toString().padStart(6, '0'); // Zero-padded booking ID
+  
+  // Generate a new booking ID
+  
+  var bookingId = sequence.toString().padStart(6, '0'); // Zero-padded booking ID
   const find= await station.find({stationName})
-  const stationMasterUserId = find[0].userId;
+  var stationMasterUserId = find[0].userId;
   //console.log(stationId)
-  const o = {
-    vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
-    discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-    bookingId, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName,stationMasterUserId
-  };
+  
+}
+let o = {
+  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
+  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
+  bookingId, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName,stationMasterUserId
+};
 
   // Validation for `_id`
   if (_id && _id.length !== 24) {
