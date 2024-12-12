@@ -7,7 +7,7 @@ const stationSchema = new Schema({
       required: true
     },
     stationId: {
-      type: Number,
+      type: String,
       required: true,
       unique: true
     },
