@@ -46,17 +46,17 @@ const vehicleTableSchema = new Schema({
     },
     refundableDeposit: {
         type: Number,
-        default:"1000",
+        default:1000,
         required: true
     },
     lateFee: {
         type: Number,
-        default:"100",
+        default:100,
         required: true
     },
     speedLimit: {
         type: Number,
-        default:"60",
+        default:60,
         required: true
     },
     lastServiceDate: {
