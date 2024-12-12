@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 
 const otpLogSchema = new Schema({
   contact: {
-    type: Number,
+    type: String,
     unique: true, // Enforce uniqueness
     required: true, // Ensure it is mandatory
   },
@@ -12,7 +12,7 @@ const otpLogSchema = new Schema({
     required: true,
   },
   otp: {
-    type: Number,
+    type: String,
     required: true,
   },
   createdAt: {
