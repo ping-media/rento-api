@@ -487,10 +487,11 @@ async function saveUser(userData) {
         if (!passwordRegex.test(password)) {
           return { status: 400, message: "Password validation not match" };
       }
+      var hash= bcrypt.hashSync(password,8);
+
       }
      
   
-      const hash= bcrypt.hashSync(password,8);
       
       userObj.password=hash
 
