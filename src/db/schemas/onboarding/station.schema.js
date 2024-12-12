@@ -7,7 +7,7 @@ const stationSchema = new Schema({
       required: true
     },
     stationId: {
-      type: String,
+      type: Number,
       required: true,
       unique: true
     },
@@ -33,7 +33,7 @@ const stationSchema = new Schema({
       required: true
     },
     pinCode: {
-      type: String,
+      type: Number,
       required: true
     },
     address: {

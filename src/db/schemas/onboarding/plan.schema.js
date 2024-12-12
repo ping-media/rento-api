@@ -9,15 +9,15 @@ const planSchema = new Schema(
       unique: true,
     },
     planDuration: {
-      type: String,
+      type: Number,
       required: true,
     },
     planPrice: {
-      type: String,
+      type: Number,
       required: true,
     },
     stationId: {
-      type: String,
+      type: Number,
       ref: "station", // Reference the 'Station' model
       required: true,
     },

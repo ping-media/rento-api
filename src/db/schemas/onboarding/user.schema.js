@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
     required: true
   },
   otp: {
-    type: String
+    type: Number
   },
   password: {
     type: String
@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema({
     default:"not specified"
   },
   altContact: {
-    type: String,
+    type: Number,
     trim: true
   },
   firstName: {
@@ -71,7 +71,7 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
   contact: {
-    type: String,
+    type: Number,
     required: true,
     trim: true,
     unique: true
@@ -93,6 +93,9 @@ userSchema.pre('save', function (next) {
   }
   if (this.lastName) {
     this.lastName = this.lastName.toLowerCase(); 
+  }
+  if (this.email) {
+    this.email = this.email.toLowerCase(); 
   }
  
   next();

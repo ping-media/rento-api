@@ -93,7 +93,7 @@ const createBookingDuration = async ({ bookingDuration, attachedVehicles, bookin
 }
 
 
-async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, locationId, perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus, vehiclePlan }) {
+async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, locationId, perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus, vehiclePlan, refundableDeposit, lateFee, speedLimit }) {
   const response = { status: "200", message: "data fetched successfully", data: [] }
   try {
     if (_id || (vehicleMasterId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber && freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate && kmsRun && isBooked && condition && locationId)) {
@@ -172,7 +172,7 @@ async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, f
         }
       }
       const o = {
-        locationId, vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition, vehiclePlan
+        locationId, vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition, vehiclePlan, refundableDeposit, lateFee, speedLimit
       }
       if (_id) {
         const find = await VehicleTable.findOne({ _id: ObjectId(_id) })
@@ -1493,7 +1493,9 @@ const getVehicleTblData = async (query) => {
       {
         $project: {
           _id: 1,
-          
+          speedLimit:1,
+          refundableDeposit:1,
+          latefee:1,
           vehicleStatus: 1,
           freeKms: 1,
           vehicleMasterId: 1,

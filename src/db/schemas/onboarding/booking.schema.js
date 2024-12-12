@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const bookingSchema = new Schema({
+
     vehicleMasterId: {
         type: Schema.Types.ObjectId,
         ref: 'vehicleMaster',
@@ -13,9 +14,30 @@ const bookingSchema = new Schema({
         required: true
     }, 
     bookingId: {
-        type: String,
+        type: Number,
         required: true
     }, 
+    vehicleImage: {
+        type: String,
+        required: true
+    },
+    vehicleBrand: {
+        type: String,
+        required: true
+    },
+    
+    vehicleName: {
+        type: String,
+        required: true
+    },
+    stationName: {
+        type: String,
+        required: true
+    },
+    stationMasterUserId: {
+        type: String,
+        required: true
+    },
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'user',
@@ -33,6 +55,17 @@ const bookingSchema = new Schema({
         type: Object,
         required: true
     },
+    
+    payInitFrom: {
+        type: String,
+        required: true
+    },
+    paySuccessId: {
+        type: String,
+        required: true
+    },
+    
+    
     bookingStatus: {
         enum: ['pending', 'completed', 'canceled'],
         type: String,
@@ -55,34 +88,6 @@ const bookingSchema = new Schema({
     paymentMethod: {
         type: String,
         enum: ['cash', 'card', 'upi', 'wallet'],
-        required: true
-    },
-    payInitFrom: {
-        type: String,
-        required: true
-    },
-    paySuccessId: {
-        type: String,
-        required: true
-    },
-    vehicleBrand: {
-        type: String,
-        required: true
-    },
-    vehicleImage: {
-        type: String,
-        required: true
-    },
-    vehicleName: {
-        type: String,
-        required: true
-    },
-    stationName: {
-        type: String,
-        required: true
-    },
-    stationMasterUserId: {
-        type: String,
         required: true
     },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });

@@ -7,7 +7,7 @@ const VehicleSchema = new Schema({
     required: true
   },
   pricePerday: {
-    type: String,
+    type: Number,
     required: true
   },
   name: {
@@ -19,11 +19,11 @@ const VehicleSchema = new Schema({
     required: true
   },
   distanceLimit: {
-    type: String,
+    type: Number,
     required: true
   },
   accessChargePerKm: {
-    type: String,
+    type: Number,
     required: true
   },
   transmissionType: {

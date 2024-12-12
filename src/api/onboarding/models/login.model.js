@@ -88,10 +88,16 @@ async function adminLogin({ email, password }) {
   if (email && password) {
     // Find the user by email
     const result = await User.findOne({ email });
-    console.log(result)
+   // console.log(result)
     if (!result) {
       obj.status = 401;
       obj.message = "Invalid credentials";
+      return obj;
+    }
+
+    if(result.status=="inactive"){
+      obj.status = 401;
+      obj.message = "User not Active";
       return obj;
     }
 

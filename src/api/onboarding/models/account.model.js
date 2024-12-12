@@ -382,18 +382,18 @@ async function saveUser(userData) {
   const response = { status: 200, message: "Data processed successfully", data: [] };
 
   try {
-    // Validation helpers
+    
     const validateId = (id) => id && id.length === 24;
     const isValidContact = (number) => contactValidation(number);
     const isValidEmail = (email) => emailValidation(email);
     const isValidEnum = (value, validList) => validList.includes(value);
 
-    // Validate `_id`
+  
     if (_id && !validateId(_id)) {
       return { status: 400, message: "Invalid _id" };
     }
 
-    // Validate `contact`
+    
     if (contact) {
       if (!isValidContact(contact)) {
         return { status: 400, message: "Invalid phone number" };
@@ -406,12 +406,12 @@ async function saveUser(userData) {
       }
     }
 
-    // Validate `altContact`
+ 
     if (altContact && !isValidContact(altContact)) {
       return { status: 400, message: "Invalid alternative contact number" };
     }
 
-    // Validate `userType`
+
     const validUserTypes = ["manager", "customer", "admin"];
     if (!isValidEnum(userType, validUserTypes)) {
       return { status: 400, message: "Invalid user type" };
@@ -420,13 +420,13 @@ async function saveUser(userData) {
       return { status: 400, message: "Password is required for admin or manager" };
     }
 
-    // Validate `status`
+   
     const validStatuses = ["active", "inactive"];
     if (!isValidEnum(status, validStatuses)) {
       return { status: 400, message: "Invalid user status" };
     }
 
-    // Validate `kycApproved`, `isEmailVerified`, and `isContactVerified`
+    
     const validKycStatuses = ["yes", "no"];
     if (!isValidEnum(kycApproved, validKycStatuses)) {
       return { status: 400, message: "Invalid KYC approval status" };
@@ -438,12 +438,12 @@ async function saveUser(userData) {
       return { status: 400, message: "Invalid contact verification status" };
     }
 
-    // Validate `email`
+ 
     if (email && !isValidEmail(email)) {
       return { status: 400, message: "Invalid email address" };
     }
    
-    // Prepare user object
+   
     const userObj = {
       addressProof,
       drivingLicence,
@@ -481,20 +481,14 @@ async function saveUser(userData) {
         return { status: 400, message: "Missing required fields for new user" };
       }
 
-      // if (userType === "customer") {
-      //   const otpRecord = await Otp.findOne({ contact });
-      //   if (!otpRecord || otpRecord.otp !== otp) {
-      //     return {
-      //       status: otpRecord ? 401 : 404,
-      //       message: otpRecord ? "Invalid OTP" : "No OTP found for the given contact number",
-      //     };
-      //   }
-      //   await Otp.deleteOne({ contact });
-      // }
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
-      if (!passwordRegex.test(password)) {
-        return { status: 400, message: "Password validation not match" };
-    }
+      if(password){
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
+        if (!passwordRegex.test(password)) {
+          return { status: 400, message: "Password validation not match" };
+      }
+      }
+     
   
       const hash= bcrypt.hashSync(password,8);
       
@@ -707,14 +701,7 @@ async function login(emailId) {
     throw new Error(error);
   }
 
-  // You can follow this approach,
-  // but the second approach is suggested,
-  // as the mails will be treated as important
-  // const res = await Auth(emailId, "Company Name");
-  // console.log(res);
-  // console.log(res.mail);
-  // console.log(res.OTP);
-  // console.log(res.success);
+  
 }
 
 

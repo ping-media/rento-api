@@ -7,7 +7,7 @@ const trafficSchema = new mongoose.Schema({
     trim: true
   },
   Contact: {
-    type: String,
+    type: Number,
     required: false,
     trim: true,
     // unique: true

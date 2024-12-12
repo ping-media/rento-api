@@ -9,35 +9,26 @@ const vehicleTableSchema = new Schema({
         required: true
     },
    
-    vehicleBookingStatus: {
-        type: String,
-        enum: ["available", "booked"],
-        required: true
-    },
-    vehicleStatus: {
-        type: String,
-        enum: ["active", "inactive"],
-        required: true
-    },
-    freeKms: {
-        type: String,
-        required: true
-    }, 
-    extraKmsCharges: {
-        type: String,
-        required: true
-    },
-    stationId: {
-        type: String,
-        ref: 'station',
-        required: true
-    },
     vehicleNumber: {
         type: String,
         required: true
     },
+    freeKms: {
+        type: Number,
+        required: true
+    }, 
+    extraKmsCharges: {
+        type: Number,
+        required: true
+    },
+    stationId: {
+        type: Number,
+        ref: 'station',
+        required: true
+    },
+   
     vehicleModel: {
-        type: String,
+        type: Number,
         required: true
     },    
     vehicleColor: {
@@ -50,7 +41,22 @@ const vehicleTableSchema = new Schema({
         ref: 'plan'
     },
     perDayCost: {
-        type: String,
+        type: Number,
+        required: true
+    },
+    refundableDeposit: {
+        type: Number,
+        default:"1000",
+        required: true
+    },
+    lateFee: {
+        type: Number,
+        default:"100",
+        required: true
+    },
+    speedLimit: {
+        type: Number,
+        default:"60",
         required: true
     },
     lastServiceDate: {
@@ -58,7 +64,7 @@ const vehicleTableSchema = new Schema({
         required: true
     },
     kmsRun: {
-        type: String,
+        type: Number,
         required: true
     },
     isBooked: {
@@ -74,7 +80,17 @@ const vehicleTableSchema = new Schema({
         enum: ["old", "new"],
         type: String,
         required: true
-    }
+    },
+    vehicleBookingStatus: {
+        type: String,
+        enum: ["available", "booked"],
+        required: true
+    },
+    vehicleStatus: {
+        type: String,
+        enum: ["active", "inactive"],
+        required: true
+    },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
 // Pre-save middleware to convert fields to lowercase

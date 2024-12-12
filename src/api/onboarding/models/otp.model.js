@@ -7,7 +7,7 @@ async function optGernet(req, res) {
     const { contact } = req.body;
 
     if (!contact) {
-      return res.status(400).json({
+      return res.json({
         status: 400,
         message: "Contact number is required",
       });
@@ -17,15 +17,20 @@ async function optGernet(req, res) {
    
     const user = await User.findOne({ contact });
     if (!user) {
-      return res.status(400).json({
+      return res.json({
         status: 400,
         message: "User does not exist",
         success: false
       });
     }
+    const status= user.status
+if(status=="inactive"){
+  return res.json({
+    status:400,
+    message: "User not Active"
+  })
+}
 
-
-   // const excludedContacts = ["9389046742", "8433408211"]; 
 
     // Check if the contact is in the exclusion list
     if (contact=="9389046742" || contact=="8433408211") {
@@ -51,7 +56,7 @@ async function optGernet(req, res) {
     const smsResponse = await sendOtpViaFast2Sms(contact, otp);
     if (smsResponse.error) {
       console.error(`Failed to send OTP to ${contact}:`, smsResponse.error);
-      return res.status(500).json({
+      return res.json({
         status: 500,
         message: "Failed to send OTP",
       });
@@ -102,15 +107,13 @@ function sendOtpViaFast2Sms(contact, otp) {
     try {
       const { contact, otp } = req.body;
   
-      // Validate inputs
-      if (!contact || !otp) {
-        return res.status(400).json({
+       if (!contact || !otp) {
+        return res.json({
           status: 400,
           message: "Contact number and OTP are required",
         });
       }
   
-      // Hardcoded OTP verification for specific contacts (example for testing purposes)
       if ((contact === "9389046742" || contact === "8433408211") && otp === "123456") {
         const user = await User.findOne({ contact });
         return res.status(200).json({
@@ -123,7 +126,7 @@ function sendOtpViaFast2Sms(contact, otp) {
       // Find OTP record for the given contact
       const otpRecord = await Otp.findOne({ contact });
       if (!otpRecord) {
-        return res.status(404).json({
+        return res.json({
           status: 404,
           message: "No OTP found for the given contact number",
         });
@@ -131,7 +134,7 @@ function sendOtpViaFast2Sms(contact, otp) {
   
       // Check if OTP is correct
       if (otp !== otpRecord.otp) {
-        return res.status(401).json({
+        return res.json({
           status: 401,
           message: "Invalid OTP",
         });
@@ -140,7 +143,7 @@ function sendOtpViaFast2Sms(contact, otp) {
       // OTP is valid, proceed with user verification
       const user = await User.findOne({ contact });
       if (!user) {
-        return res.status(404).json({
+        return res.json({
           status: 404,
           message: "No user found for the given contact number",
         });
