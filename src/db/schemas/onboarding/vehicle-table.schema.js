@@ -22,7 +22,7 @@ const vehicleTableSchema = new Schema({
         required: true
     },
     stationId: {
-        type: Number,
+        type: String,
         ref: 'station',
         required: true
     },
