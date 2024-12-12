@@ -2,6 +2,14 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const vehicleMasterSchema = new Schema({
+    vehicleImage: {
+        type: String,
+        required: true
+    },
+    vehicleBrand: {
+        type: String,
+        required: true
+    },
     vehicleName: {
         type: String,
         required: true,
@@ -12,14 +20,7 @@ const vehicleMasterSchema = new Schema({
         type: String,
         required: true
     }, 
-    vehicleBrand: {
-        type: String,
-        required: true
-    },
-    vehicleImage: {
-        type: String,
-        required: true
-    },
+    
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
 vehicleMasterSchema.pre('save', function (next) {
