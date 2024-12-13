@@ -55,6 +55,7 @@ const getBookings = async (query) => {
     // If no bookings found
     if (!bookings.length) {
       obj.message = "No records found";
+      obj.status= 200;
       return obj;
     }
 
