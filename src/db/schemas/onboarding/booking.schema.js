@@ -81,7 +81,7 @@ const bookingSchema = new Schema({
     },
     paymentStatus: {
         type: String,
-        enum: ['pending', 'completed', 'canceled'],
+        enum: ['pending','partiallyPay', 'completed', 'canceled'],
         required: true
     },
     rideStatus: {

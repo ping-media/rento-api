@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
  
   otp: {
-    type: Number
+    type: String
   },
   password: {
     type: String
@@ -43,13 +43,13 @@ const userSchema = new mongoose.Schema({
   },
  
   contact: {
-    type: Number,
+    type: String,
     required: true,
     trim: true,
     unique: true
   },
   altContact: {
-    type: Number,
+    type: String,
     trim: true
   },
   email: {
