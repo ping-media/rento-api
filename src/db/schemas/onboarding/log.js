@@ -14,7 +14,7 @@ const logSchema = new Schema(
     },
     userId: {
       type: String,
-      required: true,
+      //required: true,
     },
     
   },

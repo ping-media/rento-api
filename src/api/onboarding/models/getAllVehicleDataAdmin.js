@@ -7,13 +7,13 @@ const updateManyVehicles = async (filter, updateData) => {
       throw new Error('Update data must be an object');
     }
 
-   
+
 
     // Perform the updateMany operation
     const result = await vehicleTable.updateMany(filter, { $set: updateData });
 
-    
-    
+
+
     return {
       status: 200,
       message: `${result.modifiedCount} vehicle(s) updated successfully.`,
@@ -38,7 +38,7 @@ const getAllVehiclesData = async (req, res) => {
     const { _id, vehicleMasterId, stationId, vehicleStatus, vehicleColor, condition } = req.query;
 
     const filter = {};
-    
+
     if (vehicleMasterId) filter.vehicleMasterId = mongoose.Types.ObjectId(vehicleMasterId);
     if (stationId) filter.stationId = stationId;
     if (vehicleStatus) filter.vehicleStatus = vehicleStatus;
@@ -47,7 +47,7 @@ const getAllVehiclesData = async (req, res) => {
     if (_id) filter._id = mongoose.Types.ObjectId(_id);
     const vehicles = await vehicleTable.aggregate([
       {
-        $match: filter 
+        $match: filter
       },
       {
         $lookup: {
@@ -89,10 +89,13 @@ const getAllVehiclesData = async (req, res) => {
           "kmsRun": 1,
           "isBooked": 1,
           "condition": 1,
-          "locationId":1,
-          "stationName":"$stationData.stationName",
-          "vehicleImage": "$vehicleMasterData.vehicleImage" ,
-          "vehicleName": "$vehicleMasterData.vehicleName" ,
+          "locationId": 1,
+          "refundableDeposit": 1,
+          "lateFee": 1,
+          "speedLimit": 1,
+          "stationName": "$stationData.stationName",
+          "vehicleImage": "$vehicleMasterData.vehicleImage",
+          "vehicleName": "$vehicleMasterData.vehicleName",
           "createdAt": 1,
           "updatedAt": 1,
         }
@@ -128,11 +131,11 @@ const updateMultipleVehicles = async (req, res) => {
     });
   }
 
-  if (deleteRec){
+  if (deleteRec) {
     const result = await vehicleTable.deleteMany({
       _id: { $in: vehicleIds.map(id => mongoose.Types.ObjectId(id)) }
     });
-  
+
     return res.status(200).json({
       status: 200,
       message: `${result.deletedCount} vehicle(s) deleted successfully.`,
