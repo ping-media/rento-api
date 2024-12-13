@@ -55,6 +55,10 @@ const bookingSchema = new Schema({
         type: Object,
         required: true
     },
+    vehicleBasic: {
+        type: Object,
+        required: true
+    },
     
     payInitFrom: {
         type: String,

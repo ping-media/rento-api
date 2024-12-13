@@ -30,9 +30,7 @@ const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.sch
 const Log = require("../models/Logs.model")
 
 
-function generateRandomId() {
-  return Math.floor(100000 + Math.random() * 900000).toString(); // Generates a 6-digit random number
-}
+
 
 
 
@@ -94,142 +92,161 @@ const createBookingDuration = async ({ bookingDuration, attachedVehicles, bookin
 }
 
 
-async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, locationId, perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus, vehiclePlan, refundableDeposit, lateFee, speedLimit }) {
-  const response = { status: "200", message: "data fetched successfully", data: [] }
-  try {
-    if (_id || (vehicleMasterId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber && freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate && kmsRun && isBooked && condition && locationId)) {
-      
-      if (stationId) {
-        const findStation = await Station.findOne({ stationId })
-        if (!findStation) {
-          response.status = 401
-          response.message = "Invalid stationId"
-          return response
-        }
+
+async function createVehicle({
+    _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, locationId,
+    perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus,
+    vehiclePlan, refundableDeposit, lateFee, speedLimit
+}) {
+    const response = { status: 200, message: "Data fetched successfully", data: [] };
+
+    try {
+        if (_id || (vehicleMasterId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber &&
+            freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate &&
+            kmsRun && isBooked && condition && locationId)) {
+
+            if (stationId) {
+                const findStation = await Station.findOne({ stationId });
+                if (!findStation) {
+                    response.status = 401;
+                    response.message = "Invalid stationId";
+                    await Log({
+                        message: `Invalid stationId provided ${stationId}`,
+                        functionName: "createVehicle",
+                        userId: stationId
+                    });
+                    return response;
+                }
             }
-      // if (vehiclePlan && vehiclePlan.length == 24) {
-      //   const findPlan = await Plan.findOne({ _id: ObjectId(vehiclePlan) })
-      //   if (!findPlan) {
-      //     response.status = 401
-      //     response.message = "Invalid vehicle plan"
-      //     return response
-      //   }
-      // } else {
-      //   response.status = 401
-      //   response.message = "Invalid vehicle plan"
-      //   return response
-      // }
-      if (isBooked) {
-        let statusCheck = ["false", "true"].includes(isBooked.toString())
-        if (!statusCheck) {
-          response.status = 401
-          response.message = "Invalid isBooked value"
-          return response
-        }
-      }
-      if (condition) {
-        let statusCheck = ["old", "new"].includes(condition)
-        if (!statusCheck) {
-          response.status = 401
-          response.message = "Invalid vehicle condition"
-          return response
-        }
-      }
-      if (vehicleBookingStatus) {
-        let statusCheck = ["available", "booked"].includes(vehicleBookingStatus)
-        if (!statusCheck) {
-          response.status = 401
-          response.message = "Invalid vehicleBookingStatus"
-          return response
-        }
-      }
-      
-      if (vehicleStatus) {
-        let statusCheck = ["active", "inActive"].includes(vehicleStatus)
-        if (!statusCheck) {
-          response.status = 401
-          response.message = "Invalid vehicleStatus"
-          return response
-        }
-      }
-      if (vehicleNumber && vehicleNumber.length !== 10) {
-        response.status = 401
-        response.message = "Invalid vehicle number"
-        return response
-      } else {
-        const findVeh = await VehicleTable.find({ vehicleNumber })
-        if (findVeh && findVeh.length == 2) {
-          response.status = 401
-          response.message = "Vehicle number already exist"
-          return response
-        }
-      }
-      if (_id && _id.length == 24) {
-        const find = await VehicleTable.findOne({ _id: ObjectId(_id) })
-        if (!find) {
-          response.status = 401
-          response.message = "Invalid vehicleId"
-          return response
-        }
-      }
-      const o = {
-        locationId, vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition, vehiclePlan, refundableDeposit, lateFee, speedLimit
-      }
-      if (_id) {
-        const find = await VehicleTable.findOne({ _id: ObjectId(_id) })
-        if (!find) {
-          response.status = 401
-          response.message = "Invalid vehicle table id"
-          return response
-        }
-        if (deleteRec) {
-          await VehicleTable.deleteOne({ _id: ObjectId(_id) })
-          response.message = "vehicle deleted successfully"
-          response.status = 200
-          response.data = { _id }
-          return response
-        }
-        await VehicleTable.updateOne(
-          { _id: ObjectId(_id) },
-          {
-            $set: o
-          },
-          { new: true }
-        );
-        response.message = "Vehicle  updated successfully"
-        response.data = o
-      } else {
-        if (vehicleMasterId && vehicleBookingStatus && vehicleStatus && freeKms && extraKmsCharges && stationId && vehicleNumber && vehicleModel && vehicleColor && perDayCost && lastServiceDate && kmsRun && isBooked && condition) {
-          const find = await VehicleTable.findOne({ vehicleNumber })
-          if (!find) {
-            const SaveVehicleTable = new VehicleTable(o)
-            SaveVehicleTable.save()
-            response.message = "Vehicle saved successfully"
-            response.data = o
-          } else {
-            response.status = 401
-            response.message = "Vehicle number already exists"
-          }
+
+            if (isBooked) {
+                const statusCheck = ["false", "true"].includes(isBooked.toString());
+                if (!statusCheck) {
+                    response.status = 401;
+                    response.message = "Invalid isBooked value";
+                    await Log({
+                        message: "Invalid isBooked value",
+                        functionName: "createVehicle",
+                        userId: stationId
+                    });
+                    return response;
+                }
+            }
+
+            if (condition) {
+                const statusCheck = ["old", "new"].includes(condition);
+                if (!statusCheck) {
+                    response.status = 401;
+                    response.message = "Invalid vehicle condition";
+                    await Log({
+                        message: "Invalid vehicle condition",
+                        functionName: "createVehicle",
+                        userId: stationId
+                    });
+                    return response;
+                }
+            }
+
+            if (vehicleNumber && vehicleNumber.length !== 10) {
+                response.status = 401;
+                response.message = "Invalid vehicle number";
+                await Log({
+                    message: "Invalid vehicle number length",
+                    functionName: "createVehicle",
+                    userId: stationId
+                });
+                return response;
+            }
+
+            const o = {
+                locationId, vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms,
+                extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition,
+                vehiclePlan, refundableDeposit, lateFee, speedLimit
+            };
+
+            if (_id) {
+                const find = await VehicleTable.findOne({ _id: ObjectId(_id) });
+                if (!find) {
+                    response.status = 401;
+                    response.message = "Invalid vehicle table ID";
+                    await Log({
+                        message: "Invalid vehicle table ID during update",
+                        functionName: "createVehicle",
+                        userId: stationId
+                    });
+                    return response;
+                }
+
+                if (deleteRec) {
+                    await VehicleTable.deleteOne({ _id: ObjectId(_id) });
+                    response.message = "Vehicle deleted successfully";
+                    response.data = { _id };
+                    await Log({
+                        message: "Vehicle deleted successfully",
+                        functionName: "createVehicle",
+                        userId: stationId
+                    });
+                    return response;
+                }
+
+                await VehicleTable.updateOne({ _id: ObjectId(_id) }, { $set: o });
+                response.message = "Vehicle updated successfully";
+                response.data = o;
+                await Log({
+                    message: "Vehicle updated successfully",
+                    functionName: "createVehicle",
+                    userId: stationId
+                });
+            } else {
+                const findVeh = await VehicleTable.findOne({ vehicleNumber });
+                if (!findVeh) {
+                    const SaveVehicleTable = new VehicleTable(o);
+                    await SaveVehicleTable.save();
+                    response.message = "Vehicle saved successfully";
+                    response.data = o;
+                    await Log({
+                        message: "New vehicle created successfully",
+                        functionName: "createVehicle",
+                        userId: stationId
+                    });
+                } else {
+                    response.status = 401;
+                    response.message = "Vehicle number already exists";
+                    await Log({
+                        message: `Vehicle number already exists ${vehicleNumber}`,
+                        functionName: "createVehicle",
+                        userId: stationId
+                    });
+                    return response;
+                }
+            }
         } else {
-          response.status = 401
-          response.message = "All fields required"
-          return response
+            response.status = 401;
+            response.message = "All fields required";
+            await Log({
+                message: "Required fields missing",
+                functionName: "createVehicle",
+                userId: stationId
+            });
         }
-      }
-    } else {
-      response.status = 401
-      response.message = "All fields required"
+        return response;
+    } catch (error) {
+        response.status = 500;
+        response.message = "Internal server error";
+        await Log({
+            message: `Error in createVehicle function: ${error.message}`,
+            functionName: "createVehicle",
+            userId: stationId
+        });
+        throw new Error(error.message);
     }
-    return response
-  } catch (error) {
-    throw new Error(error.message);
-  }
 }
+
 
 async function booking({
     vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
     discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-    deleteRec, _id, discountPrice, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName
+    deleteRec, _id, discountPrice,vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName
 }) {
     const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -267,7 +284,7 @@ async function booking({
         let o = {
             vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
             discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId,
-            payInitFrom, bookingId, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId
+            payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId
         };
 
         if (_id && _id.length !== 24) {
@@ -313,7 +330,7 @@ async function booking({
 
                 await Log({
                     message: `Booking with ID ${_id} deleted`,
-                    functionName: "booking",
+                    functionName: "deletebooking",
                     userId,
                 });
 
@@ -324,7 +341,7 @@ async function booking({
 
             await Log({
                 message: `Booking with ID ${_id} updated`,
-                functionName: "booking",
+                functionName: "updatebooking",
                 userId,
             });
         } else {
@@ -332,7 +349,7 @@ async function booking({
                 vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
                 bookingPrice && bookingStatus && paymentStatus && rideStatus && bookingId &&
                 paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax &&
-                vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName
+                vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName && vehicleBasic
             ) {
                 await vehicleTable.updateOne(
                     { vehicleTableId: ObjectId(vehicleTableId) },
@@ -381,7 +398,7 @@ async function booking({
     }
 }
 
-module.exports = booking;
+
 
 
 

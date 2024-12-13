@@ -90,11 +90,11 @@ const getAllVehiclesData = async (req, res) => {
           "isBooked": 1,
           "condition": 1,
           "locationId":1,
-          "createdAt": 1,
-          "updatedAt": 1,
           "stationName":"$stationData.stationName",
           "vehicleImage": "$vehicleMasterData.vehicleImage" ,
-          "vehicleName": "$vehicleMasterData.vehicleName" 
+          "vehicleName": "$vehicleMasterData.vehicleName" ,
+          "createdAt": 1,
+          "updatedAt": 1,
         }
       }
     ]);

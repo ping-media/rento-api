@@ -17,6 +17,7 @@ const {documentUpload, getDocument} = require ("../models/DocumentUpload")
 const {getAllDocument} = require ("../models/getAllDocumentAdmin")
 const {emailOtp, verify} = require ("../models/otpSendByEmail")
 const {getPickupImage, pickupImageUp} = require ("../models/pickupImageUpload")
+const {getAllLogs} = require("../models/getlogs.model")
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -390,6 +391,11 @@ pickupImageUp(req, res)
 
 router.get("/getPickupImage", async (req, res) => {
   getPickupImage(req, res);
+})
+
+
+router.get("/getAllLogs", async (req, res) => {
+  getAllLogs(req, res);
 })
 
 module.exports = router;

@@ -36,6 +36,7 @@ const getBookings = async (query) => {
       return obj;
     }
 
+
     // Build filter conditions dynamically
     const filters = {};
     if (bookingStatus) filters.bookingStatus = bookingStatus;
