@@ -58,7 +58,19 @@ const getAllVehiclesData = async (req, res) => {
         }
       },
       {
-        $unwind: { path: '$vehicleMasterData', preserveNullAndEmptyArrays: true } // Optional: this ensures the join will not drop records with no match
+        $lookup: {
+          from: 'stations', // Collection name for vehicle masters
+          localField: 'stationId', // Field from vehicleTable
+          foreignField: 'stationId', // Field from vehiclemasters
+          as: 'stationData' // Alias for the joined data
+        }
+      },
+      {
+        $unwind: { path: '$vehicleMasterData', preserveNullAndEmptyArrays: true }, // Optional: this ensures the join will not drop records with no match
+      },
+      {
+        $unwind: { path: '$stationData', preserveNullAndEmptyArrays: true } // Optional: this ensures the join will not drop records with no match
+
       },
       {
         $project: {
@@ -80,7 +92,7 @@ const getAllVehiclesData = async (req, res) => {
           "locationId":1,
           "createdAt": 1,
           "updatedAt": 1,
-          
+          "stationName":"$stationData.stationName",
           "vehicleImage": "$vehicleMasterData.vehicleImage" ,
           "vehicleName": "$vehicleMasterData.vehicleName" 
         }

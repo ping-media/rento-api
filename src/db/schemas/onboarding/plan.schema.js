@@ -17,7 +17,7 @@ const planSchema = new Schema(
       required: true,
     },
     stationId: {
-      type: Number,
+      type: String,
       ref: "station", // Reference the 'Station' model
       required: true,
     },

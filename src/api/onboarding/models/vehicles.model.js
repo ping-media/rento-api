@@ -27,6 +27,7 @@ const { query } = require("express");
 //const {generateRandomId } = require('../../../utils/help-scripts/help-functions');
 const Invoice = require('../../../db/schemas/onboarding/invoice-tbl.schema'); // Import the Invoice model
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
+const Log = require("../models/Logs.model")
 
 
 function generateRandomId() {
@@ -225,129 +226,164 @@ async function createVehicle({ _id, vehicleMasterId, stationId, vehicleNumber, f
   }
 }
 
-
-
-
 async function booking({
-  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
-  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-  deleteRec, _id, discountPrice, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName
+    vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
+    discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
+    deleteRec, _id, discountPrice, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName
 }) {
-  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+    const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
+    try {
+        if (!deleteRec) {
+            const convertToISOFormat = (dateString, timeString) => {
+                const [day, month, year] = dateString.split("-");
+                const [hour, minute] = timeString.split(":");
+                const ampm = timeString.split(" ")[1];
+                let hour24 = parseInt(hour, 10);
+                if (ampm === "PM" && hour24 < 12) hour24 += 12;
+                if (ampm === "AM" && hour24 === 12) hour24 = 0;
+                return new Date(`${year}-${month}-${day}T${hour24}:${minute}:00.000Z`).toISOString();
+            };
 
-  
+            if (BookingStartDateAndTime && BookingStartDateAndTime.startDate && BookingStartDateAndTime.startTime) {
+                const { startDate, startTime } = BookingStartDateAndTime;
+                BookingStartDateAndTime = convertToISOFormat(startDate, startTime);
+            }
+            if (BookingEndDateAndTime && BookingEndDateAndTime.endDate && BookingEndDateAndTime.endTime) {
+                const { endDate, endTime } = BookingEndDateAndTime;
+                BookingEndDateAndTime = convertToISOFormat(endDate, endTime);
+            }
 
-if(!deleteRec){
-   // Function to convert date and time strings to ISO 8601 format
-   const convertToISOFormat = (dateString, timeString) => {
-    const [day, month, year] = dateString.split("-");
-    const [hour, minute] = timeString.split(":");
-    const ampm = timeString.split(" ")[1]; // AM or PM
+            let sequence = 1;
+            const lastBooking = await Booking.findOne({}).sort({ createdAt: -1 }).select('bookingId');
+            if (lastBooking && lastBooking.bookingId) {
+                sequence = parseInt(lastBooking.bookingId, 10) + 1;
+            }
+            var bookingId = sequence.toString().padStart(6, '0');
+            const find = await station.find({ stationName });
+            var stationMasterUserId = find[0].userId;
+        }
 
-    let hour24 = parseInt(hour, 10);
-    if (ampm === "PM" && hour24 < 12) hour24 += 12;
-    if (ampm === "AM" && hour24 === 12) hour24 = 0;
+        let o = {
+            vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
+            discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId,
+            payInitFrom, bookingId, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId
+        };
 
-    const formattedDate = new Date(`${year}-${month}-${day}T${hour24}:${minute}:00.000Z`);
-    return formattedDate.toISOString();
-  };
+        if (_id && _id.length !== 24) {
+            obj.status = 401;
+            obj.message = "Invalid booking id";
 
-  // Convert start and end date-time into ISO 8601 format
-  if (BookingStartDateAndTime && BookingStartDateAndTime.startDate && BookingStartDateAndTime.startTime) {
-    const { startDate, startTime } = BookingStartDateAndTime;
-    BookingStartDateAndTime = convertToISOFormat(startDate, startTime);
-  }
-  if (BookingEndDateAndTime && BookingEndDateAndTime.endDate && BookingEndDateAndTime.endTime) {
-    const { endDate, endTime } = BookingEndDateAndTime;
-    BookingEndDateAndTime = convertToISOFormat(endDate, endTime);
-  }
+            await Log({
+                message: "Invalid booking ID during booking process",
+                functionName: "booking",
+                userId,
+            });
+            
 
-  
-  let sequence = 1; // Default sequence
-  const lastBooking = await Booking.findOne({})
-    .sort({ createdAt: -1 }) // Sort by latest created
-    .select('bookingId');
-  if (lastBooking && lastBooking.bookingId) {
-    sequence = parseInt(lastBooking.bookingId, 10) + 1; // Increment the last booking ID
-  }
-  
-  // Generate a new booking ID
-  
-  var bookingId = sequence.toString().padStart(6, '0'); // Zero-padded booking ID
-  const find= await station.find({stationName})
-  var stationMasterUserId = find[0].userId;
-  //console.log(stationId)
-  
+            return obj;
+        }
+
+        if (_id) {
+            const find = await Booking.findOne({ _id: ObjectId(_id) });
+            if (!find) {
+                obj.status = 401;
+                obj.message = "Invalid booking id";
+
+                await Log({
+                    message: "Booking not found for update",
+                    functionName: "booking",
+                    userId,
+                });
+
+                return obj;
+            }
+
+            if (deleteRec) {
+                await vehicleTable.updateOne(
+                    { vehicleTableId: ObjectId(vehicleTableId) },
+                    { $set: { vehicleBookingStatus: "available" } },
+                    { new: true }
+                );
+                await Booking.deleteOne({ _id: ObjectId(_id) });
+
+                obj.message = "Booking deleted successfully";
+                obj.status = 200;
+                obj.data = { _id };
+
+                await Log({
+                    message: `Booking with ID ${_id} deleted`,
+                    functionName: "booking",
+                    userId,
+                });
+
+                return obj;
+            }
+
+            await Booking.updateOne({ _id: ObjectId(_id) }, { $set: o }, { new: true });
+
+            await Log({
+                message: `Booking with ID ${_id} updated`,
+                functionName: "booking",
+                userId,
+            });
+        } else {
+            if (
+                vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
+                bookingPrice && bookingStatus && paymentStatus && rideStatus && bookingId &&
+                paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax &&
+                vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName
+            ) {
+                await vehicleTable.updateOne(
+                    { vehicleTableId: ObjectId(vehicleTableId) },
+                    { $set: { vehicleBookingStatus: "booked" } },
+                    { new: true }
+                );
+                const SaveBooking = new Booking(o);
+                await SaveBooking.save();
+
+                obj.message = "New booking saved successfully";
+                obj.data = o;
+
+                await Log({
+                    message: "New booking created",
+                    functionName: "booking",
+                    userId,
+                });
+               
+            } else {
+                obj.status = 401;
+                obj.message = "Something is missing";
+
+                await Log({
+                    message: "Failed booking due to missing fields",
+                    functionName: "booking",
+                    userId,
+                });
+
+                return obj;
+            }
+        }
+
+        return obj;
+    } catch (error) {
+        console.error("Error in booking function:", error.message);
+
+        await Log({
+            message: `Error in booking function: ${error.message}`,
+            functionName: "booking",
+            userId,
+        });
+
+        obj.status = 500;
+        obj.message = "Internal server error";
+        return obj;
+    }
 }
-let o = {
-  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
-  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-  bookingId, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName,stationMasterUserId
-};
 
-  // Validation for `_id`
-  if (_id && _id.length !== 24) {
-    obj.status = 401;
-    obj.message = "Invalid booking id";
-    return obj;
-  }
+module.exports = booking;
 
-  // Validation for `discountPrice`
-  if (discountPrice && isNaN(discountPrice)) {
-    obj.status = 401;
-    obj.message = "Invalid discount price";
-    return obj;
-  }
 
-  if (_id) {
-    const find = await Booking.findOne({ _id: ObjectId(_id) });
-    if (!find) {
-      obj.status = 401;
-      obj.message = "Invalid booking id";
-      return obj;
-    }
-    if (deleteRec) {
-      await vehicleTable.updateOne(
-        { vehicleTableId: ObjectId(vehicleTableId) },
-        { $set: {vehicleBookingStatus:"available"} },
-        { new: true }
-      );
-      await Booking.deleteOne({ _id: ObjectId(_id) });
-      obj.message = "Booking deleted successfully";
-      obj.status = 200;
-      obj.data = { _id };
-      return obj;
-    }
-    await Booking.updateOne(
-      { _id: ObjectId(_id) },
-      { $set: o },
-      { new: true }
-    );
-  } else {
-    if (
-      vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
-      bookingPrice && bookingStatus && paymentStatus && rideStatus && bookingId &&
-      paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax && vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName
-    ) {
-      await vehicleTable.updateOne(
-        { vehicleTableId: ObjectId(vehicleTableId) },
-        { $set: {vehicleBookingStatus:"booked"} },
-        { new: true }
-      );
-      const SaveBooking = new Booking(o); 
-      await SaveBooking.save();
-      obj.message = "New booking saved successfully";
-      obj.data = o;
-    } else {
-      obj.status = 401;
-      obj.message = "Something is missing";
-      return obj;
-    }
-  }
-
-  return obj;
-}
 
 
 
@@ -1686,6 +1722,7 @@ const getPlanData = async (query) => {
           planDetails: 1, 
           stationName:  "$stationData.stationName",
           vehicleName: "$vehicleMasterData.vehicleName",
+          
         },
       },
     ]);
