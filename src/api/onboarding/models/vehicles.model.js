@@ -1561,7 +1561,7 @@ const getVehicleTblData = async (query) => {
           stationName: "$stationData.stationName",
           speedLimit:1,
           refundableDeposit:1,
-          latefee:1,
+          lateFee:1,
           vehicleStatus: 1,
           freeKms: 1,
           vehicleMasterId: 1,
