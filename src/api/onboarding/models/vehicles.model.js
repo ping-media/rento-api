@@ -30,7 +30,9 @@ const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.sch
 const Log = require("../models/Logs.model")
 
 
-
+const logError = async (message, functionName, userId) => {
+  await Log({ message, functionName, userId });
+};
 
 
 
@@ -252,42 +254,45 @@ async function booking({
 
     try {
     //console.log(userId)
-      if(!userId){
-        obj.status = 401;
-            obj.message = "Need to login first";
-
-            await Log({
-                message: "Need to login first during booking process",
-                functionName: "booking",
-                userId,
-            });
-            
-
-            return obj;
-      }
-     // Vehicle availability check
-     const vehicleRecord = await Booking.findOne({ vehicleTableId }).populate("vehicleTableId");
-    
-     if(vehicleRecord){
-     // console.log(vehicleRecord,  vehicleRecord.vehicleTableId.vehicleBookingStatus,vehicleRecord.BookingStartDateAndTime, vehicleRecord.BookingEndDateAndTime, BookingStartDateAndTime, BookingEndDateAndTime)
-     const isVehicleBooked = vehicleRecord.vehicleTableId.vehicleBookingStatus === "booked" &&
-         BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
-         BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime;
-
-     if (isVehicleBooked) {
-         obj.status = 401;
-         obj.message = "Vehicle already booked";
-         await Log({
-          message: "Vehicle already booked during booking process",
-          functionName: "booking",
-          userId,
-      });
-         return obj;
-     }
-     }
-     
+      
      
         if (!deleteRec) {
+
+          if(!userId){
+            obj.status = 401;
+                obj.message = "Need to login first";
+    
+                await Log({
+                    message: "Need to login first during booking process",
+                    functionName: "booking",
+                    userId,
+                });
+                
+    
+                return obj;
+          }
+         // Vehicle availability check
+         const vehicleRecord = await Booking.findOne({ vehicleTableId }).populate("vehicleTableId");
+        
+         if(vehicleRecord){
+         // console.log(vehicleRecord,  vehicleRecord.vehicleTableId.vehicleBookingStatus,vehicleRecord.BookingStartDateAndTime, vehicleRecord.BookingEndDateAndTime, BookingStartDateAndTime, BookingEndDateAndTime)
+         const isVehicleBooked = vehicleRecord.vehicleTableId.vehicleBookingStatus === "booked" &&
+             BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
+             BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime;
+    
+         if (isVehicleBooked) {
+             obj.status = 401;
+             obj.message = "Vehicle already booked";
+             await Log({
+              message: "Vehicle already booked during booking process",
+              functionName: "booking",
+              userId,
+          });
+             return obj;
+         }
+         }
+        
+
             const convertToISOFormat = (dateString, timeString) => {
                 const [day, month, year] = dateString.split("-");
                 const [hour, minute] = timeString.split(":");
@@ -388,16 +393,17 @@ async function booking({
                 vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName && vehicleBasic
             ) {
                 
-                await vehicleTable.updateOne(
-                    { vehicleTableId: ObjectId(vehicleTableId) },
-                    { $set: { vehicleBookingStatus: "booked" } },
-                    { new: true }
-                );
+                
                 const SaveBooking = new Booking(o);
                 await SaveBooking.save();
 
                 obj.message = "New booking saved successfully";
                 obj.data = o;
+                await vehicleTable.updateOne(
+                  { vehicleTableId: ObjectId(vehicleTableId) },
+                  { $set: { vehicleBookingStatus: "booked" } },
+                  { new: true }
+              );
 
                 await Log({
                     message: "New booking created",
@@ -452,9 +458,7 @@ const createOrder = async (o) => {
     paymentStatus, paymentMethod, userId, email, contact, submittedDocument, _id, vehicleImage, orderId, deleteRec
   } = o;
 
-  const logError = async (message, functionName, userId) => {
-    await Log({ message, functionName, userId });
-  };
+ 
 
   try {
     // Validate vehicleNumber
@@ -703,8 +707,7 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
     if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId && locationId)) {
       let o = { planName, planPrice, stationId, planDuration, vehicleMasterId, locationId };
 
-      // Handle update or delete
-     // console.log(o)
+      
       if (_id) {
         if (_id.length !== 24) {
           obj.status = 401;
@@ -1084,28 +1087,31 @@ async function createStation({
       if (_id.length !== 24) {
         response.status = 401;
         response.message = "Invalid _id";
+        await logError("Invalid _id during createStation operation", "createStation", userId);
         return response;
       }
+
       const station = await Station.findOne({ _id: ObjectId(_id) });
       if (!station) {
         response.status = 401;
         response.message = "Station not found";
+        await logError("Station not found during createStation operation", "createStation", userId);
         return response;
       }
+
       if (deleteRec) {
         await Station.deleteOne({ _id: ObjectId(_id) });
         response.message = "Station deleted successfully";
+        await logAction("Station deleted", "createStation", userId, { _id });
         return response;
       }
-      // if (stationId) {
-      //   response.status = 401;
-      //   response.message = "Station ID cannot be updated";
-      //   return response;
-      // }
-      // Update station
+
+      // Update existing station
       await Station.updateOne({ _id: ObjectId(_id) }, { $set: stationData });
       response.message = "Station updated successfully";
       response.data = stationData;
+
+      await logAction("Station updated", "createStation", userId, { _id, ...stationData });
       return response;
     }
 
@@ -1118,9 +1124,11 @@ async function createStation({
     if (!address) missingParams.push("address");
     if (!pinCode) missingParams.push("pinCode");
     if (!userId) missingParams.push("userId");
+
     if (missingParams.length > 0) {
       response.status = 401;
       response.message = `Missing required parameters: ${missingParams.join(", ")}`;
+      await logError(`Missing parameters: ${missingParams.join(", ")}`, "createStation", userId);
       return response;
     }
 
@@ -1128,17 +1136,20 @@ async function createStation({
     if (userId.length !== 24) {
       response.status = 401;
       response.message = "Invalid user ID";
+      await logError("Invalid user ID during createStation operation", "createStation", userId);
       return response;
     }
     const user = await User.findOne({ _id: ObjectId(userId) });
     if (!user) {
       response.status = 401;
       response.message = "User not found";
+      await logError("User not found during createStation operation", "createStation", userId);
       return response;
     }
     if (user.userType !== "manager") {
       response.status = 401;
       response.message = "User is not a manager";
+      await logError("User is not a manager during createStation operation", "createStation", userId);
       return response;
     }
 
@@ -1146,12 +1157,14 @@ async function createStation({
     if (locationId.length !== 24) {
       response.status = 401;
       response.message = "Invalid location ID";
+      await logError("Invalid location ID during createStation operation", "createStation", userId);
       return response;
     }
     const location = await Location.findOne({ _id: ObjectId(locationId) });
     if (!location) {
       response.status = 401;
       response.message = "Location not found";
+      await logError("Location not found during createStation operation", "createStation", userId);
       return response;
     }
 
@@ -1159,32 +1172,36 @@ async function createStation({
     if (pinCode.length !== 6 || isNaN(pinCode)) {
       response.status = 401;
       response.message = "Invalid pin code";
+      await logError("Invalid pin code during createStation operation", "createStation", userId);
       return response;
     }
 
-     // Generate a random stationId if not provided
-     if (!stationId) {
+    // Generate a random stationId if not provided
+    if (!stationId) {
       let isUnique = false;
       while (!isUnique) {
-        const generatedId = generateRandomId;
-        const existingStation = await Station.findOne({ stationId });
+        const generatedId = generateRandomId();
+        const existingStation = await Station.findOne({ stationId: generatedId });
         if (!existingStation) {
           stationId = generatedId;
           isUnique = true;
         }
       }
+      stationData.stationId = stationId;
     }
 
     // Validate stationId
     if (stationId.length !== 6 || isNaN(stationId)) {
       response.status = 401;
       response.message = "Invalid station ID";
+      await logError("Invalid station ID during createStation operation", "createStation", userId);
       return response;
     }
     const stationExists = await Station.findOne({ stationId });
     if (stationExists) {
       response.status = 401;
       response.message = "Station already exists";
+      await logError("Station already exists during createStation operation", "createStation", userId);
       return response;
     }
 
@@ -1194,9 +1211,11 @@ async function createStation({
     response.message = "Station created successfully";
     response.data = stationData;
 
+    await logAction("Station created", "createStation", userId, stationData);
   } catch (error) {
     response.status = 500;
     response.message = `Server error: ${error.message}`;
+    await logError(`Server error: ${error.message}`, "createStation", userId);
   }
 
   return response;
