@@ -31,12 +31,14 @@ const updateManyVehicles = async (filter, updateData) => {
   }
 };
 
+
 const getAllVehiclesData = async (req, res) => {
-  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+  const response = { status: 200, message: "Data fetched successfully", data: [] };
 
   try {
-    const { _id, vehicleMasterId, stationId, vehicleStatus, vehicleColor, condition } = req.query;
+    const { _id, vehicleMasterId, stationId, vehicleStatus, vehicleColor, condition, page = 1, limit = 10 } = req.query;
 
+   
     const filter = {};
 
     if (vehicleMasterId) filter.vehicleMasterId = mongoose.Types.ObjectId(vehicleMasterId);
@@ -45,80 +47,106 @@ const getAllVehiclesData = async (req, res) => {
     if (vehicleColor) filter.vehicleColor = vehicleColor;
     if (condition) filter.condition = condition;
     if (_id) filter._id = mongoose.Types.ObjectId(_id);
-    const vehicles = await vehicleTable.aggregate([
-      {
-        $match: filter
-      },
-      {
-        $lookup: {
-          from: 'vehiclemasters', // Collection name for vehicle masters
-          localField: 'vehicleMasterId', // Field from vehicleTable
-          foreignField: '_id', // Field from vehiclemasters
-          as: 'vehicleMasterData' // Alias for the joined data
-        }
-      },
-      {
-        $lookup: {
-          from: 'stations', // Collection name for vehicle masters
-          localField: 'stationId', // Field from vehicleTable
-          foreignField: 'stationId', // Field from vehiclemasters
-          as: 'stationData' // Alias for the joined data
-        }
-      },
-      {
-        $unwind: { path: '$vehicleMasterData', preserveNullAndEmptyArrays: true }, // Optional: this ensures the join will not drop records with no match
-      },
-      {
-        $unwind: { path: '$stationData', preserveNullAndEmptyArrays: true } // Optional: this ensures the join will not drop records with no match
 
+    const parsedPage = parseInt(page, 10);
+    const parsedLimit = parseInt(limit, 10);
+
+    const vehicles = await vehicleTable.aggregate([
+      // Match filter criteria
+      { $match: filter },
+
+      // Join with vehicle masters collection
+      {
+        $lookup: {
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
+        },
       },
+
+      // Join with stations collection
+      {
+        $lookup: {
+          from: "stations",
+          localField: "stationId",
+          foreignField: "stationId",
+          as: "stationData",
+        },
+      },
+
+      // Unwind joined arrays
+      { $unwind: { path: "$vehicleMasterData", preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$stationData", preserveNullAndEmptyArrays: true } },
+
+      // Project only the required fields
       {
         $project: {
-          "_id": 1,
-          "vehicleMasterId": 1,
-          "vehicleBookingStatus": 1,
-          "vehicleStatus": 1,
-          "freeKms": 1,
-          "extraKmsCharges": 1,
-          "stationId": 1,
-          "vehicleNumber": 1,
-          "vehicleModel": 1,
-          "vehicleColor": 1,
-          "perDayCost": 1,
-          "lastServiceDate": 1,
-          "kmsRun": 1,
-          "isBooked": 1,
-          "condition": 1,
-          "locationId": 1,
-          "refundableDeposit": 1,
-          "lateFee": 1,
-          "speedLimit": 1,
-          "stationName": "$stationData.stationName",
-          "vehicleImage": "$vehicleMasterData.vehicleImage",
-          "vehicleName": "$vehicleMasterData.vehicleName",
-          "createdAt": 1,
-          "updatedAt": 1,
-        }
-      }
+          _id: 1,
+          vehicleMasterId: 1,
+          vehicleBookingStatus: 1,
+          vehicleStatus: 1,
+          freeKms: 1,
+          extraKmsCharges: 1,
+          stationId: 1,
+          vehicleNumber: 1,
+          vehicleModel: 1,
+          vehicleColor: 1,
+          perDayCost: 1,
+          lastServiceDate: 1,
+          kmsRun: 1,
+          isBooked: 1,
+          condition: 1,
+          locationId: 1,
+          refundableDeposit: 1,
+          lateFee: 1,
+          speedLimit: 1,
+          stationName: "$stationData.stationName",
+          vehicleImage: "$vehicleMasterData.vehicleImage",
+          vehicleName: "$vehicleMasterData.vehicleName",
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+
+      // Pagination using $facet
+      {
+        $facet: {
+          pagination: [
+            { $count: "total" },
+            { $addFields: { page: parsedPage, limit: parsedLimit } },
+          ],
+          data: [
+            { $skip: (parsedPage - 1) * parsedLimit },
+            { $limit: parsedLimit },
+          ],
+        },
+      },
     ]);
 
-    if (!vehicles.length) {
-      obj.message = "No records found";
-      obj.status = 400;
-
-      return res.json(obj);
+    // Handle empty data
+    if (!vehicles.length || !vehicles[0].data.length) {
+      response.message = "No records found";
+      response.status = 404;
+      return res.status(404).json(response);
     }
 
-    obj.data = vehicles;
-    return res.status(200).json(obj);
+    // Attach metadata and data to response
+    const pagination = vehicles[0].pagination[0] || { total: 0, page: parsedPage, limit: parsedLimit };
+    response.data = vehicles[0].data;
+    response.pagination = pagination;
 
+    return res.status(200).json(response);
   } catch (error) {
-    console.error('Error fetching vehicleTable records:', error.message);
-    obj.status = 500;
-    obj.message = "An error occurred while fetching vehicleTable records";
-    return res.status(500).json(obj);
+    console.error("Error fetching vehicleTable records:", error.message);
+    response.status = 500;
+    response.message = "An error occurred while fetching vehicleTable records";
+    return res.status(500).json(response);
   }
 };
+
+
+
 
 const updateMultipleVehicles = async (req, res) => {
   const { vehicleIds, updateData, deleteRec } = req.body;

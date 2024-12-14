@@ -3,44 +3,59 @@ const Coupon = require('../../../db/schemas/onboarding/coupons.schema')
 const mongoose = require("mongoose"); // Ensure mongoose is imported
 
 const getCoupons = async (query) => {
-    const obj = { status: 200, message: "Data fetched successfully", data: [] };
+  const obj = { status: 200, message: "Data fetched successfully", data: [], pagination: {} };
 
-    try {
-        const { _id } = query;
+  try {
+      const { _id, page = 1, limit = 10 } = query;
 
-        // Fetch by ID if provided
-        if (_id) {
-            if (!mongoose.Types.ObjectId.isValid(_id)) {
-                obj.status = 400;
-                obj.message = "Invalid _id format";
-                return obj;
-            }
+      // Fetch by ID if provided
+      if (_id) {
+          if (!mongoose.Types.ObjectId.isValid(_id)) {
+              obj.status = 400;
+              obj.message = "Invalid _id format";
+              return obj;
+          }
 
-            const coupon = await Coupon.findById(_id); // Fetch by ID
-            if (!coupon) {
-                obj.message = "No Records Found";
-                return obj;
-            }
+          const coupon = await Coupon.findById(_id); // Fetch by ID
+          if (!coupon) {
+              obj.message = "No Records Found";
+              return obj;
+          }
 
-            obj.data = [coupon]; // Return as an array for consistency
-            return obj;
-        }
+          obj.data = [coupon]; // Return as an array for consistency
+          return obj;
+      }
 
-        // Fetch all coupons if no _id provided
-        const coupons = await Coupon.find();
-        if (!coupons.length) {
-            obj.message = "No Records Found";
-            return obj;
-        }
+      const skip = (page - 1) * limit;
 
-        obj.data = coupons;
-    } catch (error) {
-        console.error("Error fetching coupons:", error);
-        obj.status = 500;
-        obj.message = "Internal Server Error";
-    }
+    
+      const totalRecords = await Coupon.count();
 
-    return obj;
+      
+      const coupons = await Coupon.find()
+          .skip(skip)
+          .limit(Number(limit))
+          .sort({ createdAt: -1 });
+
+      if (!coupons.length) {
+          obj.message = "No Records Found";
+          return obj;
+      }
+
+      obj.data = coupons;
+      obj.pagination = {
+          totalRecords,
+          totalPages: Math.ceil(totalRecords / limit),
+          currentPage: Number(page),
+          pageSize: Number(limit),
+      };
+  } catch (error) {
+      console.error("Error fetching coupons:", error);
+      obj.status = 500;
+      obj.message = "Internal Server Error";
+  }
+
+  return obj;
 };
 
 

@@ -3,32 +3,65 @@ const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema")
 
 
 const getAllDocument = async (req, res) => {
-    try {
-     
-  
-      const documents = await Document.find({  });
-  
-      if (!documents || documents.length === 0) {
-        return res.status(404).json({
-          status: 404,
-          message: "No documents found for the provided User ID.",
+  try {
+    const { page = 1, limit = 10, userId, type, status } = req.query;
+
+    // Filters
+    const filter = {};
+    if (userId) {
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({
+          status: 400,
+          message: "Invalid User ID format.",
         });
       }
-  
-      return res.status(200).json({
-        status: 200,
-        message: "Documents retrieved successfully.",
-        data: documents,
-      });
-    } catch (error) {
-      console.error("Error fetching documents:", error);
-      return res.status(500).json({
-        status: 500,
-        message: "Failed to retrieve documents.",
-        error: error.message,
+      filter.userId = mongoose.Types.ObjectId(userId);
+    }
+    if (type) filter.type = type;
+    if (status) filter.status = status;
+
+    // Pagination
+    const pageNumber = parseInt(page, 10);
+    const pageSize = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * pageSize;
+
+    // Fetch documents
+    const documents = await Document.find(filter)
+      .skip(skip)
+      .limit(pageSize)
+      .sort({ createdAt: -1 }); // Sort by creation date (most recent first)
+
+    const totalRecords = await Document.count(filter); // Count total matching records
+    const totalPages = Math.ceil(totalRecords / pageSize);
+
+    if (!documents.length) {
+      return res.status(404).json({
+        status: 404,
+        message: "No documents found.",
       });
     }
-  };
+
+    return res.status(200).json({
+      status: 200,
+      message: "Documents retrieved successfully.",
+      data: documents,
+      pagination: {
+        totalRecords,
+        totalPages,
+        currentPage: pageNumber,
+        pageSize,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching documents:", error);
+    return res.status(500).json({
+      status: 500,
+      message: "Failed to retrieve documents.",
+      error: error.message,
+    });
+  }
+};
+
   
 
 

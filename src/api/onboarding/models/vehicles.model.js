@@ -251,6 +251,42 @@ async function booking({
     const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
     try {
+    //console.log(userId)
+      if(!userId){
+        obj.status = 401;
+            obj.message = "Need to login first";
+
+            await Log({
+                message: "Need to login first during booking process",
+                functionName: "booking",
+                userId,
+            });
+            
+
+            return obj;
+      }
+     // Vehicle availability check
+     const vehicleRecord = await Booking.findOne({ vehicleTableId }).populate("vehicleTableId");
+    
+     if(vehicleRecord){
+     // console.log(vehicleRecord,  vehicleRecord.vehicleTableId.vehicleBookingStatus,vehicleRecord.BookingStartDateAndTime, vehicleRecord.BookingEndDateAndTime, BookingStartDateAndTime, BookingEndDateAndTime)
+     const isVehicleBooked = vehicleRecord.vehicleTableId.vehicleBookingStatus === "booked" &&
+         BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
+         BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime;
+
+     if (isVehicleBooked) {
+         obj.status = 401;
+         obj.message = "Vehicle already booked";
+         await Log({
+          message: "Vehicle already booked during booking process",
+          functionName: "booking",
+          userId,
+      });
+         return obj;
+     }
+     }
+     
+     
         if (!deleteRec) {
             const convertToISOFormat = (dateString, timeString) => {
                 const [day, month, year] = dateString.split("-");
@@ -286,7 +322,7 @@ async function booking({
             discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId,
             payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId
         };
-
+        
         if (_id && _id.length !== 24) {
             obj.status = 401;
             obj.message = "Invalid booking id";
@@ -351,6 +387,7 @@ async function booking({
                 paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax &&
                 vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName && vehicleBasic
             ) {
+                
                 await vehicleTable.updateOne(
                     { vehicleTableId: ObjectId(vehicleTableId) },
                     { $set: { vehicleBookingStatus: "booked" } },
@@ -370,7 +407,7 @@ async function booking({
                
             } else {
                 obj.status = 401;
-                obj.message = "Something is missing";
+                obj.message = "Someting went wrong while creating Booking ";
 
                 await Log({
                     message: "Failed booking due to missing fields",
@@ -822,10 +859,10 @@ async function getAllInvoice(query) {
     bookingId, 
     userId, 
     paidInvoice, 
-    // page = 1, 
-    // limit = 10, 
-    // sortBy = 'createdAt', 
-    // order = 'asc' 
+    page = 1, 
+    limit = 10, 
+    sortBy = 'createdAt', 
+    order = 'asc' 
   } = query;
 
   try {
@@ -836,21 +873,21 @@ async function getAllInvoice(query) {
     if (userId) filter.userId = userId;
     if (paidInvoice) filter.paidInvoice = paidInvoice;
 
-    // const sort = {};
-    // sort[sortBy] = order === 'asc' ? 1 : -1;
+    const sort = {};
+    sort[sortBy] = order === 'asc' ? 1 : -1;
 
-    // const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const invoices = await InvoiceTbl.find(filter)
-      // .sort(sort)
-      // .skip(skip)
-      // .limit(parseInt(limit));
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit));
 
-  // const totalRecords = await InvoiceTbl.count(filter);
+    const totalRecords = await InvoiceTbl.count(filter);
     obj.data=invoices;
     
-    // obj.currentPage = parseInt(page);
-    // obj.totalPages = Math.ceil(totalRecords / parseInt(limit));
+    obj.currentPage = parseInt(page);
+    obj.totalPages = Math.ceil(totalRecords / parseInt(limit));
     
     obj.message = "Invoices retrieved successfully";
   } catch (error) {
@@ -1298,21 +1335,55 @@ async function searchVehicle({ name, pickupLocation, brand, transmissionType, lo
 }
 
 const getVehicleMasterData = async (query) => {
-  const obj = { status: 200, message: "data fetched successfully", data: [] }
-  let filter = query
-  if (filter._id) {
-    filter._id = ObjectId(query._id)
-  }
-  const response = await VehicleMaster.find({ ...filter })
-  if (response) {
-    obj.data = response
-  } else {
-    obj.status = 401
-    obj.message = "data not found"
-  }
-  return obj
-}
+  const obj = {
+    status: 200,
+    message: "Data fetched successfully",
+    data: [],
+    pagination: {},
+  };
 
+  try {
+    const { page = 1, limit = 10, ...filter } = query;
+
+    if (filter._id) {
+      try {
+        filter._id = new ObjectId(filter._id);
+      } catch (err) {
+        obj.status = 400;
+        obj.message = "Invalid _id format";
+        return obj;
+      }
+    }
+
+    const skip = (page - 1) * limit;
+
+    const response = await VehicleMaster.find(filter)
+      .skip(skip)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 }); 
+
+    const totalRecords = await VehicleMaster.count(filter);
+
+    if (response.length) {
+      obj.data = response;
+      obj.pagination = {
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / limit),
+        currentPage: Number(page),
+        pageSize: Number(limit),
+      };
+    } else {
+      obj.status = 404;
+      obj.message = "No data found";
+    }
+  } catch (error) {
+    console.error("Error in getVehicleMasterData:", error.message);
+    obj.status = 500;
+    obj.message = "Internal server error";
+  }
+
+  return obj;
+};
 
 
 const getBookings_bk = async (query) => {
@@ -1681,76 +1752,87 @@ const getVehicleTblData = async (query) => {
 // };
 
 const getPlanData = async (query) => {
-  const obj = { status: 200, message: "Plans retrieved successfully", data: [] };
+  const obj = { status: 200, message: "Plans retrieved successfully", data: [], pagination: {} };
 
   try {
-    const { _id, stationId, locationId } = query;
+    const { _id, stationId, locationId, page = 1, limit = 10 } = query;
 
     // Validate _id
-    if (_id) {
-      if (_id.length !== 24) {
-        obj.status = 401;
-        obj.message = "Invalid plan ID";
-        return obj;
-      }
+    if (_id && _id.length !== 24) {
+      obj.status = 400;
+      obj.message = "Invalid plan ID format";
+      return obj;
     }
 
     const matchFilter = {};
     if (_id) {
-      matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id; // Ensure valid ObjectId
+      matchFilter._id = new ObjectId(_id);
     } else {
       if (stationId) matchFilter.stationId = stationId;
-      if (locationId) matchFilter.locationId = new ObjectId(locationId);    }
+      if (locationId) matchFilter.locationId = new ObjectId(locationId);
+    }
 
-    // Aggregation pipeline to perform join-like operations
+    const skip = (page - 1) * limit;
+
+    // Aggregation pipeline with pagination
     const plans = await Plan.aggregate([
       { $match: matchFilter },
-
       {
         $lookup: {
-          from: "stations", // Join with the Station collection
-          localField: "stationId", // The field in Plan collection to match with
-          foreignField: "stationId", // The field in Station collection to match with
-          as: "stationData", // Output array of matching station data
+          from: "stations",
+          localField: "stationId",
+          foreignField: "stationId",
+          as: "stationData",
         },
       },
       {
         $lookup: {
-          from: "vehiclemasters", // Join with the VehicleMaster collection
-          localField: "vehicleMasterId", // The field in Plan collection to match with
-          foreignField: "_id", // The field in VehicleMaster collection to match with
-          as: "vehicleMasterData", // Output array of matching vehicle data
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
         },
       },
       {
-        $unwind: { path: "$stationData", preserveNullAndEmptyArrays: true }, // Flatten the stationData array
+        $unwind: { path: "$stationData", preserveNullAndEmptyArrays: true },
       },
       {
-        $unwind: { path: "$vehicleMasterData", preserveNullAndEmptyArrays: true }, // Flatten the vehicleMasterData array
+        $unwind: { path: "$vehicleMasterData", preserveNullAndEmptyArrays: true },
       },
       {
         $project: {
           planName: 1,
-          planDuration:1,
+          planDuration: 1,
           planPrice: 1,
           stationId: 1,
-          vehicleMasterId:1,
+          vehicleMasterId: 1,
           locationId: 1,
-          planDetails: 1, 
-          stationName:  "$stationData.stationName",
+          planDetails: 1,
+          stationName: "$stationData.stationName",
           vehicleName: "$vehicleMasterData.vehicleName",
-          
         },
       },
+      { $sort: { planName: 1 } }, // Sort by planName (ascending)
+      { $skip: skip },
+      { $limit: Number(limit) },
     ]);
+
+    // Total records count
+    const totalRecords = await Plan.countDocuments(matchFilter);
 
     if (!plans.length) {
       obj.message = "No records found";
-      obj.status = 401;
+      obj.status = 404;
       return obj;
     }
 
     obj.data = plans;
+    obj.pagination = {
+      totalRecords,
+      totalPages: Math.ceil(totalRecords / limit),
+      currentPage: Number(page),
+      pageSize: Number(limit),
+    };
   } catch (error) {
     console.error("Error fetching plans:", error.message);
     obj.status = 500;
@@ -1760,79 +1842,163 @@ const getPlanData = async (query) => {
   return obj;
 };
 
-const getLocationData = async (query) => {
-  const obj = { status: 200, message: "data fetched successfully", data: [] }
-  let filter = query
-  if (filter._id) {
-    filter._id = ObjectId(query._id)
-  }
-  const response = await Location.find({ ...filter })
-  const arr = []
-  if (response && response.length) {
-    for(let i = 0; i < response.length; i++) {
-      const { _doc } = response[i]
-      let o = _doc
-      const find = await station.find({locationId: ObjectId(o._id)})
-     
-      // o.stationCount = find.length
-       arr.push(o)
-     
+async function getLocationData(query) {
+  const obj = { 
+    status: 200, 
+    message: "Data fetched successfully", 
+    data: [], 
+    pagination: {} 
+  };
+
+  const { 
+    locationName, 
+    locationId, 
+    city, 
+    state, 
+    page = 1, 
+    limit = 10 
+  } = query;
+
+  let filter = {};
+  if (locationName) filter.locationName = locationName; 
+  if (locationId) filter._id = ObjectId(locationId);
+  if (city) filter.city = city;
+  if (state) filter.state = state;
+
+  const skip = (page - 1) * limit;
+
+  try {
+    // Fetch total record count for pagination
+    const totalRecords = await Location.count(filter);
+
+    // Fetch paginated location data
+    const result = await Location.find(filter)
+      .skip(skip)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 }); // Optional: Sort by creation date
+
+    if (result.length) {
+      obj.data = result;
+
+      // Add pagination metadata
+      obj.pagination = {
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / limit),
+        currentPage: Number(page),
+        pageSize: Number(limit),
+      };
+    } else {
+      obj.status = 404;
+      obj.message = "No locations found";
     }
-    obj.data = arr
-  } else {
-    obj.status = 401
-    obj.message = "data not found"
+  } catch (error) {
+    console.error("Error in getLocations:", error.message);
+    obj.status = 500;
+    obj.message = "Internal server error";
   }
-  return obj
+
+  return obj;
 }
 
+
 const getStationData = async (query) => {
-  const obj = { status: 200, message: "data fetched successfully", data: [] }
-  const { locationName, stationName, stationId, address, city, pinCode, state, contact, locationId, _id, userId } = query
-  let filter = {}
-  _id ? filter._id = ObjectId(_id) : null
-  locationId ? filter.locationId = ObjectId(locationId) : null
-  stationName ? filter.stationName = stationName : null
-  stationId ? filter.stationId = stationId : null
-  address ? filter.address = address : null
-  city ? filter.city = city : null
-  state ? filter.state = state : null
-  pinCode ? filter.pinCode = pinCode : null
-  userId ? filter.userId = userId : null
-  const response = await station.find(filter)
-  if (response) {
-    const arr = []
-    for (let i = 0; i < response.length; i++) {
-      const { _doc } = response[i]
-      let o = _doc
-      let obj = {_id: ObjectId(o.locationId)}
-      locationName ? obj.locationName = locationName : null
-      const find = await location.findOne(obj, {_id: 0})
-      
-      let obj3 = { _id: ObjectId(o.userId) }
-      contact ? obj3.contact = contact : null
-      const find3 = await User.findOne({ ...obj3 }, {_id: 0, firstName: 1, lastName: 1, contact: 1, email: 1})
-      if (find) {
-        o = {
-          ...o,
-          ...find?._doc
-        }
-        if (find3 && find3?._doc?.userType === "manager") {
+  const obj = { 
+    status: 200, 
+    message: "Data fetched successfully", 
+    data: [],
+    pagination: {}
+  };
+  
+  const { 
+    locationName, 
+    stationName, 
+    stationId, 
+    address, 
+    city, 
+    pinCode, 
+    state, 
+    contact, 
+    locationId, 
+    _id, 
+    userId, 
+    page = 1,        
+    limit = 10 
+  } = query;
+
+  let filter = {};
+  if (_id) filter._id = ObjectId(_id);
+  if (locationId) filter.locationId = ObjectId(locationId);
+  if (stationName) filter.stationName = stationName;
+  if (stationId) filter.stationId = stationId;
+  if (address) filter.address = address;
+  if (city) filter.city = city;
+  if (state) filter.state = state;
+  if (pinCode) filter.pinCode = pinCode;
+  if (userId) filter.userId = userId;
+
+  const skip = (page - 1) * limit;
+
+  try {
+    // Fetch total record count for pagination
+    const totalRecords = await station.count(filter);
+
+    // Fetch paginated station data
+    const response = await station.find(filter).skip(skip).limit(Number(limit));
+
+    if (response.length) {
+      const arr = [];
+      for (let i = 0; i < response.length; i++) {
+        const { _doc } = response[i];
+        let o = _doc;
+
+        let obj = { _id: ObjectId(o.locationId) };
+        if (locationName) obj.locationName = locationName;
+
+        const find = await location.findOne(obj, { _id: 0 });
+
+        let obj3 = { _id: ObjectId(o.userId) };
+        if (contact) obj3.contact = contact;
+
+        const find3 = await User.findOne({ ...obj3 }, { _id: 0, firstName: 1, lastName: 1, contact: 1, email: 1 });
+
+        if (find) {
           o = {
             ...o,
-            ...find3?._doc
+            ...find?._doc
+          };
+
+          if (find3 && find3?._doc?.userType === "manager") {
+            o = {
+              ...o,
+              ...find3?._doc
+            };
           }
+          arr.push(o);
         }
-        arr.push(o)
       }
+
+      obj.data = arr;
+
+      // Add pagination metadata
+      obj.pagination = {
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / limit),
+        currentPage: Number(page),
+        pageSize: Number(limit),
+      };
+    } else {
+      obj.status = 404;
+      obj.message = "Data not found";
     }
-    obj.data = arr
-  } else {
-    obj.status = 401
-    obj.message = "data not found"
+  } catch (error) {
+    console.error("Error fetching station data:", error.message);
+    obj.status = 500;
+    obj.message = "Internal server error";
   }
-  return obj
-}
+
+  return obj;
+};
+
 
 async function getAllVehicles({ page, limit }) {
   const obj = { status: 200, message: "data fetched successfully", data: [] }

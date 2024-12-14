@@ -61,75 +61,88 @@ async function updateUser({ _id, userType, firstName, contact, lastName, email }
   }
 }
 
-async function getAllUsers(query) {
-  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+const getAllUsers = async (query) => {
+  const obj = { status: 200, message: "Data fetched successfully", data: [], pagination: {} };
 
   try {
-    // Destructure query parameters
-    const { 
-      _id, 
-      userType, 
-      otp, 
-      password, 
-      isEmailVerified, 
-      isContactVerified, 
-      kycApproved,
-      userDocuments,
-      status,
-      altContact,
+    // Destructure query parameters with defaults
+    const {
+      _id,
+      userType,
       firstName,
-      idProof,
-      addressProof,
       lastName,
-      contact,
       email,
+      contact,
       search,
-      page = 1, 
-      limit = 10, 
-      sortBy = 'createdAt', 
-      order = 'desc' 
+      page = 1,
+      limit = 10,
+      sortBy = 'createdAt',
+      order = 'desc',
     } = query;
 
-    // Build the filter object based on query parameters
+    // Validate and normalize inputs
+    const pageNumber = parseInt(page, 10);
+    const pageSize = parseInt(limit, 10);
+    if (isNaN(pageNumber) || pageNumber <= 0) {
+      throw new Error("Invalid 'page' parameter");
+    }
+    if (isNaN(pageSize) || pageSize <= 0) {
+      throw new Error("Invalid 'limit' parameter");
+    }
+
     const filter = {};
-    if (_id) filter._id = _id;
-    if (firstName) filter.firstName = firstName;
-    if (lastName) filter.lastName = lastName;
-    if (email) filter.email = email;
-    if (contact) filter.contact = contact;
-    if (userType) filter.userType = userType;
+    if (_id) {
+      if (!mongoose.Types.ObjectId.isValid(_id)) {
+        throw new Error("Invalid '_id' format");
+      }
+      filter._id = mongoose.Types.ObjectId(_id);
+    }
+    if (firstName) filter.firstName = { $regex: firstName, $options: "i" };
+    if (lastName) filter.lastName = { $regex: lastName, $options: "i" };
+    if (email) filter.email = { $regex: email, $options: "i" };
+    if (contact) filter.contact = { $regex: contact, $options: "i" };
+    if (userType) filter.userType = { $regex: userType, $options: "i" };
 
-
+    // Handle search functionality
     if (search) {
       filter.$or = [
-        { firstName: { $regex: search, $options: "i" } },       // Search in `name` (case-insensitive)
-        { email: { $regex: search, $options: "i" } },      
-        { lastName: { $regex: search, $options: "i" } } ,
-        { contact: { $regex: search, $options: "i" } }, 
-        { userType: { $regex: search, $options: "i" } } 
-        
+        { firstName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { contact: { $regex: search, $options: "i" } },
+        { userType: { $regex: search, $options: "i" } },
       ];
     }
 
-    // const sort = {};
-    // sort[sortBy] = order === 'asc' ? 1 : -1;
+    // Build sort object
+    const sortFields = ["createdAt", "firstName", "lastName", "email"];
+    const sort = {};
+    sort[sortBy] = sortFields.includes(sortBy) ? (order === "asc" ? 1 : -1) : -1;
 
-    // const skip = (parseInt(page) - 1) * parseInt(limit);
+    // Pagination logic
+    const skip = (pageNumber - 1) * pageSize;
+    const totalRecords = await User.count(filter);
 
-    const response = await User.find(filter, { otp: 0, password: 0 }) // Exclude sensitive fields
-      // .sort(sort)
-      // .skip(skip)
-      // .limit(parseInt(limit));
+    // Fetch users with pagination and sorting
+    const users = await User.find(filter, { otp: 0, password: 0 }) // Exclude sensitive fields
+      .sort(sort)
+      .skip(skip)
+      .limit(pageSize);
 
-     if (response && response.length) {
-      obj.data = response;
-      // obj.currentPage = parseInt(page);
-      // const Recod=await User.count(filter)
-      // obj.totalPages = Math.ceil((Recod) / parseInt(limit));
-    } else {
+    if (users.length === 0) {
       obj.status = 404;
       obj.message = "No data found";
+      return obj;
     }
+
+    // Prepare response
+    obj.data = users;
+    obj.pagination = {
+      totalRecords,
+      totalPages: Math.ceil(totalRecords / pageSize),
+      currentPage: pageNumber,
+      pageSize,
+    };
   } catch (error) {
     console.error("Error fetching users:", error.message);
     obj.status = 500;
@@ -137,7 +150,8 @@ async function getAllUsers(query) {
   }
 
   return obj;
-}
+};
+
 
 
 async function getAllDataCount() {
