@@ -445,160 +445,211 @@ async function booking({
 
 
 
-async function createOrder(o) {
-  const obj = { status: 200, message: "data fetched successfully", data: [] }
-  const { vehicleNumber, vehicleName, endDate, endTime, startDate, startTime, pickupLocation, location,
-    paymentStatus, paymentMethod, userId, email, contact, submittedDocument, _id, vehicleImage, orderId } = o
-  if (vehicleNumber) {
-    const find = await vehicleTable.findOne({ vehicleNumber })
-    if (!find) {
-      obj.status = 401
-      obj.message = "invalid vehicle number"
-      return obj
-    }
-  }
-  if (vehicleName) {
-    const find = await VehicleMaster.findOne({ vehicleName })
-    if (!find) {
-      obj.status = 401
-      obj.message = "invalid vehicle name"
-      return obj
-    }
-  }
-  if (!startDate || !endDate) {
-    obj.status = 401
-    obj.message = "invalid date"
-    return obj
-  }
-  if (startDate && !Date?.parse(startDate) && endDate && !Date?.parse(endDate)) {
-    obj.status = 401
-    obj.message = "invalid date"
-    return obj
-  }
-  if (pickupLocation) {
-    const find = await Station.findOne({ stationId: pickupLocation })
-    if (!find) {
-      obj.status = 401
-      obj.message = "invalid pickup location"
-      return obj
-    }
-  }
-  if (location) {
-    const find = await Location.findOne({ locationName: location })
-    if (!find) {
-      obj.status = 401
-      obj.message = "invalid location"
-      return obj
-    }
-  }
-  if (paymentStatus) {
-    let check = ['pending', 'completed', 'canceled'].includes(paymentStatus)
-    if (!check) {
-      obj.status = 401
-      obj.message = "Invalid paymentStatus"
-      return obj
-    }
-  }
-  if (paymentMethod) {
-    let check = ['cash', 'card', 'upi', 'wallet'].includes(paymentMethod)
-    if (!check) {
-      obj.status = 401
-      obj.message = "Invalid paymentStatus"
-      return obj
-    }
-  }
-  if (userId) {
-    if (userId.length == 24) {
-      const find = await User.findOne({ _id: ObjectId(userId) })
+const createOrder = async (o) => {
+  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+  const {
+    vehicleNumber, vehicleName, endDate, endTime, startDate, startTime, pickupLocation, location,
+    paymentStatus, paymentMethod, userId, email, contact, submittedDocument, _id, vehicleImage, orderId, deleteRec
+  } = o;
+
+  const logError = async (message, functionName, userId) => {
+    await Log({ message, functionName, userId });
+  };
+
+  try {
+    // Validate vehicleNumber
+    if (vehicleNumber) {
+      const find = await vehicleTable.findOne({ vehicleNumber });
       if (!find) {
-        obj.status = 401
-        obj.message = "invalid user id"
-        return obj
+        obj.status = 401;
+        obj.message = "Invalid vehicle number";
+        await logError("Invalid vehicle number during createOrder", "createOrder", userId);
+        return obj;
       }
-    } else {
-      obj.status = 401
-      obj.message = "invalid user id"
-      return obj
     }
-  }
-  if (email) {
-    const validateEmail = emailValidation(email)
-    if (!validateEmail) {
-      obj.status = 401
-      obj.message = "invalid email"
-      return obj
-    }
-    const find = await User.findOne({ email })
-    if (!find) {
-      obj.status = 401
-      obj.message = "invalid email"
-      return obj
-    }
-  }
-  if (contact) {
-    const validateContact = contactValidation(contact)
-    if (!validateContact) {
-      obj.status = 401
-      obj.message = "invalid contact"
-      return obj
-    }
-    const find = await User.findOne({ contact })
-    if (!find) {
-      obj.status = 401
-      obj.message = "invalid contact"
-      return obj
-    }
-  }
-  if (orderId.length !== 4 || isNaN(orderId)) {
-    obj.status = 401
-    obj.message = "invalid order id"
-    return obj
-  }
-  if (_id && _id.length == 24) {
-    const find = await Order.findOne({ _id: ObjectId(_id) })
-    if (!find) {
-      obj.status = 401
-      obj.message = "Invalid _id"
-      return obj
-    } else {
-      if (deleteRec) {
-        await Order.deleteOne({ _id: ObjectId(_id) })
-        obj.message = "order deleted successfully"
-        obj.status = 200
-        obj.data = { _id }
-        return obj
+
+    // Validate vehicleName
+    if (vehicleName) {
+      const find = await VehicleMaster.findOne({ vehicleName });
+      if (!find) {
+        obj.status = 401;
+        obj.message = "Invalid vehicle name";
+        await logError("Invalid vehicle name during createOrder", "createOrder", userId);
+        return obj;
       }
-      await Order.updateOne(
-        { _id: ObjectId(_id) },
-        {
-          $set: o
-        },
-        { new: true }
-      );
-      obj.message = "order updated successfully"
-      obj.data = o
     }
-  } else {
+
+    // Validate dates
+    if (!startDate || !endDate || !Date.parse(startDate) || !Date.parse(endDate)) {
+      obj.status = 401;
+      obj.message = "Invalid date";
+      await logError("Invalid date during createOrder", "createOrder", userId);
+      return obj;
+    }
+
+    // Validate pickupLocation
+    if (pickupLocation) {
+      const find = await Station.findOne({ stationId: pickupLocation });
+      if (!find) {
+        obj.status = 401;
+        obj.message = "Invalid pickup location";
+        await logError("Invalid pickup location during createOrder", "createOrder", userId);
+        return obj;
+      }
+    }
+
+    // Validate location
+    if (location) {
+      const find = await Location.findOne({ locationName: location });
+      if (!find) {
+        obj.status = 401;
+        obj.message = "Invalid location";
+        await logError("Invalid location during createOrder", "createOrder", userId);
+        return obj;
+      }
+    }
+
+    // Validate paymentStatus
+    if (paymentStatus && !['pending', 'completed', 'canceled'].includes(paymentStatus)) {
+      obj.status = 401;
+      obj.message = "Invalid paymentStatus";
+      await logError("Invalid paymentStatus during createOrder", "createOrder", userId);
+      return obj;
+    }
+
+    // Validate paymentMethod
+    if (paymentMethod && !['cash', 'card', 'upi', 'wallet'].includes(paymentMethod)) {
+      obj.status = 401;
+      obj.message = "Invalid paymentMethod";
+      await logError("Invalid paymentMethod during createOrder", "createOrder", userId);
+      return obj;
+    }
+
+    // Validate userId
+    if (userId) {
+      if (userId.length === 24) {
+        const find = await User.findOne({ _id: ObjectId(userId) });
+        if (!find) {
+          obj.status = 401;
+          obj.message = "Invalid user ID";
+          await logError("Invalid user ID during createOrder", "createOrder", userId);
+          return obj;
+        }
+      } else {
+        obj.status = 401;
+        obj.message = "Invalid user ID";
+        await logError("Invalid user ID format during createOrder", "createOrder", userId);
+        return obj;
+      }
+    }
+
+    // Validate email
+    if (email) {
+      const validateEmail = emailValidation(email);
+      if (!validateEmail) {
+        obj.status = 401;
+        obj.message = "Invalid email";
+        await logError("Invalid email format during createOrder", "createOrder", userId);
+        return obj;
+      }
+      const find = await User.findOne({ email });
+      if (!find) {
+        obj.status = 401;
+        obj.message = "Invalid email";
+        await logError("Email not associated with any user during createOrder", "createOrder", userId);
+        return obj;
+      }
+    }
+
+    // Validate contact
+    if (contact) {
+      const validateContact = contactValidation(contact);
+      if (!validateContact) {
+        obj.status = 401;
+        obj.message = "Invalid contact";
+        await logError("Invalid contact format during createOrder", "createOrder", userId);
+        return obj;
+      }
+      const find = await User.findOne({ contact });
+      if (!find) {
+        obj.status = 401;
+        obj.message = "Invalid contact";
+        await logError("Contact not associated with any user during createOrder", "createOrder", userId);
+        return obj;
+      }
+    }
+
+    // Validate orderId
+    if (!orderId || orderId.length !== 4 || isNaN(orderId)) {
+      obj.status = 401;
+      obj.message = "Invalid order ID";
+      await logError("Invalid order ID format during createOrder", "createOrder", userId);
+      return obj;
+    }
+
+    // Handle existing order (_id)
+    if (_id && _id.length === 24) {
+      const find = await Order.findOne({ _id: ObjectId(_id) });
+      if (!find) {
+        obj.status = 401;
+        obj.message = "Invalid _id";
+        await logError("Order not found for provided _id during createOrder", "createOrder", userId);
+        return obj;
+      } else {
+        if (deleteRec) {
+          await Order.deleteOne({ _id: ObjectId(_id) });
+          obj.message = "Order deleted successfully";
+          obj.status = 200;
+          obj.data = { _id };
+          await logError("Order deleted successfully", "createOrder", userId);
+
+          return obj;
+        }
+        await Order.updateOne(
+          { _id: ObjectId(_id) },
+          { $set: o },
+          { new: true }
+        );
+        obj.message = "Order updated successfully";
+        obj.data = o;
+        await logError("Order update successfully", "createOrder", userId);
+
+        return obj;
+      }
+    }
+
+    // Handle new order creation
     if (vehicleNumber && vehicleName && endDate && endTime && startDate && startTime && pickupLocation && location &&
       paymentStatus && paymentMethod && userId && email && contact && submittedDocument && vehicleImage && orderId) {
-      const find = await Order.findOne({ orderId })
+      const find = await Order.findOne({ orderId });
       if (find) {
-        obj.status = 401
-        obj.message = "order id already exist"
-        return obj
+        obj.status = 401;
+        obj.message = "Order ID already exists";
+        await logError("Duplicate orderId during createOrder", "createOrder", userId);
+        return obj;
       }
-      delete o._id
+
+      delete o._id;
       const result = new Order({ ...o });
       await result.save();
-      obj.message = "data saved successfully"
+      obj.message = "Order created successfully";
+      obj.data = result;
     } else {
-      obj.status = 401
-      obj.message = "Invalid data or something is missing"
+      obj.status = 401;
+      obj.message = "Invalid data or missing fields";
+      await logError("Missing required fields during createOrder", "createOrder", userId);
     }
-  }
 
-  return obj
-}
+    return obj;
+  } catch (error) {
+    console.error("Error in createOrder function:", error.message);
+    await logError(`Error in createOrder: ${error.message}`, "createOrder", userId);
+    obj.status = 500;
+    obj.message = "Internal server error";
+    return obj;
+  }
+};
+
 
 async function createLocation({ locationName, locationImage, deleteRec, _id }) {
   const obj = { status: 200, message: "location created successfully", data: [] }
@@ -1851,6 +1902,7 @@ async function getLocationData(query) {
   };
 
   const { 
+    _id,
     locationName, 
     locationId, 
     city, 
@@ -1860,6 +1912,7 @@ async function getLocationData(query) {
   } = query;
 
   let filter = {};
+  if (_id) filter._id = ObjectId(_id); 
   if (locationName) filter.locationName = locationName; 
   if (locationId) filter._id = ObjectId(locationId);
   if (city) filter.city = city;
