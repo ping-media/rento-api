@@ -253,7 +253,6 @@ async function booking({
     const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
     try {
-    //console.log(userId)
       
      
         if (!deleteRec) {
@@ -273,9 +272,9 @@ async function booking({
           }
          // Vehicle availability check
          const vehicleRecord = await Booking.findOne({ vehicleTableId }).populate("vehicleTableId");
-        
+        // console.log(vehicleRecord)
          if(vehicleRecord){
-          console.log(vehicleRecord,  vehicleRecord.vehicleTableId.vehicleBookingStatus,vehicleRecord.BookingStartDateAndTime, vehicleRecord.BookingEndDateAndTime, BookingStartDateAndTime, BookingEndDateAndTime)
+        //  console.log(  vehicleRecord.vehicleTableId.vehicleBookingStatus,vehicleRecord.BookingStartDateAndTime, vehicleRecord.BookingEndDateAndTime, BookingStartDateAndTime, BookingEndDateAndTime)
          const isVehicleBooked = vehicleRecord.vehicleTableId.vehicleBookingStatus === "booked" &&
              BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
              BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime;
@@ -317,9 +316,26 @@ async function booking({
             if (lastBooking && lastBooking.bookingId) {
                 sequence = parseInt(lastBooking.bookingId, 10) + 1;
             }
-            var bookingId = sequence.toString().padStart(6, '0');
-            const find = await station.find({ stationName });
-            var stationMasterUserId = find[0].userId;
+             var bookingId = sequence.toString().padStart(6, '0');
+             const find = await Station.find({ stationName });
+            // console.log(find);
+             
+             if (!find || find.length === 0) { // Check if array is empty
+                 console.error(`Station not found for stationName: ${stationName}`);
+                 obj.status = 404;
+                 obj.message = "Station not found";
+                 await Log({
+                     message: `Station not found for stationName: ${stationName}`,
+                     functionName: "booking",
+                     userId,
+                 });
+                 return obj;
+             }
+             
+             var stationMasterUserId = find[0].userId;
+             
+
+          
         }
 
         let o = {
@@ -327,7 +343,7 @@ async function booking({
             discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId,
             payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId
         };
-        console.log(o)
+       // console.log(o)
         if (_id && _id.length !== 24) {
             obj.status = 401;
             obj.message = "Invalid booking id";
@@ -394,7 +410,7 @@ async function booking({
             ) {
                 
               await VehicleTable.updateOne(
-                { vehicleTableId: ObjectId(vehicleTableId) },
+                { _id: ObjectId(vehicleTableId) },
                 { $set: { vehicleBookingStatus: "booked" } },
                 { new: true }
             );
