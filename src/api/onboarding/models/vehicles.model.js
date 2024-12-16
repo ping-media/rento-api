@@ -271,9 +271,10 @@ async function booking({
                 return obj;
           }
          // Vehicle availability check
-         const vehicleRecord = await Booking.findOne({ vehicleTableId }).populate("vehicleTableId");
-        // console.log(vehicleRecord)
-        if (vehicleRecord && vehicleRecord.paymentStatus!== "canceled") {
+         const vehicleRecord = await Booking.findOne({ vehicleTableId }).sort({ createdAt: -1 });
+
+         console.log(vehicleRecord)
+        if (vehicleRecord && vehicleRecord.paymentStatus!= "canceled") {
           console.log("Hello")
           // Check if the vehicle is booked for the same start and end time
           const isVehicleBooked =
