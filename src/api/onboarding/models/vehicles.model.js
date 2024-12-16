@@ -8,7 +8,7 @@ const Location = require("../../../db/schemas/onboarding/location.schema");
 const Station = require("../../../db/schemas/onboarding/station.schema");
 //const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const Booking = require('../../../db/schemas/onboarding/booking.schema')
-
+const cron = require("node-cron");
 const BookingDuration = require("../../../db/schemas/onboarding/bookingDuration.schema");
 const User = require("../../../db/schemas/onboarding/user.schema");
 const Order = require("../../../db/schemas/onboarding/order.schema");
@@ -273,24 +273,24 @@ async function booking({
          // Vehicle availability check
          const vehicleRecord = await Booking.findOne({ vehicleTableId }).populate("vehicleTableId");
         // console.log(vehicleRecord)
-         if(vehicleRecord){
-        //  console.log(  vehicleRecord.vehicleTableId.vehicleBookingStatus,vehicleRecord.BookingStartDateAndTime, vehicleRecord.BookingEndDateAndTime, BookingStartDateAndTime, BookingEndDateAndTime)
-         const isVehicleBooked = vehicleRecord.vehicleTableId.vehicleBookingStatus === "booked" &&
-             BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
-             BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime;
-    
-         if (isVehicleBooked) {
-             obj.status = 401;
-             obj.message = "Vehicle already booked";
-             await Log({
+        if (vehicleRecord && vehicleRecord.paymentStatus!== "canceled") {
+          console.log("Hello")
+          // Check if the vehicle is booked for the same start and end time
+          const isVehicleBooked =
+            BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
+            BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime;
+        
+          if (isVehicleBooked) {
+            obj.status = 401;
+            obj.message = "Vehicle already booked";
+            await Log({
               message: "Vehicle already booked during booking process",
               functionName: "booking",
               userId,
-          });
-             return obj;
-         }
-         }
-        
+            });
+            return obj;
+          }
+        }
 
             const convertToISOFormat = (dateString, timeString) => {
                 const [day, month, year] = dateString.split("-");
@@ -374,11 +374,11 @@ async function booking({
             }
 
             if (deleteRec) {
-              await VehicleTable.updateOne(
-                { _id: ObjectId(vehicleTableId) },
-                { $set: { vehicleBookingStatus: "available" } },
-                { new: true }
-            );
+            //   await VehicleTable.updateOne(
+            //     { _id: ObjectId(vehicleTableId) },
+            //     { $set: { vehicleBookingStatus: "available" } },
+            //     { new: true }
+            // );
                 await Booking.deleteOne({ _id: ObjectId(_id) });
 
                 obj.message = "Booking deleted successfully";
@@ -405,15 +405,15 @@ async function booking({
             if (
                 vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
                 bookingPrice && bookingStatus && paymentStatus && rideStatus && bookingId &&
-                paymentMethod && paySuccessId && payInitFrom && bookingPrice.totalPrice && bookingPrice.tax &&
+                paymentMethod && paySuccessId && payInitFrom && 
                 vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName && vehicleBasic
             ) {
                 
-              await VehicleTable.updateOne(
-                { _id: ObjectId(vehicleTableId) },
-                { $set: { vehicleBookingStatus: "booked" } },
-                { new: true }
-            );
+            //   await VehicleTable.updateOne(
+            //     { _id: ObjectId(vehicleTableId) },
+            //     { $set: { vehicleBookingStatus: "booked" } },
+            //     { new: true }
+            // );
                 const SaveBooking = new Booking(o);
                 
                 await SaveBooking.save();
@@ -461,7 +461,42 @@ async function booking({
 
 
 
+cron.schedule("0 * * * *", async () => {
+  // This runs every hour
+  console.log("Running scheduler to cancel pending payments older than 24 hours...");
 
+  try {
+    // const twentyFourHoursAgo = new Date();
+    // twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+    const oneHourAgo = new Date();
+        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+    // Find and update bookings with paymentStatus "pending" older than 24 hours
+    const result = await Booking.updateMany(
+      {
+        paymentStatus: "pending",
+        createdAt: { $lte: oneHourAgo },
+      },
+      {
+        $set: {
+          paymentStatus: "canceled",
+          bookingStatus: "canceled",
+          rideStatus: "canceled"
+        },
+      }
+    );
+
+    if (result.modifiedCount > 0) {
+      console.log(`Canceled ${result.modifiedCount} bookings with pending payment.`);
+      
+    } else {
+      console.log("No pending payments older than 24 hours to cancel.");
+    }
+  } catch (error) {
+    console.error("Error in scheduler for canceling pending payments:", error.message);
+  }
+})
 
 
 

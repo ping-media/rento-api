@@ -71,7 +71,7 @@ const bookingSchema = new Schema({
     
     paymentMethod: {
         type: String,
-        enum: ['cash', 'card', 'upi', 'wallet'],
+        enum: ['cash', 'online'],
         required: true
     },
     invoice: {
@@ -81,7 +81,7 @@ const bookingSchema = new Schema({
     bookingStatus: {
         enum: ['pending', 'completed', 'canceled'],
         type: String,
-        required: true
+      //  required: true
     },
     paymentStatus: {
         type: String,
