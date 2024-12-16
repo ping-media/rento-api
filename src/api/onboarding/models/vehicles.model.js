@@ -404,7 +404,7 @@ async function booking({
         } else {
             if (
                 vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
-                bookingPrice && bookingStatus && paymentStatus && rideStatus && bookingId &&
+                bookingPrice  && paymentStatus && rideStatus && bookingId &&
                 paymentMethod && paySuccessId && payInitFrom && 
                 vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName && vehicleBasic
             ) {
