@@ -375,7 +375,7 @@ async function booking({
 
             if (deleteRec) {
                 await vehicleTable.updateOne(
-                    { vehicleTableId: ObjectId(vehicleTableId) },
+                    { _id: ObjectId(vehicleTableId) },
                     { $set: { vehicleBookingStatus: "available" } },
                     { new: true }
                 );
