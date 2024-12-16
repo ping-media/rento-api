@@ -374,11 +374,11 @@ async function booking({
             }
 
             if (deleteRec) {
-                await vehicleTable.updateOne(
-                    { _id: ObjectId(vehicleTableId) },
-                    { $set: { vehicleBookingStatus: "available" } },
-                    { new: true }
-                );
+              await VehicleTable.updateOne(
+                { _id: ObjectId(vehicleTableId) },
+                { $set: { vehicleBookingStatus: "available" } },
+                { new: true }
+            );
                 await Booking.deleteOne({ _id: ObjectId(_id) });
 
                 obj.message = "Booking deleted successfully";
