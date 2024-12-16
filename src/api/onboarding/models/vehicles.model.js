@@ -275,7 +275,7 @@ async function booking({
          const vehicleRecord = await Booking.findOne({ vehicleTableId }).populate("vehicleTableId");
         
          if(vehicleRecord){
-         // console.log(vehicleRecord,  vehicleRecord.vehicleTableId.vehicleBookingStatus,vehicleRecord.BookingStartDateAndTime, vehicleRecord.BookingEndDateAndTime, BookingStartDateAndTime, BookingEndDateAndTime)
+          console.log(vehicleRecord,  vehicleRecord.vehicleTableId.vehicleBookingStatus,vehicleRecord.BookingStartDateAndTime, vehicleRecord.BookingEndDateAndTime, BookingStartDateAndTime, BookingEndDateAndTime)
          const isVehicleBooked = vehicleRecord.vehicleTableId.vehicleBookingStatus === "booked" &&
              BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
              BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime;
@@ -327,7 +327,7 @@ async function booking({
             discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId,
             payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId
         };
-        
+        console.log(o)
         if (_id && _id.length !== 24) {
             obj.status = 401;
             obj.message = "Invalid booking id";
@@ -393,17 +393,19 @@ async function booking({
                 vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName && vehicleBasic
             ) {
                 
-                
+              await VehicleTable.updateOne(
+                { vehicleTableId: ObjectId(vehicleTableId) },
+                { $set: { vehicleBookingStatus: "booked" } },
+                { new: true }
+            );
                 const SaveBooking = new Booking(o);
+                
                 await SaveBooking.save();
+
+               
 
                 obj.message = "New booking saved successfully";
                 obj.data = o;
-                await vehicleTable.updateOne(
-                  { vehicleTableId: ObjectId(vehicleTableId) },
-                  { $set: { vehicleBookingStatus: "booked" } },
-                  { new: true }
-              );
 
                 await Log({
                     message: "New booking created",
