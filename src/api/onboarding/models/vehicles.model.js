@@ -248,10 +248,10 @@ async function createVehicle({
 async function booking({
     vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
     discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-    deleteRec, _id, discountPrice,vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName,paymentgatewayOrderId
+    deleteRec, _id, discountPrice,vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName,paymentgatewayOrderId, userType=""
 }) {
     const obj = { status: 200, message: "Data fetched successfully", data: [] };
-
+   
     try {
       
      
@@ -319,20 +319,22 @@ async function booking({
                 sequence = parseInt(lastBooking.bookingId, 10) + 1;
             }
              var bookingId = sequence.toString().padStart(6, '0');
-             const find = await Station.find({ stationName });
-            // console.log(find);
-             
-             if (!find || find.length === 0) { // Check if array is empty
-                 console.error(`Station not found for stationName: ${stationName}`);
-                 obj.status = 404;
-                 obj.message = "Station not found";
-                 await Log({
-                     message: `Station not found for stationName: ${stationName}`,
-                     functionName: "booking",
-                     userId,
-                 });
-                 return obj;
-             }
+            if(userType!="customer"){
+              const find = await Station.find({ stationName });
+              // console.log(find);
+               
+               if (!find || find.length === 0) { // Check if array is empty
+                   console.error(`Station not found for stationName: ${stationName}`);
+                   obj.status = 404;
+                   obj.message = "Station not found";
+                   await Log({
+                       message: `Station not found for stationName: ${stationName}`,
+                       functionName: "booking",
+                       userId,
+                   });
+                   return obj;
+               }
+            }
              
              var stationMasterUserId = find[0].userId;
              
