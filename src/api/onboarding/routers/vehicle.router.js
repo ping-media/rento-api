@@ -398,4 +398,51 @@ router.get("/getAllLogs", async (req, res) => {
   getAllLogs(req, res);
 })
 
+router.post("/createOrderId",async(req,res)=>{
+  const {data}=req.body
+ 
+    const key_id = process.env.VITE_RAZOR_KEY_ID;
+    const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
+  
+    // API endpoint for Razorpay order creation
+    const url = "https://api.razorpay.com/v1/orders";
+  
+   
+    // Prepare the order data to send
+    const options = {
+      amount: data.amount * 100, // Razorpay expects the amount in paise (100 paise = 1 INR)
+      currency: "INR",
+      receipt: "receipt#" + data.booking_id,
+    };
+  
+    try {
+      // Make the API request to Razorpay using axios
+      const response = await axios.post(url, options, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        auth: {
+          username: key_id,
+          password: key_secret,
+        },
+      });
+  
+      console.log("Order created:", response.data);
+
+      return res.status(200).send(response.data.id );
+
+    } catch (error) {
+  //     console.error(
+  //       "Error creating Razorpay order:",
+  //       error.response ? error.response.data : error.message
+  //     );
+
+  return res.status().send(error.message );
+
+
+    }
+
+
+})
+
 module.exports = router;
