@@ -248,7 +248,7 @@ async function createVehicle({
 async function booking({
     vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
     discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-    deleteRec, _id, discountPrice,vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName
+    deleteRec, _id, discountPrice,vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName,paymentgatewayOrderId
 }) {
     const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -342,7 +342,7 @@ async function booking({
 
         let o = {
             vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
-            discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId,paymentgatewayOrderId,paymentgatewayOrderId,
+            discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId,paymentgatewayOrderId,
             payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId
         };
        // console.log(o)
