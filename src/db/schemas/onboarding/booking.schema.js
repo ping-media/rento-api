@@ -66,7 +66,11 @@ const bookingSchema = new Schema({
     },
     paySuccessId: {
         type: String,
-        required: true
+       // required: true
+    },
+    paymentgatewayOrderId: {
+        type: String,
+       // required: true
     },
     
     paymentMethod: {
