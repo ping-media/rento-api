@@ -273,15 +273,16 @@ async function booking({
          // Vehicle availability check
          const vehicleRecord = await Booking.findOne({ vehicleTableId }).sort({ createdAt: -1 });
 
-         console.log(vehicleRecord)
-        if (vehicleRecord && vehicleRecord.paymentStatus!= "canceled") {
-          console.log("Hello")
+      //   console.log(vehicleRecord)
+        if (vehicleRecord && vehicleRecord.bookingStatus!= "canceled" && BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
+          BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime) {
+        //  console.log("Hello")
           // Check if the vehicle is booked for the same start and end time
-          const isVehicleBooked =
-            BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
-            BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime;
+          // const isVehicleBooked =
+          //   BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
+          //   BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime;
         
-          if (isVehicleBooked) {
+         // if (isVehicleBooked) {
             obj.status = 401;
             obj.message = "Vehicle already booked";
             await Log({
@@ -290,7 +291,7 @@ async function booking({
               userId,
             });
             return obj;
-          }
+        //  }
         }
 
             const convertToISOFormat = (dateString, timeString) => {
@@ -463,17 +464,13 @@ async function booking({
 
 
 cron.schedule("0 * * * *", async () => {
-  // This runs every hour
-  console.log("Running scheduler to cancel pending payments older than 24 hours...");
+  console.log("Running scheduler to cancel pending payments older than 1 hour...");
 
   try {
-    // const twentyFourHoursAgo = new Date();
-    // twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
-
     const oneHourAgo = new Date();
-        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
-    // Find and update bookings with paymentStatus "pending" older than 24 hours
+    // Find and update bookings with paymentStatus "pending" older than 1 hour
     const result = await Booking.updateMany(
       {
         paymentStatus: "pending",
@@ -483,21 +480,20 @@ cron.schedule("0 * * * *", async () => {
         $set: {
           paymentStatus: "canceled",
           bookingStatus: "canceled",
-          rideStatus: "canceled"
+          rideStatus: "canceled",
         },
       }
     );
 
     if (result.modifiedCount > 0) {
       console.log(`Canceled ${result.modifiedCount} bookings with pending payment.`);
-      
     } else {
-      console.log("No pending payments older than 24 hours to cancel.");
+      console.log("No pending payments older than 1 hour to cancel.");
     }
   } catch (error) {
     console.error("Error in scheduler for canceling pending payments:", error.message);
   }
-})
+});
 
 
 

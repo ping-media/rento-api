@@ -71,7 +71,7 @@ const bookingSchema = new Schema({
     
     paymentMethod: {
         type: String,
-        enum: ['cash', 'online'],
+        enum: ['cash', 'partiallyPay','online'],
         required: true
     },
     invoice: {
