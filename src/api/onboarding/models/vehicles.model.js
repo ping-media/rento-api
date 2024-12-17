@@ -415,9 +415,9 @@ async function booking({
         await SaveBooking.save();
 
 
-
+         
         obj.message = "New booking saved successfully";
-        obj.data = o;
+        obj.data = SaveBooking;
 
         await Log({
           message: "New booking created",
@@ -1110,7 +1110,9 @@ async function createStation({
   deleteRec
 }) {
   const response = { status: 200, message: "Operation successful", data: [] };
-
+  const logError = async (message, functionName, userId) => {
+    await Log({ message, functionName, userId });
+  };
   const stationData = {
     country: "India",
     stationId,
@@ -1131,7 +1133,6 @@ async function createStation({
       if (_id.length !== 24) {
         response.status = 401;
         response.message = "Invalid _id";
-        await logError("Invalid _id during createStation operation", "createStation", userId);
         return response;
       }
 
@@ -1139,14 +1140,12 @@ async function createStation({
       if (!station) {
         response.status = 401;
         response.message = "Station not found";
-        await logError("Station not found during createStation operation", "createStation", userId);
         return response;
       }
 
       if (deleteRec) {
         await Station.deleteOne({ _id: ObjectId(_id) });
         response.message = "Station deleted successfully";
-        await logAction("Station deleted", "createStation", userId, { _id });
         return response;
       }
 
@@ -1155,7 +1154,6 @@ async function createStation({
       response.message = "Station updated successfully";
       response.data = stationData;
 
-      await logAction("Station updated", "createStation", userId, { _id, ...stationData });
       return response;
     }
 
@@ -1172,7 +1170,6 @@ async function createStation({
     if (missingParams.length > 0) {
       response.status = 401;
       response.message = `Missing required parameters: ${missingParams.join(", ")}`;
-      await logError(`Missing parameters: ${missingParams.join(", ")}`, "createStation", userId);
       return response;
     }
 
@@ -1180,20 +1177,17 @@ async function createStation({
     if (userId.length !== 24) {
       response.status = 401;
       response.message = "Invalid user ID";
-      await logError("Invalid user ID during createStation operation", "createStation", userId);
       return response;
     }
     const user = await User.findOne({ _id: ObjectId(userId) });
     if (!user) {
       response.status = 401;
       response.message = "User not found";
-      await logError("User not found during createStation operation", "createStation", userId);
       return response;
     }
     if (user.userType !== "manager") {
       response.status = 401;
       response.message = "User is not a manager";
-      await logError("User is not a manager during createStation operation", "createStation", userId);
       return response;
     }
 
@@ -1201,14 +1195,12 @@ async function createStation({
     if (locationId.length !== 24) {
       response.status = 401;
       response.message = "Invalid location ID";
-      await logError("Invalid location ID during createStation operation", "createStation", userId);
       return response;
     }
     const location = await Location.findOne({ _id: ObjectId(locationId) });
     if (!location) {
       response.status = 401;
       response.message = "Location not found";
-      await logError("Location not found during createStation operation", "createStation", userId);
       return response;
     }
 
@@ -1216,36 +1208,33 @@ async function createStation({
     if (pinCode.length !== 6 || isNaN(pinCode)) {
       response.status = 401;
       response.message = "Invalid pin code";
-      await logError("Invalid pin code during createStation operation", "createStation", userId);
       return response;
     }
 
     // Generate a random stationId if not provided
-    if (!stationId) {
-      let isUnique = false;
-      while (!isUnique) {
-        const generatedId = generateRandomId();
-        const existingStation = await Station.findOne({ stationId: generatedId });
-        if (!existingStation) {
-          stationId = generatedId;
-          isUnique = true;
-        }
-      }
-      stationData.stationId = stationId;
-    }
+    // if (!stationId) {
+    //   let isUnique = false;
+    //   while (!isUnique) {
+    //     const generatedId = generateRandomId();
+    //     const existingStation = await Station.findOne({ stationId: generatedId });
+    //     if (!existingStation) {
+    //       stationId = generatedId;
+    //       isUnique = true;
+    //     }
+    //   }
+    //   stationData.stationId = stationId;
+    // }
 
     // Validate stationId
     if (stationId.length !== 6 || isNaN(stationId)) {
       response.status = 401;
       response.message = "Invalid station ID";
-      await logError("Invalid station ID during createStation operation", "createStation", userId);
       return response;
     }
     const stationExists = await Station.findOne({ stationId });
     if (stationExists) {
       response.status = 401;
       response.message = "Station already exists";
-      await logError("Station already exists during createStation operation", "createStation", userId);
       return response;
     }
 
@@ -1255,11 +1244,9 @@ async function createStation({
     response.message = "Station created successfully";
     response.data = stationData;
 
-    await logAction("Station created", "createStation", userId, stationData);
   } catch (error) {
     response.status = 500;
     response.message = `Server error: ${error.message}`;
-    await logError(`Server error: ${error.message}`, "createStation", userId);
   }
 
   return response;
