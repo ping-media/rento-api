@@ -255,51 +255,59 @@ router.post("/createVehicleMaster", upload.single('image'), async (req, res) => 
 
 // Update Location (image is optional)
 router.put("/updateVehicleMaster", upload.single('image'), async (req, res) => {
-  const obj = { status: 200, message: "VehicleMaster update successfully", data: [] };
+  const obj = { status: 200, message: "VehicleMaster updated successfully", data: [] };
 
   try {
-    // If an image is provided, handle the file upload
-    if (req.file) {
-      await VehicalfileUpload(req, res);
-    }
+      // If an image is provided, handle the file upload
+      if (req.file) {
+          await VehicalfileUpload(req, res);
+      }
 
-    let _id= req.body._id;
-    let vehicleName = req.body.vehicleName;
-    let vehicleType = req.body.vehicleType;
-    let vehicleBrand = req.body.vehicleBrand;
+      const { _id, vehicleName, vehicleType, vehicleBrand } = req.body;
 
+      // Check if the `_id` is valid
+      if (!_id) {
+          obj.message = "Vehicle ID (_id) is required";
+          obj.status = 400;
+          return res.status(400).json(obj);
+      }
 
-     if (_id) {
-            const find = await vehicleMaster.findOne({ _id})
-            if (!find) {
-              obj.message="Invalid vehicle _id"
-              obj.status=401
-              return res.status(401).json(
-                obj
-                           );
-            }
-            
-            await vehicleMaster.updateOne(
+      const find = await vehicleMaster.findOne({ _id });
+      if (!find) {
+          obj.message = "Invalid vehicle ID (_id)";
+          obj.status = 404;
+          return res.status(404).json(obj);
+      }
+
+      // Dynamically build the update object
+      const updateData = {};
+      if (vehicleName) updateData.vehicleName = vehicleName;
+      if (vehicleType) updateData.vehicleType = vehicleType;
+      if (vehicleBrand) updateData.vehicleBrand = vehicleBrand;
+
+      // Only perform the update if there is something to update
+      if (Object.keys(updateData).length > 0) {
+          await vehicleMaster.updateOne(
               { _id },
-              {
-                $set: {vehicleName,vehicleBrand,vehicleType}
-              },
+              { $set: updateData },
               { new: true }
-            );
-            
-            obj.message="VehicleMaster upadate successfully"
-              obj.status=200
-              return res.status(200).json(
-                obj
-                           );
-          }
+          );
+      } else {
+          obj.message = "No valid fields provided for update";
+          obj.status = 400;
+          return res.status(400).json(obj);
+      }
+
+      obj.message = "VehicleMaster updated successfully";
+      obj.status = 200;
+      return res.status(200).json(obj);
 
   } catch (error) {
-    console.error("Error updating VehicleMaster:", error.message);
+      console.error("Error updating VehicleMaster:", error.message);
 
-    obj.status = 500; 
-    obj.message = "An error occurred while updating VehicleMaster";
-    return res.status(500).json(obj);
+      obj.status = 500;
+      obj.message = "An error occurred while updating VehicleMaster";
+      return res.status(500).json(obj);
   }
 });
 
