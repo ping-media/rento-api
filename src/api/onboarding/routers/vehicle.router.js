@@ -6,7 +6,7 @@ const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
 require('dotenv').config();
-
+const axios= require ("axios");
 const {fileUpload} = require ("../models/locationUpload.model")
 const{VehicalfileUpload} = require ("../models/createVehicleMasterUpload")
 const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
@@ -399,7 +399,7 @@ router.get("/getAllLogs", async (req, res) => {
 })
 
 router.post("/createOrderId",async(req,res)=>{
-  const {data}=req.body
+  const {amount, booking_id}=req.body
  
     const key_id = process.env.VITE_RAZOR_KEY_ID;
     const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
@@ -410,9 +410,9 @@ router.post("/createOrderId",async(req,res)=>{
    
     // Prepare the order data to send
     const options = {
-      amount: data.amount * 100, // Razorpay expects the amount in paise (100 paise = 1 INR)
+      amount: amount * 100, // Razorpay expects the amount in paise (100 paise = 1 INR)
       currency: "INR",
-      receipt: "receipt#" + data.booking_id,
+      receipt: "receipt#" + booking_id,
     };
   
     try {
@@ -427,7 +427,7 @@ router.post("/createOrderId",async(req,res)=>{
         },
       });
   
-      console.log("Order created:", response.data);
+     // console.log("Order created:", response);
 
       return res.status(200).send(response.data.id );
 
@@ -437,7 +437,7 @@ router.post("/createOrderId",async(req,res)=>{
   //       error.response ? error.response.data : error.message
   //     );
 
-  return res.status().send(error.message );
+  return res.status(400).send(error.message );
 
 
     }
