@@ -22,7 +22,7 @@ const plan = require("../../../db/schemas/onboarding/plan.schema");
 const location = require("../../../db/schemas/onboarding/location.schema");
 const station = require("../../../db/schemas/onboarding/station.schema");
 const order = require("../../../db/schemas/onboarding/order.schema");
-const { emailValidation, contactValidation } = require("../../../constant"); 
+const { emailValidation, contactValidation } = require("../../../constant");
 const { query } = require("express");
 //const {generateRandomId } = require('../../../utils/help-scripts/help-functions');
 const Invoice = require('../../../db/schemas/onboarding/invoice-tbl.schema'); // Import the Invoice model
@@ -96,371 +96,363 @@ const createBookingDuration = async ({ bookingDuration, attachedVehicles, bookin
 
 
 async function createVehicle({
-    _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, locationId,
-    perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus,
-    vehiclePlan, refundableDeposit, lateFee, speedLimit
+  _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, locationId,
+  perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus,
+  vehiclePlan, refundableDeposit, lateFee, speedLimit
 }) {
-    const response = { status: 200, message: "Data fetched successfully", data: [] };
+  const response = { status: 200, message: "Data fetched successfully", data: [] };
 
-    try {
-        if (_id || (vehicleMasterId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber &&
-            freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate &&
-            kmsRun && isBooked && condition && locationId)) {
+  try {
+    if (_id || (vehicleMasterId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber &&
+      freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate &&
+      kmsRun && isBooked && condition && locationId)) {
 
-            if (stationId) {
-                const findStation = await Station.findOne({ stationId });
-                if (!findStation) {
-                    response.status = 401;
-                    response.message = "Invalid stationId";
-                    await Log({
-                        message: `Invalid stationId provided ${stationId}`,
-                        functionName: "createVehicle",
-                        userId: stationId
-                    });
-                    return response;
-                }
-            }
-
-            if (isBooked) {
-                const statusCheck = ["false", "true"].includes(isBooked.toString());
-                if (!statusCheck) {
-                    response.status = 401;
-                    response.message = "Invalid isBooked value";
-                    await Log({
-                        message: "Invalid isBooked value",
-                        functionName: "createVehicle",
-                        userId: stationId
-                    });
-                    return response;
-                }
-            }
-
-            if (condition) {
-                const statusCheck = ["old", "new"].includes(condition);
-                if (!statusCheck) {
-                    response.status = 401;
-                    response.message = "Invalid vehicle condition";
-                    await Log({
-                        message: "Invalid vehicle condition",
-                        functionName: "createVehicle",
-                        userId: stationId
-                    });
-                    return response;
-                }
-            }
-
-            if (vehicleNumber && vehicleNumber.length !== 10) {
-                response.status = 401;
-                response.message = "Invalid vehicle number";
-                await Log({
-                    message: "Invalid vehicle number length",
-                    functionName: "createVehicle",
-                    userId: stationId
-                });
-                return response;
-            }
-
-            const o = {
-                locationId, vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms,
-                extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition,
-                vehiclePlan, refundableDeposit, lateFee, speedLimit
-            };
-
-            if (_id) {
-                const find = await VehicleTable.findOne({ _id: ObjectId(_id) });
-                if (!find) {
-                    response.status = 401;
-                    response.message = "Invalid vehicle table ID";
-                    await Log({
-                        message: "Invalid vehicle table ID during update",
-                        functionName: "createVehicle",
-                        userId: stationId
-                    });
-                    return response;
-                }
-
-                if (deleteRec) {
-                    await VehicleTable.deleteOne({ _id: ObjectId(_id) });
-                    response.message = "Vehicle deleted successfully";
-                    response.data = { _id };
-                    await Log({
-                        message: "Vehicle deleted successfully",
-                        functionName: "createVehicle",
-                        userId: stationId
-                    });
-                    return response;
-                }
-
-                await VehicleTable.updateOne({ _id: ObjectId(_id) }, { $set: o });
-                response.message = "Vehicle updated successfully";
-                response.data = o;
-                await Log({
-                    message: "Vehicle updated successfully",
-                    functionName: "createVehicle",
-                    userId: stationId
-                });
-            } else {
-                const findVeh = await VehicleTable.findOne({ vehicleNumber });
-                if (!findVeh) {
-                    const SaveVehicleTable = new VehicleTable(o);
-                    await SaveVehicleTable.save();
-                    response.message = "Vehicle saved successfully";
-                    response.data = o;
-                    await Log({
-                        message: "New vehicle created successfully",
-                        functionName: "createVehicle",
-                        userId: stationId
-                    });
-                } else {
-                    response.status = 401;
-                    response.message = "Vehicle number already exists";
-                    await Log({
-                        message: `Vehicle number already exists ${vehicleNumber}`,
-                        functionName: "createVehicle",
-                        userId: stationId
-                    });
-                    return response;
-                }
-            }
-        } else {
-            response.status = 401;
-            response.message = "All fields required";
-            await Log({
-                message: "Required fields missing",
-                functionName: "createVehicle",
-                userId: stationId
-            });
-        }
-        return response;
-    } catch (error) {
-        response.status = 500;
-        response.message = "Internal server error";
-        await Log({
-            message: `Error in createVehicle function: ${error.message}`,
+      if (stationId) {
+        const findStation = await Station.findOne({ stationId });
+        if (!findStation) {
+          response.status = 401;
+          response.message = "Invalid stationId";
+          await Log({
+            message: `Invalid stationId provided ${stationId}`,
             functionName: "createVehicle",
             userId: stationId
+          });
+          return response;
+        }
+      }
+
+      if (isBooked) {
+        const statusCheck = ["false", "true"].includes(isBooked.toString());
+        if (!statusCheck) {
+          response.status = 401;
+          response.message = "Invalid isBooked value";
+          await Log({
+            message: "Invalid isBooked value",
+            functionName: "createVehicle",
+            userId: stationId
+          });
+          return response;
+        }
+      }
+
+      if (condition) {
+        const statusCheck = ["old", "new"].includes(condition);
+        if (!statusCheck) {
+          response.status = 401;
+          response.message = "Invalid vehicle condition";
+          await Log({
+            message: "Invalid vehicle condition",
+            functionName: "createVehicle",
+            userId: stationId
+          });
+          return response;
+        }
+      }
+
+      if (vehicleNumber && vehicleNumber.length !== 10) {
+        response.status = 401;
+        response.message = "Invalid vehicle number";
+        await Log({
+          message: "Invalid vehicle number length",
+          functionName: "createVehicle",
+          userId: stationId
         });
-        throw new Error(error.message);
+        return response;
+      }
+
+      const o = {
+        locationId, vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms,
+        extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition,
+        vehiclePlan, refundableDeposit, lateFee, speedLimit
+      };
+
+      if (_id) {
+        const find = await VehicleTable.findOne({ _id: ObjectId(_id) });
+        if (!find) {
+          response.status = 401;
+          response.message = "Invalid vehicle table ID";
+          await Log({
+            message: "Invalid vehicle table ID during update",
+            functionName: "createVehicle",
+            userId: stationId
+          });
+          return response;
+        }
+
+        if (deleteRec) {
+          await VehicleTable.deleteOne({ _id: ObjectId(_id) });
+          response.message = "Vehicle deleted successfully";
+          response.data = { _id };
+          await Log({
+            message: "Vehicle deleted successfully",
+            functionName: "createVehicle",
+            userId: stationId
+          });
+          return response;
+        }
+
+        await VehicleTable.updateOne({ _id: ObjectId(_id) }, { $set: o });
+        response.message = "Vehicle updated successfully";
+        response.data = o;
+        await Log({
+          message: "Vehicle updated successfully",
+          functionName: "createVehicle",
+          userId: stationId
+        });
+      } else {
+        const findVeh = await VehicleTable.findOne({ vehicleNumber });
+        if (!findVeh) {
+          const SaveVehicleTable = new VehicleTable(o);
+          await SaveVehicleTable.save();
+          response.message = "Vehicle saved successfully";
+          response.data = o;
+          await Log({
+            message: "New vehicle created successfully",
+            functionName: "createVehicle",
+            userId: stationId
+          });
+        } else {
+          response.status = 401;
+          response.message = "Vehicle number already exists";
+          await Log({
+            message: `Vehicle number already exists ${vehicleNumber}`,
+            functionName: "createVehicle",
+            userId: stationId
+          });
+          return response;
+        }
+      }
+    } else {
+      response.status = 401;
+      response.message = "All fields required";
+      await Log({
+        message: "Required fields missing",
+        functionName: "createVehicle",
+        userId: stationId
+      });
     }
+    return response;
+  } catch (error) {
+    response.status = 500;
+    response.message = "Internal server error";
+    await Log({
+      message: `Error in createVehicle function: ${error.message}`,
+      functionName: "createVehicle",
+      userId: stationId
+    });
+    throw new Error(error.message);
+  }
 }
 
 
 async function booking({
-    vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
-    discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-    deleteRec, _id, discountPrice,vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName,paymentgatewayOrderId, userType=""
+  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
+  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
+  deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = ""
 }) {
-    const obj = { status: 200, message: "Data fetched successfully", data: [] };
-   
-    try {
-      
-     
-        if (!deleteRec) {
+  const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
-          if(!userId){
-            obj.status = 401;
-                obj.message = "Need to login first";
-    
-                await Log({
-                    message: "Need to login first during booking process",
-                    functionName: "booking",
-                    userId,
-                });
-                
-    
-                return obj;
-          }
-         // Vehicle availability check
-         const vehicleRecord = await Booking.findOne({ vehicleTableId }).sort({ createdAt: -1 });
+  try {
 
-      //   console.log(vehicleRecord)
-        if (vehicleRecord && vehicleRecord.bookingStatus!= "canceled" && BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
-          BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime) {
-        //  console.log("Hello")
-          // Check if the vehicle is booked for the same start and end time
-          // const isVehicleBooked =
-          //   BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
-          //   BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime;
-        
-         // if (isVehicleBooked) {
-            obj.status = 401;
-            obj.message = "Vehicle already booked";
-            await Log({
-              message: "Vehicle already booked during booking process",
-              functionName: "booking",
-              userId,
-            });
-            return obj;
-        //  }
-        }
 
-            const convertToISOFormat = (dateString, timeString) => {
-                const [day, month, year] = dateString.split("-");
-                const [hour, minute] = timeString.split(":");
-                const ampm = timeString.split(" ")[1];
-                let hour24 = parseInt(hour, 10);
-                if (ampm === "PM" && hour24 < 12) hour24 += 12;
-                if (ampm === "AM" && hour24 === 12) hour24 = 0;
-                return new Date(`${year}-${month}-${day}T${hour24}:${minute}:00.000Z`).toISOString();
-            };
+    if (!_id) {
 
-            if (BookingStartDateAndTime && BookingStartDateAndTime.startDate && BookingStartDateAndTime.startTime) {
-                const { startDate, startTime } = BookingStartDateAndTime;
-                BookingStartDateAndTime = convertToISOFormat(startDate, startTime);
-            }
-            if (BookingEndDateAndTime && BookingEndDateAndTime.endDate && BookingEndDateAndTime.endTime) {
-                const { endDate, endTime } = BookingEndDateAndTime;
-                BookingEndDateAndTime = convertToISOFormat(endDate, endTime);
-            }
-
-            let sequence = 1;
-            const lastBooking = await Booking.findOne({}).sort({ createdAt: -1 }).select('bookingId');
-            if (lastBooking && lastBooking.bookingId) {
-                sequence = parseInt(lastBooking.bookingId, 10) + 1;
-            }
-             var bookingId = sequence.toString().padStart(6, '0');
-            if(userType!="customer"){
-              const find = await Station.find({ stationName });
-              // console.log(find);
-               
-               if (!find || find.length === 0) { // Check if array is empty
-                   console.error(`Station not found for stationName: ${stationName}`);
-                   obj.status = 404;
-                   obj.message = "Station not found";
-                   await Log({
-                       message: `Station not found for stationName: ${stationName}`,
-                       functionName: "booking",
-                       userId,
-                   });
-                   return obj;
-               }
-            }
-             
-             var stationMasterUserId = find[0].userId;
-             
-
-          
-        }
-
-        let o = {
-            vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
-            discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId,paymentgatewayOrderId,
-            payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId
-        };
-       // console.log(o)
-        if (_id && _id.length !== 24) {
-            obj.status = 401;
-            obj.message = "Invalid booking id";
-
-            await Log({
-                message: "Invalid booking ID during booking process",
-                functionName: "booking",
-                userId,
-            });
-            
-
-            return obj;
-        }
-
-        if (_id) {
-            const find = await Booking.findOne({ _id: ObjectId(_id) });
-            if (!find) {
-                obj.status = 401;
-                obj.message = "Invalid booking id";
-
-                await Log({
-                    message: "Booking not found for update",
-                    functionName: "booking",
-                    userId,
-                });
-
-                return obj;
-            }
-
-            if (deleteRec) {
-            //   await VehicleTable.updateOne(
-            //     { _id: ObjectId(vehicleTableId) },
-            //     { $set: { vehicleBookingStatus: "available" } },
-            //     { new: true }
-            // );
-                await Booking.deleteOne({ _id: ObjectId(_id) });
-
-                obj.message = "Booking deleted successfully";
-                obj.status = 200;
-                obj.data = { _id };
-
-                await Log({
-                    message: `Booking with ID ${_id} deleted`,
-                    functionName: "deletebooking",
-                    userId,
-                });
-
-                return obj;
-            }
-
-            await Booking.updateOne({ _id: ObjectId(_id) }, { $set: o }, { new: true });
-
-            await Log({
-                message: `Booking with ID ${_id} updated`,
-                functionName: "updatebooking",
-                userId,
-            });
-        } else {
-            if (
-                vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
-                bookingPrice  && paymentStatus && rideStatus && bookingId &&
-                paymentMethod && paySuccessId && payInitFrom && 
-                vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName && vehicleBasic
-            ) {
-                
-            //   await VehicleTable.updateOne(
-            //     { _id: ObjectId(vehicleTableId) },
-            //     { $set: { vehicleBookingStatus: "booked" } },
-            //     { new: true }
-            // );
-                const SaveBooking = new Booking(o);
-                
-                await SaveBooking.save();
-
-               
-
-                obj.message = "New booking saved successfully";
-                obj.data = o;
-
-                await Log({
-                    message: "New booking created",
-                    functionName: "booking",
-                    userId,
-                });
-               
-            } else {
-                obj.status = 401;
-                obj.message = "Someting went wrong while creating Booking ";
-
-                await Log({
-                    message: "Failed booking due to missing fields",
-                    functionName: "booking",
-                    userId,
-                });
-
-                return obj;
-            }
-        }
-
-        return obj;
-    } catch (error) {
-        console.error("Error in booking function:", error.message);
+      if (!userId) {
+        obj.status = 401;
+        obj.message = "Need to login first";
 
         await Log({
-            message: `Error in booking function: ${error.message}`,
-            functionName: "booking",
-            userId,
+          message: "Need to login first during booking process",
+          functionName: "booking",
+          userId,
         });
 
-        obj.status = 500;
-        obj.message = "Internal server error";
+
         return obj;
+      }
+      // Vehicle availability check
+      const vehicleRecord = await Booking.findOne({ vehicleTableId }).sort({ createdAt: -1 });
+
+      //   console.log(vehicleRecord)
+      if (vehicleRecord && vehicleRecord.bookingStatus != "canceled" && BookingStartDateAndTime === vehicleRecord.BookingStartDateAndTime &&
+        BookingEndDateAndTime === vehicleRecord.BookingEndDateAndTime) {
+
+        obj.status = 401;
+        obj.message = "Vehicle already booked";
+        await Log({
+          message: "Vehicle already booked during booking process",
+          functionName: "booking",
+          userId,
+        });
+        return obj;
+
+      }
+
+      const convertToISOFormat = (dateString, timeString) => {
+        const [day, month, year] = dateString.split("-");
+        const [hour, minute] = timeString.split(":");
+        const ampm = timeString.split(" ")[1];
+        let hour24 = parseInt(hour, 10);
+        if (ampm === "PM" && hour24 < 12) hour24 += 12;
+        if (ampm === "AM" && hour24 === 12) hour24 = 0;
+        return new Date(`${year}-${month}-${day}T${hour24}:${minute}:00.000Z`).toISOString();
+      };
+
+      if (BookingStartDateAndTime && BookingStartDateAndTime.startDate && BookingStartDateAndTime.startTime) {
+        const { startDate, startTime } = BookingStartDateAndTime;
+        BookingStartDateAndTime = convertToISOFormat(startDate, startTime);
+      }
+      if (BookingEndDateAndTime && BookingEndDateAndTime.endDate && BookingEndDateAndTime.endTime) {
+        const { endDate, endTime } = BookingEndDateAndTime;
+        BookingEndDateAndTime = convertToISOFormat(endDate, endTime);
+      }
+
+      let sequence = 1;
+      const lastBooking = await Booking.findOne({}).sort({ createdAt: -1 }).select('bookingId');
+      if (lastBooking && lastBooking.bookingId) {
+        sequence = parseInt(lastBooking.bookingId, 10) + 1;
+      }
+      var bookingId = sequence.toString().padStart(6, '0');
+      const find = await Station.find({ stationName });
+
+      if (userType != "customer") {
+        // console.log(find);
+
+        if (!find || find.length === 0) { // Check if array is empty
+          console.error(`Station not found for stationName: ${stationName}`);
+          obj.status = 404;
+          obj.message = "Station not found";
+          await Log({
+            message: `Station not found for stationName: ${stationName}`,
+            functionName: "booking",
+            userId,
+          });
+          return obj;
+        }
+      }
+
+      var stationMasterUserId = find[0].userId;
+
+
+
     }
+
+    let o = {
+      vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
+      discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, paymentgatewayOrderId,
+      payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId
+    };
+    // console.log(o)
+    if (_id && _id.length !== 24) {
+      obj.status = 401;
+      obj.message = "Invalid booking id";
+
+      await Log({
+        message: "Invalid booking ID during booking process",
+        functionName: "booking",
+        userId,
+      });
+
+
+      return obj;
+    }
+
+    if (_id) {
+      const find = await Booking.findOne({ _id: ObjectId(_id) });
+      //console.log(find)
+      if (!find) {
+        obj.status = 401;
+        obj.message = "Invalid booking id";
+
+        await Log({
+          message: "Booking not found for update",
+          functionName: "booking",
+          userId,
+        });
+
+        return obj;
+      }
+
+      if (deleteRec) {
+
+        await Booking.deleteOne({ _id: ObjectId(_id) });
+
+        obj.message = "Booking deleted successfully";
+        obj.status = 200;
+        obj.data = { _id };
+
+        await Log({
+          message: `Booking with ID ${_id} deleted`,
+          functionName: "deletebooking",
+          userId,
+        });
+
+        return obj;
+      }
+
+      await Booking.updateOne({ _id: ObjectId(_id) }, { $set: o }, { new: true });
+
+      await Log({
+        message: `Booking with ID ${_id} updated`,
+        functionName: "updatebooking",
+        userId,
+      });
+      obj.status = 200;
+        obj.message = "Booking Update successfull ";
+        obj.data=_id;
+        return obj;
+    } else {
+      if (
+        vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
+        bookingPrice && paymentStatus && rideStatus && bookingId &&
+        paymentMethod && paySuccessId && payInitFrom &&
+        vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName && vehicleBasic
+      ) {
+
+
+        const SaveBooking = new Booking(o);
+
+        await SaveBooking.save();
+
+
+
+        obj.message = "New booking saved successfully";
+        obj.data = o;
+
+        await Log({
+          message: "New booking created",
+          functionName: "booking",
+          userId,
+        });
+
+      } else {
+        obj.status = 401;
+        obj.message = "Someting went wrong while creating Booking ";
+
+        await Log({
+          message: "Failed booking due to missing fields",
+          functionName: "booking",
+          userId,
+        });
+
+        return obj;
+      }
+    }
+
+    return obj;
+  } catch (error) {
+    console.error("Error in booking function:", error.message);
+
+    await Log({
+      message: `Error in booking function: ${error.message}`,
+      functionName: "booking",
+      userId,
+    });
+
+    obj.status = 500;
+    obj.message = "Internal server error";
+    return obj;
+  }
 }
 
 
@@ -510,7 +502,7 @@ const createOrder = async (o) => {
     paymentStatus, paymentMethod, userId, email, contact, submittedDocument, _id, vehicleImage, orderId, deleteRec
   } = o;
 
- 
+
 
   try {
     // Validate vehicleNumber
@@ -752,14 +744,14 @@ async function createLocation({ locationName, locationImage, deleteRec, _id }) {
 
 
 
-async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec,locationId }) {
+async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec, locationId }) {
   const obj = { status: 200, message: "Plan created successfully", data: [] };
 
   try {
     if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId && locationId)) {
       let o = { planName, planPrice, stationId, planDuration, vehicleMasterId, locationId };
 
-      
+
       if (_id) {
         if (_id.length !== 24) {
           obj.status = 401;
@@ -767,7 +759,7 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
           return obj;
         }
 
-        
+
 
         // Check if plan exists for the same station with the same name or duration
         const duplicatePlan = await Plan.findOne({
@@ -801,7 +793,7 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
         }
       } else {
         // Validate station ID
-        const stationExists = await Station.findOne({stationId });
+        const stationExists = await Station.findOne({ stationId });
         if (!stationExists) {
           obj.status = 401;
           obj.message = "Invalid station ID";
@@ -849,7 +841,7 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
 
 
 
-async function createInvoice({  _id, deleteRec, bookingId, paidInvoice, userId }) {
+async function createInvoice({ _id, deleteRec, bookingId, paidInvoice, userId }) {
   const obj = { status: 200, message: "Invoice created successfully", data: [] };
   const o = { userId, bookingId, paidInvoice };
 
@@ -911,40 +903,40 @@ async function createInvoice({  _id, deleteRec, bookingId, paidInvoice, userId }
       // Create new invoice
       if (bookingId) {
 
-        const find = await InvoiceTbl.findOne({bookingId});
+        const find = await InvoiceTbl.findOne({ bookingId });
         if (find) {
           obj.status = 401;
           obj.message = "Invoice Number allready exists";
           return obj;
         }
-        else{
+        else {
 
           const currentYear = new Date().getFullYear();
 
-        // Get the last invoice number for the year
-        const lastInvoice = await InvoiceTbl.findOne({})
-          .sort({ createdAt: -1 }) // Sort by latest created
-          .select('invoiceNumber');
+          // Get the last invoice number for the year
+          const lastInvoice = await InvoiceTbl.findOne({})
+            .sort({ createdAt: -1 }) // Sort by latest created
+            .select('invoiceNumber');
 
-        let sequence = 1; // Default sequence
-        if (lastInvoice && lastInvoice.invoiceNumber) {
-          const match = lastInvoice.invoiceNumber.match(new RegExp(`INV-${currentYear}-(\\d{5})`));
-          if (match) {
-            sequence = parseInt(match[1], 10) + 1;
+          let sequence = 1; // Default sequence
+          if (lastInvoice && lastInvoice.invoiceNumber) {
+            const match = lastInvoice.invoiceNumber.match(new RegExp(`INV-${currentYear}-(\\d{5})`));
+            if (match) {
+              sequence = parseInt(match[1], 10) + 1;
+            }
           }
+
+          // Generate new invoice number
+          const newInvoiceNumber = `INV-${currentYear}-${sequence.toString().padStart(5, '0')}`;
+          o.invoiceNumber = newInvoiceNumber;
+
+          const newInvoice = new InvoiceTbl(o);
+          await newInvoice.save();
+
+          obj.message = "New invoice created successfully";
+          obj.data = o;
         }
 
-        // Generate new invoice number
-        const newInvoiceNumber = `INV-${currentYear}-${sequence.toString().padStart(5, '0')}`;
-        o.invoiceNumber = newInvoiceNumber;
-
-        const newInvoice = new InvoiceTbl(o);
-        await newInvoice.save();
-
-        obj.message = "New invoice created successfully";
-        obj.data = o;
-        }
-        
       } else {
         obj.status = 401;
         obj.message = "Invalid data";
@@ -960,15 +952,15 @@ async function createInvoice({  _id, deleteRec, bookingId, paidInvoice, userId }
 
 async function getAllInvoice(query) {
   const obj = { status: 200, message: "Invoices retrieved successfully", data: [] };
-  const { 
-    _id, 
-    bookingId, 
-    userId, 
-    paidInvoice, 
-    page = 1, 
-    limit = 10, 
-    sortBy = 'createdAt', 
-    order = 'asc' 
+  const {
+    _id,
+    bookingId,
+    userId,
+    paidInvoice,
+    page = 1,
+    limit = 10,
+    sortBy = 'createdAt',
+    order = 'asc'
   } = query;
 
   try {
@@ -990,11 +982,11 @@ async function getAllInvoice(query) {
       .limit(parseInt(limit));
 
     const totalRecords = await InvoiceTbl.count(filter);
-    obj.data=invoices;
-    
+    obj.data = invoices;
+
     obj.currentPage = parseInt(page);
     obj.totalPages = Math.ceil(totalRecords / parseInt(limit));
-    
+
     obj.message = "Invoices retrieved successfully";
   } catch (error) {
     console.error("Error fetching invoices:", error.message);
@@ -1103,32 +1095,32 @@ async function discountCoupons({ couponName, vehicleType, allowedUsers, usageAll
   return obj
 }
 
-async function createStation({ 
-  stationId, 
-  stationName, 
-  locationId, 
-  state, 
-  city, 
-  userId, 
-  address, 
-  pinCode, 
-  latitude, 
-  longitude, 
-  _id, 
-  deleteRec 
+async function createStation({
+  stationId,
+  stationName,
+  locationId,
+  state,
+  city,
+  userId,
+  address,
+  pinCode,
+  latitude,
+  longitude,
+  _id,
+  deleteRec
 }) {
   const response = { status: 200, message: "Operation successful", data: [] };
 
   const stationData = {
-    country: "India", 
-    stationId, 
-    locationId, 
-    state, 
-    city, 
-    address, 
-    pinCode, 
-    latitude, 
-    longitude, 
+    country: "India",
+    stationId,
+    locationId,
+    state,
+    city,
+    address,
+    pinCode,
+    latitude,
+    longitude,
     userId,
     stationName
   };
@@ -1482,7 +1474,7 @@ const getVehicleMasterData = async (query) => {
     const response = await VehicleMaster.find(filter)
       .skip(skip)
       .limit(Number(limit))
-      .sort({ createdAt: -1 }); 
+      .sort({ createdAt: -1 });
 
     const totalRecords = await VehicleMaster.count(filter);
 
@@ -1530,7 +1522,7 @@ const getBookings_bk = async (query) => {
   let tax = null
   let roundPrice = null
   let extraAddonPrice = null
-  
+
   if (bookingPrice) {
     totalPrice = bookingPrice.totalPrice
     vehiclePrice = bookingPrice.vehiclePrice
@@ -1561,7 +1553,7 @@ const getBookings_bk = async (query) => {
     for (let i = 0; i < response.length; i++) {
       const { _doc } = response[i]
       let o = _doc
-  
+
       console.log(response)
       let find1 = null
       let find2 = null
@@ -1637,7 +1629,7 @@ const getBookings_bk = async (query) => {
   return obj
 }
 
- 
+
 
 
 const getVehicleTblData = async (query) => {
@@ -1651,7 +1643,7 @@ const getVehicleTblData = async (query) => {
       vehicleColor,
       BookingStartDateAndTime,
       BookingEndDateAndTime,
-      _id, 
+      _id,
       vehicleBrand,
       vehicleType,
       stationId,
@@ -1659,7 +1651,7 @@ const getVehicleTblData = async (query) => {
       page = 1, // Default page number
       limit = 20, // Default limit per page
     } = query;
-    if(!locationId){
+    if (!locationId) {
       if (!_id && (!BookingStartDateAndTime || !BookingEndDateAndTime)) {
         return {
           status: 400,
@@ -1668,9 +1660,9 @@ const getVehicleTblData = async (query) => {
         };
       }
     }
-    
 
-    const startDate = BookingStartDateAndTime; 
+
+    const startDate = BookingStartDateAndTime;
     const endDate = BookingEndDateAndTime;
 
     const matchFilter = {};
@@ -1682,7 +1674,8 @@ const getVehicleTblData = async (query) => {
       if (condition) matchFilter.condition = condition;
       if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
       if (stationId) matchFilter.stationId = stationId;
-      if (locationId) matchFilter.locationId = new ObjectId(locationId);    }
+      if (locationId) matchFilter.locationId = new ObjectId(locationId);
+    }
 
     const pipeline = [
       { $match: matchFilter },
@@ -1752,9 +1745,9 @@ const getVehicleTblData = async (query) => {
           vehicleName: "$vehicleMasterData.vehicleName",
           vehicleType: "$vehicleMasterData.vehicleType",
           stationName: "$stationData.stationName",
-          speedLimit:1,
-          refundableDeposit:1,
-          lateFee:1,
+          speedLimit: 1,
+          refundableDeposit: 1,
+          lateFee: 1,
           vehicleStatus: 1,
           freeKms: 1,
           vehicleMasterId: 1,
@@ -1769,11 +1762,11 @@ const getVehicleTblData = async (query) => {
           condition: 1,
           locationId: 1,
           stationId: 1,
-         
-        
-          
-          
-          
+
+
+
+
+
         },
       },
       {
@@ -1781,7 +1774,7 @@ const getVehicleTblData = async (query) => {
           metadata: [
             { $count: "total" },
             { $addFields: { page: parseInt(page, 10), limit: parseInt(limit, 10) } },
-            
+
           ],
           data: [
             { $skip: (parseInt(page, 10) - 1) * parseInt(limit, 10) },
@@ -1841,7 +1834,7 @@ const getVehicleTblData = async (query) => {
 //         return obj;
 //       }
 
-      
+
 //     }
 
 //     const filter = {};
@@ -1855,7 +1848,7 @@ const getVehicleTblData = async (query) => {
 //     const plans = await Plan.find(filter)
 //    // .populate("stationId") // Populate station data
 //     .populate("vehicleMasterId"); // Populate vehicle data
-    
+
 //     if (!plans.length) {
 //       obj.message = "No records found";
 //       obj.status = 401;
@@ -1965,26 +1958,26 @@ const getPlanData = async (query) => {
 };
 
 async function getLocationData(query) {
-  const obj = { 
-    status: 200, 
-    message: "Data fetched successfully", 
-    data: [], 
-    pagination: {} 
+  const obj = {
+    status: 200,
+    message: "Data fetched successfully",
+    data: [],
+    pagination: {}
   };
 
-  const { 
+  const {
     _id,
-    locationName, 
-    locationId, 
-    city, 
-    state, 
-    page = 1, 
-    limit = 10 
+    locationName,
+    locationId,
+    city,
+    state,
+    page = 1,
+    limit = 10
   } = query;
 
   let filter = {};
-  if (_id) filter._id = ObjectId(_id); 
-  if (locationName) filter.locationName = locationName; 
+  if (_id) filter._id = ObjectId(_id);
+  if (locationName) filter.locationName = locationName;
   if (locationId) filter._id = ObjectId(locationId);
   if (city) filter.city = city;
   if (state) filter.state = state;
@@ -2026,27 +2019,27 @@ async function getLocationData(query) {
 
 
 const getStationData = async (query) => {
-  const obj = { 
-    status: 200, 
-    message: "Data fetched successfully", 
+  const obj = {
+    status: 200,
+    message: "Data fetched successfully",
     data: [],
     pagination: {}
   };
-  
-  const { 
-    locationName, 
-    stationName, 
-    stationId, 
-    address, 
-    city, 
-    pinCode, 
-    state, 
-    contact, 
-    locationId, 
-    _id, 
-    userId, 
-    page = 1,        
-    limit = 10 
+
+  const {
+    locationName,
+    stationName,
+    stationId,
+    address,
+    city,
+    pinCode,
+    state,
+    contact,
+    locationId,
+    _id,
+    userId,
+    page = 1,
+    limit = 10
   } = query;
 
   let filter = {};
