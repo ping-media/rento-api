@@ -73,6 +73,11 @@ const bookingSchema = new Schema({
        // required: true
     },
     
+    paymentgatewayReceiptId: {
+        type: String,
+       // required: true
+    },
+    
     paymentMethod: {
         type: String,
         enum: ['cash', 'partiallyPay','online'],

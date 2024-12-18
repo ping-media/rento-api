@@ -408,7 +408,7 @@ router.get("/getAllLogs", async (req, res) => {
 })
 
 router.post("/createOrderId", async (req, res) => {
-  const { amount, booking_id } = req.body
+  const { amount } = req.body
 
   const key_id = process.env.VITE_RAZOR_KEY_ID;
   const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
@@ -421,7 +421,8 @@ router.post("/createOrderId", async (req, res) => {
   const options = {
     amount: amount * 100, // Razorpay expects the amount in paise (100 paise = 1 INR)
     currency: "INR",
-    receipt: "receipt#" + booking_id,
+    receipt: "receipt#" + amount + Math.floor(Math.random() * 90)+10 ,
+    payment_capture:1
   };
 
   try {
@@ -438,7 +439,7 @@ router.post("/createOrderId", async (req, res) => {
 
     // console.log("Order created:", response);
 
-    return res.status(200).send(response.data.id);
+    return res.status(200).send(response.data);
 
   } catch (error) {
     //     console.error(
@@ -456,11 +457,11 @@ router.post("/createOrderId", async (req, res) => {
 
 
 
-router.get("/api/cron", async (req, res) => {
-  console.log("Cron job is working (FROM ROUTE)");
-  //res.send("Cron job is working");
-  handler(req,res)
-});
+// router.get("/api/cron", async (req, res) => {
+//   console.log("Cron job is working (FROM ROUTE)");
+//   //res.send("Cron job is working");
+//   handler(req,res)
+// });
 
 
 module.exports = router;

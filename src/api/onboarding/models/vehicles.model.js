@@ -248,7 +248,7 @@ async function createVehicle({
 async function booking({
   vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
   discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
-  deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = ""
+  deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = "",paymentgatewayReceiptId
 }) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -340,7 +340,7 @@ async function booking({
     let o = {
       vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
       discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, paymentgatewayOrderId,
-      payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId
+      payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId,paymentgatewayReceiptId
     };
     // console.log(o)
     if (_id && _id.length !== 24) {
@@ -1133,6 +1133,7 @@ async function createStation({
       if (_id.length !== 24) {
         response.status = 401;
         response.message = "Invalid _id";
+        logError("Found invalid _id during the creating station","createStation",userId)
         return response;
       }
 
@@ -1140,12 +1141,16 @@ async function createStation({
       if (!station) {
         response.status = 401;
         response.message = "Station not found";
+        logError("Station not found during the creating station","createStation",userId)
+
         return response;
       }
 
       if (deleteRec) {
         await Station.deleteOne({ _id: ObjectId(_id) });
         response.message = "Station deleted successfully";
+        logError("Station deleted successfully ","createStation",userId)
+
         return response;
       }
 
@@ -1153,6 +1158,7 @@ async function createStation({
       await Station.updateOne({ _id: ObjectId(_id) }, { $set: stationData });
       response.message = "Station updated successfully";
       response.data = stationData;
+      logError("Station updated successfully","createStation",userId)
 
       return response;
     }
@@ -1177,17 +1183,23 @@ async function createStation({
     if (userId.length !== 24) {
       response.status = 401;
       response.message = "Invalid user ID";
+      logError("Invalid user ID found during the creating station","createStation",userId)
+
       return response;
     }
     const user = await User.findOne({ _id: ObjectId(userId) });
     if (!user) {
       response.status = 401;
       response.message = "User not found";
+      logError("User not found during the creating station","createStation",userId)
+
       return response;
     }
     if (user.userType !== "manager") {
       response.status = 401;
       response.message = "User is not a manager";
+      logError("User is not a manager found during the creating station","createStation",userId)
+
       return response;
     }
 
@@ -1195,12 +1207,16 @@ async function createStation({
     if (locationId.length !== 24) {
       response.status = 401;
       response.message = "Invalid location ID";
+      logError("Invalid location ID found during the creating station","createStation",userId)
+
       return response;
     }
     const location = await Location.findOne({ _id: ObjectId(locationId) });
     if (!location) {
       response.status = 401;
       response.message = "Location not found";
+      logError("Location not found during the creating station","createStation",userId)
+
       return response;
     }
 
@@ -1208,6 +1224,8 @@ async function createStation({
     if (pinCode.length !== 6 || isNaN(pinCode)) {
       response.status = 401;
       response.message = "Invalid pin code";
+      logError("Invalid pin code found during the creating station","createStation",userId)
+
       return response;
     }
 
@@ -1229,12 +1247,16 @@ async function createStation({
     if (stationId.length !== 6 || isNaN(stationId)) {
       response.status = 401;
       response.message = "Invalid station ID";
+      logError("Invalid station ID found during the creating station","createStation",userId)
+
       return response;
     }
     const stationExists = await Station.findOne({ stationId });
     if (stationExists) {
       response.status = 401;
       response.message = "Station already exists";
+      logError("Station already exists found during the creating station","createStation",userId)
+
       return response;
     }
 
@@ -1242,11 +1264,15 @@ async function createStation({
     const newStation = new Station(stationData);
     await newStation.save();
     response.message = "Station created successfully";
+    logError("Station created successfully","createStation",userId)
+
     response.data = stationData;
 
   } catch (error) {
     response.status = 500;
     response.message = `Server error: ${error.message}`;
+    logError(`Server error: ${error.message}`,"createStation",userId)
+
   }
 
   return response;
@@ -1255,6 +1281,11 @@ async function createStation({
 
 async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, vehicleImage, deleteRec, _id }) {
   const response = { status: "200", message: "data fetched successfully", data: [] }
+
+  const logError = async (message, functionName, userId) => {
+    await Log({ message, functionName, userId });
+  };
+
   try {
     const obj = {
       vehicleName, vehicleType, vehicleBrand, vehicleImage, _id
@@ -1264,12 +1295,15 @@ async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, veh
       if (!statusCheck) {
         response.status = 401
         response.message = "Invalid vehicle type"
+        logError("Invalid vehicle type found during creating the vehicle master" ,"createVehicleMaster","Admin")
         return response
       }
     }
     if (_id && _id.length !== 24) {
       response.status = 401
       response.message = "Invalid _id"
+      logError("Invalid _id found during creating the vehicle master" ,"createVehicleMaster","Admin")
+
       return response
     }
     if (_id) {
@@ -1277,6 +1311,8 @@ async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, veh
       if (!find) {
         response.status = 401
         response.message = "Invalid vehicle id"
+        logError("Invalid vehicle _id found during creating the vehicle master" ,"createVehicleMaster","Admin")
+
         return response
       }
       if (deleteRec) {
@@ -1284,6 +1320,8 @@ async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, veh
         response.message = "vehicle master deleted successfully"
         response.status = 200
         response.data = { vehicleName }
+        logError("vehicle master deleted successfully" ,"createVehicleMaster","Admin")
+
         return response
       }
       await VehicleMaster.updateOne(
@@ -1295,6 +1333,8 @@ async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, veh
       );
       response.status = 200
       response.message = "vehicle master updated successfully"
+      logError("vehicle master updated successfully" ,"createVehicleMaster","Admin")
+
       response.data = obj
     } else {
       if (vehicleName && vehicleType && vehicleBrand && vehicleImage) {
@@ -1302,20 +1342,27 @@ async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, veh
         if (find) {
           response.status = 401
           response.message = "vehicle master name already exists"
+          logError("vehicle master name already exists found during creating the vehicle master" ,"createVehicleMaster","Admin")
+
           return response
         }
         const SaveUser = new VehicleMaster(obj)
         SaveUser.save()
         response.message = "vehicle master saved successfully"
+        logError("vehicle master saved successfully" ,"createVehicleMaster","Admin")
+
         response.data = obj
       } else {
         response.status = 401
         response.message = "Invalid vehicle master details"
+        logError("Invalid vehicle master details found during creating the vehicle master" ,"createVehicleMaster","Admin")
+
       }
     }
     return response
   } catch (error) {
     throw new Error(error);
+
   }
 }
 
