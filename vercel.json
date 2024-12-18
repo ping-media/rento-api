@@ -13,9 +13,15 @@
         }
     ],
    "functions": {
-     
-    "api/cron.js": {
-      "schedule": "* * * * *"  
-}}
+    "api/cron": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "* * * * *"
+    }
+  ]
     }
 
