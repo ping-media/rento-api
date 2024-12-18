@@ -1,8 +1,5 @@
-import { connectToDatabase } from '../../app'; // Your database connection utility
 import Booking from '../api/onboarding/models/booking.model'; // Your Booking model
 import cron from "node-cron";
-
-//connectToDatabase();
 
 let isCronScheduled = false;
 
@@ -39,18 +36,20 @@ async function cancelPendingPayments() {
   }
 }
 
-// API Handler
-function handler(req, res) {
-  // Schedule the cron job only once
+// Express.js route handler
+ async function handler(req, res) {
+  // Ensure cron is scheduled once
   if (!isCronScheduled) {
     cron.schedule("* * * * *", async () => {
       await cancelPendingPayments();
     });
-    isCronScheduled = true; // Prevent duplicate scheduling
+    isCronScheduled = true;
     console.log("Cron job scheduled to run every minute.");
   }
 
-  res.status(200).json({ message: "Cron job is running and scheduled." });
+  console.log("Cron job is working (FROM ROUTE)");
+  res.status(200).send("Cron job is working (FROM ROUTE)");
 }
+
  
 module.exports={handler}
