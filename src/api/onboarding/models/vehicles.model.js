@@ -457,37 +457,37 @@ async function booking({
 
 
 
-cron.schedule("0 * * * *", async () => {
-  console.log("Running scheduler to cancel pending payments older than 1 hour...");
+// cron.schedule("0 * * * *", async () => {
+//   console.log("Running scheduler to cancel pending payments older than 1 hour...");
 
-  try {
-    const oneHourAgo = new Date();
-    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+//   try {
+//     const oneHourAgo = new Date();
+//     oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
-    // Find and update bookings with paymentStatus "pending" older than 1 hour
-    const result = await Booking.updateMany(
-      {
-        paymentStatus: "pending",
-        createdAt: { $lte: oneHourAgo },
-      },
-      {
-        $set: {
-          paymentStatus: "canceled",
-          bookingStatus: "canceled",
-          rideStatus: "canceled",
-        },
-      }
-    );
+//     // Find and update bookings with paymentStatus "pending" older than 1 hour
+//     const result = await Booking.updateMany(
+//       {
+//         paymentStatus: "pending",
+//         createdAt: { $lte: oneHourAgo },
+//       },
+//       {
+//         $set: {
+//           paymentStatus: "canceled",
+//           bookingStatus: "canceled",
+//           rideStatus: "canceled",
+//         },
+//       }
+//     );
 
-    if (result.modifiedCount > 0) {
-      console.log(`Canceled ${result.modifiedCount} bookings with pending payment.`);
-    } else {
-      console.log("No pending payments older than 1 hour to cancel.");
-    }
-  } catch (error) {
-    console.error("Error in scheduler for canceling pending payments:", error.message);
-  }
-});
+//     if (result.modifiedCount > 0) {
+//       console.log(`Canceled ${result.modifiedCount} bookings with pending payment.`);
+//     } else {
+//       console.log("No pending payments older than 1 hour to cancel.");
+//     }
+//   } catch (error) {
+//     console.error("Error in scheduler for canceling pending payments:", error.message);
+//   }
+// });
 
 
 

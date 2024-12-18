@@ -51,19 +51,19 @@ const startServer = async () => {
   // );
 
   app.use(cors());
-  app.use((req, res, next) => {
-    //res.header("Access-Control-Allow-Origin",process.env.BASE_URL);
-    res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
-    res.header("Access-Control-Allow-Headers", "Content-Type");
-    next();
-  });
+  // app.use((req, res, next) => {
+  //   //res.header("Access-Control-Allow-Origin",process.env.BASE_URL);
+  //   res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
+  //   res.header("Access-Control-Allow-Headers", "Content-Type");
+  //   next();
+  // });
   // test api
   app.get("/", (req, res) => {
     res.send("Hi there, Welcome to rent Moto");
   });
 
   app.get("/test", (req, res) => {
-    res.send("Hi Shivram, Welcome to rent Moto");
+    res.send("Hi, Welcome to rento");
   });
   // use routes
   app.use(onboardingRouters);
