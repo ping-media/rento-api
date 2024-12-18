@@ -3,7 +3,7 @@ import Booking from '../api/onboarding/models/booking.model'; // Your Booking mo
 import cron from "node-cron";
 
 // Ensure the database connection is established
-//connectToDatabase();
+///-************connectToDatabase();
 
 let isCronScheduled = false;
 
