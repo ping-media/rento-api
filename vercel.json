@@ -11,17 +11,5 @@
             "src": "/(.*)",
             "dest": "/app.js"
         }
-    ],
-   "functions": {
-    "api/cron": {
-      "runtime": "nodejs18.x"
-    }
-  },
-  "crons": [
-    {
-      "path": "/api/cron",
-      "schedule": "* * * * *"
-    }
-  ]
-    }
-
+    ]
+}
