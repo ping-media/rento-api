@@ -1,42 +1,55 @@
-// api/cron.js
 import { connectToDatabase } from '../../app'; // Your database connection utility
 import Booking from '../api/onboarding/models/booking.model'; // Your Booking model
+import cron from "node-cron";
 
-export default async function handler(req, res) {
- // if (req.method === "GET") {
-    console.log("Running scheduler to cancel pending payments older than 1 hour...");
+// Ensure the database connection is established
+//connectToDatabase();
 
-    try {
-    //   const oneHourAgo = new Date();
-    //   oneHourAgo.setMinutes(oneMinuteAgo.getMinute() - 1);
+let isCronScheduled = false;
 
-      // Find and update bookings with paymentStatus "pending" older than 1 hour
-      const result = await Booking.updateMany(
-        {
-          paymentStatus: "pending",
-         // createdAt: { $lte: oneHourAgo },
+// Function to handle the actual booking cancellation logic
+async function cancelPendingPayments() {
+  console.log("Running scheduler to cancel pending payments older than 1 minute...");
+
+  try {
+    const oneMinuteAgo = new Date();
+    oneMinuteAgo.setMinutes(oneMinuteAgo.getMinutes() - 1);
+
+    // Find and update bookings with paymentStatus "pending" older than 1 minute
+    const result = await Booking.updateMany(
+      {
+        paymentStatus: "pending",
+        createdAt: { $lte: oneMinuteAgo },
+      },
+      {
+        $set: {
+          paymentStatus: "canceled",
+          bookingStatus: "canceled",
+          rideStatus: "canceled",
         },
-        {
-          $set: {
-            paymentStatus: "canceled",
-            bookingStatus: "canceled",
-            rideStatus: "canceled",
-          },
-        }
-      );
-
-      if (result.modifiedCount > 0) {
-        console.log(`Canceled ${result.modifiedCount} bookings with pending payment.`);
-      } else {
-        console.log("No pending payments older than 1 hour to cancel.");
       }
+    );
 
-      res.status(200).json({ message: "Scheduler executed successfully", result });
-    } catch (error) {
-      console.error("Error in scheduler for canceling pending payments:", error.message);
-      res.status(500).json({ error: "Internal Server Error" });
+    if (result.modifiedCount > 0) {
+      console.log(`Canceled ${result.modifiedCount} bookings with pending payment.`);
+    } else {
+      console.log("No pending payments older than 1 minute to cancel.");
     }
-//   } else {
-//     res.status(405).json({ error: "Method Not Allowed" });
-//   }
+  } catch (error) {
+    console.error("Error in scheduler for canceling pending payments:", error.message);
+  }
+}
+
+// API Handler
+export default function handler(req, res) {
+  // Schedule the cron job only once
+  if (!isCronScheduled) {
+    cron.schedule("* * * * *", async () => {
+      await cancelPendingPayments();
+    });
+    isCronScheduled = true; // Prevent duplicate scheduling
+    console.log("Cron job scheduled to run every minute.");
+  }
+
+  res.status(200).json({ message: "Cron job is running and scheduled." });
 }

@@ -457,7 +457,7 @@ async function booking({
 
 
 
-// cron.schedule("0 * * * *", async () => {
+// cron.schedule("* * * * *", async () => {
 //   console.log("Running scheduler to cancel pending payments older than 1 hour...");
 
 //   try {
