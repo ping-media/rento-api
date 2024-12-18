@@ -14,7 +14,7 @@
     ],
    "functions": [
      {
-    "api/cron": {
+    "api/cron.js": {
       "schedule": "* * * * *"  
 }}
   ]
