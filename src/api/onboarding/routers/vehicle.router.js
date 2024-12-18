@@ -1,23 +1,24 @@
 const router = require("express").Router();
 const vehiclesService = require("../services/vehicles.service");
 const auth = require("../../../middlewares/auth/index");
-const Booking=require("../../../api/./onboarding/./models/./booking.model")
+const Booking = require("../../../api/./onboarding/./models/./booking.model")
 const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
 require('dotenv').config();
-const axios= require ("axios");
-const {fileUpload} = require ("../models/locationUpload.model")
-const{VehicalfileUpload} = require ("../models/createVehicleMasterUpload")
+const axios = require("axios");
+const { fileUpload } = require("../models/locationUpload.model")
+const { VehicalfileUpload } = require("../models/createVehicleMasterUpload")
 const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
-const {getAllVehiclesData, updateMultipleVehicles}=require("../models/getAllVehicleDataAdmin")
-const {documentUpload, getDocument} = require ("../models/DocumentUpload")
-const {getAllDocument} = require ("../models/getAllDocumentAdmin")
-const {emailOtp, verify} = require ("../models/otpSendByEmail")
-const {getPickupImage, pickupImageUp} = require ("../models/pickupImageUpload")
-const {getAllLogs} = require("../models/getlogs.model")
+const { getAllVehiclesData, updateMultipleVehicles } = require("../models/getAllVehicleDataAdmin")
+const { documentUpload, getDocument } = require("../models/DocumentUpload")
+const { getAllDocument } = require("../models/getAllDocumentAdmin")
+const { emailOtp, verify } = require("../models/otpSendByEmail")
+const { getPickupImage, pickupImageUp } = require("../models/pickupImageUpload")
+const { getAllLogs } = require("../models/getlogs.model")
+const {handler}=require("../../../utils/cron")
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -143,7 +144,7 @@ const upload = multer({
 
 router.post("/createLocation", upload.single('image'), async (req, res) => {
   if (!req.file) {
-      return res.status(400).json({ message: 'File upload failed. No file provided.' });
+    return res.status(400).json({ message: 'File upload failed. No file provided.' });
   }
   fileUpload(req, res)
   // vehiclesService.createLocation(req, res);
@@ -162,33 +163,33 @@ router.put("/updateLocation/", upload.single('image'), async (req, res) => {
       await fileUpload(req, res);
       // Add logic to update the image URL in the database (e.g., vehiclesService.updateLocationImage)
     }
-    const _id= req.body._id;
-    const locationName = req.body.locationName; 
-    const deleteRec=req.body.deleteRec;
-     if (_id) {
-            const find = await Location.findOne({ _id})
-            if (!find) {
-              
-              obj.status = 400; 
-              obj.message = "Location _id is required";
-              return res.status(400).json(obj);
-                          
-            }
-         
-            await Location.updateOne(
-              { _id },
-              {
-                $set: {locationName}
-              },
-              { new: true }
-            );
-            
-            
-                obj.message="location updated successfully";
-                obj.status=200;
-                return res.status(200).json(obj);
-                          
-          }
+    const _id = req.body._id;
+    const locationName = req.body.locationName;
+    const deleteRec = req.body.deleteRec;
+    if (_id) {
+      const find = await Location.findOne({ _id })
+      if (!find) {
+
+        obj.status = 400;
+        obj.message = "Location _id is required";
+        return res.status(400).json(obj);
+
+      }
+
+      await Location.updateOne(
+        { _id },
+        {
+          $set: { locationName }
+        },
+        { new: true }
+      );
+
+
+      obj.message = "location updated successfully";
+      obj.status = 200;
+      return res.status(200).json(obj);
+
+    }
 
   } catch (error) {
     console.error("Error updating location:", error.message);
@@ -232,8 +233,8 @@ router.delete("/deleteLocation", async (req, res) => {
   } catch (error) {
     // console.error("Error in deleteLocation:", error.message);
 
-    
-    obj.status = 500; 
+
+    obj.status = 500;
     obj.message = "An error occurred while deleting location";
     return res.status(500).json(obj); // Return the response with status 500
   }
@@ -243,10 +244,10 @@ router.delete("/deleteLocation", async (req, res) => {
 
 
 router.post("/createVehicleMaster", upload.single('image'), async (req, res) => {
-  
-  
+
+
   if (!req.file) {
-      return res.status(400).json({ message: 'File upload failed. No file provided.' });
+    return res.status(400).json({ message: 'File upload failed. No file provided.' });
   }
   VehicalfileUpload(req, res)
   // vehiclesService.createLocation(req, res);
@@ -258,56 +259,56 @@ router.put("/updateVehicleMaster", upload.single('image'), async (req, res) => {
   const obj = { status: 200, message: "VehicleMaster updated successfully", data: [] };
 
   try {
-      // If an image is provided, handle the file upload
-      if (req.file) {
-          await VehicalfileUpload(req, res);
-      }
+    // If an image is provided, handle the file upload
+    if (req.file) {
+      await VehicalfileUpload(req, res);
+    }
 
-      const { _id, vehicleName, vehicleType, vehicleBrand } = req.body;
+    const { _id, vehicleName, vehicleType, vehicleBrand } = req.body;
 
-      // Check if the `_id` is valid
-      if (!_id) {
-          obj.message = "Vehicle ID (_id) is required";
-          obj.status = 400;
-          return res.status(400).json(obj);
-      }
+    // Check if the `_id` is valid
+    if (!_id) {
+      obj.message = "Vehicle ID (_id) is required";
+      obj.status = 400;
+      return res.status(400).json(obj);
+    }
 
-      const find = await vehicleMaster.findOne({ _id });
-      if (!find) {
-          obj.message = "Invalid vehicle ID (_id)";
-          obj.status = 404;
-          return res.status(404).json(obj);
-      }
+    const find = await vehicleMaster.findOne({ _id });
+    if (!find) {
+      obj.message = "Invalid vehicle ID (_id)";
+      obj.status = 404;
+      return res.status(404).json(obj);
+    }
 
-      // Dynamically build the update object
-      const updateData = {};
-      if (vehicleName) updateData.vehicleName = vehicleName;
-      if (vehicleType) updateData.vehicleType = vehicleType;
-      if (vehicleBrand) updateData.vehicleBrand = vehicleBrand;
+    // Dynamically build the update object
+    const updateData = {};
+    if (vehicleName) updateData.vehicleName = vehicleName;
+    if (vehicleType) updateData.vehicleType = vehicleType;
+    if (vehicleBrand) updateData.vehicleBrand = vehicleBrand;
 
-      // Only perform the update if there is something to update
-      if (Object.keys(updateData).length > 0) {
-          await vehicleMaster.updateOne(
-              { _id },
-              { $set: updateData },
-              { new: true }
-          );
-      } else {
-          obj.message = "No valid fields provided for update";
-          obj.status = 400;
-          return res.status(400).json(obj);
-      }
+    // Only perform the update if there is something to update
+    if (Object.keys(updateData).length > 0) {
+      await vehicleMaster.updateOne(
+        { _id },
+        { $set: updateData },
+        { new: true }
+      );
+    } else {
+      obj.message = "No valid fields provided for update";
+      obj.status = 400;
+      return res.status(400).json(obj);
+    }
 
-      obj.message = "VehicleMaster updated successfully";
-      obj.status = 200;
-      return res.status(200).json(obj);
+    obj.message = "VehicleMaster updated successfully";
+    obj.status = 200;
+    return res.status(200).json(obj);
 
   } catch (error) {
-      console.error("Error updating VehicleMaster:", error.message);
+    console.error("Error updating VehicleMaster:", error.message);
 
-      obj.status = 500;
-      obj.message = "An error occurred while updating VehicleMaster";
-      return res.status(500).json(obj);
+    obj.status = 500;
+    obj.message = "An error occurred while updating VehicleMaster";
+    return res.status(500).json(obj);
   }
 });
 
@@ -317,30 +318,30 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
   const obj = { status: 200, message: "VehicleMaster update successfully", data: [] };
 
   try {
-    let _id= req.query._id;
-   // console.log(_id)
+    let _id = req.query._id;
+    // console.log(_id)
     if (!_id) {
-      obj.message="Invalid vehicle _id"
-      obj.status=400
-      return res.status(400).json( obj );
+      obj.message = "Invalid vehicle _id"
+      obj.status = 400
+      return res.status(400).json(obj);
     }
 
     const find = await vehicleMaster.findOne({ _id });
 
     if (!find) {
-      obj.message="VehicleMaster with the given _id not found"
-      obj.status=400
-      return res.status(404).json(obj );
+      obj.message = "VehicleMaster with the given _id not found"
+      obj.status = 400
+      return res.status(404).json(obj);
     }
 
     await vehicleMaster.deleteOne({ _id });
-    obj.message="VehicleMaster deleted successfully"
-    obj.status=200
-    return res.status(200).json( obj );
+    obj.message = "VehicleMaster deleted successfully"
+    obj.status = 200
+    return res.status(200).json(obj);
 
   } catch (error) {
     console.error("Error in deleteVehicleMaster:", error.message);
-    obj.status = 500; 
+    obj.status = 500;
     obj.message = "An error occurred while deleting VehicleMaster";
     return res.status(500).json(obj);
   }
@@ -352,17 +353,17 @@ router.get("/getAllVehiclesData", async (req, res) => {
 })
 
 router.get("/getAllInvoice", async (req, res) => {
- vehiclesService.getAllInvoice(req, res);
+  vehiclesService.getAllInvoice(req, res);
 })
 
 
 
-router.post("/uploadDocument", upload.array('images',5), async (req, res) => {
-  
-  
+router.post("/uploadDocument", upload.array('images', 5), async (req, res) => {
+
+
   if (!req.files || req.files.length === 0) {
-    return res.status(400).send({ message: 'File upload failed. No files provided.' });
-    }
+    return res.status(400).send({ message: 'File upload failed. No files provided.' });
+  }
   documentUpload(req, res)
 })
 
@@ -381,20 +382,20 @@ router.get("/getAllDocument", async (req, res) => {
 
 router.post("/emailOtp", async (req, res) => {
   emailOtp(req, res);
- })
+})
 
 router.post("/emailverify", async (req, res) => {
   verify(req, res);
- })
+})
 
 
- router.post("/pickupImage", upload.array('images',5), async (req, res) => {
-  
-  
+router.post("/pickupImage", upload.array('images', 5), async (req, res) => {
+
+
   if (!req.files || req.files.length === 0) {
-    return res.status(400).send({ message: 'File upload failed. No files provided.' });
-    }
-pickupImageUp(req, res)
+    return res.status(400).send({ message: 'File upload failed. No files provided.' });
+  }
+  pickupImageUp(req, res)
 })
 
 router.get("/getPickupImage", async (req, res) => {
@@ -406,51 +407,60 @@ router.get("/getAllLogs", async (req, res) => {
   getAllLogs(req, res);
 })
 
-router.post("/createOrderId",async(req,res)=>{
-  const {amount, booking_id}=req.body
- 
-    const key_id = process.env.VITE_RAZOR_KEY_ID;
-    const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
-  
-    // API endpoint for Razorpay order creation
-    const url = "https://api.razorpay.com/v1/orders";
-  
-   
-    // Prepare the order data to send
-    const options = {
-      amount: amount * 100, // Razorpay expects the amount in paise (100 paise = 1 INR)
-      currency: "INR",
-      receipt: "receipt#" + booking_id,
-    };
-  
-    try {
-      // Make the API request to Razorpay using axios
-      const response = await axios.post(url, options, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        auth: {
-          username: key_id,
-          password: key_secret,
-        },
-      });
-  
-     // console.log("Order created:", response);
+router.post("/createOrderId", async (req, res) => {
+  const { amount, booking_id } = req.body
 
-      return res.status(200).send(response.data.id );
+  const key_id = process.env.VITE_RAZOR_KEY_ID;
+  const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
 
-    } catch (error) {
-  //     console.error(
-  //       "Error creating Razorpay order:",
-  //       error.response ? error.response.data : error.message
-  //     );
-
-  return res.status(400).send(error.message );
+  // API endpoint for Razorpay order creation
+  const url = "https://api.razorpay.com/v1/orders";
 
 
-    }
+  // Prepare the order data to send
+  const options = {
+    amount: amount * 100, // Razorpay expects the amount in paise (100 paise = 1 INR)
+    currency: "INR",
+    receipt: "receipt#" + booking_id,
+  };
+
+  try {
+    // Make the API request to Razorpay using axios
+    const response = await axios.post(url, options, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      auth: {
+        username: key_id,
+        password: key_secret,
+      },
+    });
+
+    // console.log("Order created:", response);
+
+    return res.status(200).send(response.data.id);
+
+  } catch (error) {
+    //     console.error(
+    //       "Error creating Razorpay order:",
+    //       error.response ? error.response.data : error.message
+    //     );
+
+    return res.status(400).send(error.message);
+
+
+  }
 
 
 })
+
+
+
+router.get("/api/cron", async (req, res) => {
+  console.log("Cron job is working (FROM ROUTE)");
+  //res.send("Cron job is working");
+  handler(req,res)
+});
+
 
 module.exports = router;

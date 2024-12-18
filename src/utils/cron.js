@@ -40,7 +40,7 @@ async function cancelPendingPayments() {
 }
 
 // API Handler
-export default function handler(req, res) {
+function handler(req, res) {
   // Schedule the cron job only once
   if (!isCronScheduled) {
     cron.schedule("* * * * *", async () => {
@@ -52,3 +52,5 @@ export default function handler(req, res) {
 
   res.status(200).json({ message: "Cron job is running and scheduled." });
 }
+ 
+module.exports={handler}
