@@ -12,11 +12,10 @@
             "dest": "/app.js"
         }
     ],
-   "functions": [
-     {
+   "functions": {
+     
     "api/cron.js": {
       "schedule": "* * * * *"  
 }}
-  ]
+    }
 
-}
