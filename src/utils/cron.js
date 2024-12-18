@@ -2,7 +2,6 @@ import { connectToDatabase } from '../../app'; // Your database connection utili
 import Booking from '../api/onboarding/models/booking.model'; // Your Booking model
 import cron from "node-cron";
 
-// Ensure the database connection is established
 //connectToDatabase();
 
 let isCronScheduled = false;
