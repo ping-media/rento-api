@@ -3,18 +3,18 @@ import { connectToDatabase } from '../../app'; // Your database connection utili
 import Booking from '../api/onboarding/models/booking.model'; // Your Booking model
 
 export default async function handler(req, res) {
-  if (req.method === "GET") {
+ // if (req.method === "GET") {
     console.log("Running scheduler to cancel pending payments older than 1 hour...");
 
     try {
-      const oneHourAgo = new Date();
-      oneHourAgo.setMinutes(oneMinuteAgo.getMinute() - 1);
+    //   const oneHourAgo = new Date();
+    //   oneHourAgo.setMinutes(oneMinuteAgo.getMinute() - 1);
 
       // Find and update bookings with paymentStatus "pending" older than 1 hour
       const result = await Booking.updateMany(
         {
           paymentStatus: "pending",
-          createdAt: { $lte: oneHourAgo },
+         // createdAt: { $lte: oneHourAgo },
         },
         {
           $set: {
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       console.error("Error in scheduler for canceling pending payments:", error.message);
       res.status(500).json({ error: "Internal Server Error" });
     }
-  } else {
-    res.status(405).json({ error: "Method Not Allowed" });
-  }
+//   } else {
+//     res.status(405).json({ error: "Method Not Allowed" });
+//   }
 }
