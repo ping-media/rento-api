@@ -34,11 +34,20 @@ const upload = multer({
 const fileUpload =async (req, res) => {
     try {
 
-        let _id= req.body._id;
-        let deleteRec=req.body.deleteRec
-        let locationName = req.body.locationName
-
-        
+        const  _id= req.body._id;
+        const  deleteRec=req.body.deleteRec;
+        const locationName = req.body.locationName;
+        const locationStatus= req.body.locationStatus;
+       
+        if (!_id){
+            const findName = await Location.findOne({ locationName })
+            if (findName) {
+                return res.status(401).json({
+                    message: 'Location exists',
+                });
+          }
+            
+            }
     
         const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp"];
         if (!allowedMimeTypes.includes(req.file.mimetype)) {
@@ -87,19 +96,11 @@ const fileUpload =async (req, res) => {
         });
     }
 
-  if (!_id){
-    const findName = await Location.findOne({ locationName })
-    if (findName) {
-        return res.status(401).json({
-            message: 'Location exists',
-        });
-  }
-    
-    }
+  
     await Location.updateOne(
         { _id },
         {
-          $set: { locationName, locationImage:imageUrl }
+          $set: { locationName, locationImage:imageUrl,locationStatus }
         },
         { new: true }
       );
@@ -110,7 +111,7 @@ const fileUpload =async (req, res) => {
     });
 }
         else{
-            const SaveLocation = new Location({ locationName, locationImage: imageUrl,_id })
+            const SaveLocation = new Location({ locationName, locationImage: imageUrl,_id, locationStatus })
         SaveLocation.save()
         
         return res.status(200).json({

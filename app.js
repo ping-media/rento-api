@@ -87,7 +87,7 @@ const startServer = async () => {
   // database connection
   mongoose
     .connect(process.env.DB_URL)
-    .then(() => console.log("mongo db is connected....", process.env.DB_URL))
+    .then(() => console.log("mongo db is connected....",  ))
     .catch((err) => console.log("error occurs while connecting time", err));
 
   io.on("connection", async (socket) => {

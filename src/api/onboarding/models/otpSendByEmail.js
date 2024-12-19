@@ -116,12 +116,14 @@ async function verify(req, res) {
       { new: true }
     );
 
+   // console.log(user)
+
     await Otp.deleteOne({ email });
 
     return res.status(200).json({
       status: 200,
       message: "OTP verified successfully",
-     
+     data: user
     });
   } catch (error) {
     console.error("Error in verify:", error.message);

@@ -247,7 +247,7 @@ async function createVehicle({
 
 async function booking({
   vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
-  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,
+  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,stationId,
   deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = "",paymentgatewayReceiptId
 }) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
@@ -332,13 +332,14 @@ async function booking({
       }
 
       var stationMasterUserId = find[0].userId;
+      var stationId = find[0].stationId;
 
 
 
     }
 
     let o = {
-      vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
+      vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,stationId,
       discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, paymentgatewayOrderId,
       payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId,paymentgatewayReceiptId
     };
@@ -2022,6 +2023,9 @@ async function getLocationData(query) {
     // Fetch total record count for pagination
     const totalRecords = await Location.count(filter);
 
+    // const totalStationCount= await Station.find(locationId);
+    // console.log(totalStationCount)
+
     // Fetch paginated location data
     const result = await Location.find(filter)
       .skip(skip)
@@ -2057,7 +2061,7 @@ const getStationData = async (query) => {
     status: 200,
     message: "Data fetched successfully",
     data: [],
-    pagination: {}
+    pagination: {},
   };
 
   const {
@@ -2073,10 +2077,10 @@ const getStationData = async (query) => {
     _id,
     userId,
     page = 1,
-    limit = 10
+    limit = 10,
   } = query;
 
-  let filter = {};
+  const filter = {};
   if (_id) filter._id = ObjectId(_id);
   if (locationId) filter.locationId = ObjectId(locationId);
   if (stationName) filter.stationName = stationName;
@@ -2089,48 +2093,44 @@ const getStationData = async (query) => {
 
   const skip = (page - 1) * limit;
 
-  try {
-    // Fetch total record count for pagination
-    const totalRecords = await station.count(filter);
+  
 
-    // Fetch paginated station data
+  try {
+    const totalRecords = await station.countDocuments(filter);
+
     const response = await station.find(filter).skip(skip).limit(Number(limit));
 
     if (response.length) {
-      const arr = [];
-      for (let i = 0; i < response.length; i++) {
-        const { _doc } = response[i];
-        let o = _doc;
+      // const enrichedData = await Promise.all(
+      //   response.map(async (record) => {
+      //     const { _doc: stationData } = record;
+      //     const enrichedStation = { ...stationData };
 
-        let obj = { _id: ObjectId(o.locationId) };
-        if (locationName) obj.locationName = locationName;
+      //     // Fetch location data
+      //     if (stationData.locationId) {
+      //       const locationData = await location.findOne(
+      //         { _id: ObjectId(stationData.locationId) },
+      //         { _id: 0 }
+      //       );
+      //       if (locationData) Object.assign(enrichedStation, locationData);
+      //     }
 
-        const find = await location.findOne(obj, { _id: 0 });
+      //     // Fetch user data
+      //     if (stationData.userId) {
+      //       const userData = await User.findOne(
+      //         { _id: ObjectId(stationData.userId) },
+      //         { _id: 0, firstName: 1, lastName: 1, contact: 1, email: 1, userType: 1 }
+      //       );
+      //       if (userData?.userType === "manager") {
+      //         Object.assign(enrichedStation, userData);
+      //       }
+      //     }
 
-        let obj3 = { _id: ObjectId(o.userId) };
-        if (contact) obj3.contact = contact;
+      //     return enrichedStation;
+      //   })
+      // );
 
-        const find3 = await User.findOne({ ...obj3 }, { _id: 0, firstName: 1, lastName: 1, contact: 1, email: 1 });
-
-        if (find) {
-          o = {
-            ...o,
-            ...find?._doc
-          };
-
-          if (find3 && find3?._doc?.userType === "manager") {
-            o = {
-              ...o,
-              ...find3?._doc
-            };
-          }
-          arr.push(o);
-        }
-      }
-
-      obj.data = arr;
-
-      // Add pagination metadata
+      obj.data = response;
       obj.pagination = {
         totalRecords,
         totalPages: Math.ceil(totalRecords / limit),
@@ -2149,6 +2149,7 @@ const getStationData = async (query) => {
 
   return obj;
 };
+
 
 
 async function getAllVehicles({ page, limit }) {

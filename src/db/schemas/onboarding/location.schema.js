@@ -9,12 +9,20 @@ const locationSchema = new Schema({
     locationImage: {
       type: String,
       required: true
-    }
+    },
+    locationStatus: {
+      type: String,
+    //  required: true,
+      default: "active"
+    },
   }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
   locationSchema.pre('save', function (next) {
     if (this.locationName) {
       this.locationName = this.locationName.toLowerCase(); 
+    }
+    if (this.locationStatus) {
+      this.locationStatus = this.locationStatus.toLowerCase(); 
     }
    
     next();

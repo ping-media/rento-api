@@ -30,6 +30,11 @@ const bookingSchema = new Schema({
         type: String,
         required: true
     },
+    stationId: {
+        type: String,
+        //default:"Na"
+       // required: true
+    },
     stationName: {
         type: String,
         required: true
@@ -62,21 +67,26 @@ const bookingSchema = new Schema({
     
     payInitFrom: {
         type: String,
-        required: true
+        // required: true,
+        default:"cash"
     },
     paySuccessId: {
         type: String,
+        default:"NA"
        // required: true
     },
     paymentgatewayOrderId: {
         type: String,
+        default:"NA"
        // required: true
     },
     
     paymentgatewayReceiptId: {
         type: String,
+        default:"Na"
        // required: true
     },
+   
     
     paymentMethod: {
         type: String,
@@ -118,6 +128,9 @@ bookingSchema.pre('save', function (next) {
     }
     if (this.vehicleBrand) {
       this.vehicleBrand = this.vehicleBrand.toLowerCase(); 
+    }
+    if (this.payInitFrom) {
+      this.payInitFrom = this.payInitFrom.toLowerCase(); 
     }
    
     next();

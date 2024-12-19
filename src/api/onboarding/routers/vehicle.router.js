@@ -18,7 +18,8 @@ const { getAllDocument } = require("../models/getAllDocumentAdmin")
 const { emailOtp, verify } = require("../models/otpSendByEmail")
 const { getPickupImage, pickupImageUp } = require("../models/pickupImageUpload")
 const { getAllLogs } = require("../models/getlogs.model")
-const {handler}=require("../../../utils/cron")
+const {handler}=require("../../../utils/cron");
+const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -154,18 +155,16 @@ router.post("/createLocation", upload.single('image'), async (req, res) => {
 
 
 // Update Location (image is optional)
-router.put("/updateLocation/", upload.single('image'), async (req, res) => {
+router.put("/updateLocation", upload.single('image'), async (req, res) => {
   const obj = { status: 200, message: "location update successfully", data: [] }
 
   try {
-    // If an image is provided, handle the file upload
     if (req.file) {
       await fileUpload(req, res);
-      // Add logic to update the image URL in the database (e.g., vehiclesService.updateLocationImage)
     }
     const _id = req.body._id;
     const locationName = req.body.locationName;
-    const deleteRec = req.body.deleteRec;
+    const locationStatus = req.body.locationStatus;
     if (_id) {
       const find = await Location.findOne({ _id })
       if (!find) {
@@ -175,16 +174,16 @@ router.put("/updateLocation/", upload.single('image'), async (req, res) => {
         return res.status(400).json(obj);
 
       }
+       const objData={};
+       if (locationName) objData.locationName = locationName;
+       if (locationStatus) objData.locationStatus = locationStatus;
+//console.log(objData)
+const updatedLocation = await Location.updateOne(
+  { _id },
+  { $set: objData }
+);
 
-      await Location.updateOne(
-        { _id },
-        {
-          $set: { locationName }
-        },
-        { new: true }
-      );
-
-
+//console.log(updatedLocation)
       obj.message = "location updated successfully";
       obj.status = 200;
       return res.status(200).json(obj);
@@ -318,7 +317,8 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
   const obj = { status: 200, message: "VehicleMaster update successfully", data: [] };
 
   try {
-    let _id = req.query._id;
+    const _id = req.query._id;
+    const vehicleMasterId= req.query._id;
     // console.log(_id)
     if (!_id) {
       obj.message = "Invalid vehicle _id"
@@ -333,7 +333,9 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
       obj.status = 400
       return res.status(404).json(obj);
     }
-
+   const vehicleRec= await vehicleTable.find({vehicleMasterId});
+                     await vehicleTable.deleteMany({vehicleRec})
+   //console.log(vehicleRec)
     await vehicleMaster.deleteOne({ _id });
     obj.message = "VehicleMaster deleted successfully"
     obj.status = 200
