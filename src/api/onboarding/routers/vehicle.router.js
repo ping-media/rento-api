@@ -410,7 +410,7 @@ router.get("/getAllLogs", async (req, res) => {
 })
 
 router.post("/createOrderId", async (req, res) => {
-  const { amount } = req.body
+  const { amount, booking_id } = req.body
 
   const key_id = process.env.VITE_RAZOR_KEY_ID;
   const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
@@ -423,7 +423,7 @@ router.post("/createOrderId", async (req, res) => {
   const options = {
     amount: amount * 100, // Razorpay expects the amount in paise (100 paise = 1 INR)
     currency: "INR",
-    receipt: "receipt#" + amount + Math.floor(Math.random() * 90)+10 ,
+    receipt: "receipt#" + booking_id,
     payment_capture:1
   };
 
