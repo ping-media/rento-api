@@ -16,6 +16,10 @@ const logSchema = new Schema(
       type: String,
       //required: true,
     },
+    ipAddress: {
+      type: String,
+      //required: true,
+    },
     
   },
   { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }

@@ -103,7 +103,6 @@ exports.getPlanData = async (req, res) => {
 exports.getLocationData = async (req, res) => {
   try {
     const result = await getLocationData(req.query);
-    console.log(req.headers)
 
     return res.status(200).json(result);
   } catch (err) {
@@ -248,7 +247,7 @@ exports.getBookings = async (req, res) => {
 
 exports.booking = async (req, res) => {
   try {
-    const result = await booking(req.body);
+    const result = await booking(req.body, req.headers);
     
     return res.status(200).json(result);
   } catch (err) {

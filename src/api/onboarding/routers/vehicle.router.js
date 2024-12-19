@@ -20,6 +20,8 @@ const { getPickupImage, pickupImageUp } = require("../models/pickupImageUpload")
 const { getAllLogs } = require("../models/getlogs.model")
 const {handler}=require("../../../utils/cron");
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
+const requestIp = require('request-ip')
+
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -352,6 +354,12 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
 
 router.get("/getAllVehiclesData", async (req, res) => {
   getAllVehiclesData(req, res);
+  // const ipAddress = 
+  //   req.headers['x-forwarded-for'] || // For clients behind a proxy
+  //   req.socket.remoteAddress || // Direct connection
+  //   null;
+  // console.log(ipAddress)
+
 })
 
 router.get("/getAllInvoice", async (req, res) => {

@@ -249,7 +249,7 @@ async function booking({
   vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
   discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,stationId,
   deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = "",paymentgatewayReceiptId
-}) {
+}, header) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
   try {
@@ -265,6 +265,7 @@ async function booking({
           message: "Need to login first during booking process",
           functionName: "booking",
           userId,
+          header
         });
 
 
@@ -369,6 +370,7 @@ async function booking({
           message: "Booking not found for update",
           functionName: "booking",
           userId,
+          header
         });
 
         return obj;
@@ -380,7 +382,7 @@ async function booking({
 
         obj.message = "Booking deleted successfully";
         obj.status = 200;
-        obj.data = { _id };
+       // obj.data = { _id };
 
         await Log({
           message: `Booking with ID ${_id} deleted`,
@@ -2006,6 +2008,7 @@ async function getLocationData(query) {
     locationId,
     city,
     state,
+    locationStatus,
     page = 1,
     limit = 10
   } = query;
@@ -2015,6 +2018,14 @@ async function getLocationData(query) {
   if (locationId) filter._id = ObjectId(locationId);
   if (city) filter.city = city;
   if (state) filter.state = state;
+  //if(locationStatus) filter.locationStatus =  { locationStatus: { $ne: "inactive" } };
+
+
+  if (locationStatus) {
+    filter.locationStatus = locationStatus;
+  } else {
+    filter.locationStatus = { $ne: "inactive" };
+  }
 
   const skip = (page - 1) * limit;
 
