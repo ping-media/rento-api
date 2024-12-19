@@ -103,6 +103,8 @@ exports.getPlanData = async (req, res) => {
 exports.getLocationData = async (req, res) => {
   try {
     const result = await getLocationData(req.query);
+    console.log(req.headers)
+
     return res.status(200).json(result);
   } catch (err) {
     return res.json({

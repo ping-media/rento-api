@@ -2009,7 +2009,6 @@ async function getLocationData(query) {
     page = 1,
     limit = 10
   } = query;
-
   let filter = {};
   if (_id) filter._id = ObjectId(_id);
   if (locationName) filter.locationName = locationName;
