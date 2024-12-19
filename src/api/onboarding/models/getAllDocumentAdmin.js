@@ -1,6 +1,6 @@
 
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
-
+const Log = require("../../../db/schemas/onboarding/log")
 
 const getAllDocument = async (req, res) => {
   try {
@@ -35,6 +35,7 @@ const getAllDocument = async (req, res) => {
     const totalPages = Math.ceil(totalRecords / pageSize);
 
     if (!documents.length) {
+      
       return res.status(404).json({
         status: 404,
         message: "No documents found.",

@@ -1,19 +1,20 @@
 const Logs = require("../../../db/schemas/onboarding/log");
+const axios = require ("axios")
 
-async function Log({ message, functionName, userId, header }) {
+async function Log({ message, functionName, userId }) {
     try {
-        if (!message || !functionName || !userId) {
-            throw new Error("Missing required fields: message, functionName, userId");
-        }
+        // if (!message || !functionName || !userId) {
+        //     throw new Error("Missing required fields: message, functionName, userId");
+        // }
 
         // Log incoming headers for debugging
-        console.log("Incoming Headers:", header);
+//console.log("Incoming Headers:", header);
 
         // Extract IP address
-        let ipAddress =  await axios.get("https://api.ipify.org/?format=json");
+        let ipAdd =  await axios.get("https://api.ipify.org/?format=json");
 
        
-
+      const ipAddress= ipAdd.data;
         
         // Create the log object
         const logObj = { message, functionName, userId, ipAddress };

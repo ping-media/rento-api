@@ -249,7 +249,7 @@ async function booking({
   vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,
   discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,stationId,
   deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = "",paymentgatewayReceiptId
-}, header) {
+}) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
   try {
@@ -265,7 +265,7 @@ async function booking({
           message: "Need to login first during booking process",
           functionName: "booking",
           userId,
-          header
+          
         });
 
 
@@ -370,7 +370,7 @@ async function booking({
           message: "Booking not found for update",
           functionName: "booking",
           userId,
-          header
+          
         });
 
         return obj;
@@ -402,7 +402,7 @@ async function booking({
       });
       obj.status = 200;
         obj.message = "Booking Update successfull ";
-        obj.data=_id;
+       // obj.data=_id;
         return obj;
     } else {
       if (

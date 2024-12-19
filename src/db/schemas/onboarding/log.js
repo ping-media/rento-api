@@ -17,7 +17,7 @@ const logSchema = new Schema(
       //required: true,
     },
     ipAddress: {
-      type: String,
+      type: Object,
       //required: true,
     },
     

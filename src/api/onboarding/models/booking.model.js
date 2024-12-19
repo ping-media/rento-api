@@ -1,5 +1,7 @@
 const Booking = require('../../../db/schemas/onboarding/booking.schema');
 const User = require("../../../db/schemas/onboarding/user.schema");
+const Log = require("../../../api/onboarding/models/Logs.model")
+
 
 // Get All Bookings with Filtering and Pagination
 const getBookings = async (query) => {
@@ -19,6 +21,11 @@ const getBookings = async (query) => {
     
     if (_id) {
       if (_id.length !== 24) {
+        await Log({
+          message: "Invalid booking ID",
+          functionName: "booking",
+          userId: userId ,
+        });
         obj.status = 401;
         obj.message = "Invalid booking ID";
         return obj;
@@ -27,6 +34,12 @@ const getBookings = async (query) => {
       // Find booking by `_id`
       const booking = await Booking.findById(_id);
       if (!booking) {
+        await Log({
+          message: "Booking not found for the provided ID",
+          functionName: "booking",
+          userId: userId ,
+
+        });
         obj.status = 404;
         obj.message = "Booking not found";
         return obj;
@@ -54,6 +67,12 @@ const getBookings = async (query) => {
 
     // If no bookings found
     if (!bookings.length) {
+      await Log({
+        message: "No bookings found for the provided filters",
+        functionName: "booking",
+        userId: userId ,
+
+      });
       obj.message = "No records found";
       obj.status= 200;
       return obj;
@@ -72,6 +91,12 @@ const getBookings = async (query) => {
     };
   } catch (error) {
     console.error("Error fetching bookings:", error);
+    await Log({
+      message: `Error fetching bookings: ${error.message}`,
+      functionName: "booking",
+      userId: userId||null ,
+
+    });
     obj.status = 500;
     obj.message = "Internal server error";
   }
