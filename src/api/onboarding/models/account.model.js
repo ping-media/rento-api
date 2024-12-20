@@ -511,11 +511,11 @@ async function saveUser(userData) {
         await User.findByIdAndDelete(_id);
         return { status: 200, message: "User deleted successfully", data: { _id } };
       }
-
+     if(dateofbirth){
      if(!isAtLeast18(userObj.dateofbirth)){
       return { status: 400, message: "User should be 18 " };
 
-     }
+     }}
      
       await User.findByIdAndUpdate(_id, {$set:userObj}, { new: true });
       return { status: 200, message: "User updated successfully", data: userObj };
