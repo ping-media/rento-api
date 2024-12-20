@@ -4,6 +4,7 @@ const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 require('dotenv').config();
 const Location = require("../../../db/schemas/onboarding/location.schema");
+const Log = require("../models/Logs.model")
 
 
 
@@ -84,7 +85,11 @@ const fileUpload =async (req, res) => {
     }
     if (deleteRec) {
       await Location.deleteOne({ _id})
-      
+      await Log({
+        message: `Booking with ID ${_id} deleted`,
+        functionName: "deletebooking",
+        userId,
+      });
       return res.status(401).json({
         message: 'location deleted successfully',
     });

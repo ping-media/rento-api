@@ -713,6 +713,11 @@ async function createLocation({ locationName, locationImage, deleteRec, _id }) {
     }
     if (deleteRec) {
       await Location.deleteOne({ _id: ObjectId(_id) })
+      await Log({
+        message: `Booking with ID ${_id} deleted`,
+        functionName: "deletebooking",
+        userId,
+      });
       obj.message = "location deleted successfully"
       obj.data = { _id }
       return obj
@@ -782,6 +787,11 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
           // Handle deletion
           if (deleteRec) {
             await Plan.deleteOne({ _id: ObjectId(_id) });
+            await Log({
+              message: `Booking with ID ${_id} deleted`,
+              functionName: "deletebooking",
+              userId,
+            });
             obj.message = "Plan deleted successfully";
             return obj;
           }
@@ -890,6 +900,11 @@ async function createInvoice({ _id, deleteRec, bookingId, paidInvoice, userId })
 
       if (deleteRec) {
         await InvoiceTbl.deleteOne({ _id: ObjectId(_id) });
+        await Log({
+          message: `Booking with ID ${_id} deleted`,
+          functionName: "deletebooking",
+          userId,
+        });
         obj.message = "Invoice deleted successfully";
         return obj;
       }
@@ -1066,6 +1081,11 @@ async function discountCoupons({ couponName, vehicleType, allowedUsers, usageAll
     if (result) {
       if (deleteRec) {
         await Coupon.deleteOne({ _id: ObjectId(_id) })
+        await Log({
+          message: `Booking with ID ${_id} deleted`,
+          functionName: "deletebooking",
+          userId,
+        });
         obj.message = "Coupon deleted successfully"
         return obj
       }
@@ -1151,6 +1171,11 @@ async function createStation({
 
       if (deleteRec) {
         await Station.deleteOne({ _id: ObjectId(_id) });
+        await Log({
+          message: `Booking with ID ${_id} deleted`,
+          functionName: "deletebooking",
+          userId,
+        });
         response.message = "Station deleted successfully";
         logError("Station deleted successfully ","createStation",userId)
 

@@ -98,13 +98,13 @@ const bookingSchema = new Schema({
         ref: 'invoice-tbl'
     },  
     bookingStatus: {
-        enum: ['pending', 'completed', 'canceled'],
+        enum: ['pending', 'done', 'canceled'],
         type: String,
         required: true
     },
     paymentStatus: {
         type: String,
-        enum: ['pending','partiallyPay', 'completed', 'canceled'],
+        enum: ['pending','partiallyPay', 'paid', 'failed','refunded'],
         required: true
     },
     rideStatus: {

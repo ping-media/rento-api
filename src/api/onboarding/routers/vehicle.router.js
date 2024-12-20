@@ -7,6 +7,8 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
 require('dotenv').config();
 const axios = require("axios");
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 const { fileUpload } = require("../models/locationUpload.model")
 const { VehicalfileUpload } = require("../models/createVehicleMasterUpload")
 const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
@@ -21,7 +23,8 @@ const { getAllLogs } = require("../models/getlogs.model")
 const {handler}=require("../../../utils/cron");
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const requestIp = require('request-ip')
-
+const Log = require("../models/Logs.model")
+const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -225,7 +228,11 @@ router.delete("/deleteLocation", async (req, res) => {
 
     // Delete the location
     await Location.deleteOne({ _id });
-
+    await Log({
+      message: `Location with ID ${_id} deleted`,
+      functionName: "deleteLoaction",
+      userId,
+    });
     // Success message after deletion
     obj.status = 200;
     obj.message = "Location deleted successfully";
@@ -339,6 +346,11 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
                      await vehicleTable.deleteMany({vehicleRec})
    //console.log(vehicleRec)
     await vehicleMaster.deleteOne({ _id });
+    await Log({
+      message: `Booking with ID ${_id} deleted`,
+      functionName: "deletebooking",
+      userId,
+    });
     obj.message = "VehicleMaster deleted successfully"
     obj.status = 200
     return res.status(200).json(obj);
@@ -377,6 +389,112 @@ router.post("/uploadDocument", upload.array('images', 5), async (req, res) => {
   documentUpload(req, res)
 })
 
+
+// router.delete("/deleteDocument", async (req, res) => {
+//   const obj = { status: 200, message: "Document deleted successfully", data: [] };
+
+//   try {
+//     const { _id, userId } = req.query;
+
+//     // Validate the presence of `_id`
+//     if (!_id) {
+//       obj.status = 400; // Bad Request
+//       obj.message = "Document _id is required";
+//       return res.status(400).json(obj);
+//     }
+
+//     // Validate the presence of `userId` for logging
+//     // if (!userId) {
+//     //   obj.status = 400;
+//     //   obj.message = "User ID is required for logging";
+//     //   return res.status(400).json(obj);
+//     // }
+
+//     // Check if the document exists
+//     const document = await Document.findById(_id);
+//     if (!document) {
+//       obj.status = 404; // Not Found
+//       obj.message = "Document with the given _id not found";
+//       return res.status(404).json(obj);
+//     }
+
+//     // Delete the document
+//     await Document.deleteOne({ _id });
+
+//     // Log the deletion
+//     await Log({
+//       message: `Document with ID ${_id} deleted successfully`,
+//       functionName: "deleteDocument",
+//       userId,
+//     });
+
+//     // Send success response
+//     return res.status(200).json(obj);
+
+//   } catch (error) {
+//     console.error("Error in deleteDocument:", error.message);
+
+//     // Handle unexpected errors
+//     obj.status = 500;
+//     obj.message = "An error occurred while deleting the document";
+//     return res.status(500).json(obj);
+//   }
+// });
+
+
+
+
+
+router.delete("/deleteDocument", async (req, res) => {
+  const obj = { status: 200, message: "", data: [] };
+
+  try {
+    const { _id, fileName } = req.query;
+
+    console.log("_id:", _id);
+
+    // Validate input parameters
+    if (!_id && !fileName) {
+      obj.status = 400;
+      obj.message = "Both fileName and _id are required";
+      return res.status(400).json(obj);
+    }
+
+    // Ensure _id is valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(_id)) {
+      obj.status = 400;
+      obj.message = "Invalid _id format";
+      return res.status(400).json(obj);
+    }
+
+   
+
+    // Check if the document's files array is now empty
+    const document = await Document.findById(_id);
+   console.log(document)
+
+   const ToRemove = document.files;
+const newArray = ToRemove.filter(item => item.fileName !== fileName);
+console.log(newArray)
+
+const upDate= await Document.updateOne({_id},{$set:newArray})
+console.log(upDate)
+
+    if (upDate && upDate.length === 0) {
+      await Document.deleteOne({ _id });
+      obj.message = "Document deleted successfully";
+    } else {
+      obj.message = "File deleted successfully";
+    }
+
+    return res.status(200).json(obj);
+  } catch (error) {
+    console.error("Error in deleteDocument:", error.message);
+    obj.status = 500;
+    obj.message = "An error occurred while deleting the file";
+    return res.status(500).json(obj);
+  }
+});
 
 
 

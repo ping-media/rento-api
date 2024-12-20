@@ -1,6 +1,7 @@
 const Coupon = require('../../../db/schemas/onboarding/coupons.schema')
 
 const mongoose = require("mongoose"); // Ensure mongoose is imported
+const Log = require("../models/Logs.model")
 
 const getCoupons = async (query) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [], pagination: {} };
@@ -101,6 +102,11 @@ const getCoupons = async (query) => {
         if (deleteRec) {
           await Coupon.deleteOne({ _id });
           resObj.message = "Coupon deleted successfully.";
+          await Log({
+            message: `Booking with ID ${_id} deleted`,
+            functionName: "deletebooking",
+            userId,
+          });
           return resObj;
         }
   

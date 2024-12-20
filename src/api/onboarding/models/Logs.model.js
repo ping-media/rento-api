@@ -15,6 +15,9 @@ async function Log({ message, functionName, userId }) {
 
        
       const ipAddress= ipAdd.data;
+      if(!ipAddress){
+        ipAddress=null;
+      }
         
         // Create the log object
         const logObj = { message, functionName, userId, ipAddress };

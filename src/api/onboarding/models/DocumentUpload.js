@@ -3,7 +3,7 @@ const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 require('dotenv').config();
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
-
+const Log = require("../models/Logs.model")
 // Validate required environment variables
 const { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME } = process.env;
 
@@ -34,11 +34,19 @@ const documentUpload = async (req, res) => {
       
       if(_id){
         if(deleteRec){
-          await Document.deleteOne({ _id: ObjectId(_id) });
-      obj.message = "Document deleted successfully";
-      obj.status = 200;
-      obj.data = { _id };
-      return obj;
+          await Document.deleteOne({ _id });
+          await Log({
+            message: `Document with ID ${_id} deleted`,
+            functionName: "documentUpload",
+            userId,
+          });
+     return res.status(200).json({
+      message: "Document deleted successfully",
+      status: 200,
+      data:  _id}
+    )
+     ;
+      
         }
       }
 
