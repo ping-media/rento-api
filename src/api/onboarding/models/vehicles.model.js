@@ -417,7 +417,7 @@ async function booking({
 
         await SaveBooking.save();
 
-
+        
          
         obj.message = "New booking saved successfully";
         obj.data = SaveBooking;
@@ -427,6 +427,7 @@ async function booking({
           functionName: "booking",
           userId,
         });
+        createInvoice(userId,paymentStatus,bookingId,bookingPrice)
 
       } else {
         obj.status = 401;
@@ -854,10 +855,10 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
 
 
 
-async function createInvoice({ _id, deleteRec, bookingId, paidInvoice, userId }) {
+async function createInvoice({ _id, deleteRec, bookingId, paidInvoice, userId, bookingPrice }) {
   const obj = { status: 200, message: "Invoice created successfully", data: [] };
-  const o = { userId, bookingId, paidInvoice };
-
+  const o = { userId, bookingId, paidInvoice,bookingPrice };
+console.log(o)
   try {
     if (paidInvoice) {
       const isValidStatus = ['paid', 'unpaid', 'partialpaid'].includes(paidInvoice);

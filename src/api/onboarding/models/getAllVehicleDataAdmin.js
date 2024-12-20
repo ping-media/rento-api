@@ -95,7 +95,7 @@ const getAllVehiclesData = async (req, res) => {
           perDayCost: 1,
           lastServiceDate: 1,
           kmsRun: 1,
-          isBooked: 1,
+         
           condition: 1,
           locationId: 1,
           refundableDeposit: 1,

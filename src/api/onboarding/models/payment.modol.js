@@ -13,7 +13,6 @@ const paymentRec = async (req, res) => {
         paySuccessId: 1,
         payment_type: 1,
         paymentgatewayOrderId:1,
-        paymentgatewayReceiptId:1,
         paymentStatus:1,
         paymentMethod:1,
         paymentInitiatedDate: 1,

@@ -63,7 +63,8 @@ const getBookings = async (query) => {
     const bookings = await Booking.find(filters)
       .sort({ createdAt: -1 }) 
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .select("bookingId vehicleName stationName bookingStartDateAndTime bookingEndDateAndTime bookingPrice bookingStatus rideStatus");
 
     // If no bookings found
     if (!bookings.length) {

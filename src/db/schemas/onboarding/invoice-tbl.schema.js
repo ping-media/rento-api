@@ -19,9 +19,13 @@ const invoiceSchema = new Schema({
   },
   paidInvoice: {
     type: String,
-    enum: ['paid', 'unpaid', 'partialpaid'],
+    enum: ['pending','partiallyPay', 'paid', 'failed','refunded'],
     required: true
-  }
+  },
+  bookingPrice: {
+    type: Object,
+    required: true
+  },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
 const invoiceTbl = mongoose.model('invoiceTbl', invoiceSchema);
