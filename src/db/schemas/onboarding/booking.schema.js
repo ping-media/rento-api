@@ -45,7 +45,7 @@ const bookingSchema = new Schema({
     },
     userId: {
         type: Schema.Types.ObjectId,
-        ref: 'user',
+        ref: 'User',
         required: true
     },
     BookingStartDateAndTime: {
@@ -83,7 +83,12 @@ const bookingSchema = new Schema({
     
     paymentgatewayReceiptId: {
         type: String,
-        default:"Na"
+        default:"NA"
+       // required: true
+    },
+    paymentInitiatedDate: {
+        type: String,
+        default:"NA"
        // required: true
     },
    

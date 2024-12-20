@@ -25,6 +25,7 @@ const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schem
 const requestIp = require('request-ip')
 const Log = require("../models/Logs.model")
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
+const {paymentRec} = require ("../models/payment.modol")
 
 // create messages
 router.post("/createVehicle", async (req, res) => {
@@ -33,6 +34,7 @@ router.post("/createVehicle", async (req, res) => {
 
 router.post("/updateMultipleVehicles", async (req, res) => {
   updateMultipleVehicles(req, res);
+  
 })
 
 router.post("/createBookingDuration", async (req, res) => {
@@ -347,8 +349,8 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
    //console.log(vehicleRec)
     await vehicleMaster.deleteOne({ _id });
     await Log({
-      message: `Booking with ID ${_id} deleted`,
-      functionName: "deletebooking",
+      message: `VehicleMaster with ID ${_id} deleted`,
+      functionName: "deleteVehicleMaster",
       userId,
     });
     obj.message = "VehicleMaster deleted successfully"
@@ -446,53 +448,70 @@ router.post("/uploadDocument", upload.array('images', 5), async (req, res) => {
 
 
 router.delete("/deleteDocument", async (req, res) => {
-  const obj = { status: 200, message: "", data: [] };
+  const response = { status: 200, message: "", data: [] };
 
   try {
     const { _id, fileName } = req.query;
 
-    console.log("_id:", _id);
-
     // Validate input parameters
-    if (!_id && !fileName) {
-      obj.status = 400;
-      obj.message = "Both fileName and _id are required";
-      return res.status(400).json(obj);
+    if (!_id || !fileName) {
+      response.status = 400;
+      response.message = "Both fileName and _id are required";
+      return res.status(400).json(response);
     }
 
-    // Ensure _id is valid ObjectId
+    // Ensure _id is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(_id)) {
-      obj.status = 400;
-      obj.message = "Invalid _id format";
-      return res.status(400).json(obj);
+      response.status = 400;
+      response.message = "Invalid _id format";
+      return res.status(400).json(response);
     }
 
-   
-
-    // Check if the document's files array is now empty
+    // Fetch the document by ID
     const document = await Document.findById(_id);
-   console.log(document)
 
-   const ToRemove = document.files;
-const newArray = ToRemove.filter(item => item.fileName !== fileName);
-console.log(newArray)
-
-const upDate= await Document.updateOne({_id},{$set:newArray})
-console.log(upDate)
-
-    if (upDate && upDate.length === 0) {
-      await Document.deleteOne({ _id });
-      obj.message = "Document deleted successfully";
-    } else {
-      obj.message = "File deleted successfully";
+    if (!document) {
+      response.status = 404;
+      response.message = "Document not found";
+      return res.status(404).json(response);
     }
 
-    return res.status(200).json(obj);
+    if (!document.files || !Array.isArray(document.files)) {
+      response.status = 404;
+      response.message = "Files array not found in the document";
+      return res.status(404).json(response);
+    }
+
+    // Filter out the file with the specified fileName
+    const updatedFiles = document.files.filter(file => file.fileName !== fileName);
+
+    // Update the document or delete it if no files remain
+    if (updatedFiles.length === 0) {
+      await Document.deleteOne({ _id });
+      await Log({
+        message: `Document with ID ${_id} deleted`,
+        functionName: "deleteDocument",
+        userId,
+      });
+      response.message = "Document deleted successfully";
+
+    } else {
+      await Document.updateOne({ _id }, { $set: { files: updatedFiles } });
+      await Log({
+        message: `Document with ID ${_id} deleted`,
+        functionName: "deleteDocument",
+        userId,
+      });
+      response.message = "Document deleted successfully";
+
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     console.error("Error in deleteDocument:", error.message);
-    obj.status = 500;
-    obj.message = "An error occurred while deleting the file";
-    return res.status(500).json(obj);
+    response.status = 500;
+    response.message = "An error occurred while deleting the file";
+    return res.status(500).json(response);
   }
 });
 
@@ -505,6 +524,11 @@ router.get("/getDocument", async (req, res) => {
 
 router.get("/getAllDocument", async (req, res) => {
   getAllDocument(req, res);
+  // await Log({
+  //   message: res.message,
+  //   functionName: "deleteLoaction",
+  //   userId : res.userId,
+  // });
 })
 
 
@@ -580,6 +604,13 @@ router.post("/createOrderId", async (req, res) => {
 
   }
 
+
+})
+
+
+router.get("/paymentRec", async (req, res) => {
+
+  paymentRec(req,res);
 
 })
 

@@ -26,6 +26,7 @@ const plan = require("../../../db/schemas/onboarding/plan.schema");
 const order = require("../../../db/schemas/onboarding/order.schema");
 const location = require("../../../db/schemas/onboarding/location.schema");
 const Otp = require("../../../db/schemas/onboarding/logOtp");
+const { log } = require("winston");
 
 
 
@@ -395,6 +396,21 @@ async function saveUser(userData) {
 
   const response = { status: 200, message: "Data processed successfully", data: [] };
 
+  function isAtLeast18(dob) {
+    const dobDate = new Date(dob); // Parse the DOB string into a Date object
+    const today = new Date();
+  
+    // Calculate the difference in years
+    const age = today.getFullYear() - dobDate.getFullYear();
+  
+    // Adjust if the birth date has not yet occurred this year
+    const hasHadBirthdayThisYear =
+      today.getMonth() > dobDate.getMonth() || 
+      (today.getMonth() === dobDate.getMonth() && today.getDate() >= dobDate.getDate());
+  
+    return hasHadBirthdayThisYear ? age >= 18 : age - 1 >= 18;
+  }
+
   try {
     
     const validateId = (id) => id && id.length === 24;
@@ -476,7 +492,15 @@ async function saveUser(userData) {
       dateofbirth,
       gender,
     };
+    if(password){
 
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
+      if (!passwordRegex.test(password)) {
+        return { status: 400, message: "Password validation not match" };
+    }
+    var hash= bcrypt.hashSync(password,8);
+
+    }
     // Handle user update or creation
     if (_id) {
       const existingUser = await User.findById(_id);
@@ -487,6 +511,11 @@ async function saveUser(userData) {
         await User.findByIdAndDelete(_id);
         return { status: 200, message: "User deleted successfully", data: { _id } };
       }
+
+     if(!isAtLeast18(userObj.dateofbirth)){
+      return { status: 400, message: "User should be 18 " };
+
+     }
      
       await User.findByIdAndUpdate(_id, {$set:userObj}, { new: true });
       return { status: 200, message: "User updated successfully", data: userObj };
@@ -495,15 +524,7 @@ async function saveUser(userData) {
         return { status: 400, message: "Missing required fields for new user" };
       }
 
-      if(password){
-
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
-        if (!passwordRegex.test(password)) {
-          return { status: 400, message: "Password validation not match" };
-      }
-      var hash= bcrypt.hashSync(password,8);
-
-      }
+      
      
   
       
