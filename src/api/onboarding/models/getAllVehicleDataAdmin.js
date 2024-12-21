@@ -44,6 +44,7 @@ const getAllVehiclesData = async (req, res) => {
       vehicleStatus,
       vehicleColor,
       condition,
+      search,
       page = 1,
       limit = 10,
     } = req.query;
@@ -57,6 +58,16 @@ const getAllVehiclesData = async (req, res) => {
     if (vehicleColor) filter.vehicleColor = vehicleColor;
     if (condition) filter.condition = condition;
     if (_id) filter._id = mongoose.Types.ObjectId(_id);
+
+
+    if (search) {
+      filter.$or = [
+        { vehicleName: { $regex: search, $options: "i" } },
+        { stationName: { $regex: search, $options: "i" } },
+        { vehicleNumber: { $regex: search, $options: "i" } },
+        { vehicleStatus: { $regex: search, $options: "i" } },
+      ];
+    }
 
     // Parse pagination parameters
     const parsedPage = Math.max(parseInt(page, 10), 1);
