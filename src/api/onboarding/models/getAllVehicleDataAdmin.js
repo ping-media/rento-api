@@ -150,7 +150,7 @@ const getAllVehiclesData = async (req, res) => {
     if (!vehicles.length || !vehicles[0].data.length) {
       response.status = 404;
       response.message = "No records found";
-      return res.status(404).json(response);
+      return res.json(response);
     }
 
     // Attach metadata and data to response
@@ -163,7 +163,7 @@ const getAllVehiclesData = async (req, res) => {
     console.error("Error fetching vehicle data:", error.message);
     response.status = 500;
     response.message = "An error occurred while fetching vehicle data";
-    return res.status(500).json(response);
+    return res.json(response);
   }
 };
 
@@ -174,7 +174,7 @@ const updateMultipleVehicles = async (req, res) => {
 
   // Ensure valid vehicleIds and updateData
   if (!Array.isArray(vehicleIds) || vehicleIds.length === 0) {
-    return res.status(400).json({
+    return res.json({
       status: 400,
       message: "Invalid vehicle IDs"
     });
@@ -193,7 +193,7 @@ const updateMultipleVehicles = async (req, res) => {
   }
 
   if (!updateData || typeof updateData !== 'object') {
-    return res.status(400).json({
+    return res.json({
       status: 400,
       message: "Invalid update data"
     });
