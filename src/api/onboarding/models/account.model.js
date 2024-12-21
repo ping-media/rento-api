@@ -103,6 +103,7 @@ const getAllUsers = async (query) => {
     if (email) filter.email = { $regex: email, $options: "i" };
     if (contact) filter.contact = { $regex: contact, $options: "i" };
     if (userType) filter.userType = { $regex: userType, $options: "i" };
+   
 
     // Handle search functionality
     if (search) {
@@ -112,6 +113,7 @@ const getAllUsers = async (query) => {
         { email: { $regex: search, $options: "i" } },
         { contact: { $regex: search, $options: "i" } },
         { userType: { $regex: search, $options: "i" } },
+      //  { _id: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -457,7 +459,7 @@ async function saveUser(userData) {
     }
 
     
-    const validKycStatuses = ["yes", "no"];
+    const validKycStatuses = ["yes", "no"]; 
     if (!isValidEnum(kycApproved, validKycStatuses)) {
       return { status: 400, message: "Invalid KYC approval status" };
     }
@@ -492,14 +494,12 @@ async function saveUser(userData) {
       dateofbirth,
       gender,
     };
-    if(password){
-
+    if (password) {
       const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
       if (!passwordRegex.test(password)) {
         return { status: 400, message: "Password validation not match" };
-    }
-    var hash= bcrypt.hashSync(password,8);
-
+      }
+      userObj.password = bcrypt.hashSync(password, 8);
     }
     // Handle user update or creation
     if (_id) {
@@ -516,6 +516,8 @@ async function saveUser(userData) {
       return { status: 400, message: "User should be 18 " };
 
      }}
+
+     
      
       await User.findByIdAndUpdate(_id, {$set:userObj}, { new: true });
       return { status: 200, message: "User updated successfully", data: userObj };
@@ -525,10 +527,6 @@ async function saveUser(userData) {
       }
 
       
-     
-  
-      
-      userObj.password=hash
 
       const newUser = new User(userObj);
       await newUser.save();

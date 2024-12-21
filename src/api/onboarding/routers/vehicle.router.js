@@ -26,13 +26,14 @@ const requestIp = require('request-ip')
 const Log = require("../models/Logs.model")
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 const {paymentRec} = require ("../models/payment.modol")
+const Authentication = require ("../../../middlewares/Authentication")
 
 // create messages
-router.post("/createVehicle", async (req, res) => {
+router.post("/createVehicle",Authentication, async (req, res) => {
   vehiclesService.createVehicle(req, res);
 })
 
-router.post("/updateMultipleVehicles", async (req, res) => {
+router.post("/updateMultipleVehicles",Authentication, async (req, res) => {
   updateMultipleVehicles(req, res);
   
 })
@@ -43,19 +44,19 @@ router.post("/createBookingDuration", async (req, res) => {
 
 
 
-router.post("/createPlan", async (req, res) => {
+router.post("/createPlan",Authentication, async (req, res) => {
   vehiclesService.createPlan(req, res);
 })
 
-router.post("/createInvoice", async (req, res) => {
+router.post("/createInvoice", Authentication,async (req, res) => {
   vehiclesService.createInvoice(req, res);
 })
 
-router.post("/discountCoupons", async (req, res) => {
+router.post("/discountCoupons",Authentication, async (req, res) => {
   vehiclesService.discountCoupons(req, res);
 })
 
-router.post("/createCoupon", async (req, res) => {
+router.post("/createCoupon",Authentication, async (req, res) => {
   vehiclesService.createCoupon(req, res);
 })
 
@@ -63,7 +64,7 @@ router.post("/VehicleBookrecode", async (req, res) => {
   vehiclesService.VehicleBookrecode(req, res);
 })
 
-router.post("/createStation", async (req, res) => {
+router.post("/createStation",Authentication, async (req, res) => {
   vehiclesService.createStation(req, res);
 })
 
@@ -150,7 +151,7 @@ const upload = multer({
 });
 
 
-router.post("/createLocation", upload.single('image'), async (req, res) => {
+router.post("/createLocation",Authentication, upload.single('image'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'File upload failed. No file provided.' });
   }
@@ -162,7 +163,7 @@ router.post("/createLocation", upload.single('image'), async (req, res) => {
 
 
 // Update Location (image is optional)
-router.put("/updateLocation", upload.single('image'), async (req, res) => {
+router.put("/updateLocation",Authentication, upload.single('image'), async (req, res) => {
   const obj = { status: 200, message: "location update successfully", data: [] }
 
   try {
@@ -253,7 +254,7 @@ router.delete("/deleteLocation", async (req, res) => {
 
 
 
-router.post("/createVehicleMaster", upload.single('image'), async (req, res) => {
+router.post("/createVehicleMaster",Authentication, upload.single('image'), async (req, res) => {
 
 
   if (!req.file) {
@@ -264,8 +265,8 @@ router.post("/createVehicleMaster", upload.single('image'), async (req, res) => 
 })
 
 
-// Update Location (image is optional)
-router.put("/updateVehicleMaster", upload.single('image'), async (req, res) => {
+
+router.put("/updateVehicleMaster",Authentication, upload.single('image'), async (req, res) => {
   const obj = { status: 200, message: "VehicleMaster updated successfully", data: [] };
 
   try {
@@ -366,7 +367,7 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
 });
 
 
-router.get("/getAllVehiclesData", async (req, res) => {
+router.get("/getAllVehiclesData",Authentication, async (req, res) => {
   getAllVehiclesData(req, res);
   // const ipAddress = 
   //   req.headers['x-forwarded-for'] || // For clients behind a proxy

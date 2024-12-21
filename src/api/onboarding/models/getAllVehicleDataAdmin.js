@@ -1,5 +1,6 @@
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const mongoose = require("mongoose")
+const jwt = require("jsonwebtoken")
 
 const updateManyVehicles = async (filter, updateData) => {
   try {
@@ -36,11 +37,20 @@ const getAllVehiclesData = async (req, res) => {
   const response = { status: 200, message: "Data fetched successfully", data: [] };
 
   try {
-    const { _id, vehicleMasterId, stationId, vehicleStatus, vehicleColor, condition, page = 1, limit = 10 } = req.query;
+    const {
+      _id,
+      vehicleMasterId,
+      stationId,
+      vehicleStatus,
+      vehicleColor,
+      condition,
+      page = 1,
+      limit = 10,
+    } = req.query;
+    
 
-   
+    // Build filter criteria
     const filter = {};
-
     if (vehicleMasterId) filter.vehicleMasterId = mongoose.Types.ObjectId(vehicleMasterId);
     if (stationId) filter.stationId = stationId;
     if (vehicleStatus) filter.vehicleStatus = vehicleStatus;
@@ -48,9 +58,11 @@ const getAllVehiclesData = async (req, res) => {
     if (condition) filter.condition = condition;
     if (_id) filter._id = mongoose.Types.ObjectId(_id);
 
-    const parsedPage = parseInt(page, 10);
-    const parsedLimit = parseInt(limit, 10);
+    // Parse pagination parameters
+    const parsedPage = Math.max(parseInt(page, 10), 1);
+    const parsedLimit = Math.max(parseInt(limit, 10), 1);
 
+    // Aggregate query
     const vehicles = await vehicleTable.aggregate([
       // Match filter criteria
       { $match: filter },
@@ -95,7 +107,6 @@ const getAllVehiclesData = async (req, res) => {
           perDayCost: 1,
           lastServiceDate: 1,
           kmsRun: 1,
-         
           condition: 1,
           locationId: 1,
           refundableDeposit: 1,
@@ -124,10 +135,10 @@ const getAllVehiclesData = async (req, res) => {
       },
     ]);
 
-    // Handle empty data
+    // Handle empty results
     if (!vehicles.length || !vehicles[0].data.length) {
-      response.message = "No records found";
       response.status = 404;
+      response.message = "No records found";
       return res.status(404).json(response);
     }
 
@@ -138,13 +149,12 @@ const getAllVehiclesData = async (req, res) => {
 
     return res.status(200).json(response);
   } catch (error) {
-    console.error("Error fetching vehicleTable records:", error.message);
+    console.error("Error fetching vehicle data:", error.message);
     response.status = 500;
-    response.message = "An error occurred while fetching vehicleTable records";
+    response.message = "An error occurred while fetching vehicle data";
     return res.status(500).json(response);
   }
 };
-
 
 
 

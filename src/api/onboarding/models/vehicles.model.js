@@ -416,6 +416,7 @@ async function booking({
         const SaveBooking = new Booking(o);
 
         await SaveBooking.save();
+      
 
         
          
@@ -427,7 +428,7 @@ async function booking({
           functionName: "booking",
           userId,
         });
-        createInvoice(userId,paymentStatus,bookingId,bookingPrice)
+
 
       } else {
         obj.status = 401;
@@ -476,7 +477,7 @@ cron.schedule("0 * * * *", async () => {
       },
       {
         $set: {
-          paymentStatus: "canceled",
+          paymentStatus: "failed",
           bookingStatus: "canceled",
           rideStatus: "canceled",
         },
@@ -855,119 +856,87 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
 
 
 
-async function createInvoice({ _id, deleteRec, bookingId, paidInvoice, userId, bookingPrice }) {
+async function createInvoice({ _id }) {
   const obj = { status: 200, message: "Invoice created successfully", data: [] };
-  const o = { userId, bookingId, paidInvoice,bookingPrice };
-console.log(o)
+
   try {
-    if (paidInvoice) {
-      const isValidStatus = ['paid', 'unpaid', 'partialpaid'].includes(paidInvoice);
-      if (!isValidStatus) {
-        obj.status = 401;
-        obj.message = "Invalid paidInvoice";
-        return obj;
+    
+    // Fetch booking details
+    const bookings = await Booking.findOne({ _id }).select("userId bookingId paymentStatus bookingPrice");
+
+    if (!bookings) {
+      return {
+        status: 401,
+        message: "Booking not found",
+      };
+    }
+
+    const { userId,bookingId,bookingPrice,paymentStatus} = bookings
+
+   
+    const paidInvoice= paymentStatus
+
+
+    // Validate `paidInvoice` status if provided
+    if (paidInvoice && !['pending','partiallyPay', 'paid', 'failed','refunded'].includes(paidInvoice)) {
+      return {
+        status: 401,
+        message: "Invalid paidInvoice value",
+      };
+    }
+
+
+    
+    const existingInvoice = await InvoiceTbl.findOne({ bookingId });
+    if (existingInvoice) {
+      return {
+        status: 401,
+        message: "Invoice already exists for this booking",
+      };
+    }
+
+    // Generate a new invoice number
+    const currentYear = new Date().getFullYear();
+    const lastInvoice = await InvoiceTbl.findOne({})
+      .sort({ createdAt: -1 }) // Sort by the latest created
+      .select('invoiceNumber');
+
+    let sequence = 1; // Default sequence
+    if (lastInvoice && lastInvoice.invoiceNumber) {
+      const match = lastInvoice.invoiceNumber.match(new RegExp(`INV-${currentYear}-(\\d{5})`));
+      if (match) {
+        sequence = parseInt(match[1], 10) + 1;
       }
     }
 
-    if (bookingId) {
-      if (bookingId.length === 24) {
-        const find = await Booking.findOne({ _id: ObjectId(bookingId) });
-        //obj.data=find;
-        if (!find) {
-          obj.status = 401;
-          obj.message = "Invalid bookingId";
-          return obj;
-        }
-      } else {
-        obj.status = 401;
-        obj.message = "Invalid bookingId";
-        return obj;
-      }
-    }
+    const newInvoiceNumber = `INV-${currentYear}-${sequence.toString().padStart(5, '0')}`;
+    const newInvoiceData = {
+      userId,
+      bookingId,
+      bookingPrice,
+      paidInvoice,
+      invoiceNumber: newInvoiceNumber,
+    };
 
-    if (_id) {
-      if (_id.length !== 24) {
-        obj.status = 401;
-        obj.message = "Invalid _id";
-        return obj;
-      }
+    // Create and save the new invoice
+    const newInvoice = new InvoiceTbl(newInvoiceData);
+    await newInvoice.save();
 
-      const find = await InvoiceTbl.findOne({ _id: ObjectId(_id) });
-      if (!find) {
-        obj.status = 401;
-        obj.message = "Invalid _id";
-        return obj;
-      }
-
-      if (deleteRec) {
-        await InvoiceTbl.deleteOne({ _id: ObjectId(_id) });
-        await Log({
-          message: `Booking with ID ${_id} deleted`,
-          functionName: "deletebooking",
-          userId,
-        });
-        obj.message = "Invoice deleted successfully";
-        return obj;
-      }
-
-      delete o.invoiceNumber; // Don't update invoice number
-      await InvoiceTbl.updateOne(
-        { _id: ObjectId(_id) },
-        { $set: o },
-        { new: true }
-      );
-      obj.message = "Invoice updated successfully";
-      obj.data = o;
-    } else {
-      // Create new invoice
-      if (bookingId) {
-
-        const find = await InvoiceTbl.findOne({ bookingId });
-        if (find) {
-          obj.status = 401;
-          obj.message = "Invoice Number allready exists";
-          return obj;
-        }
-        else {
-
-          const currentYear = new Date().getFullYear();
-
-          // Get the last invoice number for the year
-          const lastInvoice = await InvoiceTbl.findOne({})
-            .sort({ createdAt: -1 }) // Sort by latest created
-            .select('invoiceNumber');
-
-          let sequence = 1; // Default sequence
-          if (lastInvoice && lastInvoice.invoiceNumber) {
-            const match = lastInvoice.invoiceNumber.match(new RegExp(`INV-${currentYear}-(\\d{5})`));
-            if (match) {
-              sequence = parseInt(match[1], 10) + 1;
-            }
-          }
-
-          // Generate new invoice number
-          const newInvoiceNumber = `INV-${currentYear}-${sequence.toString().padStart(5, '0')}`;
-          o.invoiceNumber = newInvoiceNumber;
-
-          const newInvoice = new InvoiceTbl(o);
-          await newInvoice.save();
-
-          obj.message = "New invoice created successfully";
-          obj.data = o;
-        }
-
-      } else {
-        obj.status = 401;
-        obj.message = "Invalid data";
-      }
-    }
-    return obj;
+    return {
+      status: 200,
+      message: "New invoice created successfully",
+      data: newInvoiceData,
+    };
   } catch (error) {
-    obj.status = 500;
-    obj.message = `Server error: ${error.message}`;
-    return obj;
+    console.error("Error in createInvoice:", error.message);
+
+    return {
+      status: 500,
+      message: `Server error: ${error.message}`,
+    };
   }
 }
+
 
 async function getAllInvoice(query) {
   const obj = { status: 200, message: "Invoices retrieved successfully", data: [] };
@@ -1774,7 +1743,7 @@ const getVehicleTblData = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                  { $in: ["$$booking.bookingStatus", ["pending", "completed"]] },
+                  { $in: ["$$booking.bookingStatus", ["pending", "done"]] },
                   {
                     $and: [
                       { $lte: ["$$booking.BookingStartDateAndTime", endDate] },

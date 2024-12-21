@@ -32,7 +32,7 @@ const {fileUpload} = require("../models/locationUpload.model")
 
 exports.getStationData = async (req, res) => {
   try {
-    const result = await getStationData(req.query);
+    const result = await getStationData(req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -46,7 +46,7 @@ exports.getStationData = async (req, res) => {
 
 exports.getVehicleBookrecode = async (req, res) => {
   try {
-    const result = await getVehicleBookrecode(req.query);
+    const result = await getVehicleBookrecode(req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -60,7 +60,7 @@ exports.getVehicleBookrecode = async (req, res) => {
 
 exports.getCoupons = async (req, res) => {
   try {
-    const result = await getCoupons(req.query);
+    const result = await getCoupons(req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -75,7 +75,7 @@ exports.getCoupons = async (req, res) => {
 
 exports.getVehicleTblData = async (req, res) => {
   try {
-    const result = await getVehicleTblData(req.query);
+    const result = await getVehicleTblData(req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -89,7 +89,7 @@ exports.getVehicleTblData = async (req, res) => {
 
 exports.getPlanData = async (req, res) => {
   try {
-    const result = await getPlanData(req.query);
+    const result = await getPlanData(req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -102,7 +102,7 @@ exports.getPlanData = async (req, res) => {
 }
 exports.getLocationData = async (req, res) => {
   try {
-    const result = await getLocationData(req.query);
+    const result = await getLocationData(req.query,req.headers);
 
     return res.status(200).json(result);
   } catch (err) {
@@ -118,7 +118,7 @@ exports.getLocationData = async (req, res) => {
 
 exports.createVehicle = async (req, res) => {
   try {
-    const result = await createVehicle(req.body);
+    const result = await createVehicle(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -132,7 +132,7 @@ exports.createVehicle = async (req, res) => {
 
 exports.createCoupon = async (req, res) => {
   try {
-    const result = await createCoupon(req.query);
+    const result = await createCoupon(req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -146,7 +146,7 @@ exports.createCoupon = async (req, res) => {
 
 exports.VehicleBookrecode = async (req, res) => {
   try {
-    const result = await VehicleBookrecode(req.body);
+    const result = await VehicleBookrecode(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -160,7 +160,7 @@ exports.VehicleBookrecode = async (req, res) => {
 
 exports.createBookingDuration = async (req, res) => {
   try {
-    const result = await createBookingDuration(req.body);
+    const result = await createBookingDuration(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -174,7 +174,7 @@ exports.createBookingDuration = async (req, res) => {
 
 exports.searchVehicle = async (req, res) => {
   try {
-    const result = await searchVehicle(req.body);
+    const result = await searchVehicle(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -188,7 +188,7 @@ exports.searchVehicle = async (req, res) => {
 
 exports.getLocations = async (req, res) => {
   try {
-    const result = await getLocations(req.body);
+    const result = await getLocations(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -202,7 +202,7 @@ exports.getLocations = async (req, res) => {
 
 exports.getAllBookingDuration = async (req, res) => {
   try {
-    const result = await getAllBookingDuration(req.body);
+    const result = await getAllBookingDuration(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -216,7 +216,7 @@ exports.getAllBookingDuration = async (req, res) => {
 
 exports.getVehicleMasterData = async (req, res) => {
   try {
-    const result = await getVehicleMasterData(req.query);
+    const result = await getVehicleMasterData(req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -232,7 +232,7 @@ exports.getVehicleMasterData = async (req, res) => {
 
 exports.getBookings = async (req, res) => {
   try {
-    const result = await getBookings(req.query);
+    const result = await getBookings(req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -264,7 +264,7 @@ exports.booking = async (req, res) => {
 
 exports.createOrder = async (req, res) => {
   try {
-    const result = await createOrder(req.body);
+    const result = await createOrder(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -278,7 +278,7 @@ exports.createOrder = async (req, res) => {
 
 exports.createVehicleMaster = async (req, res) => {
   try {
-    const result = await createVehicleMaster(req.body);
+    const result = await createVehicleMaster(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -293,7 +293,7 @@ exports.createVehicleMaster = async (req, res) => {
 
 exports.getOrders = async (req, res) => {
   try {
-    const result = await getOrders();
+    const result = await getOrders(req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -346,7 +346,7 @@ exports.createLocation1 = async (req, res) => {
 
 exports.createPlan = async (req, res) => {
   try {
-    const result = await createPlan(req.body);
+    const result = await createPlan(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -360,7 +360,7 @@ exports.createPlan = async (req, res) => {
 
 exports.discountCoupons = async (req, res) => {
   try {
-    const result = await discountCoupons(req.body);
+    const result = await discountCoupons(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -376,7 +376,7 @@ exports.discountCoupons = async (req, res) => {
 
 exports.createInvoice = async (req, res) => {
   try {
-    const result = await createInvoice(req.body);
+    const result = await createInvoice(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -391,7 +391,7 @@ exports.createInvoice = async (req, res) => {
 
 exports.createStation = async (req, res) => {
   try {
-    const result = await createStation(req.body);
+    const result = await createStation(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -423,7 +423,7 @@ exports.getMessages = async (req, res) => {
 
 exports.getAllVehicles = async (req, res) => {
   try {
-    const result = await getAllVehicles(req.body);
+    const result = await getAllVehicles(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -437,7 +437,7 @@ exports.getAllVehicles = async (req, res) => {
 
 exports.getAllInvoice = async (req, res) => {
   try {
-    const result = await getAllInvoice(req.query);
+    const result = await getAllInvoice(req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
