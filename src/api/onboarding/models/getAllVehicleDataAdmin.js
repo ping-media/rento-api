@@ -113,7 +113,7 @@ const getAllVehiclesData = async (req, res) => {
        //   lateFee: 1,
        //   speedLimit: 1,
           stationName: "$stationData.stationName",
-          vehicleImage: "$vehicleMasterData.vehicleImage",
+       //   vehicleImage: "$vehicleMasterData.vehicleImage",
           vehicleName: "$vehicleMasterData.vehicleName",
           createdAt: 1,
           updatedAt: 1,

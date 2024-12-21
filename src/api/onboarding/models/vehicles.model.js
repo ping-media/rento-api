@@ -1209,7 +1209,8 @@ async function createStation({
 
       return response;
     }
-    const location = await Location.findOne({ _id: ObjectId(locationId) });
+    const location = await Location.findOne({locationId });
+   // console.log(location)
     if (!location) {
       response.status = 401;
       response.message = "Location not found";
@@ -1250,6 +1251,7 @@ async function createStation({
       return response;
     }
     const stationExists = await Station.findOne({ stationId });
+    console.log(stationExists)
     if (stationExists) {
       response.status = 401;
       response.message = "Station already exists";

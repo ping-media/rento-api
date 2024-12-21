@@ -2,10 +2,7 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const stationSchema = new Schema({
-    stationName: {
-      type: String,
-      required: true
-    },
+   
     stationId: {
       type: String,
       required: true,
@@ -20,11 +17,11 @@ const stationSchema = new Schema({
       type: Schema.Types.ObjectId,
       ref: 'user'
     },
-    country: {
+    stationName: {
       type: String,
       required: true
     },
-    state: {
+    address: {
       type: String,
       required: true
     },
@@ -32,14 +29,20 @@ const stationSchema = new Schema({
       type: String,
       required: true
     },
+    state: {
+      type: String,
+      required: true
+    },
+  
     pinCode: {
       type: Number,
       required: true
     },
-    address: {
+    country: {
       type: String,
       required: true
     },
+   
     latitude: {
       type: String
     },

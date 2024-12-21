@@ -10,7 +10,7 @@ const getAllDocument = async (req, res) => {
     const filter = {};
     if (userId) {
       if (!mongoose.Types.ObjectId.isValid(userId)) {
-        return res.status(400).json({
+        return res.json({
           status: 400,
           message: "Invalid User ID format.",
         });
@@ -36,7 +36,7 @@ const getAllDocument = async (req, res) => {
 
     if (!documents.length) {
       
-      return res.status(404).json({
+      return res.json({
         status: 404,
         message: "No documents found.",
       });
@@ -55,7 +55,7 @@ const getAllDocument = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching documents:", error);
-    return res.status(500).json({
+    return res.json({
       status: 500,
       message: "Failed to retrieve documents.",
       error: error.message,
