@@ -17,11 +17,11 @@ const invoiceSchema = new Schema({
     ref: 'users',
     required: true
   },
-  paidInvoice: {
+   vehicleName: {
     type: String,
-    enum: ['pending','partiallyPay','partially_paid', 'paid', 'failed','refunded'],
     required: true
   },
+ 
   bookingPrice: {
     type: Object,
     required: true
@@ -30,10 +30,12 @@ const invoiceSchema = new Schema({
     type: Object,
     required: true
   },
-  vehicleName: {
+  paidInvoice: {
     type: String,
+    enum: ['pending','partiallyPay','partially_paid', 'paid', 'failed','refunded'],
     required: true
   },
+ 
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
 const invoiceTbl = mongoose.model('invoiceTbl', invoiceSchema);

@@ -923,6 +923,12 @@ async function createInvoice({ _id }) {
     // Create and save the new invoice
     const newInvoice = new InvoiceTbl(newInvoiceData);
     await newInvoice.save();
+    
+    const updateResult = await Booking.updateOne(
+      { _id },
+      { $set: { "vehicleBasic.isInvoiceCreated": true } },
+      { new: true } 
+    );
 
     return {
       status: 200,
