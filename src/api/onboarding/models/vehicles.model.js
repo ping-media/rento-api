@@ -872,13 +872,13 @@ async function createInvoice({ _id }) {
     }
 
     const { userId,bookingId,bookingPrice,paymentStatus, vehicleBasic, vehicleName} = bookings
-
+  // console.log(bookings)
    
     const paidInvoice= paymentStatus
-
+  console.log(paidInvoice)
 
     // Validate `paidInvoice` status if provided
-    if (paidInvoice && !['pending','partiallyPay', 'paid', 'failed','refunded'].includes(paidInvoice)) {
+    if (paidInvoice && !['pending','partiallyPay', 'partially_paid','paid', 'failed','refunded'].includes(paidInvoice)) {
       return {
         status: 401,
         message: "Invalid paidInvoice value",
@@ -1706,11 +1706,17 @@ const getVehicleTblData = async (query) => {
       matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id; // Ensure valid ObjectId
     } else {
       if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
-      if (vehiclePlan) matchFilter.vehiclePlan = new ObjectId(vehiclePlan);
       if (condition) matchFilter.condition = condition;
       if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
       if (stationId) matchFilter.stationId = stationId;
       if (locationId) matchFilter.locationId = new ObjectId(locationId);
+
+      if (Array.isArray(vehiclePlan)) {
+        matchFilter.vehiclePlan = { $in: vehiclePlan.map((id) => new ObjectId(id)) };
+      } else {
+        matchFilter.vehiclePlan = new ObjectId(vehiclePlan);
+      }
+    
     }
 
     const pipeline = [

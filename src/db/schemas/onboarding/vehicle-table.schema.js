@@ -36,10 +36,12 @@ const vehicleTableSchema = new Schema({
         type: String,
         required: true
     },
-    vehiclePlan: {
-        type: Schema.Types.ObjectId,
-        ref: 'plan'
-    },
+    vehiclePlan: [
+        {
+          type: mongoose.Schema.Types.ObjectId, // Reference other documents (e.g., plan IDs)
+          ref: "VehiclePlan", // Reference collection if needed
+        },
+      ],
     perDayCost: {
         type: Number,
         required: true

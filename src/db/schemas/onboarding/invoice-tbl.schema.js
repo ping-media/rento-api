@@ -19,7 +19,7 @@ const invoiceSchema = new Schema({
   },
   paidInvoice: {
     type: String,
-    enum: ['pending','partiallyPay', 'paid', 'failed','refunded'],
+    enum: ['pending','partiallyPay','partially_paid', 'paid', 'failed','refunded'],
     required: true
   },
   bookingPrice: {
@@ -30,7 +30,7 @@ const invoiceSchema = new Schema({
     type: Object,
     required: true
   },
-  vehiclename: {
+  vehicleName: {
     type: String,
     required: true
   },
