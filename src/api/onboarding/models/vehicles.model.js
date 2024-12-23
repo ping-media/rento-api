@@ -926,7 +926,7 @@ async function createInvoice({ _id }) {
     
     const updateResult = await Booking.updateOne(
       { _id },
-      { $set: { "vehicleBasic.isInvoiceCreated": true } },
+      { $set: { "bookingPrice.isInvoiceCreated": true } },
       { new: true } 
     );
 

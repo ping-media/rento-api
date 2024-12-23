@@ -68,7 +68,7 @@ const getCoupons = async (query) => {
     discountType, 
     isCouponActive, 
     deleteRec, 
-    allowedUsers 
+    // allowedUsers 
   }) => {
     const resObj = { status: 200, message: "Coupon processed successfully", data: [] };
   
@@ -85,7 +85,7 @@ const getCoupons = async (query) => {
         ...(discount && { discount }),
         ...(discountType && { discountType }),
         ...(isCouponActive !== undefined && { isCouponActive }),
-        ...(Array.isArray(allowedUsers) && { allowedUsers }),
+    //    ...(Array.isArray(allowedUsers) && { allowedUsers }),
       };
   
      
