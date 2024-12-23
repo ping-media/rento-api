@@ -44,6 +44,7 @@ const getAllVehiclesData = async (req, res) => {
       vehicleStatus,
       vehicleColor,
       condition,
+      vehicleName,
       search,
       page = 1,
       limit = 10,
@@ -57,6 +58,7 @@ const getAllVehiclesData = async (req, res) => {
     if (vehicleStatus) filter.vehicleStatus = vehicleStatus;
     if (vehicleColor) filter.vehicleColor = vehicleColor;
     if (condition) filter.condition = condition;
+    if (vehicleName) filter.vehicleName = vehicleName;
     if (_id) filter._id = mongoose.Types.ObjectId(_id);
 
 

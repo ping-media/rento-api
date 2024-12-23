@@ -26,6 +26,14 @@ const invoiceSchema = new Schema({
     type: Object,
     required: true
   },
+  vehicleBasic: {
+    type: Object,
+    required: true
+  },
+  vehiclename: {
+    type: String,
+    required: true
+  },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
 const invoiceTbl = mongoose.model('invoiceTbl', invoiceSchema);

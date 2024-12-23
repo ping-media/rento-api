@@ -754,12 +754,12 @@ async function createLocation({ locationName, locationImage, deleteRec, _id }) {
 
 
 
-async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec, locationId }) {
+async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec, locationId,vehicleArray }) {
   const obj = { status: 200, message: "Plan created successfully", data: [] };
 
   try {
-    if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId && locationId)) {
-      let o = { planName, planPrice, stationId, planDuration, vehicleMasterId, locationId };
+    if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId && locationId && vehicleArray)) {
+      let o = { planName, planPrice, stationId, planDuration, vehicleMasterId, locationId, vehicleArray };
 
 
       if (_id) {
@@ -862,7 +862,7 @@ async function createInvoice({ _id }) {
   try {
     
     // Fetch booking details
-    const bookings = await Booking.findOne({ _id }).select("userId bookingId paymentStatus bookingPrice");
+    const bookings = await Booking.findOne({ _id }).select("userId bookingId paymentStatus bookingPrice vehicleBasic vehicleName");
 
     if (!bookings) {
       return {
@@ -871,7 +871,7 @@ async function createInvoice({ _id }) {
       };
     }
 
-    const { userId,bookingId,bookingPrice,paymentStatus} = bookings
+    const { userId,bookingId,bookingPrice,paymentStatus, vehicleBasic, vehicleName} = bookings
 
    
     const paidInvoice= paymentStatus
@@ -916,6 +916,8 @@ async function createInvoice({ _id }) {
       bookingPrice,
       paidInvoice,
       invoiceNumber: newInvoiceNumber,
+      vehicleBasic,
+      vehicleName
     };
 
     // Create and save the new invoice
