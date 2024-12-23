@@ -115,6 +115,7 @@ const getAllVehiclesData = async (req, res) => {
          extraKmsCharges: 1,
           stationId: 1,
           vehicleNumber: 1,
+          vehiclePlan:1,
           vehicleModel: 1,
          vehicleColor: 1,
           perDayCost: 1,
