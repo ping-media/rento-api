@@ -38,8 +38,8 @@ const vehicleTableSchema = new Schema({
     },
     vehiclePlan: [
         {
-          type: mongoose.Schema.Types.ObjectId, // Reference other documents (e.g., plan IDs)
-          ref: "VehiclePlan", // Reference collection if needed
+          type: mongoose.Schema.Types.ObjectId, 
+          ref: "Plan", 
         },
       ],
     perDayCost: {
