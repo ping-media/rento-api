@@ -34,10 +34,11 @@ const getCoupons = async (query) => {
 
       
       const coupons = await Coupon.find()
+          .select("couponName discount discountType isCouponActive")
           .skip(skip)
           .limit(Number(limit))
           .sort({ createdAt: -1 });
-
+         
       if (!coupons.length) {
           obj.message = "No Records Found";
           return obj;
@@ -116,7 +117,7 @@ const createCoupon = async (body) => {
     const newCoupon = new Coupon(dataObj);
     await newCoupon.save();
     return { 
-      status: 201, 
+      status: 200, 
       message: "New coupon created successfully.", 
       data: newCoupon 
     };
