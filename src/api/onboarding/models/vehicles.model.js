@@ -1709,7 +1709,7 @@ const getVehicleTblData = async (query) => {
 
     const matchFilter = {};
     if (_id) {
-      matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id; // Ensure valid ObjectId
+      matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id;
     } else {
       if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
       if (condition) matchFilter.condition = condition;
@@ -1719,9 +1719,10 @@ const getVehicleTblData = async (query) => {
 
       if (Array.isArray(vehiclePlan)) {
         matchFilter.vehiclePlan = { $in: vehiclePlan.map((id) => new ObjectId(id)) };
-      } else {
-        matchFilter.vehiclePlan = new ObjectId(vehiclePlan);
-      }
+      } 
+      // else {
+      //   matchFilter.vehiclePlan = new ObjectId(vehiclePlan);
+      // }
     
     }
 
