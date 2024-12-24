@@ -123,8 +123,16 @@ const createCoupon = async (body) => {
     };
 
   } catch (err) {
-    console.error("Error in createCoupon:", err.message);
-    return { status: 500, message: "Internal server error." };
+    // Handle duplicate key error
+    if (err.code === 11000) {
+      resObj.status = 400; // Conflict
+      resObj.message = `Duplicate key error: ${Object.keys(err.keyValue).join(", ")} already exists.`;
+    } else {
+      console.error("Error in createCoupon:", err.message);
+      resObj.status = 500;
+      resObj.message = "Internal server error.";
+    }
+    return resObj;
   }
 };
 
