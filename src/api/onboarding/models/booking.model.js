@@ -64,7 +64,7 @@ const getBookings = async (query) => {
       .sort({ createdAt: -1 }) 
       .skip(skip)
       .limit(Number(limit))
-      .select("bookingId vehicleName stationName bookingStartDateAndTime bookingEndDateAndTime bookingPrice bookingStatus rideStatus");
+     // .select("bookingId vehicleName stationName bookingStartDateAndTime bookingEndDateAndTime bookingPrice bookingStatus rideStatus");
 
     // If no bookings found
     if (!bookings.length) {
