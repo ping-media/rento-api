@@ -61,91 +61,73 @@ const getCoupons = async (query) => {
 
 
 
-  const createCoupon = async ({ 
-    _id, 
-    couponName, 
-    discount, 
-    discountType, 
-    isCouponActive, 
-    deleteRec, 
-    // allowedUsers 
-  }) => {
-    const resObj = { status: 200, message: "Coupon processed successfully", data: [] };
-  
-    try {
-      if (!_id && !(couponName && discount && discountType && isCouponActive)) {
-        resObj.status = 401;
-        resObj.message = "Invalid data: Required fields are missing.";
-        return resObj;
+const createCoupon = async (body) => {
+  const resObj = { status: 200, message: "Coupon processed successfully", data: [] };
+
+  try {
+    const {_id, deleteRec, couponName, discount, discountType, isCouponActive}= body
+
+    //console.log( couponName, discount, discountType, isCouponActive)
+    
+    // Validate required fields
+    if(!_id){if (!(couponName && discount && discountType && isCouponActive )) {
+      return { status: 400, message: "Invalid data: Required fields are missing." };
+    }}
+
+    // Construct data object
+    const dataObj = {
+      ...(couponName && { couponName }),
+      ...(discount && { discount }),
+      ...(discountType && { discountType }),
+      ...( isCouponActive && { isCouponActive }),
+    };
+
+    if (_id) {
+      const existingCoupon = await Coupon.findOne({ _id });
+      if (!existingCoupon) {
+        return { status: 404, message: "Invalid ID: Coupon not found." };
       }
-  
-      // Prepare the coupon data object
-      const dataObj = {
-        ...(couponName && { couponName }),
-        ...(discount && { discount }),
-        ...(discountType && { discountType }),
-        ...(isCouponActive !== undefined && { isCouponActive }),
-    //    ...(Array.isArray(allowedUsers) && { allowedUsers }),
+
+      if (deleteRec) {
+        await Coupon.deleteOne({ _id });
+        await Log({
+          message: `Coupon with ID ${_id} deleted`,
+          functionName: "deleteCoupon",
+           // Ensure userId is accessible in this scope
+        });
+        return { status: 200, message: "Coupon deleted successfully." };
+      }
+
+      await Coupon.updateOne({ _id }, { $set: dataObj });
+      return { 
+        status: 200, 
+        message: "Coupon updated successfully.", 
+        data: dataObj 
       };
-  
-     
-      if (_id) {
-        const existingCoupon = await Coupon.findOne({ _id });
-  
-        if (!existingCoupon) {
-          resObj.status = 401;
-          resObj.message = "Invalid ID: Coupon not found.";
-          return resObj;
-        }
-  
-       
-        if (deleteRec) {
-          await Coupon.deleteOne({ _id });
-          resObj.message = "Coupon deleted successfully.";
-          await Log({
-            message: `Booking with ID ${_id} deleted`,
-            functionName: "deletebooking",
-            userId,
-          });
-          return resObj;
-        }
-  
-     
-        await Coupon.updateOne(
-          { _id },
-          { $set: dataObj },
-          { new: true }
-        );
-  
-        resObj.message = "Coupon updated successfully.";
-        resObj.data = { ...existingCoupon.toObject(), ...dataObj };
-        return resObj;
-      }
-  
-      // If `couponName` is provided, ensure it is unique
-      if (couponName) {
-        const duplicateCoupon = await Coupon.findOne({ couponName });
-        if (duplicateCoupon) {
-          resObj.status = 401;
-          resObj.message = "Coupon already exists.";
-          return resObj;
-        }
-      }
-  
-      // Create a new coupon
-      const newCoupon = new Coupon(dataObj);
-      await newCoupon.save();
-  
-      resObj.message = "New coupon created successfully.";
-      resObj.data = newCoupon;
-    } catch (err) {
-      console.error("Error in createCoupon:", err.message);
-      resObj.status = 500;
-      resObj.message = "Internal server error.";
     }
-  
-    return resObj;
-  };
+
+    if (couponName) {
+      const duplicateCoupon = await Coupon.findOne({ couponName });
+      if (duplicateCoupon) {
+        return { status: 409, message: "Coupon already exists." };
+      }
+    }
+
+    const newCoupon = new Coupon(dataObj);
+    await newCoupon.save();
+    return { 
+      status: 201, 
+      message: "New coupon created successfully.", 
+      data: newCoupon 
+    };
+
+  } catch (err) {
+    console.error("Error in createCoupon:", err.message);
+    return { status: 500, message: "Internal server error." };
+  }
+};
+
+
   
 
 //   const updateCoupon = async (_id) => {

@@ -52,9 +52,9 @@ router.post("/createInvoice", Authentication,async (req, res) => {
   vehiclesService.createInvoice(req, res);
 })
 
-router.post("/discountCoupons",Authentication, async (req, res) => {
-  vehiclesService.discountCoupons(req, res);
-})
+// router.post("/discountCoupons",Authentication, async (req, res) => {
+//   vehiclesService.discountCoupons(req, res);
+// })
 
 router.post("/createCoupon",Authentication, async (req, res) => {
   vehiclesService.createCoupon(req, res);

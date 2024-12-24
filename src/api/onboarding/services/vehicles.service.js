@@ -132,7 +132,7 @@ exports.createVehicle = async (req, res) => {
 
 exports.createCoupon = async (req, res) => {
   try {
-    const result = await createCoupon(req.query,req.headers);
+    const result = await createCoupon(req.body);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
