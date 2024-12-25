@@ -2021,6 +2021,7 @@ async function getLocationData(query) {
     city,
     state,
     locationStatus,
+    userType,
     page = 1,
     limit = 10
   } = query;
@@ -2032,13 +2033,13 @@ async function getLocationData(query) {
   if (state) filter.state = state;
   //if(locationStatus) filter.locationStatus =  { locationStatus: { $ne: "inactive" } };
 
-
-  if (locationStatus) {
+if(userType!="admin" || userType!="manager"){
+if (locationStatus) {
     filter.locationStatus = locationStatus;
   } else {
     filter.locationStatus = { $ne: "inactive" };
   }
-
+}
   const skip = (page - 1) * limit;
 
   try {
