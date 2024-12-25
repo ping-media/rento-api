@@ -179,7 +179,7 @@ router.put("/updateLocation",Authentication, upload.single('image'), async (req,
 
         obj.status = 400;
         obj.message = "Location _id is required";
-        return res.status(400).json(obj);
+        return res.json(obj);
 
       }
        const objData={};
@@ -200,7 +200,7 @@ const updatedLocation = await Location.updateOne(
 
   } catch (error) {
     console.error("Error updating location:", error.message);
-    res.status(500).json({ message: 'An error occurred while updating location' });
+    res.json({ message: 'An error occurred while updating location' });
   }
 });
 
@@ -216,7 +216,7 @@ router.delete("/deleteLocation", async (req, res) => {
     if (!_id) {
       obj.status = 400; // Bad request
       obj.message = "Location _id is required";
-      return res.status(400).json(obj); // Return the response with status 400
+      return res.json(obj); // Return the response with status 400
     }
 
     // Find the location by _id
@@ -226,7 +226,7 @@ router.delete("/deleteLocation", async (req, res) => {
     if (!find) {
       obj.status = 404; // Not found
       obj.message = "Location with the given _id not found";
-      return res.status(404).json(obj); // Return the response with status 404
+      return res.json(obj); // Return the response with status 404
     }
 
     // Delete the location
@@ -247,7 +247,7 @@ router.delete("/deleteLocation", async (req, res) => {
 
     obj.status = 500;
     obj.message = "An error occurred while deleting location";
-    return res.status(500).json(obj); // Return the response with status 500
+    return res.json(obj); // Return the response with status 500
   }
 });
 
@@ -281,14 +281,14 @@ router.put("/updateVehicleMaster",Authentication, upload.single('image'), async 
     if (!_id) {
       obj.message = "Vehicle ID (_id) is required";
       obj.status = 400;
-      return res.status(400).json(obj);
+      return res.json(obj);
     }
 
     const find = await vehicleMaster.findOne({ _id });
     if (!find) {
       obj.message = "Invalid vehicle ID (_id)";
-      obj.status = 404;
-      return res.status(404).json(obj);
+      obj.status = 400;
+      return res.json(obj);
     }
 
     // Dynamically build the update object
@@ -307,7 +307,7 @@ router.put("/updateVehicleMaster",Authentication, upload.single('image'), async 
     } else {
       obj.message = "No valid fields provided for update";
       obj.status = 400;
-      return res.status(400).json(obj);
+      return res.json(obj);
     }
 
     obj.message = "VehicleMaster updated successfully";
@@ -319,7 +319,7 @@ router.put("/updateVehicleMaster",Authentication, upload.single('image'), async 
 
     obj.status = 500;
     obj.message = "An error occurred while updating VehicleMaster";
-    return res.status(500).json(obj);
+    return res.json(obj);
   }
 });
 
@@ -458,29 +458,29 @@ router.delete("/deleteDocument", async (req, res) => {
     if (!_id || !fileName) {
       response.status = 400;
       response.message = "Both fileName and _id are required";
-      return res.status(400).json(response);
+      return res.json(response);
     }
 
     // Ensure _id is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(_id)) {
       response.status = 400;
       response.message = "Invalid _id format";
-      return res.status(400).json(response);
+      return res.json(response);
     }
 
     // Fetch the document by ID
     const document = await Document.findById(_id);
 
     if (!document) {
-      response.status = 404;
+      response.status = 400;
       response.message = "Document not found";
-      return res.status(404).json(response);
+      return res.json(response);
     }
 
     if (!document.files || !Array.isArray(document.files)) {
-      response.status = 404;
+      response.status = 400;
       response.message = "Files array not found in the document";
-      return res.status(404).json(response);
+      return res.json(response);
     }
 
     // Filter out the file with the specified fileName
@@ -512,7 +512,7 @@ router.delete("/deleteDocument", async (req, res) => {
     console.error("Error in deleteDocument:", error.message);
     response.status = 500;
     response.message = "An error occurred while deleting the file";
-    return res.status(500).json(response);
+    return res.json(response);
   }
 });
 
@@ -546,7 +546,7 @@ router.post("/pickupImage", upload.array('images', 5), async (req, res) => {
 
 
   if (!req.files || req.files.length === 0) {
-    return res.status(400).send({ message: 'File upload failed. No files provided.' });
+    return res.send({ message: 'File upload failed. No files provided.' });
   }
   pickupImageUp(req, res)
 })
@@ -556,7 +556,7 @@ router.get("/getPickupImage", async (req, res) => {
 })
 
 
-router.get("/getAllLogs", async (req, res) => {
+router.get("/getAllLogs", Authentication,async (req, res) => {
   getAllLogs(req, res);
 })
 
@@ -609,7 +609,7 @@ router.post("/createOrderId", async (req, res) => {
 })
 
 
-router.get("/paymentRec", async (req, res) => {
+router.get("/paymentRec",Authentication, async (req, res) => {
 
   paymentRec(req,res);
 
