@@ -754,12 +754,12 @@ async function createLocation({ locationName, locationImage, deleteRec, _id }) {
 
 
 
-async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec, locationId, vehicleArray }) {
+async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec, locationId }) {
   const obj = { status: 200, message: "Plan created successfully", data: [] };
 
   try {
-    if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId && locationId && vehicleArray)) {
-      let o = { planName, planPrice, stationId, planDuration, vehicleMasterId, locationId, vehicleArray };
+    if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId && locationId )) {
+      let o = { planName, planPrice, stationId, planDuration, vehicleMasterId, locationId };
 
 
       if (_id) {
@@ -2081,8 +2081,8 @@ async function getLocation(query) {
   const obj = {
     status: 200,
     message: "Data fetched successfully",
-    data: [],
-    pagination: {}
+    data: []
+    
   };
 
   const {

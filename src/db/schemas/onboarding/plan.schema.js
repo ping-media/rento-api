@@ -32,11 +32,6 @@ const planSchema = new Schema(
       ref: 'vehicleMaster',
       required: true
   },
-    vehicleArr: {
-      type: Array,
-     
-      required: true
-  },
   },
   { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
 );
