@@ -246,9 +246,9 @@ async function createVehicle({
 
 
 async function booking({
-  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,paymentInitiatedDate,
-  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom,stationId,
-  deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = "",paymentgatewayReceiptId
+  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, paymentInitiatedDate,
+  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom, stationId,
+  deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = "", paymentgatewayReceiptId
 }) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -265,7 +265,7 @@ async function booking({
           message: "Need to login first during booking process",
           functionName: "booking",
           userId,
-          
+
         });
 
 
@@ -340,9 +340,9 @@ async function booking({
     }
 
     let o = {
-      vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice,stationId,paymentInitiatedDate,
+      vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, stationId, paymentInitiatedDate,
       discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, paymentgatewayOrderId,
-      payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId,paymentgatewayReceiptId
+      payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId, paymentgatewayReceiptId
     };
     // console.log(o)
     if (_id && _id.length !== 24) {
@@ -370,7 +370,7 @@ async function booking({
           message: "Booking not found for update",
           functionName: "booking",
           userId,
-          
+
         });
 
         return obj;
@@ -382,7 +382,7 @@ async function booking({
 
         obj.message = "Booking deleted successfully";
         obj.status = 200;
-       // obj.data = { _id };
+        // obj.data = { _id };
 
         await Log({
           message: `Booking with ID ${_id} deleted`,
@@ -401,9 +401,9 @@ async function booking({
         userId,
       });
       obj.status = 200;
-        obj.message = "Booking Update successfull ";
-       // obj.data=_id;
-        return obj;
+      obj.message = "Booking Update successfull ";
+      // obj.data=_id;
+      return obj;
     } else {
       if (
         vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
@@ -416,10 +416,10 @@ async function booking({
         const SaveBooking = new Booking(o);
 
         await SaveBooking.save();
-      
 
-        
-         
+
+
+
         obj.message = "New booking saved successfully";
         obj.data = SaveBooking;
 
@@ -754,7 +754,7 @@ async function createLocation({ locationName, locationImage, deleteRec, _id }) {
 
 
 
-async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec, locationId,vehicleArray }) {
+async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec, locationId, vehicleArray }) {
   const obj = { status: 200, message: "Plan created successfully", data: [] };
 
   try {
@@ -860,7 +860,7 @@ async function createInvoice({ _id }) {
   const obj = { status: 200, message: "Invoice created successfully", data: [] };
 
   try {
-    
+
     // Fetch booking details
     const bookings = await Booking.findOne({ _id }).select("userId bookingId paymentStatus bookingPrice vehicleBasic vehicleName");
 
@@ -871,14 +871,14 @@ async function createInvoice({ _id }) {
       };
     }
 
-    const { userId,bookingId,bookingPrice,paymentStatus, vehicleBasic, vehicleName} = bookings
-  // console.log(bookings)
-   
-    const paidInvoice= paymentStatus
-  console.log(paidInvoice)
+    const { userId, bookingId, bookingPrice, paymentStatus, vehicleBasic, vehicleName } = bookings
+    // console.log(bookings)
+
+    const paidInvoice = paymentStatus
+    console.log(paidInvoice)
 
     // Validate `paidInvoice` status if provided
-    if (paidInvoice && !['pending','partiallyPay', 'partially_paid','paid', 'failed','refunded'].includes(paidInvoice)) {
+    if (paidInvoice && !['pending', 'partiallyPay', 'partially_paid', 'paid', 'failed', 'refunded'].includes(paidInvoice)) {
       return {
         status: 401,
         message: "Invalid paidInvoice value",
@@ -886,7 +886,7 @@ async function createInvoice({ _id }) {
     }
 
 
-    
+
     const existingInvoice = await InvoiceTbl.findOne({ bookingId });
     if (existingInvoice) {
       return {
@@ -923,11 +923,11 @@ async function createInvoice({ _id }) {
     // Create and save the new invoice
     const newInvoice = new InvoiceTbl(newInvoiceData);
     await newInvoice.save();
-    
+
     const updateResult = await Booking.updateOne(
       { _id },
       { $set: { "bookingPrice.isInvoiceCreated": true } },
-      { new: true } 
+      { new: true }
     );
 
     return {
@@ -1134,7 +1134,7 @@ async function createStation({
       if (_id.length !== 24) {
         response.status = 401;
         response.message = "Invalid _id";
-        logError("Found invalid _id during the creating station","createStation",userId)
+        logError("Found invalid _id during the creating station", "createStation", userId)
         return response;
       }
 
@@ -1142,7 +1142,7 @@ async function createStation({
       if (!station) {
         response.status = 401;
         response.message = "Station not found";
-        logError("Station not found during the creating station","createStation",userId)
+        logError("Station not found during the creating station", "createStation", userId)
 
         return response;
       }
@@ -1155,7 +1155,7 @@ async function createStation({
           userId,
         });
         response.message = "Station deleted successfully";
-        logError("Station deleted successfully ","createStation",userId)
+        logError("Station deleted successfully ", "createStation", userId)
 
         return response;
       }
@@ -1164,7 +1164,7 @@ async function createStation({
       await Station.updateOne({ _id: ObjectId(_id) }, { $set: stationData });
       response.message = "Station updated successfully";
       response.data = stationData;
-      logError("Station updated successfully","createStation",userId)
+      logError("Station updated successfully", "createStation", userId)
 
       return response;
     }
@@ -1189,7 +1189,7 @@ async function createStation({
     if (userId.length !== 24) {
       response.status = 401;
       response.message = "Invalid user ID";
-      logError("Invalid user ID found during the creating station","createStation",userId)
+      logError("Invalid user ID found during the creating station", "createStation", userId)
 
       return response;
     }
@@ -1197,14 +1197,14 @@ async function createStation({
     if (!user) {
       response.status = 401;
       response.message = "User not found";
-      logError("User not found during the creating station","createStation",userId)
+      logError("User not found during the creating station", "createStation", userId)
 
       return response;
     }
     if (user.userType !== "manager") {
       response.status = 401;
       response.message = "User is not a manager";
-      logError("User is not a manager found during the creating station","createStation",userId)
+      logError("User is not a manager found during the creating station", "createStation", userId)
 
       return response;
     }
@@ -1213,16 +1213,16 @@ async function createStation({
     if (locationId.length !== 24) {
       response.status = 401;
       response.message = "Invalid location ID";
-      logError("Invalid location ID found during the creating station","createStation",userId)
+      logError("Invalid location ID found during the creating station", "createStation", userId)
 
       return response;
     }
-    const location = await Location.findOne({locationId });
-   // console.log(location)
+    const location = await Location.findOne({ locationId });
+    // console.log(location)
     if (!location) {
       response.status = 401;
       response.message = "Location not found";
-      logError("Location not found during the creating station","createStation",userId)
+      logError("Location not found during the creating station", "createStation", userId)
 
       return response;
     }
@@ -1231,7 +1231,7 @@ async function createStation({
     if (pinCode.length !== 6 || isNaN(pinCode)) {
       response.status = 401;
       response.message = "Invalid pin code";
-      logError("Invalid pin code found during the creating station","createStation",userId)
+      logError("Invalid pin code found during the creating station", "createStation", userId)
 
       return response;
     }
@@ -1254,7 +1254,7 @@ async function createStation({
     if (stationId.length !== 6 || isNaN(stationId)) {
       response.status = 401;
       response.message = "Invalid station ID";
-      logError("Invalid station ID found during the creating station","createStation",userId)
+      logError("Invalid station ID found during the creating station", "createStation", userId)
 
       return response;
     }
@@ -1263,7 +1263,7 @@ async function createStation({
     if (stationExists) {
       response.status = 401;
       response.message = "Station already exists";
-      logError("Station already exists found during the creating station","createStation",userId)
+      logError("Station already exists found during the creating station", "createStation", userId)
 
       return response;
     }
@@ -1272,14 +1272,14 @@ async function createStation({
     const newStation = new Station(stationData);
     await newStation.save();
     response.message = "Station created successfully";
-    logError("Station created successfully","createStation",userId)
+    logError("Station created successfully", "createStation", userId)
 
     response.data = stationData;
 
   } catch (error) {
     response.status = 500;
     response.message = `Server error: ${error.message}`;
-    logError(`Server error: ${error.message}`,"createStation",userId)
+    logError(`Server error: ${error.message}`, "createStation", userId)
 
   }
 
@@ -1303,14 +1303,14 @@ async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, veh
       if (!statusCheck) {
         response.status = 401
         response.message = "Invalid vehicle type"
-        logError("Invalid vehicle type found during creating the vehicle master" ,"createVehicleMaster","Admin")
+        logError("Invalid vehicle type found during creating the vehicle master", "createVehicleMaster", "Admin")
         return response
       }
     }
     if (_id && _id.length !== 24) {
       response.status = 401
       response.message = "Invalid _id"
-      logError("Invalid _id found during creating the vehicle master" ,"createVehicleMaster","Admin")
+      logError("Invalid _id found during creating the vehicle master", "createVehicleMaster", "Admin")
 
       return response
     }
@@ -1319,7 +1319,7 @@ async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, veh
       if (!find) {
         response.status = 401
         response.message = "Invalid vehicle id"
-        logError("Invalid vehicle _id found during creating the vehicle master" ,"createVehicleMaster","Admin")
+        logError("Invalid vehicle _id found during creating the vehicle master", "createVehicleMaster", "Admin")
 
         return response
       }
@@ -1328,7 +1328,7 @@ async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, veh
         response.message = "vehicle master deleted successfully"
         response.status = 200
         response.data = { vehicleName }
-        logError("vehicle master deleted successfully" ,"createVehicleMaster","Admin")
+        logError("vehicle master deleted successfully", "createVehicleMaster", "Admin")
 
         return response
       }
@@ -1341,7 +1341,7 @@ async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, veh
       );
       response.status = 200
       response.message = "vehicle master updated successfully"
-      logError("vehicle master updated successfully" ,"createVehicleMaster","Admin")
+      logError("vehicle master updated successfully", "createVehicleMaster", "Admin")
 
       response.data = obj
     } else {
@@ -1350,20 +1350,20 @@ async function createVehicleMaster({ vehicleName, vehicleType, vehicleBrand, veh
         if (find) {
           response.status = 401
           response.message = "vehicle master name already exists"
-          logError("vehicle master name already exists found during creating the vehicle master" ,"createVehicleMaster","Admin")
+          logError("vehicle master name already exists found during creating the vehicle master", "createVehicleMaster", "Admin")
 
           return response
         }
         const SaveUser = new VehicleMaster(obj)
         SaveUser.save()
         response.message = "vehicle master saved successfully"
-        logError("vehicle master saved successfully" ,"createVehicleMaster","Admin")
+        logError("vehicle master saved successfully", "createVehicleMaster", "Admin")
 
         response.data = obj
       } else {
         response.status = 401
         response.message = "Invalid vehicle master details"
-        logError("Invalid vehicle master details found during creating the vehicle master" ,"createVehicleMaster","Admin")
+        logError("Invalid vehicle master details found during creating the vehicle master", "createVehicleMaster", "Admin")
 
       }
     }
@@ -1719,11 +1719,11 @@ const getVehicleTblData = async (query) => {
 
       if (Array.isArray(vehiclePlan)) {
         matchFilter.vehiclePlan = { $in: vehiclePlan.map((id) => new ObjectId(id)) };
-      } 
+      }
       // else {
       //   matchFilter.vehiclePlan = new ObjectId(vehiclePlan);
       // }
-    
+
     }
 
     const pipeline = [
@@ -2032,15 +2032,14 @@ async function getLocationData(query) {
   if (city) filter.city = city;
   if (state) filter.state = state;
   //if(locationStatus) filter.locationStatus =  { locationStatus: { $ne: "inactive" } };
-if(userType=="customer"){
-  console.log(userType)
+  // if (userType == "customer") {
 
-if (locationStatus) {
-    filter.locationStatus = locationStatus;
-  } else {
-    filter.locationStatus = { $ne: "inactive" };
-  }
-}
+  //   if (locationStatus) {
+  //     filter.locationStatus = locationStatus;
+  //   } else {
+  //     filter.locationStatus = { $ne: "inactive" };
+  //   }
+  // }
   const skip = (page - 1) * limit;
 
   try {
@@ -2066,6 +2065,58 @@ if (locationStatus) {
         currentPage: Number(page),
         pageSize: Number(limit),
       };
+    } else {
+      obj.status = 404;
+      obj.message = "No locations found";
+    }
+  } catch (error) {
+    console.error("Error in getLocations:", error.message);
+    obj.status = 500;
+    obj.message = "Internal server error";
+  }
+
+  return obj;
+}
+async function getLocation(query) {
+  const obj = {
+    status: 200,
+    message: "Data fetched successfully",
+    data: [],
+    pagination: {}
+  };
+
+  const {
+    _id,
+    locationName,
+    locationId,
+    city,
+    state,
+    locationStatus,
+    
+  } = query;
+  let filter = {};
+  if (_id) filter._id = ObjectId(_id);
+  if (locationName) filter.locationName = locationName;
+  if (locationId) filter._id = ObjectId(locationId);
+  if (city) filter.city = city;
+  if (state) filter.state = state;
+  
+
+  try {
+    
+    if (locationStatus) {
+      filter.locationStatus = locationStatus;
+    } else {
+      filter.locationStatus = { $ne: "inactive" };
+    }
+
+    const result = await Location.find(filter)
+
+    if (result.length) {
+      obj.data = result;
+
+
+      
     } else {
       obj.status = 404;
       obj.message = "No locations found";
@@ -2117,7 +2168,7 @@ const getStationData = async (query) => {
 
   const skip = (page - 1) * limit;
 
-  
+
 
   try {
     const totalRecords = await station.countDocuments(filter);
@@ -2282,6 +2333,7 @@ module.exports = {
   getVehicleTblData,
   getStationData,
   getLocationData,
+  getLocation,
   getPlanData,
   createInvoice,
   discountCoupons,

@@ -16,6 +16,7 @@ const {
   booking,
   getAllVehicles,
   getLocations,
+  getLocation,
   createBookingDuration,
   getVehicleTblData,
   getStationData,
@@ -189,6 +190,19 @@ exports.searchVehicle = async (req, res) => {
 exports.getLocations = async (req, res) => {
   try {
     const result = await getLocations(req.body,req.headers);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
+exports.getLocation = async (req, res) => {
+  try {
+    const result = await getLocation(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({

@@ -84,6 +84,9 @@ router.post("/getAllVehicles", async (req, res) => {
 router.get("/getLocations", async (req, res) => {
   vehiclesService.getLocations(req, res);
 })
+router.get("/getLocation", async (req, res) => {
+  vehiclesService.getLocation(req, res);
+})
 router.get("/getLocationData", async (req, res) => {
   vehiclesService.getLocationData(req, res);
 })
