@@ -2032,8 +2032,9 @@ async function getLocationData(query) {
   if (city) filter.city = city;
   if (state) filter.state = state;
   //if(locationStatus) filter.locationStatus =  { locationStatus: { $ne: "inactive" } };
+if(userType=="customer"){
+  console.log(userType)
 
-if(userType!="admin" || userType!="manager"){
 if (locationStatus) {
     filter.locationStatus = locationStatus;
   } else {
