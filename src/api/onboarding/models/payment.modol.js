@@ -23,7 +23,7 @@ const paymentRec = async (req, res) => {
       
     // Check if bookings exist
     if (!bookings || bookings.length === 0) {
-      return res.status(404).json({
+      return res.json({
         status: 404,
         message: "No bookings found.",
       });
@@ -42,7 +42,7 @@ const paymentRec = async (req, res) => {
     console.error("Error fetching bookings:", error);
 
     // Return an error response
-    return res.status(500).json({
+    return res.json({
       status: 500,
       message: "Failed to retrieve bookings.",
       error: error.message,
