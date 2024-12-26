@@ -1706,7 +1706,7 @@ const getVehicleTblData = async (query) => {
 
     const startDate = BookingStartDateAndTime;
     const endDate = BookingEndDateAndTime;
- console.log(vehiclePlan)
+ //console.log(vehiclePlan)
     const matchFilter = {};
     if (_id) {
       matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id;
@@ -1716,11 +1716,11 @@ const getVehicleTblData = async (query) => {
       if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
       if (stationId) matchFilter.stationId = stationId;
       if (locationId) matchFilter.locationId = new ObjectId(locationId);
-
+   
       if (Array.isArray(vehiclePlan)) {
         matchFilter.vehiclePlan = { $in: vehiclePlan.map((id) => new ObjectId(id)) };
       }
-      else {
+      else if(vehiclePlan) {
         matchFilter.vehiclePlan = new ObjectId(vehiclePlan);
       }
 
