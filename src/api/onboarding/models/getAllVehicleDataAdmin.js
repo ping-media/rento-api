@@ -141,7 +141,7 @@ const getAllVehiclesData = async (req, res) => {
         $facet: {
           pagination: [
             { $count: "total" },
-            { $addFields: { page: parsedPage, limit: parsedLimit } },
+            { $addFields: { currentPage: parsedPage, limit: parsedLimit } },
           ],
           data: [
             { $skip: (parsedPage - 1) * parsedLimit },
