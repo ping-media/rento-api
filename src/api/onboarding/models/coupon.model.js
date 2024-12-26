@@ -35,9 +35,9 @@ const getCoupons = async (query) => {
       
       const coupons = await Coupon.find()
           .select("couponName discount discountType isCouponActive")
-          // .skip(skip)
-          // .limit(Number(limit))
-          // .sort({ createdAt: -1 });
+          .skip(skip)
+          .limit(Number(limit))
+          .sort({ createdAt: -1 });
          
       if (!coupons.length) {
           obj.message = "No Records Found";
@@ -45,12 +45,12 @@ const getCoupons = async (query) => {
       }
 
       obj.data = coupons;
-      // obj.pagination = {
-      //     totalRecords,
-      //     totalPages: Math.ceil(totalRecords / limit),
-      //     currentPage: Number(page),
-      //     pageSize: Number(limit),
-      // };
+      obj.pagination = {
+          totalRecords,
+          totalPages: Math.ceil(totalRecords / limit),
+          currentPage: Number(page),
+          pageSize: Number(limit),
+      };
   } catch (error) {
       console.error("Error fetching coupons:", error);
       obj.status = 500;

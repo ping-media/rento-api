@@ -758,7 +758,7 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
   const obj = { status: 200, message: "Plan created successfully", data: [] };
 
   try {
-    if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId && locationId )) {
+    if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId && locationId)) {
       let o = { planName, planPrice, stationId, planDuration, vehicleMasterId, locationId };
 
 
@@ -1499,16 +1499,30 @@ const getVehicleMasterData = async (query) => {
   };
 
   try {
-    const { page = 1, limit = 10, ...filter } = query;
+    const { page = 1, limit = 10, vehicleName, vehicleType, vehicleBrand, _id, search } = query;
+    const filter = {};
+    if (_id) filter._id = (_id);
+    if (vehicleName) filter.vehicleName = (vehicleName);
+    if (vehicleType) filter.vehicleType = vehicleType;
+    if (vehicleBrand) filter.vehicleBrand = vehicleBrand;
 
-    if (filter._id) {
-      try {
-        filter._id = new ObjectId(filter._id);
-      } catch (err) {
-        obj.status = 400;
-        obj.message = "Invalid _id format";
-        return obj;
-      }
+    // if (filter._id) {
+    //   try {
+    //     filter._id = new ObjectId(filter._id);
+    //   } catch (err) {
+    //     obj.status = 400;
+    //     obj.message = "Invalid _id format";
+    //     return obj;
+    //   }
+    // }
+
+    if (search) {
+      filter.$or = [
+        { vehicleName: { $regex: search, $options: "i" } },
+        { vehicleType: { $regex: search, $options: "i" } },
+        { vehicleBrand: { $regex: search, $options: "i" } },
+        //  { vehicleStatus: { $regex: search, $options: "i" } },
+      ];
     }
 
     const skip = (page - 1) * limit;
@@ -1706,7 +1720,7 @@ const getVehicleTblData = async (query) => {
 
     const startDate = BookingStartDateAndTime;
     const endDate = BookingEndDateAndTime;
- //console.log(vehiclePlan)
+    //console.log(vehiclePlan)
     const matchFilter = {};
     if (_id) {
       matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id;
@@ -1716,11 +1730,11 @@ const getVehicleTblData = async (query) => {
       if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
       if (stationId) matchFilter.stationId = stationId;
       if (locationId) matchFilter.locationId = new ObjectId(locationId);
-   
+
       if (Array.isArray(vehiclePlan)) {
         matchFilter.vehiclePlan = { $in: vehiclePlan.map((id) => new ObjectId(id)) };
       }
-      else if(vehiclePlan) {
+      else if (vehiclePlan) {
         matchFilter.vehiclePlan = new ObjectId(vehiclePlan);
       }
 
@@ -1919,7 +1933,7 @@ const getPlanData = async (query) => {
   const obj = { status: 200, message: "Plans retrieved successfully", data: [], pagination: {} };
 
   try {
-    const { _id, stationId, locationId, page=1, limit=10 } = query;
+    const { _id, stationId, locationId, search, page = 1, limit = 10 } = query;
 
     // Validate _id
     if (_id && _id.length !== 24) {
@@ -1936,11 +1950,21 @@ const getPlanData = async (query) => {
       if (locationId) matchFilter.locationId = new ObjectId(locationId);
     }
 
+    if (search) {
+      matchFilter.$or = [
+        { planName: { $regex: search, $options: "i" } },
+        { stationName: { $regex: search, $options: "i" } },
+        { vehicleName: { $regex: search, $options: "i" } },
+      //  { locationId: { $regex: search, $options: "i" } },
+      ];
+    }
+
+
     const skip = (page - 1) * limit;
 
     // Aggregation pipeline with pagination
     const plans = await Plan.aggregate([
-      { $match: matchFilter },
+     
       {
         $lookup: {
           from: "stations",
@@ -1976,6 +2000,7 @@ const getPlanData = async (query) => {
           vehicleName: "$vehicleMasterData.vehicleName",
         },
       },
+      { $match: matchFilter },
       { $sort: { planName: 1 } }, // Sort by planName (ascending)
       { $skip: skip },
       { $limit: Number(limit) },
@@ -2006,6 +2031,7 @@ const getPlanData = async (query) => {
   return obj;
 };
 
+// Get locatin for Admin
 async function getLocationData(query) {
   const obj = {
     status: 200,
@@ -2021,28 +2047,36 @@ async function getLocationData(query) {
     city,
     state,
     locationStatus,
-    userType,
+   search,
     page = 1,
     limit = 10
   } = query;
-  let filter = {};
-  if (_id) filter._id = ObjectId(_id);
-  if (locationName) filter.locationName = locationName;
-  if (locationId) filter._id = ObjectId(locationId);
-  if (city) filter.city = city;
-  if (state) filter.state = state;
-  //if(locationStatus) filter.locationStatus =  { locationStatus: { $ne: "inactive" } };
-  // if (userType == "customer") {
 
-  //   if (locationStatus) {
-  //     filter.locationStatus = locationStatus;
-  //   } else {
-  //     filter.locationStatus = { $ne: "inactive" };
-  //   }
-  // }
-  const skip = (page - 1) * limit;
 
   try {
+
+    let filter = {};
+    if (_id) filter._id = ObjectId(_id);
+    if (locationName) filter.locationName = locationName;
+    if (locationId) filter._id = ObjectId(locationId);
+    if (city) filter.city = city;
+    if (state) filter.state = state;
+    //if(locationStatus) filter.locationStatus =  { locationStatus: { $ne: "inactive" } };
+
+
+
+   // console.log(search)
+
+    if (search) {
+      filter.$or = [
+        { locationName: { $regex: search, $options: "i" } },
+        { locationStatus: { $regex: search, $options: "i" } },
+
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
     // Fetch total record count for pagination
     const totalRecords = await Location.count(filter);
 
@@ -2082,7 +2116,7 @@ async function getLocation(query) {
     status: 200,
     message: "Data fetched successfully",
     data: []
-    
+
   };
 
   const {
@@ -2092,7 +2126,7 @@ async function getLocation(query) {
     city,
     state,
     locationStatus,
-    
+
   } = query;
   let filter = {};
   if (_id) filter._id = ObjectId(_id);
@@ -2100,10 +2134,10 @@ async function getLocation(query) {
   if (locationId) filter._id = ObjectId(locationId);
   if (city) filter.city = city;
   if (state) filter.state = state;
-  
+
 
   try {
-    
+
     if (locationStatus) {
       filter.locationStatus = locationStatus;
     } else {
@@ -2116,7 +2150,7 @@ async function getLocation(query) {
       obj.data = result;
 
 
-      
+
     } else {
       obj.status = 404;
       obj.message = "No locations found";
@@ -2147,7 +2181,7 @@ const getStationData = async (query) => {
     city,
     pinCode,
     state,
-    contact,
+    search,
     locationId,
     _id,
     userId,
@@ -2165,6 +2199,16 @@ const getStationData = async (query) => {
   if (state) filter.state = state;
   if (pinCode) filter.pinCode = pinCode;
   if (userId) filter.userId = userId;
+
+  if (search) {
+    filter.$or = [
+      { stationName: { $regex: search, $options: "i" } },
+      { city: { $regex: search, $options: "i" } },
+      { state: { $regex: search, $options: "i" } },
+     // { pinCode: { $regex: search, $options: "i" } },
+      { country: { $regex: search, $options: "i" } },
+    ];
+  }
 
   const skip = (page - 1) * limit;
 

@@ -77,8 +77,7 @@ const getAllVehiclesData = async (req, res) => {
 
     // Aggregate query
     const vehicles = await vehicleTable.aggregate([
-      // Match filter criteria
-      { $match: filter },
+      
 
       // Join with vehicle masters collection
       {
@@ -134,6 +133,9 @@ const getAllVehiclesData = async (req, res) => {
         },
       },
 
+      // Match filter criteria
+      { $match: filter },
+
       // Pagination using $facet
       {
         $facet: {
@@ -157,7 +159,7 @@ const getAllVehiclesData = async (req, res) => {
     }
 
     // Attach metadata and data to response
-    const pagination = vehicles[0].pagination[0] || { total: 0, page: parsedPage, limit: parsedLimit };
+    const pagination = vehicles[0].pagination[0] || { total: 0, currentPage: parsedPage, limit: parsedLimit };
     response.data = vehicles[0].data;
     response.pagination = pagination;
 
