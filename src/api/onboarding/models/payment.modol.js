@@ -17,9 +17,9 @@ const paymentRec = async (req, res) => {
       const searchRegex = new RegExp(search, "i"); 
       filters.$or = [
         { bookingId: searchRegex },
-        { "userId.firstName": searchRegex }, // Populate field
-        { "userId.lastName": searchRegex }, // Populate field
-        { "userId.email": searchRegex }, // Populate field
+        // { "userId.firstName": searchRegex }, // Populate field
+        // { "userId.lastName": searchRegex }, // Populate field
+        // { "userId.email": searchRegex }, // Populate field
         { paymentMethod: searchRegex },
         { paymentStatus: searchRegex },
         { payment_order_id: searchRegex },

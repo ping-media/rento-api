@@ -12,8 +12,9 @@ const getBooking = async (query) => {
       _id,    
       bookingId,         
       bookingStatus,          
-      userId,   
-      paymentStatus,      
+      userId=null,   
+      paymentStatus, 
+      search,     
       page = 1,        
       limit = 10,      
     } = query;
@@ -24,7 +25,7 @@ const getBooking = async (query) => {
         await Log({
           message: "Invalid booking ID",
           functionName: "booking",
-          userId: userId ,
+          userId: userId || "Admin",
         });
         obj.status = 401;
         obj.message = "Invalid booking ID";
@@ -37,7 +38,7 @@ const getBooking = async (query) => {
         await Log({
           message: "Booking not found for the provided ID",
           functionName: "booking",
-          userId: userId ,
+          userId: userId || "Admin",
 
         });
         obj.status = 404;
@@ -66,7 +67,7 @@ const getBooking = async (query) => {
         { stationName: searchRegex },
         { bookingStatus: searchRegex },
         { paymentStatus: searchRegex },
-        { paymentStatus: searchRegex },
+        { paymentMethod: searchRegex },
       ];
     }
 
@@ -83,7 +84,7 @@ const getBooking = async (query) => {
       await Log({
         message: "No bookings found for the provided filters",
         functionName: "booking",
-        userId: userId ,
+        userId: userId || "Admin",
 
       });
       obj.message = "No records found";
@@ -107,7 +108,7 @@ const getBooking = async (query) => {
     await Log({
       message: `Error fetching bookings: ${error.message}`,
       functionName: "booking",
-      userId: userId||null ,
+    //  userId: userId || "Admin",
 
     });
     obj.status = 500;
