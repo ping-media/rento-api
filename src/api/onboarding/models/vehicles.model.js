@@ -1919,7 +1919,7 @@ const getPlanData = async (query) => {
   const obj = { status: 200, message: "Plans retrieved successfully", data: [], pagination: {} };
 
   try {
-    const { _id, stationId, locationId } = query;
+    const { _id, stationId, locationId, page=1, limit=10 } = query;
 
     // Validate _id
     if (_id && _id.length !== 24) {
@@ -1976,9 +1976,9 @@ const getPlanData = async (query) => {
           vehicleName: "$vehicleMasterData.vehicleName",
         },
       },
-      // { $sort: { planName: 1 } }, // Sort by planName (ascending)
-      // { $skip: skip },
-      // { $limit: Number(limit) },
+      { $sort: { planName: 1 } }, // Sort by planName (ascending)
+      { $skip: skip },
+      { $limit: Number(limit) },
     ]);
 
     // Total records count
@@ -1991,12 +1991,12 @@ const getPlanData = async (query) => {
     }
 
     obj.data = plans;
-    // obj.pagination = {
-    //   totalRecords,
-    //   totalPages: Math.ceil(totalRecords / limit),
-    //   currentPage: Number(page),
-    //   pageSize: Number(limit),
-    // };
+    obj.pagination = {
+      totalRecords,
+      totalPages: Math.ceil(totalRecords / limit),
+      currentPage: Number(page),
+      pageSize: Number(limit),
+    };
   } catch (error) {
     console.error("Error fetching plans:", error.message);
     obj.status = 500;
