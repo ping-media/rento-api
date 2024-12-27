@@ -30,7 +30,8 @@ const upload = multer({
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { userId,images } = req.body;
+
 
     // Validate userId
     if (!userId || userId.length !== 24) {
@@ -46,7 +47,7 @@ const pickupImageUp = async (req, res) => {
     // Loop through files and upload to S3
     for (let index = 0; index < req.files.length; index++) {
       const file = req.files[index];
-
+      console.log(file)
       // Generate a unique file name
       const fileName = `${userId}_${getMilliseconds()}_${index}`;
 
@@ -72,7 +73,7 @@ const pickupImageUp = async (req, res) => {
     });
     await newDocument.save();
 
-    return res.status(200).json({
+    return res.json({
       status: 200,
       message: "Files uploaded successfully.",
       uploadedFiles,
@@ -80,6 +81,7 @@ const pickupImageUp = async (req, res) => {
   } catch (error) {
     console.error("Error uploading files:", error);
     return res.json({
+      status:500,
       message: "Failed to upload files to S3.",
       error: error.message,
     });
