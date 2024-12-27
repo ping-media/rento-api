@@ -30,73 +30,62 @@ const upload = multer({
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
-      const { userId } = req.body;
-      
+    const { userId } = req.body;
 
-      // Validate userId
-      if (!userId || userId.length !== 24) {
-          return res.json({ message: "Invalid user ID provided." });
-      }
+    // Validate userId
+    if (!userId || userId.length !== 24) {
+      return res.json({ message: "Invalid user ID provided." });
+    }
 
-      
+    // Prepare an array to store uploaded file details
+    const uploadedFiles = [];
 
-      // Prepare an array to store uploaded file details
-      const uploadedFiles = [];
+    // Helper function to get current timestamp in milliseconds
+    const getMilliseconds = () => new Date().getTime();
 
-      // Loop through files and upload to S3
-      for (const file of req.files) {
-           fileName = `${userId}`;
-          const params = {
-              Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
-              Key: fileName, // File Name
-              Body: file.buffer, // File Content
-              ContentType: file.mimetype, // MIME Type
-          };
+    // Loop through files and upload to S3
+    for (let index = 0; index < req.files.length; index++) {
+      const file = req.files[index];
 
-          // Upload to S3
-          await s3.send(new PutObjectCommand(params));
+      // Generate a unique file name
+      const fileName = `${userId}_${getMilliseconds()}_${index}`;
 
-          // Construct the S3 File URL
-          const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
-          uploadedFiles.push({ fileName, imageUrl });
-      }
+      const params = {
+        Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
+        Key: fileName, // Unique File Name
+        Body: file.buffer, // File Content
+        ContentType: file.mimetype, // MIME Type
+      };
 
-      // Check if a document already exists for the user
-    //   const existingDocument = await Document.findOne({ userId }).maxTimeMS(30000); // 30 seconds timeout
+      // Upload to S3
+      await s3.send(new PutObjectCommand(params));
 
-    //   if (existingDocument) {
-    //       // Append new files to the existing document
-    //       const updatedFiles = existingDocument.files || [];
-    //       updatedFiles.push(...uploadedFiles);
+      // Construct the S3 File URL
+      const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+      uploadedFiles.push({ fileName, imageUrl });
+    }
 
-        //   await Document.updateOne({ userId }, { $set: { files: updatedFiles } });
-        //   return res.status(200).json({
-        //       status: 200,
-        //       message: "Files uploaded successfully.",
-        //       uploadedFiles,
-        //   });
-     // }
+    // Save uploaded files in the database
+    const newDocument = new pickupImage({
+      userId,
+      files: uploadedFiles,
+    });
+    await newDocument.save();
 
-      // Create a new document if none exists
-      const newDocument = new pickupImage({
-          userId,
-          files: uploadedFiles,
-      });
-      await newDocument.save();
-
-      return res.status(200).json({
-          status: 200,
-          message: "Files uploaded successfully.",
-          uploadedFiles,
-      });
+    return res.status(200).json({
+      status: 200,
+      message: "Files uploaded successfully.",
+      uploadedFiles,
+    });
   } catch (error) {
-      console.error("Error uploading files:", error);
-      return res.json({
-          message: "Failed to upload files to S3.",
-          error: error.message,
-      });
+    console.error("Error uploading files:", error);
+    return res.json({
+      message: "Failed to upload files to S3.",
+      error: error.message,
+    });
   }
 };
+
 
 
 
