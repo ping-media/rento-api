@@ -553,12 +553,13 @@ router.post("/emailverify", async (req, res) => {
 })
 
 
-router.post("/pickupImage", upload.array('images', 6), async (req, res) => {
+router.post("/pickupImage", upload.array('images', 10), async (req, res) => {
 
 
   if (!req.files || req.files.length === 0) {
     return res.send({ message: 'File upload failed. No files provided.' });
   }
+//console.log(req.files)
   pickupImageUp(req, res)
 })
 
