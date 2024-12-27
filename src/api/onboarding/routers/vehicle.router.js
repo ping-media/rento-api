@@ -18,7 +18,7 @@ const { getAllVehiclesData, updateMultipleVehicles } = require("../models/getAll
 const { documentUpload, getDocument } = require("../models/DocumentUpload")
 const { getAllDocument } = require("../models/getAllDocumentAdmin")
 const { emailOtp, verify } = require("../models/otpSendByEmail")
-const { getPickupImage, pickupImageUp } = require("../models/pickupImageUpload")
+const { getPickupImage, pickupImageUp, getAllPickupImage } = require("../models/pickupImageUpload")
 const { getAllLogs } = require("../models/getlogs.model")
 const {handler}=require("../../../utils/cron");
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
@@ -29,6 +29,9 @@ const {paymentRec} = require ("../models/payment.modol")
 const Authentication = require ("../../../middlewares/Authentication")
 
 // create messages
+router.post("/sendBookingDetailesTosocial", async (req, res) => {
+  vehiclesService.sendBookingDetailesTosocial(req, res);
+})
 router.post("/createVehicle",Authentication, async (req, res) => {
   vehiclesService.createVehicle(req, res);
 })
@@ -550,7 +553,7 @@ router.post("/emailverify", async (req, res) => {
 })
 
 
-router.post("/pickupImage", upload.array('images', 5), async (req, res) => {
+router.post("/pickupImage", upload.array('images', 6), async (req, res) => {
 
 
   if (!req.files || req.files.length === 0) {
@@ -561,6 +564,10 @@ router.post("/pickupImage", upload.array('images', 5), async (req, res) => {
 
 router.get("/getPickupImage", async (req, res) => {
   getPickupImage(req, res);
+})
+
+router.get("/getAllPickupImage", async (req, res) => {
+  getAllPickupImage(req, res);
 })
 
 

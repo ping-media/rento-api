@@ -27,7 +27,8 @@ const { query } = require("express");
 //const {generateRandomId } = require('../../../utils/help-scripts/help-functions');
 const Invoice = require('../../../db/schemas/onboarding/invoice-tbl.schema'); // Import the Invoice model
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
-const Log = require("../models/Logs.model")
+const Log = require("../models/Logs.model");
+const{sendBookingConfirmation}= require("../../../utils/whatsappMessage")
 
 
 const logError = async (message, functionName, userId) => {
@@ -334,10 +335,15 @@ async function booking({
 
       var stationMasterUserId = find[0].userId;
       var stationId = find[0].stationId;
-
-
+      var latitude = find[0].latitude;
+      var longitude = find[0].longitude;
 
     }
+
+    
+
+    // const user= await User.findOne({userId})
+    // const station= await User.findOne({stationMasterUserId})
 
     let o = {
       vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, stationId, paymentInitiatedDate,
@@ -416,10 +422,7 @@ async function booking({
         const SaveBooking = new Booking(o);
 
         await SaveBooking.save();
-
-
-
-
+        
         obj.message = "New booking saved successfully";
         obj.data = SaveBooking;
 
@@ -2359,7 +2362,20 @@ async function getMessages(chatId) {
 
 
 
+async function sendBookingDetailesTosocial(booking){
+  const {userId,stationMasterUserId,vehicleName,BookingStartDateAndTime,bookingId,stationName,bookingPrice,vehicleBasic}=booking;
+ 
 
+      const payableAmount = bookingPrice.userPaid ? Number(bookingPrice.totalPrice)-Number(bookingPrice.userPaid) : bookingPrice.totalPrice
+      const userPaid= bookingPrice.userPaid || 0;
+      const refundableDeposit=vehicleBasic.refundableDeposit;
+      //console.log(userId,stationMasterUserId,vehicleName,BookingStartDateAndTime,bookingId,stationName,mapLink,userPaid,payableAmount,refundableDeposit)
+      !(userId && stationMasterUserId && vehicleName && BookingStartDateAndTime && bookingId && stationName && mapLink && userPaid && payableAmount && refundableDeposit) && console.log("need all values")
+        // console.log("entered")
+        sendBookingConfirmation(userId,stationMasterUserId,vehicleName,BookingStartDateAndTime,bookingId,stationName,mapLink,userPaid,payableAmount,refundableDeposit)
+      
+
+}
 
 
 

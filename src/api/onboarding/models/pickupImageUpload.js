@@ -35,7 +35,7 @@ const pickupImageUp = async (req, res) => {
 
       // Validate userId
       if (!userId || userId.length !== 24) {
-          return res.status(400).json({ message: "Invalid user ID provided." });
+          return res.json({ message: "Invalid user ID provided." });
       }
 
       
@@ -91,7 +91,7 @@ const pickupImageUp = async (req, res) => {
       });
   } catch (error) {
       console.error("Error uploading files:", error);
-      return res.status(500).json({
+      return res.json({
           message: "Failed to upload files to S3.",
           error: error.message,
       });
@@ -104,18 +104,57 @@ const getPickupImage = async (req, res) => {
     try {
       const { userId } = req.query;
   
-      if (!userId) {
-        return res.status(400).json({
-          status: 400,
-          message: "User ID is required.",
-        });
-      }
   
+     if(userId) {
+      
       const documents = await pickupImage.find({ userId });
   
       if (!documents || documents.length === 0) {
-        return res.status(404).json({
-          status: 404,
+        return res.json({
+          status: 400,
+          message: "No data found for the provided User ID.",
+        });
+
+      }
+      return res.status(200).json({
+        status: 200,
+        message: "Image retrieved successfully.",
+        data: documents,
+      });
+    }
+
+    const documents = await pickupImage.find();
+  
+    if (!documents || documents.length === 0) {
+      return res.json({
+        status: 400,
+        message: "No data found for the provided User ID.",
+      });
+
+    }
+      return res.status(200).json({
+        status: 200,
+        message: "Image retrieved successfully.",
+        data: documents,
+      });
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      return res.json({
+        status: 500,
+        message: "Failed to retrieve Image.",
+        error: error.message,
+      });
+    }
+  };
+  
+
+  const getAllPickupImage= async(req,res)=>{
+    try {
+      const documents = await pickupImage.find();
+  
+      if (!documents || documents.length === 0) {
+        return res.json({
+          status: 400,
           message: "No data found for the provided User ID.",
         });
       }
@@ -127,14 +166,12 @@ const getPickupImage = async (req, res) => {
       });
     } catch (error) {
       console.error("Error fetching documents:", error);
-      return res.status(500).json({
+      return res.json({
         status: 500,
         message: "Failed to retrieve Image.",
         error: error.message,
       });
     }
-  };
-  
+  }
 
-
-module.exports = { pickupImageUp, getPickupImage };
+module.exports = { pickupImageUp, getPickupImage, getAllPickupImage };

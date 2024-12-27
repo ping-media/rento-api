@@ -22,7 +22,8 @@ const {
   getStationData,
   getLocationData,
   getPlanData,
-  getAllInvoice
+  getAllInvoice,
+  sendBookingDetailesTosocial
   
 } = require("../models/vehicles.model");
 
@@ -30,6 +31,21 @@ const { createCoupon, getCoupons } = require("../models/coupon.model");
 const {getBookings, getBooking}= require("../models/booking.model")
 const {getVehicleBookrecode,VehicleBookrecode}= require("../models/Vehicle.Bookrecode.module");
 const {fileUpload} = require("../models/locationUpload.model")
+
+exports.sendBookingDetailesTosocial = async (req, res) => {
+  try {
+    const result = await sendBookingDetailesTosocial(req.body,req.query,req.headers);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
+
 
 exports.getStationData = async (req, res) => {
   try {
