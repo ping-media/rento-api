@@ -757,12 +757,12 @@ async function createLocation({ locationName, locationImage, deleteRec, _id }) {
 
 
 
-async function createPlan({ _id, planName, planPrice, stationId, planDuration, vehicleMasterId, deleteRec, locationId }) {
+async function createPlan({ _id, planName, planPrice,  planDuration,  deleteRec,  }) {
   const obj = { status: 200, message: "Plan created successfully", data: [] };
 
   try {
-    if (_id || (planName && planPrice && stationId && planDuration && vehicleMasterId && locationId)) {
-      let o = { planName, planPrice, stationId, planDuration, vehicleMasterId, locationId };
+    if (_id || (planName && planPrice && planDuration )) {
+      let o = { planName, planPrice, planDuration };
 
 
       if (_id) {
@@ -774,18 +774,18 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
 
 
 
-        // Check if plan exists for the same station with the same name or duration
-        const duplicatePlan = await Plan.findOne({
-          stationId,
-          $or: [{ planName }, { planDuration }],
-          _id: { $ne: ObjectId(_id) }, // Exclude the current plan being updated
-        });
+        // // Check if plan exists for the same station with the same name or duration
+        // const duplicatePlan = await Plan.findOne({
+        //   stationId,
+        //   $or: [{ planName }, { planDuration }],
+        //   _id: { $ne: ObjectId(_id) }, // Exclude the current plan being updated
+        // });
 
-        if (duplicatePlan) {
-          obj.status = 401;
-          obj.message = "A plan with the same name or duration already exists for this station";
-          return obj;
-        }
+        // if (duplicatePlan) {
+        //   obj.status = 401;
+        //   obj.message = "A plan with the same name or duration already exists ";
+        //   return obj;
+        // }
 
         const existingPlan = await Plan.findOne({ _id: ObjectId(_id) });
         if (existingPlan) {
@@ -811,30 +811,30 @@ async function createPlan({ _id, planName, planPrice, stationId, planDuration, v
         }
       } else {
         // Validate station ID
-        const stationExists = await Station.findOne({ stationId });
-        if (!stationExists) {
-          obj.status = 401;
-          obj.message = "Invalid station ID";
-          return obj;
-        }
+        // const stationExists = await Station.findOne({ stationId });
+        // if (!stationExists) {
+        //   obj.status = 401;
+        //   obj.message = "Invalid station ID";
+        //   return obj;
+        // }
 
         // Validate vehicle master ID
-        const vehicleMasterExists = await VehicleMaster.findOne({ vehicleMasterId });
-        if (!vehicleMasterExists) {
-          obj.status = 401;
-          obj.message = "Invalid vehicle master ID";
-          return obj;
-        }
+        // const vehicleMasterExists = await VehicleMaster.findOne({ vehicleMasterId });
+        // if (!vehicleMasterExists) {
+        //   obj.status = 401;
+        //   obj.message = "Invalid vehicle master ID";
+        //   return obj;
+        // }
 
         // Check for duplicate plan name or duration within the same station
         const duplicatePlan = await Plan.findOne({
-          stationId,
+          _id,
           $or: [{ planName }, { planDuration }],
         });
 
         if (duplicatePlan) {
           obj.status = 401;
-          obj.message = "A plan with the same name or duration already exists for this station";
+          obj.message = "A plan with the same name or duration already exists ";
           return obj;
         }
 
@@ -2362,20 +2362,70 @@ async function getMessages(chatId) {
 
 
 
-async function sendBookingDetailesTosocial(booking){
-  const {userId,stationMasterUserId,vehicleName,BookingStartDateAndTime,bookingId,stationName,bookingPrice,vehicleBasic}=booking;
- 
+async function sendBookingDetailesTosocial(booking) {
+  const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
-      const payableAmount = bookingPrice.userPaid ? Number(bookingPrice.totalPrice)-Number(bookingPrice.userPaid) : bookingPrice.totalPrice
-      const userPaid= bookingPrice.userPaid || 0;
-      const refundableDeposit=vehicleBasic.refundableDeposit;
-      //console.log(userId,stationMasterUserId,vehicleName,BookingStartDateAndTime,bookingId,stationName,mapLink,userPaid,payableAmount,refundableDeposit)
-      !(userId && stationMasterUserId && vehicleName && BookingStartDateAndTime && bookingId && stationName && mapLink && userPaid && payableAmount && refundableDeposit) && console.log("need all values")
-        // console.log("entered")
-        sendBookingConfirmation(userId,stationMasterUserId,vehicleName,BookingStartDateAndTime,bookingId,stationName,mapLink,userPaid,payableAmount,refundableDeposit)
-      
+  try {
+    const {
+      userId,
+      stationMasterUserId,
+      vehicleName,
+      BookingStartDateAndTime,
+      bookingId,
+      stationName,
+      bookingPrice,
+      vehicleBasic,
+    } = booking;
+console.log(booking)
+    // Validate mandatory fields
+    if (
+      !userId ||
+      !stationMasterUserId ||
+      !vehicleName ||
+      !BookingStartDateAndTime ||
+      !bookingId ||
+      !stationName ||
+      !bookingPrice ||
+      !vehicleBasic
+    ) {
+      console.error("Missing required booking details.");
+      obj.status = 404;
+      obj.message = "Missing required booking details.";
+      return obj;
+    }
 
+    // Calculate payable amount and user-paid amount
+    const payableAmount = bookingPrice.userPaid
+      ? Number(bookingPrice.totalPrice) - Number(bookingPrice.userPaid)
+      : bookingPrice.totalPrice;
+    const userPaid = bookingPrice.userPaid || 0;
+    const refundableDeposit = vehicleBasic.refundableDeposit;
+
+    // Call the function to send booking confirmation
+    await sendBookingConfirmation(
+     
+      userId,
+      stationMasterUserId,
+      vehicleName,
+      BookingStartDateAndTime,
+      bookingId,
+      stationName,
+      userPaid,
+      payableAmount,
+      refundableDeposit
+    );
+    obj.status = 200;
+    obj.message = "function sendBookingConfirmation called.";
+    return obj;
+   
+  } catch (error) {
+    
+    obj.status = 500;
+    obj.message = `Server error: ${err.message}`;
+  }
+  return obj;
 }
+
 
 
 
@@ -2402,5 +2452,6 @@ module.exports = {
   searchVehicle,
   getLocations,
   booking,
-  getMessages
+  getMessages,
+  sendBookingDetailesTosocial
 };

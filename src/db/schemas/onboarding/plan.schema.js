@@ -16,22 +16,22 @@ const planSchema = new Schema(
       type: Number,
       required: true,
     },
-    stationId: {
-      type: String,
-      ref: "station", // Reference the 'Station' model
-      required: true,
-    },
-    locationId: {
-      type: Schema.Types.ObjectId,
-      ref: "location", // Reference the 'Location' model
-      required: true,
+    // stationId: {
+    //   type: String,
+    //   ref: "station", // Reference the 'Station' model
+    //   required: true,
+    // },
+  //   locationId: {
+  //     type: Schema.Types.ObjectId,
+  //     ref: "location", // Reference the 'Location' model
+  //     required: true,
 
-    },
-    vehicleMasterId: {
-      type: Schema.Types.ObjectId,
-      ref: 'vehicleMaster',
-      required: true
-  },
+  //   },
+  //   vehicleMasterId: {
+  //     type: Schema.Types.ObjectId,
+  //     ref: 'vehicleMaster',
+  //     required: true
+  // },
   },
   { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
 );

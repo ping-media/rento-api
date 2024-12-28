@@ -63,6 +63,14 @@ router.post("/createCoupon",Authentication, async (req, res) => {
   vehiclesService.createCoupon(req, res);
 })
 
+router.post("/applyCoupon", async (req, res) => {
+  vehiclesService.applyCoupon(req, res);
+})
+
+router.post("/updateCouponCount", async (req, res) => {
+  vehiclesService.updateCouponCount(req, res);
+})
+
 router.post("/VehicleBookrecode", async (req, res) => {
   vehiclesService.VehicleBookrecode(req, res);
 })

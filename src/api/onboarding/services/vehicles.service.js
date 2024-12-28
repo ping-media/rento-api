@@ -23,11 +23,12 @@ const {
   getLocationData,
   getPlanData,
   getAllInvoice,
-  sendBookingDetailesTosocial
+  sendBookingDetailesTosocial,
+  
   
 } = require("../models/vehicles.model");
 
-const { createCoupon, getCoupons } = require("../models/coupon.model");
+const { createCoupon, getCoupons, updateCouponCount, applyCoupon } = require("../models/coupon.model");
 const {getBookings, getBooking}= require("../models/booking.model")
 const {getVehicleBookrecode,VehicleBookrecode}= require("../models/Vehicle.Bookrecode.module");
 const {fileUpload} = require("../models/locationUpload.model")
@@ -150,6 +151,33 @@ exports.createVehicle = async (req, res) => {
 exports.createCoupon = async (req, res) => {
   try {
     const result = await createCoupon(req.body);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
+
+exports.applyCoupon = async (req, res) => {
+  try {
+    const result = await applyCoupon(req.body,req.headers);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
+exports.updateCouponCount = async (req, res) => {
+  try {
+    const result = await updateCouponCount(req.body,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({

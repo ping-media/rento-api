@@ -175,7 +175,6 @@ const sendBookingConfirmation = async (
   BookingStartDateAndTime,
   bookingId,
   stationName,
-  mapLink,
   userPaid,
   payableAmount,
   refundableDeposit
@@ -202,21 +201,34 @@ const sendBookingConfirmation = async (
       return date.toLocaleString('en-US', options);
     }
     // Fetch user and station details
-    const user = await User.findOne({ userId });
-    if (!user) {
-      obj.status = 404;
-      obj.message = `User not found for userId: ${userId}`;
-      console.error(obj.message);
-      return obj;
-    }
 
-    const station = await User.findOne({ userId: stationMasterUserId });
-    if (!station) {
-      obj.status = 404;
-      obj.message = `Station master not found for stationMasterUserId: ${stationMasterUserId}`;
-      console.error(obj.message);
-      return obj;
-    }
+    
+
+const user = await User.findOne({ _id: userId }); // Replace 'userId' with the actual field name, e.g., '_id' or another field.
+if (!user) {
+  obj.status = 404;
+  obj.message = `User not found for userId: ${userId}`;
+  await Log({
+    message: obj.message,
+    functionName: "whatsapp message",
+  });
+  console.error(obj.message);
+  return obj;
+}
+
+const station = await User.findOne({ _id: stationMasterUserId }); 
+if (!station) {
+  obj.status = 404;
+  obj.message = `Station master not found for stationMasterUserId: ${stationMasterUserId}`;
+  await Log({
+    message: obj.message,
+    functionName: "whatsapp message",
+  });
+  console.error(obj.message);
+  return obj;
+}
+
+
 
     // Extract required details
     const name = user.firstName || "Unknown Name";
@@ -247,13 +259,18 @@ const sendBookingConfirmation = async (
     ) {
       obj.status = 400;
       obj.message = "Failed to send: Missing or invalid required fields";
+      await Log({
+        message: obj.message,
+        functionName: "whatsapp message",
+      
+      });
       console.error(obj.message);
       return obj;
     }
 
     // Prepare API payload
     const data = {
-      apiKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3NmE3MjI0YTg0MzRlMGMxM2FkZDhiYSIsIm5hbWUiOiJCb25naSAiLCJhcHBOYW1lIjoiQWlTZW5zeSIsImNsaWVudElkIjoiNjc2YTcyMjRhODQzNGUwYzEzYWRkOGI1IiwiYWN0aXZlUGxhbiI6IkZSRUVfRk9SRVZFUiIsImlhdCI6MTczNTAyOTI4NH0.PRK3uBJZ0h3Dtr_jL_uyme-qsUzu_TPKNuUxnwmDBDs", 
+      apiKey: process.env.apiKey, 
       campaignName: "booking_confirmed_message",
       destination: `+91${contact}`,
       userName: name,
@@ -271,7 +288,7 @@ const sendBookingConfirmation = async (
       ],
     };
 
-    console.log("Sending data:", data);
+    // console.log("Sending data:", data);
 
     // Send the request
     const response = await axios.post("https://backend.aisensy.com/campaign/t1/api/v2", data);

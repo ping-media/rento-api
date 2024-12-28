@@ -7,10 +7,10 @@ const couponSchema = new Schema({
       required: true,
       unique: true
     },
-    allowedUsers: {
-      type: Array,
+    allowedUsersCount: {
+      type: String,
     },
-    usageAllowed: {
+    couponCount: {
       type: String,
     },
     discountType: {

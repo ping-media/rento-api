@@ -3,6 +3,36 @@ const Coupon = require('../../../db/schemas/onboarding/coupons.schema')
 const mongoose = require("mongoose"); // Ensure mongoose is imported
 const Log = require("../models/Logs.model")
 
+// const getCouponsUser = async()=>{
+//   const obj = { status: 200, message: "Data fetched successfully", data: [], pagination: {} };
+// try {
+//   if (_id) {
+//     if (!mongoose.Types.ObjectId.isValid(_id)) {
+//         obj.status = 400;
+//         obj.message = "Invalid _id format";
+//         return obj;
+//     }
+
+//     const coupon = await Coupon.findById(_id); 
+//     if (!coupon) {
+//         obj.message = "No Records Found";
+//         return obj;
+//     }
+
+//     if (coupon.couponCount==0) {
+//         obj.message = "Coupon usage limit exceeded";
+//         return obj;
+//     }
+//   }
+
+// } catch (error) {
+//   console.error("Error fetching coupons:", error); 
+//       obj.status = 500;
+//       obj.message = "Internal Server Error";
+// } 
+// return obj;
+// }
+
 const getCoupons = async (query) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [], pagination: {} };
 
@@ -17,13 +47,15 @@ const getCoupons = async (query) => {
               return obj;
           }
 
-          const coupon = await Coupon.findById(_id); // Fetch by ID
+          const coupon = await Coupon.findById(_id); 
           if (!coupon) {
               obj.message = "No Records Found";
               return obj;
           }
 
-          obj.data = [coupon]; // Return as an array for consistency
+         
+
+          obj.data = [coupon]; 
           return obj;
       }
 
@@ -34,7 +66,7 @@ const getCoupons = async (query) => {
 
       
       const coupons = await Coupon.find()
-          .select("couponName discount discountType isCouponActive")
+          //.select("couponName discount discountType ")
           .skip(skip)
           .limit(Number(limit))
           .sort({ createdAt: -1 });
@@ -66,12 +98,12 @@ const createCoupon = async (body) => {
   const resObj = { status: 200, message: "Coupon processed successfully", data: [] };
 
   try {
-    const {_id, deleteRec, couponName, discount, discountType, isCouponActive}= body
+    const {_id, deleteRec, couponName, discount, discountType, isCouponActive, allowedUsersCount, couponCount}= body
 
     //console.log( couponName, discount, discountType, isCouponActive)
     
     // Validate required fields
-    if(!_id){if (!(couponName && discount && discountType && isCouponActive )) {
+    if(!_id){if (!(couponName && discount && discountType && isCouponActive && couponCount )) {
       return { status: 400, message: "Invalid data: Required fields are missing." };
     }}
 
@@ -81,6 +113,7 @@ const createCoupon = async (body) => {
       ...(discount && { discount }),
       ...(discountType && { discountType }),
       ...( isCouponActive && { isCouponActive }),
+      ...( couponCount && { couponCount }),
     };
 
     if (_id) {
@@ -139,31 +172,126 @@ const createCoupon = async (body) => {
 
   
 
-//   const updateCoupon = async (_id) => {
-//     const obj = { status: 200, message: "Data updated successfully", data: null };
+const updateCouponCount = async (_id) => {
+  const obj = { status: 200, message: "Data updated successfully", data: null };
+
+  try {
+    // Fetch coupon by ID
+    const coupon = await Coupon.findById(_id);
+    if (!coupon) {
+      obj.status = 400;
+      obj.message = "No records found for the given ID";
+      return obj;
+    }
+
+
+    const { couponCount } = coupon;
+    let allowedUsersCount = couponCount - 1;
+
+    // Ensure allowedUsersCount does not go below 0
+    if (allowedUsersCount < 0) {
+      obj.status = 400;
+      obj.message = "Coupon usage limit exceeded";
+      return obj;
+    }
+
+    // Update the coupon document
+    const updatedCoupon = await Coupon.findByIdAndUpdate(
+      _id,
+      { $set: { allowedUsersCount } },
+      { new: true } 
+    );
+
+    if (!updatedCoupon) {
+      obj.status = 400;
+      obj.message = "Failed to update coupon";
+      return obj;
+    }
+
+    obj.data = updatedCoupon;
+  } catch (error) {
+    console.error("Error updating coupon:", error);
+    obj.status = 500;
+    obj.message = "An error occurred while updating the coupon";
+  }
+
+  return obj;
+};
+
+
+const applyCoupon = async (body) => {
+  const { couponName, totalAmount } = body;
+
+   const obj = { status: 200, message: "Coupon applied successfully", data: {} };
+
+  try {
+   
+    if (!couponName || !totalAmount) {
+     
+        obj.status=400;
+       obj.message="Coupon name and total amount are required";
+        return obj;
+     
+    }
+
+    // Fetch the coupon from the database
+    const coupon = await Coupon.findOne({ couponName });
+
+    // Validate the coupon
+    if (!coupon || !coupon.isCouponActive) {
+      
+        obj.status= 400;
+        obj.message= "Invalid or inactive coupon";
+        return obj;
+      
+    }
+
+    // Check if the coupon has expired
+    if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+     
+        obj.status= 400;
+        obj.message= "Coupon has expired";
+        return obj;
+   
+    }
+
+    // Check coupon usage limits
+    if (coupon.couponCount >= coupon.allowedUsersCount) {
+    
+        obj.status= 400;
+        obj.message= "Coupon usage limit reached";
+        return obj;
+     
+    }
+
+    // Calculate the discount
+    let discount = 0;
+    if (coupon.discountType === "percentage") {
+      discount = (totalAmount * coupon.discount) / 100;
+    } else if (coupon.discountType === "fixed") {
+      discount = coupon.discount;
+    }
+
+    const finalAmount = totalAmount - discount;
+
+    
+    obj.data = { discount, finalAmount };
+
+   
+  } catch (error) {
+    console.error("Error applying coupon=", error);
+
+   
   
-//     try {
-//       const updatedCoupon = await Coupon.findByIdAndUpdate(
-//         _id,
-        
-//         { new: true } 
-//       );
-  
-//       if (!updatedCoupon) {
-//         obj.status = 404;
-//         obj.message = "Coupon not found";
-//         return obj;
-//       }
-  
-//       obj.data = updatedCoupon;
-//     } catch (error) {
-//       console.error("Error updating coupon:", error);
-//       obj.status = 500;
-//       obj.message = "Error updating coupon";
-//     }
-  
-//     return obj;
-//   };
+      obj.status= 500;
+      error= error.message;
+      obj.message= error;
+      return obj;
+   
+  }
+  return obj;
+};
+
   
   
-  module.exports = {createCoupon, getCoupons,}
+  module.exports = {createCoupon, getCoupons, updateCouponCount, applyCoupon}
