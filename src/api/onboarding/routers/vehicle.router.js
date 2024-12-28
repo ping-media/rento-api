@@ -25,8 +25,9 @@ const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schem
 const requestIp = require('request-ip')
 const Log = require("../models/Logs.model")
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
-const {paymentRec} = require ("../models/payment.modol")
-const Authentication = require ("../../../middlewares/Authentication")
+const {paymentRec} = require ("../models/payment.modol");
+const Authentication = require ("../../../middlewares/Authentication");
+const{deleteS3Bucket}=require("../models/deleteS3Bucket")
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
@@ -95,9 +96,11 @@ router.post("/getAllVehicles", async (req, res) => {
 router.get("/getLocations", async (req, res) => {
   vehiclesService.getLocations(req, res);
 })
+
 router.get("/getLocation", async (req, res) => {
   vehiclesService.getLocation(req, res);
 })
+
 router.get("/getLocationData", async (req, res) => {
   vehiclesService.getLocationData(req, res);
 })
@@ -106,9 +109,11 @@ router.get("/getLocationData", async (req, res) => {
 router.get("/getPlanData", async (req, res) => {
   vehiclesService.getPlanData(req, res);
 })
+
 router.get("/getVehicleTblData", async (req, res) => {
   vehiclesService.getVehicleTblData(req, res);
 })
+
 router.get("/getStationData", async (req, res) => {
   vehiclesService.getStationData(req, res);
 })
@@ -248,20 +253,33 @@ router.delete("/deleteLocation", async (req, res) => {
       return res.json(obj); // Return the response with status 404
     }
 
+
+    if (find.imageFileName) {
+      try {
+        // Delete the file from S3
+        await deleteS3Bucket(find.imageFileName);
+      } catch (error) {
+        obj.status = 500;
+        obj.message = "Failed to delete associated file from S3";
+        return res.json(obj);
+      }
+    }
     // Delete the location
     await Location.deleteOne({ _id });
     await Log({
       message: `Location with ID ${_id} deleted`,
       functionName: "deleteLoaction",
-      userId,
+     
     });
+
+    //deleteS3Bucket()
     // Success message after deletion
     obj.status = 200;
     obj.message = "Location deleted successfully";
     return res.status(200).json(obj); // Return the response with status 200
 
   } catch (error) {
-    // console.error("Error in deleteLocation:", error.message);
+     console.error("Error in deleteLocation:", error.message);
 
 
     obj.status = 500;
@@ -277,7 +295,7 @@ router.post("/createVehicleMaster",Authentication, upload.single('image'), async
 
 
   if (!req.file) {
-    return res.status(400).json({ message: 'File upload failed. No file provided.' });
+    return res.json({ message: 'File upload failed. No file provided.',status:400 });
   }
   VehicalfileUpload(req, res)
   // vehiclesService.createLocation(req, res);
@@ -354,7 +372,7 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
     if (!_id) {
       obj.message = "Invalid vehicle _id"
       obj.status = 400
-      return res.status(400).json(obj);
+      return res.json(obj);
     }
 
     const find = await vehicleMaster.findOne({ _id });
@@ -362,16 +380,30 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
     if (!find) {
       obj.message = "VehicleMaster with the given _id not found"
       obj.status = 400
-      return res.status(404).json(obj);
+      return res.json(obj);
     }
-   const vehicleRec= await vehicleTable.find({vehicleMasterId});
-                     await vehicleTable.deleteMany({vehicleRec})
+
+    if (find.imageFileName) {
+      try {
+        // Delete the file from S3
+        await deleteS3Bucket(find.imageFileName);
+      } catch (error) {
+        obj.status = 500;
+        obj.message = "Failed to delete associated file from S3";
+        return res.json(obj);
+      }
+    }
+  //   if(vehicleMasterId)
+  //  {const vehicleRec= await vehicleTable.find({vehicleMasterId});
+  //                  //  await vehicleTable.deleteMany({vehicleRec})
+  //                  console.log(vehicleRec)
+  //                   }
    //console.log(vehicleRec)
     await vehicleMaster.deleteOne({ _id });
     await Log({
       message: `VehicleMaster with ID ${_id} deleted`,
       functionName: "deleteVehicleMaster",
-      userId,
+      
     });
     obj.message = "VehicleMaster deleted successfully"
     obj.status = 200
@@ -381,7 +413,7 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
     console.error("Error in deleteVehicleMaster:", error.message);
     obj.status = 500;
     obj.message = "An error occurred while deleting VehicleMaster";
-    return res.status(500).json(obj);
+    return res.json(obj);
   }
 });
 

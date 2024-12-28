@@ -34,16 +34,17 @@ const upload = multer({
 // Route to upload the image
 const fileUpload =async (req, res) => {
     try {
-
-        const  _id= req.body._id;
-        const  deleteRec=req.body.deleteRec;
-        const locationName = req.body.locationName;
-        const locationStatus= req.body.locationStatus;
+      const {_id,deleteRec,locationName,locationStatus}=req.body
+        // const  _id= req.body._id;
+        // const  deleteRec=req.body.deleteRec;
+        // const locationName = req.body.locationName;
+        // const locationStatus= req.body.locationStatus;
        
         if (!_id){
             const findName = await Location.findOne({ locationName })
             if (findName) {
-                return res.status(401).json({
+                return res.json({
+                    status:400,
                     message: 'Location exists',
                 });
           }
@@ -52,7 +53,8 @@ const fileUpload =async (req, res) => {
     
         const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp"];
         if (!allowedMimeTypes.includes(req.file.mimetype)) {
-            return res.status(400).json({
+            return res.json({
+                status:400,
                 message: "Invalid file format. Only PNG, JPG, and WEBP are allowed.",
             });
         }
@@ -61,7 +63,8 @@ const fileUpload =async (req, res) => {
         // Generate safe file name
         const timestamp = Date.now();
         const safeFileName = `${timestamp}-${path.basename(req.file.originalname)}`;
-
+        const imageFileName = safeFileName
+        console.log(imageFileName)
         const params = {
             Bucket: AWS_BUCKET_NAME, // Your bucket name
             Key: safeFileName, // File name in the bucket
@@ -79,7 +82,8 @@ const fileUpload =async (req, res) => {
             const find = await Location.findOne({ _id })
     if (!find) {
      
-      return res.status(401).json({
+      return res.json({
+        status:400,
         message: 'Invalid _id',
     });
     }
@@ -88,15 +92,17 @@ const fileUpload =async (req, res) => {
       await Log({
         message: `Booking with ID ${_id} deleted`,
         functionName: "deletebooking",
-        userId,
+      
       });
-      return res.status(401).json({
+      return res.json({
+        status:200,
         message: 'location deleted successfully',
     });
     }
     
-    if(req.body && !req.body.locationName){
-        return res.status(500).json({
+    if(req.body && locationName){
+        return res.json({
+            status:200,
             message: 'Location name required',
         });
     }
@@ -105,7 +111,7 @@ const fileUpload =async (req, res) => {
     await Location.updateOne(
         { _id },
         {
-          $set: { locationName, locationImage:imageUrl,locationStatus }
+          $set: { locationName, locationImage:imageUrl,locationStatus,imageFileName }
         },
         { new: true }
       );
@@ -116,7 +122,7 @@ const fileUpload =async (req, res) => {
     });
 }
         else{
-            const SaveLocation = new Location({ locationName, locationImage: imageUrl,_id, locationStatus })
+            const SaveLocation = new Location({ locationName, locationImage: imageUrl,_id, locationStatus, imageFileName })
         SaveLocation.save()
         
         return res.status(200).json({
@@ -129,7 +135,8 @@ const fileUpload =async (req, res) => {
         
     } catch (error) {
         console.error('Error uploading file:', error);
-        return res.status(500).json({
+        return res.json({
+            status:500,
             message: 'Failed to upload file to S3',
             error: error.message,
         });

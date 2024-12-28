@@ -24,11 +24,11 @@ const s3 = new S3Client({
     },
 });
 
-// Configure Multer to use Memory Storage
-const upload = multer({
-    storage: multer.memoryStorage(), // Store files in memory for manual upload to S3
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB file size limit
-});
+// // Configure Multer to use Memory Storage
+// const upload = multer({
+//     storage: multer.memoryStorage(), // Store files in memory for manual upload to S3
+//     limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB file size limit
+// });
 
 
 // Route to upload the image
@@ -36,18 +36,20 @@ const VehicalfileUpload =async (req, res) => {
     //const response = { status: "200", message: "data fetched successfully", data: [] }
 
     try {
+      const {_id,deleteRec,vehicleBrand,vehicleName,vehicleType} =req.body;
 
-        let _id= req.body._id;
-        let deleteRec=req.body.deleteRec;
-        let vehicleName = req.body.vehicleName;
-        let vehicleType = req.body.vehicleType;
-        let vehicleBrand = req.body.vehicleBrand;
+        // let _id= req.body._id;
+        // let deleteRec=req.body.deleteRec;
+        // let vehicleName = req.body.vehicleName;
+        // let vehicleType = req.body.vehicleType;
+        // let vehicleBrand = req.body.vehicleBrand;
 
     
         
         const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp"];
         if (!allowedMimeTypes.includes(req.file.mimetype)) {
-            return res.status(400).json({
+            return res.json({
+              status:400,
                 message: "Invalid file format. Only PNG, JPG, and WEBP are allowed.",
             });
         }
@@ -55,6 +57,7 @@ const VehicalfileUpload =async (req, res) => {
         // Generate safe file name
         const timestamp = Date.now();
         const safeFileName = `${timestamp}-${path.basename(req.file.originalname)}`;
+        
 
         const params = {
             Bucket: AWS_BUCKET_NAME, // Your bucket name
@@ -78,13 +81,15 @@ const VehicalfileUpload =async (req, res) => {
             let statusCheck = ["gear", "non-gear"].includes(vehicleType)
             if (!statusCheck) {
              
-              return res.status(401).json({
+              return res.json({
+                status:400,
                 message: "Invalid vehicle type",
                            });
             }
           }
           if (_id && _id.length !== 24) {
-            return res.status(401).json({
+            return res.json({
+              status:400,
                 message: "Invalid _id",
                            });
             
@@ -93,7 +98,8 @@ const VehicalfileUpload =async (req, res) => {
             const find = await VehicleMaster.findOne({ _id})
             if (!find) {
               
-              return res.status(401).json({
+              return res.json({
+                status:400,
                 message: "Invalid vehicle _id",
                            });
             }
@@ -112,7 +118,7 @@ const VehicalfileUpload =async (req, res) => {
             await VehicleMaster.updateOne(
               { _id },
               {
-                $set: {vehicleBrand,vehicleImage,vehicleType,vehicleName}
+                $set: {vehicleBrand,vehicleImage,vehicleType,vehicleName,imageFileName:safeFileName}
               },
               { new: true }
             );
@@ -126,23 +132,25 @@ const VehicalfileUpload =async (req, res) => {
               const find = await VehicleMaster.findOne({ vehicleName })
               if (find) {
                 
-                return res.status(401).json({
+                return res.json({
+                  status:400,
                     message: "vehicle master name already exists",
                                });
                 
               }
-              const SaveUser = new VehicleMaster({vehicleName, vehicleBrand, vehicleType, vehicleImage, _id})
+              const SaveUser = new VehicleMaster({vehicleName, vehicleBrand, vehicleType, vehicleImage, _id, imageFileName:safeFileName})
               SaveUser.save()
               
               return res.status(200).json({
                 message: "vehicle master saved successfully",
                 status:200,
-                obj:{vehicleName, vehicleBrand, vehicleType, vehicleImage, _id}
+                obj:{vehicleName, vehicleBrand, vehicleType, vehicleImage, _id, }
                            });
               
             } else {
             
-              return res.status(401).json({
+              return res.json({
+                status:400,
                 message: "Invalid vehicle master details",
                            });
             }
@@ -151,7 +159,8 @@ const VehicalfileUpload =async (req, res) => {
         
     } catch (error) {
         console.error('Error uploading file:', error);
-        return res.status(500).json({
+        return res.json({
+          status:500,
             message: 'Failed to upload file to S3',
             error: error.message,
         });

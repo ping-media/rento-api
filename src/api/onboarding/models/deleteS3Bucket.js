@@ -1,10 +1,18 @@
 require("dotenv").config();
 
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const s3 = new S3Client({
+    region: process.env.AWS_REGION,
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
+  });
 
-const deleteS3bucket= async (req, res) => {
+const deleteS3Bucket= async (fileName) => {
     
 
-    const { fileName } = req.body;
+    //const { fileName } = req.body;
 
     if (!fileName) {
         return res.status(400).send({ message: 'File name is required' });
@@ -17,9 +25,11 @@ const deleteS3bucket= async (req, res) => {
 
     try {
         await s3.send(new DeleteObjectCommand(params));
-        res.status(200).send({ message: 'File deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting file:', error);
-        res.status(500).send({ message: 'Failed to delete file from S3', error: error.message });
-    }
+        console.log(`File ${fileName} deleted successfully from S3`);
+      } catch (error) {
+        console.error(`Error deleting file ${fileName} from S3:`, error.message);
+        throw new Error("Failed to delete file from S3");
+      }
 };
+
+module.exports={deleteS3Bucket}

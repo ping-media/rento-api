@@ -10,6 +10,10 @@ const locationSchema = new Schema({
       type: String,
       required: true
     },
+    imageFileName: {
+      type: String,
+      
+    },
     locationStatus: {
       type: String,
     //  required: true,
