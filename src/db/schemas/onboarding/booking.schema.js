@@ -92,6 +92,12 @@ const bookingSchema = new Schema({
        // required: true
     },
    
+    discountCuopon: {
+        type: Object,
+       // default:"NA"
+       // required: true
+    },
+   
     
     paymentMethod: {
         type: String,

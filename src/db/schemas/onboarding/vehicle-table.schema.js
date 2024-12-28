@@ -9,7 +9,8 @@ const vehiclePlanSchema = new Schema({
     },
     planPrice: {
       type: Number,
-      required: true, // Ensure the plan price is provided
+    //  required: true, // Ensure the plan price is provided
+      
       min: [0, 'Plan price must be a positive value'],
     },
   });
