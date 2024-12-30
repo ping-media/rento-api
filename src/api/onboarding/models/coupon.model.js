@@ -247,13 +247,13 @@ const applyCoupon = async (body) => {
     }
 
     // Check if the coupon has expired
-    if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+    // if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
      
-        obj.status= 400;
-        obj.message= "Coupon has expired";
-        return obj;
+    //     obj.status= 400;
+    //     obj.message= "Coupon has expired";
+    //     return obj;
    
-    }
+    // }
 
     // Check coupon usage limits
     if (coupon.couponCount >= coupon.allowedUsersCount) {

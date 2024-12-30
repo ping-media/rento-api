@@ -795,7 +795,6 @@ async function createPlan({ _id, planName, planPrice, planDuration, deleteRec, u
           obj.message = "Plan not found";
         }
       } else {
-        // Check for duplicate plan name or duration within the same station
         const duplicatePlan = await Plan.findOne({
           $or: [{ planName }, { planDuration }],
         });
@@ -2186,7 +2185,7 @@ const getStationData = async (query) => {
 
 
   try {
-    const totalRecords = await station.countDocuments(filter);
+    const totalRecords = await station.count(filter);
 
     const response = await station.find(filter).skip(skip).limit(Number(limit));
 
