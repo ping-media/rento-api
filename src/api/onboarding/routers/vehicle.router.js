@@ -573,7 +573,6 @@ router.get("/getDocument", async (req, res) => {
   getDocument(req, res);
 })
 
-// get All Document
 router.get("/getAllDocument", async (req, res) => {
   getAllDocument(req, res);
   // await Log({
