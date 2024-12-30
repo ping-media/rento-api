@@ -756,14 +756,14 @@ async function createLocation({ locationName, locationImage, deleteRec, _id }) {
 
 
 
-async function createPlan({ _id, planName, planPrice,  planDuration,  deleteRec,  }) {
+async function createPlan({ _id, planName, planPrice, planDuration, deleteRec, userId }) {
   const obj = { status: 200, message: "Plan created successfully", data: [] };
 
   try {
-    if (_id || (planName && planPrice && planDuration )) {
+    if (_id || (planName && planPrice && planDuration)) {
       let o = { planName, planPrice, planDuration };
 
-
+      // Validate _id length when updating
       if (_id) {
         if (_id.length !== 24) {
           obj.status = 401;
@@ -771,29 +771,15 @@ async function createPlan({ _id, planName, planPrice,  planDuration,  deleteRec,
           return obj;
         }
 
-
-
-        // // Check if plan exists for the same station with the same name or duration
-        // const duplicatePlan = await Plan.findOne({
-        //   stationId,
-        //   $or: [{ planName }, { planDuration }],
-        //   _id: { $ne: ObjectId(_id) }, // Exclude the current plan being updated
-        // });
-
-        // if (duplicatePlan) {
-        //   obj.status = 401;
-        //   obj.message = "A plan with the same name or duration already exists ";
-        //   return obj;
-        // }
-
+        // Check if plan exists for the same name or duration (excluding the current plan)
         const existingPlan = await Plan.findOne({ _id: ObjectId(_id) });
         if (existingPlan) {
           // Handle deletion
           if (deleteRec) {
             await Plan.deleteOne({ _id: ObjectId(_id) });
             await Log({
-              message: `Booking with ID ${_id} deleted`,
-              functionName: "deletebooking",
+              message: `Plan with ID ${_id} deleted`,
+              functionName: "deletePlan",
               userId,
             });
             obj.message = "Plan deleted successfully";
@@ -809,31 +795,14 @@ async function createPlan({ _id, planName, planPrice,  planDuration,  deleteRec,
           obj.message = "Plan not found";
         }
       } else {
-        // Validate station ID
-        // const stationExists = await Station.findOne({ stationId });
-        // if (!stationExists) {
-        //   obj.status = 401;
-        //   obj.message = "Invalid station ID";
-        //   return obj;
-        // }
-
-        // Validate vehicle master ID
-        // const vehicleMasterExists = await VehicleMaster.findOne({ vehicleMasterId });
-        // if (!vehicleMasterExists) {
-        //   obj.status = 401;
-        //   obj.message = "Invalid vehicle master ID";
-        //   return obj;
-        // }
-
         // Check for duplicate plan name or duration within the same station
         const duplicatePlan = await Plan.findOne({
-          _id,
           $or: [{ planName }, { planDuration }],
         });
 
         if (duplicatePlan) {
           obj.status = 401;
-          obj.message = "A plan with the same name or duration already exists ";
+          obj.message = "A plan with the same name or duration already exists";
           return obj;
         }
 
