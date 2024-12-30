@@ -119,7 +119,7 @@ const bookingSchema = new Schema({
         required: true
     },
     rideStatus: {
-        enum: ['pending', 'completed', 'canceled'],
+        enum: ['pending','ongoing', 'completed', 'canceled'],
         type: String,
         required: true
     },
