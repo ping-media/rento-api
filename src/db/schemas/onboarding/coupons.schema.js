@@ -11,7 +11,7 @@ const couponSchema = new Schema({
       type: String,
     },
     couponCount: {
-      type: String,
+      type:Number,
     },
     discountType: {
       type: String,
