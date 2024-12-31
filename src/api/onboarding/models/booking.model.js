@@ -74,9 +74,11 @@ const getBooking = async (query) => {
     const skip = (page - 1) * limit;
 
     const bookings = await Booking.find(filters)
+      .populate("userId", "firstName lastName contact")
       .sort({ createdAt: -1 }) 
       .skip(skip)
       .limit(Number(limit))
+      
      // .select("bookingId vehicleName stationName bookingStartDateAndTime bookingEndDateAndTime bookingPrice bookingStatus rideStatus");
 
     // If no bookings found
