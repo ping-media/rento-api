@@ -75,10 +75,8 @@ const getAllVehiclesData = async (req, res) => {
     const parsedPage = Math.max(parseInt(page, 10), 1);
     const parsedLimit = Math.max(parseInt(limit, 10), 1);
 
-    // Aggregate query
-    const vehicles = await vehicleTable.aggregate([
-      
 
+    const Aggregation = [
       // Join with vehicle masters collection
       {
         $lookup: {
@@ -88,7 +86,7 @@ const getAllVehiclesData = async (req, res) => {
           as: "vehicleMasterData",
         },
       },
-
+    
       // Join with stations collection
       {
         $lookup: {
@@ -98,12 +96,95 @@ const getAllVehiclesData = async (req, res) => {
           as: "stationData",
         },
       },
+    
+      // Join with bookings collection to check booking status
+      {
+        $lookup: {
+          from: "bookings", // Assuming "bookings" is the collection name
+          localField: "_id", // Assuming vehicle `_id` is referenced in bookings
+          foreignField: "vehicleId", // Field in bookings referencing the vehicle
+          as: "bookingData",
+        },
+      },
+    
+      // Add a bookingStatus field based on booking existence
+      {
+        $addFields: {
+          bookingStatus: {
+            $cond: {
+              if: { $gt: [{ $size: "$bookingData" }, 0] }, // Check if bookingData array is not empty
+              then: "Booked",
+              else: "Available",
+            },
+          },
+        },
+      },
+    
+      // Match filter criteria
+      { $match: filter },
+    
+      // Pagination using $facet
+      {
+        $facet: {
+          pagination: [
+            { $count: "total" },
+            { $addFields: { currentPage: parsedPage, limit: parsedLimit } },
+          ],
+          data: [
+            { $skip: (parsedPage - 1) * parsedLimit },
+            { $limit: parsedLimit },
+          ],
+        },
+      },
+    ]
 
+    // Aggregate query
+    const vehicles = await vehicleTable.aggregate([
+      
+
+      {
+        $lookup: {
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
+        },
+      },
+
+      {
+        $lookup: {
+          from: "stations",
+          localField: "stationId",
+          foreignField: "stationId",
+          as: "stationData",
+        },
+      },
+      {
+        $lookup: {
+          from: "bookings", // Assuming "bookings" is the collection name
+          localField: "_id", // Assuming vehicle `_id` is referenced in bookings
+          foreignField: "vehicleId", // Field in bookings referencing the vehicle
+          as: "bookingData",
+        },
+      },
+    
+      // Add a bookingStatus field based on booking existence
+      {
+        $addFields: {
+          bookingStatus: {
+            $cond: {
+              if: { $gt: [{ $size: "$bookingData" }, 0] }, // Check if bookingData array is not empty
+              then: "Booked",
+              else: "Available",
+            },
+          },
+        },
+      },
       // Unwind joined arrays
       { $unwind: { path: "$vehicleMasterData", preserveNullAndEmptyArrays: true } },
       { $unwind: { path: "$stationData", preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$bookingData", preserveNullAndEmptyArrays: true } },
 
-      // Project only the required fields
       {
         $project: {
           _id: 1,
@@ -128,6 +209,7 @@ const getAllVehiclesData = async (req, res) => {
           stationName: "$stationData.stationName",
          vehicleImage: "$vehicleMasterData.vehicleImage",
           vehicleName: "$vehicleMasterData.vehicleName",
+          // bookingStatus:"$bookingData.bookingStatus",
           createdAt: 1,
           updatedAt: 1,
         },

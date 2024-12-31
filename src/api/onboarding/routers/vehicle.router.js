@@ -32,15 +32,17 @@ const{deleteS3Bucket}=require("../models/deleteS3Bucket")
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
   vehiclesService.sendBookingDetailesTosocial(req, res);
-})
+});
+
 router.post("/createVehicle",Authentication, async (req, res) => {
   vehiclesService.createVehicle(req, res);
-})
+});
+
 
 router.post("/updateMultipleVehicles",Authentication, async (req, res) => {
   updateMultipleVehicles(req, res);
   
-})
+});
 
 router.post("/createBookingDuration", async (req, res) => {
   vehiclesService.createBookingDuration(req, res);

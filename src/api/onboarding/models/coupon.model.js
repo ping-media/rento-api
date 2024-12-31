@@ -173,7 +173,7 @@ const createCoupon = async (body) => {
   
 
 const updateCouponCount = async (_id) => {
-  const obj = { status: 200, message: "Data updated successfully", data: null };
+  const obj = { status: 200, message: "Data updated successfully", data: [] };
 
   try {
     // Fetch coupon by ID

@@ -1674,8 +1674,8 @@ const getVehicleTblData = async (query) => {
       vehicleType,
       stationId,
       locationId,
-      page = 1, // Default page number
-      limit = 20, // Default limit per page
+      page = 1,
+      limit = 20, 
     } = query;
     if (!locationId) {
       if (!_id && (!BookingStartDateAndTime || !BookingEndDateAndTime)) {
@@ -1690,8 +1690,8 @@ const getVehicleTblData = async (query) => {
 
     const startDate = BookingStartDateAndTime;
     const endDate = BookingEndDateAndTime;
-    //console.log(vehiclePlan)
     const matchFilter = {};
+    
     if (_id) {
       matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id;
     } else {
@@ -2002,6 +2002,88 @@ const getPlanData = async (query) => {
 };
 
 // Get locatin for Admin
+// async function getLocationData(query) {
+//   const obj = {
+//     status: 200,
+//     message: "Data fetched successfully",
+//     data: [],
+//     pagination: {}
+//   };
+
+//   const {
+//     _id,
+//     locationName,
+//     locationId,
+//     city,
+//     state,
+//     locationStatus,
+//    search,
+//     page = 1,
+//     limit = 10
+//   } = query;
+
+
+//   try {
+
+//     let filter = {};
+//     if (_id) filter._id = ObjectId(_id);
+//     if (locationName) filter.locationName = locationName;
+//     if (locationId) filter._id = ObjectId(locationId);
+//     if (city) filter.city = city;
+//     if (state) filter.state = state;
+//     //if(locationStatus) filter.locationStatus =  { locationStatus: { $ne: "inactive" } };
+
+
+
+//    // console.log(search)
+
+//     if (search) {
+//       filter.$or = [
+//         { locationName: { $regex: search, $options: "i" } },
+//         { locationStatus: { $regex: search, $options: "i" } },
+
+//       ];
+//     }
+
+//     const skip = (page - 1) * limit;
+
+//     // Fetch total record count for pagination
+//     const totalRecords = await Location.count(filter);
+
+//     // const totalStationCount= await Station.find(locationId);
+//     // console.log(totalStationCount)
+
+//     // Fetch paginated location data
+//     const result = await Location.find(filter)
+//       .skip(skip)
+//       .limit(Number(limit))
+//       .sort({ createdAt: -1 }); // Optional: Sort by creation date
+
+     
+
+//     if (result.length) {
+//       obj.data = result;
+
+//       // Add pagination metadata
+//       obj.pagination = {
+//         totalRecords,
+//         totalPages: Math.ceil(totalRecords / limit),
+//         currentPage: Number(page),
+//         pageSize: Number(limit),
+//       };
+//     } else {
+//       obj.status = 404;
+//       obj.message = "No locations found";
+//     }
+//   } catch (error) {
+//     console.error("Error in getLocations:", error.message);
+//     obj.status = 500;
+//     obj.message = "Internal server error";
+//   }
+
+//   return obj;
+// }
+
 async function getLocationData(query) {
   const obj = {
     status: 200,
@@ -2017,50 +2099,54 @@ async function getLocationData(query) {
     city,
     state,
     locationStatus,
-   search,
+    search,
     page = 1,
     limit = 10
   } = query;
 
-
   try {
-
     let filter = {};
     if (_id) filter._id = ObjectId(_id);
     if (locationName) filter.locationName = locationName;
     if (locationId) filter._id = ObjectId(locationId);
     if (city) filter.city = city;
     if (state) filter.state = state;
-    //if(locationStatus) filter.locationStatus =  { locationStatus: { $ne: "inactive" } };
-
-
-
-   // console.log(search)
 
     if (search) {
       filter.$or = [
         { locationName: { $regex: search, $options: "i" } },
         { locationStatus: { $regex: search, $options: "i" } },
-
       ];
     }
 
     const skip = (page - 1) * limit;
 
     // Fetch total record count for pagination
-    const totalRecords = await Location.count(filter);
-
-    // const totalStationCount= await Station.find(locationId);
-    // console.log(totalStationCount)
+    const totalRecords = await Location.countDocuments(filter);
 
     // Fetch paginated location data
-    const result = await Location.find(filter)
+    const locations = await Location.find(filter)
       .skip(skip)
       .limit(Number(limit))
       .sort({ createdAt: -1 }); // Optional: Sort by creation date
 
-    if (result.length) {
-      obj.data = result;
+    if (locations.length) {
+      // Fetch station counts for each location
+      const locationData = await Promise.all(
+        locations.map(async (location) => {
+          const stationCount = await Station.countDocuments({
+            locationId: location._id,
+            hasAC: true, // Assuming "hasAC" is the field for AC availability in stations
+          });
+
+          return {
+            ...location.toObject(), // Convert Mongoose document to plain object
+            stationCount,
+          };
+        })
+      );
+
+      obj.data = locationData;
 
       // Add pagination metadata
       obj.pagination = {
@@ -2074,13 +2160,19 @@ async function getLocationData(query) {
       obj.message = "No locations found";
     }
   } catch (error) {
-    console.error("Error in getLocations:", error.message);
+    console.error("Error in getLocationData:", error.message);
     obj.status = 500;
     obj.message = "Internal server error";
   }
 
   return obj;
 }
+
+
+
+
+
+
 async function getLocation(query) {
   const obj = {
     status: 200,
@@ -2187,7 +2279,7 @@ const getStationData = async (query) => {
   try {
     const totalRecords = await station.count(filter);
 
-    const response = await station.find(filter).skip(skip).limit(Number(limit));
+    const response = await station.find(filter).skip(skip).limit(Number(limit)).populate("userId", "firstName lastName contact");
 
     if (response.length) {
       // const enrichedData = await Promise.all(
@@ -2269,6 +2361,7 @@ async function getAllVehicles({ page, limit }) {
 async function getLocations(query) {
   const obj = { status: 200, message: "data fetched successfully", data: [] }
   const result = await Location.find({});
+ 
   if (result) {
     obj.status = 200
     obj.data = result

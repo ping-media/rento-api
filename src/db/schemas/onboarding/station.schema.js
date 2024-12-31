@@ -10,12 +10,12 @@ const stationSchema = new Schema({
     },
     locationId: {
       type: Schema.Types.ObjectId,
-      ref: 'location',
+      ref: 'Location',
       required: true
     },
     userId: {
       type: Schema.Types.ObjectId,
-      ref: 'user'
+      ref: 'User'
     },
     stationName: {
       type: String,
