@@ -62,7 +62,7 @@ const paymentRec = async (req, res) => {
     const totalRecords = await Booking.count(filters);
     const pagination = {
       // totalRecords,
-      total: Math.ceil(totalRecords / limit),
+      totalPages: Math.ceil(totalRecords / limit),
       currentPage: Number(page),
       limit: Number(limit),
     };
