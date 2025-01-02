@@ -1,4 +1,25 @@
-<!DOCTYPE html>
+require("dotenv").config();
+const nodemailer = require("nodemailer");
+
+const transporter = nodemailer.createTransport({
+  port: 465,
+  service: "gmail",
+  secure: true,
+  auth: {
+    user: "kashyapshivram512@gmail.com",
+    pass:  'kmbc nqqe cavl eyma',
+  },
+});
+
+
+
+async function sendOtpByEmail(email, firstName, lastName) {
+  try {
+    const info = await transporter.sendMail({
+      from: '"Rento-Moto Support" <support@rentobikes.com>',
+      to: email,
+      subject: "Your OTP Code - Welcome to RentoBikes!",
+      html: `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -57,14 +78,14 @@
           </tr>
           <tr>
             <td style="padding:20px 20px 20px 10px;vertical-align:top">
-                <img style="height:80px;width:auto" src="../../../assets/cash.svg" class="CToWUd" data-bit="iit" alt="cash.image.">
+                <img style="height:80px;width:auto" src="../assets/cash.svg" class="CToWUd" data-bit="iit" alt="cash.image.">
                 <br>
               <span style="color:#444;font-size:16px">Flexible Packages</span> <br>
               <span style="color:#999;font-size:14px">Grab daily, weekly, fortnight and monthly packages at
                 discounted rates</span> <br>
             </td>
             <td style="padding:20px 20px;vertical-align:top">
-              <img style="height:80px;width:auto" src="../../../assets/bycicle.svg" class="CToWUd" data-bit="iit">
+              <img style="height:80px;width:auto" src="../assets/bycicle.svg" class="CToWUd" data-bit="iit">
               <br>
               <span style="color:#444;font-size:16px">Wide Range</span> <br>
               <span style="color:#999;font-size:14px">Looking for a particular brand or location? We have probably
@@ -73,14 +94,14 @@
           </tr>
           <tr>
             <td style="padding:20px 20px 20px 10px;vertical-align:top">
-              <img style="height:80px;width:auto" src="../../../assets/WhatsApp Image 2024-12-31 at 16.08.05_d37a3004.svg" class="CToWUd" data-bit="iit">
+              <img style="height:80px;width:auto" src="../assets/WhatsApp Image 2024-12-31 at 16.08.05_d37a3004.svg" class="CToWUd" data-bit="iit">
               <br>
               <span style="color:#444;font-size:16px;padding-top:15px;display:inline-block">Highly Maintained
                 Fleet</span> <br>
               <span style="color:#999;font-size:14px">Get high quality and serviced vehicles.</span> <br>
             </td>
             <td style="padding:20px 20px;vertical-align:top">
-              <img style="height:80px;width:auto" src="../../../assets/availability.svg" class="CToWUd" data-bit="iit">
+              <img style="height:80px;width:auto" src="../assets/availability.svg" class="CToWUd" data-bit="iit">
               <br>
               <span style="color:#444;font-size:16px;padding-top:15px;display:inline-block">24*7 At
                 Service</span> <br>
@@ -89,14 +110,14 @@
           </tr>
           <tr>
             <td style="padding:20px 20px 20px 10px;vertical-align:top">
-              <img style="height:80px;width:auto" src="../../../assets/rupee.svg" class="CToWUd" data-bit="iit">
+              <img style="height:80px;width:auto" src="../assets/rupee.svg" class="CToWUd" data-bit="iit">
               <br>
               <span style="color:#444;font-size:16px;padding-top:15px;display:inline-block">Book Now, Pay
                 later</span> <br>
               <span style="color:#999;font-size:14px">Flexibility to decide when and how to pay.</span> <br>
             </td>
             <td style="padding:20px 20px;vertical-align:top">
-              <img style="height:80px;width:auto" src="../../../assets/save.svg" class="CToWUd" data-bit="iit">
+              <img style="height:80px;width:auto" src="../assets/save.svg" class="CToWUd" data-bit="iit">
               <br>
               <span style="color:#444;font-size:16px;padding-top:15px;display:inline-block">Instant
                 Refund</span> <br>
@@ -195,4 +216,15 @@
         </tbody>
       </table>
 </body>
-</html>
+</html>`,
+    });
+
+    console.log("Email sent: %s", info.messageId);
+    return { success: true };
+  } catch (error) {
+    console.error("Error sending OTP email:", error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+module.exports = { sendOtpByEmail };

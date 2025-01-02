@@ -5,13 +5,11 @@ const vehiclePlanSchema = new Schema({
     planId: {
       type: Schema.Types.ObjectId,
       ref: 'Plan',
-      required: true, // Ensure the Plan ID is provided
+    //   required: true, 
     },
     planPrice: {
       type: Number,
-    //  required: true, // Ensure the plan price is provided
-      
-      min: [0, 'Plan price must be a positive value'],
+     min: [0, 'Plan price must be a positive value'],
     },
   });
 
@@ -49,16 +47,17 @@ const vehicleTableSchema = new Schema({
         type: String,
         required: true
     },
-    vehiclePlan: [vehiclePlanSchema], // Use the sub-schema here
+    vehiclePlan: [vehiclePlanSchema], 
+    
     perDayCost: {
       type: Number,
       required: [true, 'Per day cost is required'],
       min: [0, 'Per day cost must be a positive value'],
     },
-    perDayCost: {
-        type: Number,
-        required: true
-    },
+    // perDayCost: {
+    //     type: Number,
+    //     required: true
+    // },
     refundableDeposit: {
         type: Number,
         default:1000,

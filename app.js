@@ -61,6 +61,10 @@ const startServer = async () => {
   //   next();
   // });
   // test api
+
+  app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
+
   app.get("/", (req, res) => {
     res.send("Hi there, Welcome to rent Moto");
   });

@@ -108,6 +108,8 @@ async function createVehicle({
       freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate &&
       kmsRun && isBooked && condition && locationId)) {
 
+
+
       if (stationId) {
         const findStation = await Station.findOne({ stationId });
         if (!findStation) {
@@ -166,6 +168,11 @@ async function createVehicle({
         extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition,
         vehiclePlan, refundableDeposit, lateFee, speedLimit
       };
+
+    //   vehiclePlan = vehiclePlan.map(plan => {
+    //     plan._id = new ObjectId(plan._id); // Converting _id to ObjectId
+    //     return plan;
+    // });
 
       if (_id) {
         const find = await VehicleTable.findOne({ _id: ObjectId(_id) });
@@ -1691,7 +1698,7 @@ const getVehicleTblData = async (query) => {
     const startDate = BookingStartDateAndTime;
     const endDate = BookingEndDateAndTime;
     const matchFilter = {};
-    
+
     if (_id) {
       matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id;
     } else {
