@@ -160,20 +160,63 @@ const getAllUsers = async (query) => {
 
 
 async function getAllDataCount() {
-  const obj = { status: 200, message: "data fetched successfully", data: [] }
-  obj.data = {
-    usersCount: await User.count({}),
-    bookingsCount: await Booking.count({}),
-    vehiclesCount: await vehicleMaster.count({}),
-    locationCount: await location.count({}),
-    stationsCount: await station.count({}),
-    couponsCount: await coupon.count({}),
-    invoicesCount: await invoiceTbl.count({}),
-    plansCount: await plan.count({}),
-    ordersCount: await order.count({}),
+  try {
+    const obj = { status: 200, message: "Data fetched successfully", data: {} };
+
+    // Fetch bookings and calculate totalAmount
+    const bookings = await Booking.find();
+    const totalAmount = bookings.reduce((acc, item) => {
+      const price = item.bookingPrice.discountTotalPrice && item.bookingPrice.discountTotalPrice !== 0
+        ? item.bookingPrice.discountTotalPrice
+        : item.bookingPrice.totalPrice;
+      return acc + price;
+    }, 0);
+
+  // console.log(totalAmount);
+
+    // Execute count queries in parallel for efficiency
+    const [
+      usersCount,
+      bookingsCount,
+      vehiclesCount,
+      locationCount,
+      stationsCount,
+      couponsCount,
+      invoicesCount,
+      plansCount,
+      // ordersCount,
+    ] = await Promise.all([
+      User.countDocuments({}),
+      Booking.countDocuments({}),
+      vehicleMaster.countDocuments({}),
+      location.countDocuments({}),
+      station.countDocuments({}),
+      coupon.countDocuments({}),
+      invoiceTbl.countDocuments({}),
+      plan.countDocuments({}),
+      // order.countDocuments({}),
+    ]);
+
+    // Populate data object
+    obj.data = {
+      usersCount,
+      bookingsCount,
+      vehiclesCount,
+      locationCount,
+      stationsCount,
+      couponsCount,
+      invoicesCount,
+      plansCount,
+      // ordersCount,
+      totalAmount,
+    };
+
+    return obj;
+  } catch (error) {
+    return { status: 500, message: "An error occurred", error: error.message };
   }
-  return obj
 }
+
 
 // async function saveUser({
 //   _id,

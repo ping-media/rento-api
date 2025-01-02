@@ -27,8 +27,8 @@ const Log = require("../models/Logs.model")
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 const {paymentRec} = require ("../models/payment.modol");
 const Authentication = require ("../../../middlewares/Authentication");
-const{deleteS3Bucket}=require("../models/deleteS3Bucket")
-
+const{deleteS3Bucket}=require("../models/deleteS3Bucket");
+const {getBookingGraphData}= require("../models/graphData")
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
   vehiclesService.sendBookingDetailesTosocial(req, res);
@@ -616,6 +616,10 @@ router.get("/getAllPickupImage", async (req, res) => {
 
 router.get("/getAllLogs", Authentication,async (req, res) => {
   getAllLogs(req, res);
+})
+
+router.get("/getGraphData", Authentication,async (req, res) => {
+  getBookingGraphData(req, res);
 })
 
 router.post("/createOrderId", async (req, res) => {

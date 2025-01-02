@@ -169,10 +169,7 @@ async function createVehicle({
         vehiclePlan, refundableDeposit, lateFee, speedLimit
       };
 
-    //   vehiclePlan = vehiclePlan.map(plan => {
-    //     plan._id = new ObjectId(plan._id); // Converting _id to ObjectId
-    //     return plan;
-    // });
+   
 
       if (_id) {
         const find = await VehicleTable.findOne({ _id: ObjectId(_id) });
@@ -924,7 +921,7 @@ async function createInvoice({ _id }) {
 
 
 async function getAllInvoice(query) {
-  const obj = { status: 200, message: "Invoices retrieved successfully", data: [] };
+  const obj = { status: 200, message: "Invoices retrieved successfully", data: [], pagination:{} };
   const {
     _id,
     bookingId,
@@ -957,8 +954,9 @@ async function getAllInvoice(query) {
     const totalRecords = await InvoiceTbl.count(filter);
     obj.data = invoices;
 
-    obj.currentPage = parseInt(page);
-    obj.totalPages = Math.ceil(totalRecords / parseInt(limit));
+    obj.pagination.currentPage = parseInt(page);
+   obj.pagination.totalPages = Math.ceil(totalRecords / parseInt(limit));
+    obj.pagination.limit=limit;
 
     obj.message = "Invoices retrieved successfully";
   } catch (error) {
