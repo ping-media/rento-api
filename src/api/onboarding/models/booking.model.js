@@ -101,7 +101,7 @@ const getBooking = async (query) => {
     const totalRecords = await Booking.count(filters);
     obj.pagination = {
      // totalRecords,
-      total: Math.ceil(totalRecords / limit),
+     totalPages: Math.ceil(totalRecords / limit),
       currentPage: Number(page),
       limit: Number(limit),
     };

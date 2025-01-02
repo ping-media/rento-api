@@ -1512,10 +1512,9 @@ const getVehicleMasterData = async (query) => {
     if (response.length) {
       obj.data = response;
       obj.pagination = {
-        totalRecords,
         totalPages: Math.ceil(totalRecords / limit),
         currentPage: Number(page),
-        pageSize: Number(limit),
+        limit: Number(limit),
       };
     } else {
       obj.status = 404;
@@ -1992,10 +1991,9 @@ const getPlanData = async (query) => {
 
     obj.data = plans;
     obj.pagination = {
-      totalRecords,
       totalPages: Math.ceil(totalRecords / limit),
       currentPage: Number(page),
-      pageSize: Number(limit),
+      limit: Number(limit),
     };
   } catch (error) {
     console.error("Error fetching plans:", error.message);
@@ -2155,10 +2153,9 @@ async function getLocationData(query) {
 
       // Add pagination metadata
       obj.pagination = {
-        totalRecords,
         totalPages: Math.ceil(totalRecords / limit),
         currentPage: Number(page),
-        pageSize: Number(limit),
+        limit: Number(limit),
       };
     } else {
       obj.status = 404;
@@ -2318,10 +2315,9 @@ const getStationData = async (query) => {
 
       obj.data = response;
       obj.pagination = {
-        totalRecords,
         totalPages: Math.ceil(totalRecords / limit),
         currentPage: Number(page),
-        pageSize: Number(limit),
+        limit: Number(limit),
       };
     } else {
       obj.status = 404;

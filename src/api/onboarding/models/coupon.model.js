@@ -78,10 +78,9 @@ const getCoupons = async (query) => {
 
       obj.data = coupons;
       obj.pagination = {
-          totalRecords,
           totalPages: Math.ceil(totalRecords / limit),
           currentPage: Number(page),
-          pageSize: Number(limit),
+          limit: Number(limit),
       };
   } catch (error) {
       console.error("Error fetching coupons:", error);

@@ -143,10 +143,9 @@ const getAllUsers = async (query) => {
     // Prepare response
     obj.data = users;
     obj.pagination = {
-      totalRecords,
       totalPages: Math.ceil(totalRecords / pageSize),
       currentPage: pageNumber,
-      pageSize,
+      limit,
     };
   } catch (error) {
     console.error("Error fetching users:", error.message);

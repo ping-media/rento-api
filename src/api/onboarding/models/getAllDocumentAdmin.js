@@ -47,10 +47,9 @@ const getAllDocument = async (req, res) => {
       message: "Documents retrieved successfully.",
       data: documents,
       pagination: {
-        totalRecords,
         totalPages,
         currentPage: pageNumber,
-        pageSize,
+        limit,
       },
     });
   } catch (error) {

@@ -241,7 +241,7 @@ const getAllVehiclesData = async (req, res) => {
     }
 
     // Attach metadata and data to response
-    const pagination = vehicles[0].pagination[0] || { total: 0, currentPage: parsedPage, limit: parsedLimit };
+    const pagination = vehicles[0].pagination[0] || { totalPages: 0, currentPage: parsedPage, limit: parsedLimit };
     response.data = vehicles[0].data;
     response.pagination = pagination;
 
