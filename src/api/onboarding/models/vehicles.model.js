@@ -2087,6 +2087,7 @@ const getPlanData = async (query) => {
 //   return obj;
 // }
 
+
 async function getLocationData(query) {
   const obj = {
     status: 200,
@@ -2169,10 +2170,6 @@ async function getLocationData(query) {
 
   return obj;
 }
-
-
-
-
 
 
 async function getLocation(query) {

@@ -164,7 +164,7 @@ async function getAllDataCount() {
 
     // Fetch bookings and calculate totalAmount
     const bookings = await Booking.find();
-    const totalAmount = bookings.reduce((acc, item) => {
+    const Amount = bookings.reduce((acc, item) => {
       const price = item.bookingPrice.discountTotalPrice && item.bookingPrice.discountTotalPrice !== 0
         ? item.bookingPrice.discountTotalPrice
         : item.bookingPrice.totalPrice;
@@ -207,7 +207,7 @@ async function getAllDataCount() {
       invoicesCount,
       plansCount,
       // ordersCount,
-      totalAmount,
+      Amount,
     };
 
     return obj;
