@@ -238,10 +238,10 @@ if (!station) {
     + station.latitude + "," + station.longitude;
 
     // Debug: Log all inputs
-    console.log(
-      "Inputs:",
-      { userId, name, contact, dealerContact, stationMasterUserId, vehicleName, BookingStartDateAndTime, bookingId, stationName, mapLink, userPaid, payableAmount, refundableDeposit }
-    );
+    // console.log(
+    //   "Inputs:",
+    //   { userId, name, contact, dealerContact, stationMasterUserId, vehicleName, BookingStartDateAndTime, bookingId, stationName, mapLink, userPaid, payableAmount, refundableDeposit }
+    // );
 
     // Validate required fields
     if (
@@ -292,7 +292,7 @@ if (!station) {
 
     // Send the request
     const response = await axios.post("https://backend.aisensy.com/campaign/t1/api/v2", data);
-    console.log("API response:", response.data);
+  //  console.log("API response:", response.data);
 
     if (response?.data?.success !== true) {
       obj.status = 400;

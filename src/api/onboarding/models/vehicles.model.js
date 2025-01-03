@@ -29,6 +29,7 @@ const Invoice = require('../../../db/schemas/onboarding/invoice-tbl.schema'); //
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Log = require("../models/Logs.model");
 const{sendBookingConfirmation}= require("../../../utils/whatsappMessage")
+const{sendOtpByEmailForBooking}= require("../../../utils/emailSend")
 
 
 const logError = async (message, functionName, userId) => {
@@ -409,6 +410,7 @@ async function booking({
         functionName: "updatebooking",
         userId,
       });
+      sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, )
       obj.status = 200;
       obj.message = "Booking Update successfull ";
       // obj.data=_id;
