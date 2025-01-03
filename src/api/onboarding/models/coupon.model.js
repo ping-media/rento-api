@@ -185,7 +185,7 @@ const updateCouponCount = async (_id) => {
     }
 
 
-    // const { couponCount } = coupon;
+     const { allowedUsersCount } = coupon;
     // let allowedUsersCount = couponCount - 1;
 
     // Ensure allowedUsersCount does not go below 0
@@ -196,7 +196,7 @@ const updateCouponCount = async (_id) => {
       return obj;
     }
 
-     let allowedUsersCount = allowedUsersCount - 1;
+      allowedUsersCount = allowedUsersCount - 1;
 
     // Update the coupon document
     const updatedCoupon = await Coupon.findByIdAndUpdate(
