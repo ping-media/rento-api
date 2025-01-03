@@ -172,10 +172,11 @@ const createCoupon = async (body) => {
 
   
 
-const updateCouponCount = async (_id) => {
+const updateCouponCount = async (query) => {
   const obj = { status: 200, message: "Data updated successfully", data: [] };
 
   try {
+    const {_id}=query;
     // Fetch coupon by ID
     const coupon = await Coupon.findById(_id);
     if (!coupon) {
@@ -197,14 +198,15 @@ const updateCouponCount = async (_id) => {
       return obj;
     }
 
-      allowedUsersCount = allowedUsersCount - 1;
+     
 
     // Update the coupon document
     const updatedCoupon = await Coupon.findByIdAndUpdate(
-      _id,
-      { $set: { allowedUsersCount } },
+      _id, 
+      { $inc: { allowedUsersCount: -1 } }, 
       { new: true } 
-    );
+        );
+    
 
     if (!updatedCoupon) {
       obj.status = 400;

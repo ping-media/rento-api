@@ -79,7 +79,7 @@ const pickupImageUp = async (req, res) => {
     const newDocument = new pickupImage({
       userId,
       bookingId,
-      files: tempObj, // Ensure your schema supports this format
+      files: tempObj,
       data
     });
 

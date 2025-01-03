@@ -1684,7 +1684,7 @@ const getVehicleTblData = async (query) => {
       limit = 20, 
     } = query;
     if (!locationId) {
-      if (!_id && (!BookingStartDateAndTime || !BookingEndDateAndTime)) {
+      if (!_id && (!BookingStartDateAndTime && !BookingEndDateAndTime && BookingStartDateAndTime == undefined && BookingEndDateAndTime == undefined  )) {
         return {
           status: 400,
           message: "Booking start and end dates are required.",
@@ -1694,8 +1694,63 @@ const getVehicleTblData = async (query) => {
     }
 
 
-    const startDate = BookingStartDateAndTime;
-    const endDate = BookingEndDateAndTime;
+    function isValidISO8601(dateString) {
+      const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+    
+      // Check if the format matches the ISO 8601 pattern
+      if (!iso8601Regex.test(dateString)) {
+        return false;
+      }
+    
+      // Check if it's a valid date
+      const date = new Date(dateString);
+      return !isNaN(date.getTime());
+    }
+
+    const startDate = isValidISO8601(BookingStartDateAndTime);
+  const endDate = isValidISO8601(BookingEndDateAndTime);
+ 
+
+  if (!startDate || !endDate) {
+    return {
+      status: 400,
+      message: "Invalid date format",
+      data: [],
+    };
+  }
+ 
+  // const now = new Date();
+
+ // console.log(typeof(startDate))
+  // Check if parsing succeeded
+  // if (parseISO(startDate) || parseISO(endDate)) {
+  //   return {
+  //     status: 400,
+  //     message: "Invalid date format. Please provide valid ISO date strings.",
+  //     data: [],
+  //   };
+  // }
+
+  // Validate date logic
+  // if (startDate <= now) {
+  //   return {
+  //     status: 400,
+  //     message: "Booking start date must be in the future.",
+  //     data: [],
+  //   };
+  // }
+
+  // if (endDate <= startDate) {
+  //   return {
+  //     status: 400,
+  //     message: "Booking end date must be after the start date.",
+  //     data: [],
+  //   };
+  // }
+
+  
+  //  const startDate = BookingStartDateAndTime;
+   // const endDate = BookingEndDateAndTime;
     const matchFilter = {};
 
     if (_id) {

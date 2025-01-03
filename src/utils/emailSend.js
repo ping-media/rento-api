@@ -465,7 +465,8 @@ async function sendOtpByEmailForBooking(body ) {
       <tr>
         <td colspan="2" align="left" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:0px 30px 10px 30px;background-color:#fff;color:#767676">
           <table style="width:100%;color:#444;padding:20px;background-color:#fafafa;border:1px solid #eee;border-radius:4px;font-size:14px">
-            <!-- <tbody><tr>
+             <tbody> 
+          <!--  <tr>
               <td style="color:#444">OTP</td>
               <td style="font-weight:bold;text-align:right">9687</td>
             </tr> -->
