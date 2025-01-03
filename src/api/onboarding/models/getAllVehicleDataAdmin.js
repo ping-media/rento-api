@@ -76,67 +76,67 @@ const getAllVehiclesData = async (req, res) => {
     const parsedLimit = Math.max(parseInt(limit, 10), 1);
 
 
-    const Aggregation = [
-      // Join with vehicle masters collection
-      {
-        $lookup: {
-          from: "vehiclemasters",
-          localField: "vehicleMasterId",
-          foreignField: "_id",
-          as: "vehicleMasterData",
-        },
-      },
+    // const Aggregation = [
+    //   // Join with vehicle masters collection
+    //   {
+    //     $lookup: {
+    //       from: "vehiclemasters",
+    //       localField: "vehicleMasterId",
+    //       foreignField: "_id",
+    //       as: "vehicleMasterData",
+    //     },
+    //   },
     
-      // Join with stations collection
-      {
-        $lookup: {
-          from: "stations",
-          localField: "stationId",
-          foreignField: "stationId",
-          as: "stationData",
-        },
-      },
+    //   // Join with stations collection
+    //   {
+    //     $lookup: {
+    //       from: "stations",
+    //       localField: "stationId",
+    //       foreignField: "stationId",
+    //       as: "stationData",
+    //     },
+    //   },
     
-      // Join with bookings collection to check booking status
-      {
-        $lookup: {
-          from: "bookings", // Assuming "bookings" is the collection name
-          localField: "_id", // Assuming vehicle `_id` is referenced in bookings
-          foreignField: "vehicleId", // Field in bookings referencing the vehicle
-          as: "bookingData",
-        },
-      },
+    //   // Join with bookings collection to check booking status
+    //   {
+    //     $lookup: {
+    //       from: "bookings", // Assuming "bookings" is the collection name
+    //       localField: "_id", // Assuming vehicle `_id` is referenced in bookings
+    //       foreignField: "vehicleId", // Field in bookings referencing the vehicle
+    //       as: "bookingData",
+    //     },
+    //   },
     
-      // Add a bookingStatus field based on booking existence
-      {
-        $addFields: {
-          bookingStatus: {
-            $cond: {
-              if: { $gt: [{ $size: "$bookingData" }, 0] }, // Check if bookingData array is not empty
-              then: "Booked",
-              else: "Available",
-            },
-          },
-        },
-      },
+    //   // Add a bookingStatus field based on booking existence
+    //   {
+    //     $addFields: {
+    //       bookingStatus: {
+    //         $cond: {
+    //           if: { $gt: [{ $size: "$bookingData" }, 0] }, // Check if bookingData array is not empty
+    //           then: "Booked",
+    //           else: "Available",
+    //         },
+    //       },
+    //     },
+    //   },
     
-      // Match filter criteria
-      { $match: filter },
+    //   // Match filter criteria
+    //   { $match: filter },
     
-      // Pagination using $facet
-      {
-        $facet: {
-          pagination: [
-            { $count: "total" },
-            { $addFields: { currentPage: parsedPage, limit: parsedLimit } },
-          ],
-          data: [
-            { $skip: (parsedPage - 1) * parsedLimit },
-            { $limit: parsedLimit },
-          ],
-        },
-      },
-    ]
+    //   // Pagination using $facet
+    //   {
+    //     $facet: {
+    //       pagination: [
+    //         { $count: "total" },
+    //         { $addFields: { currentPage: parsedPage, limit: parsedLimit } },
+    //       ],
+    //       data: [
+    //         { $skip: (parsedPage - 1) * parsedLimit },
+    //         { $limit: parsedLimit },
+    //       ],
+    //     },
+    //   },
+    // ]
 
     // Aggregate query
     const vehicles = await vehicleTable.aggregate([
@@ -215,16 +215,10 @@ const getAllVehiclesData = async (req, res) => {
         },
       },
 
-      // Match filter criteria
       { $match: filter },
-
-      // Pagination using $facet
       {
         $facet: {
-          pagination: [
-            { $count: "total" },
-            { $addFields: { currentPage: parsedPage, limit: parsedLimit } },
-          ],
+          totalCount: [{ $count: "totalRecords" }],
           data: [
             { $skip: (parsedPage - 1) * parsedLimit },
             { $limit: parsedLimit },
@@ -233,19 +227,38 @@ const getAllVehiclesData = async (req, res) => {
       },
     ]);
 
-    // Handle empty results
-    if (!vehicles.length || !vehicles[0].data.length) {
-      response.status = 404;
-      response.message = "No records found";
-      return res.json(response);
+    if (!vehicles.length || !vehicles[0].totalCount.length) {
+      return res.status(404).json({
+        status: 404,
+        message: "No records found",
+        data: [],
+        pagination: {
+          totalPages: 0,
+          currentPage: parsedPage,
+          limit: parsedLimit,
+        },
+      });
     }
 
-    // Attach metadata and data to response
-    const pagination = vehicles[0].pagination[0] || { totalPages: 0, currentPage: parsedPage, limit: parsedLimit };
-    response.data = vehicles[0].data;
-    response.pagination = pagination;
+    // Extract total records and calculate total pages
+    const totalRecords = vehicles[0].totalCount[0]?.totalRecords || 0;
+    const totalPages = Math.ceil(totalRecords / parsedLimit);
 
-    return res.status(200).json(response);
+    // Extract data
+    const data = vehicles[0].data || [];
+
+    return res.json({
+      status: 200,
+      message: "Data fetched successfully",
+      data,
+      pagination: {
+        totalRecords,
+        totalPages,
+        currentPage: parsedPage,
+        limit: parsedLimit,
+      },
+    });
+  
   } catch (error) {
     console.error("Error fetching vehicle data:", error.message);
     response.status = 500;

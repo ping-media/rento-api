@@ -1714,6 +1714,9 @@ const getVehicleTblData = async (query) => {
 
     }
 
+    const parsedPage = Math.max(parseInt(page, 10), 1);
+    const parsedLimit = Math.max(parseInt(limit, 10), 1);
+
     const pipeline = [
       { $match: matchFilter },
       {
@@ -1808,29 +1811,49 @@ const getVehicleTblData = async (query) => {
       },
       {
         $facet: {
-          metadata: [
-            { $count: "total" },
-            { $addFields: { page: parseInt(page, 10), limit: parseInt(limit, 10) } },
-
-          ],
+          totalCount: [{ $count: "totalRecords" }],
           data: [
-            { $skip: (parseInt(page, 10) - 1) * parseInt(limit, 10) },
-            { $limit: parseInt(limit, 10) },
+            { $skip: (parsedPage - 1) * parsedLimit },
+            { $limit: parsedLimit },
           ],
         },
       },
     ];
 
-    const results = await vehicleTable.aggregate(pipeline);
+    const vehicles = await vehicleTable.aggregate(pipeline);
 
-    if (results.length && results[0].metadata.length) {
-      response.data = results[0].data;
-      response.pagination = results[0].metadata[0];
-    } else {
-      response.message = _id
-        ? "No vehicle found with the given ID."
-        : "No available vehicles found for the selected criteria.";
+    if (!vehicles.length || !vehicles[0].totalCount.length) {
+      
+      response.status= 404;
+      response.message= "No records found";
+      response.data= [];
+      response.pagination= {
+          totalPages: 0,
+          currentPage: parsedPage,
+          limit: parsedLimit,
+        }
+ 
     }
+
+    // Extract total records and calculate total pages
+    const totalRecords = vehicles[0].totalCount[0]?.totalRecords || 0;
+    const totalPages = Math.ceil(totalRecords / parsedLimit);
+
+    // Extract data
+    response.data = vehicles[0].data || [];
+
+    
+    response.status= 200;
+      response.message= "Data fetched successfully";
+      response.data;
+      response.pagination= {
+        totalRecords,
+        totalPages,
+        currentPage: parsedPage,
+        limit: parsedLimit,
+      };
+  
+  
   } catch (error) {
     console.error("Error in getVehicleTblData:", error.message);
     response.status = 500;
@@ -2086,7 +2109,7 @@ const getPlanData = async (query) => {
 
 //   return obj;
 // }
-
+//9/
 
 async function getLocationData(query) {
   const obj = {
