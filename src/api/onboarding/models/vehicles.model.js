@@ -410,7 +410,7 @@ async function booking({
         functionName: "updatebooking",
         userId,
       });
-      sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, )
+     // sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, )
       obj.status = 200;
       obj.message = "Booking Update successfull ";
       // obj.data=_id;

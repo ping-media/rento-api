@@ -232,11 +232,32 @@ async function sendOtpByEmail(email, firstName, lastName) {
 
 
 
-async function sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, ) {
+async function sendOtpByEmailForBooking(body ) {
+  const {userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic,}=body;
   try {
+   // console.log(userId, stationId,stationMasterUserId,)
 
-    const {email, firstName, lastName, contact}= await User.findOne({_id: userId});
-    const {address, latitude, longitude }= await Station.findOne(stationId);
+    function convertDateString(dateString) {
+      if (!dateString) return "Invalid date";
+    
+      const date = new Date(dateString);
+      if (isNaN(date)) return "Invalid date";
+    
+      const options = { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric', 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
+      };
+    
+      return date.toLocaleString('en-US', options);
+    }
+
+    const {email, firstName, lastName,}= await User.findOne({_id: userId});
+    const {address, latitude, longitude }=  await Station.findOne({ name: stationId }); 
+
     const station = await User.findOne({ _id: stationMasterUserId }); 
    // console.log(bookingPrice, vehicleBasic)
     const mapLink = "https://www.google.com/maps/search/?api=1&query="
@@ -246,8 +267,8 @@ async function sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, b
 
     const info = await transporter.sendMail({
       from: '"Rento-Moto Support" <support@rentobikes.com>',
-      to: "himanshu.masai@gmail.com",
-      subject: "Welcome to RentoBikes!",
+      to: email,
+      subject: ` Booking Confirmed - Your RentoBikes Booking ID ${bookingId} has been confirmed!`,
       html:`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -298,13 +319,13 @@ async function sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, b
         </td>
         <td>
           <span style="color:#777;font-size:12px;color:#aaa;font-weight:bold">START TRIP</span><br>
-          <span>${BookingStartDateAndTime}</span>
+          <span>${convertDateString(BookingStartDateAndTime)}</span>
         </td>
       </tr>
       <tr>
         <td>
           <span style="color:#777;font-size:12px;color:#aaa;font-weight:bold">END TRIP</span><br>
-          <span>${BookingEndDateAndTime}</span>
+          <span>${convertDateString(BookingEndDateAndTime)}</span>
         </td>
       </tr>
       <tr>
@@ -346,7 +367,7 @@ async function sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, b
         <td>
           <span style="height:14px;display:inline-block;color:#777;font-size:12px;color:#aaa;font-weight:bold">PHONE
             NUMBER</span><br>
-          <span style="display:inline-block;padding-bottom:8px">${contact}</span>
+          <span style="display:inline-block;padding-bottom:8px">${station.contact}</span>
         </td>
       </tr>
       <tr>
@@ -455,7 +476,7 @@ async function sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, b
             </tr> -->
             <tr>
               <td style="color:#444">Distance Limit</td>
-              <td style="font-weight:bold;text-align:right">3000 Km/h</td>
+              <td style="font-weight:bold;text-align:right">${vehicleBasic.freeLimit} Km/h</td>
             </tr>
             <tr>
               <td colspan="2" style="color:#999;font-size:12px;padding-bottom:15px">

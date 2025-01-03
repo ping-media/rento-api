@@ -25,6 +25,8 @@ const {
   getAllInvoice,
   sendBookingDetailesTosocial,
   
+
+  
   
 } = require("../models/vehicles.model");
 
@@ -32,10 +34,26 @@ const { createCoupon, getCoupons, updateCouponCount, applyCoupon } = require("..
 const {getBookings, getBooking}= require("../models/booking.model")
 const {getVehicleBookrecode,VehicleBookrecode}= require("../models/Vehicle.Bookrecode.module");
 const {fileUpload} = require("../models/locationUpload.model")
+const {sendOtpByEmailForBooking}=require("../../../utils/emailSend")
 
 exports.sendBookingDetailesTosocial = async (req, res) => {
   try {
     const result = await sendBookingDetailesTosocial(req.body,req.query,req.headers);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
+
+
+exports.sendOtpByEmailForBooking = async (req, res) => {
+  try {
+    const result = await sendOtpByEmailForBooking(req.body,req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({

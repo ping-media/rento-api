@@ -29,6 +29,7 @@ const {paymentRec} = require ("../models/payment.modol");
 const Authentication = require ("../../../middlewares/Authentication");
 const{deleteS3Bucket}=require("../models/deleteS3Bucket");
 const {getBookingGraphData}= require("../models/graphData")
+
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
   vehiclesService.sendBookingDetailesTosocial(req, res);
@@ -674,6 +675,13 @@ router.post("/createOrderId", async (req, res) => {
 router.get("/paymentRec",Authentication, async (req, res) => {
 
   paymentRec(req,res);
+
+}
+
+)
+router.post("/sendOtpByEmailForBooking", async (req, res) => {
+
+  vehiclesService.sendOtpByEmailForBooking(req,res);
 
 })
 
