@@ -113,6 +113,7 @@ const createCoupon = async (body) => {
       ...(discountType && { discountType }),
       ...( isCouponActive && { isCouponActive }),
       ...( couponCount && { couponCount }),
+      ...( allowedUsersCount && { allowedUsersCount }),
     };
 
     if (_id) {
@@ -184,15 +185,18 @@ const updateCouponCount = async (_id) => {
     }
 
 
-    const { couponCount } = coupon;
-    let allowedUsersCount = couponCount - 1;
+    // const { couponCount } = coupon;
+    // let allowedUsersCount = couponCount - 1;
 
     // Ensure allowedUsersCount does not go below 0
-    if (allowedUsersCount < 0) {
+
+    if (allowedUsersCount ==0 ) {
       obj.status = 400;
       obj.message = "Coupon usage limit exceeded";
       return obj;
     }
+
+     let allowedUsersCount = allowedUsersCount - 1;
 
     // Update the coupon document
     const updatedCoupon = await Coupon.findByIdAndUpdate(
