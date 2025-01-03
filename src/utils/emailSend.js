@@ -235,15 +235,18 @@ async function sendOtpByEmail(email, firstName, lastName) {
 async function sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, ) {
   try {
 
-    const {firstName, lastName}= await User.findOne({_id: userId});
-    const {address, latitude, longitude, }= await Station.findOne(stationId);
+    const {email, firstName, lastName, contact}= await User.findOne({_id: userId});
+    const {address, latitude, longitude }= await Station.findOne(stationId);
     const station = await User.findOne({ _id: stationMasterUserId }); 
+   // console.log(bookingPrice, vehicleBasic)
     const mapLink = "https://www.google.com/maps/search/?api=1&query="
     + latitude + "," + longitude;
 
+
+
     const info = await transporter.sendMail({
       from: '"Rento-Moto Support" <support@rentobikes.com>',
-      to: email,
+      to: "himanshu.masai@gmail.com",
       subject: "Welcome to RentoBikes!",
       html:`<!DOCTYPE html>
 <html lang="en">
@@ -343,7 +346,7 @@ async function sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, b
         <td>
           <span style="height:14px;display:inline-block;color:#777;font-size:12px;color:#aaa;font-weight:bold">PHONE
             NUMBER</span><br>
-          <span style="display:inline-block;padding-bottom:8px">${station.contact}</span>
+          <span style="display:inline-block;padding-bottom:8px">${contact}</span>
         </td>
       </tr>
       <tr>
@@ -369,7 +372,7 @@ async function sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, b
           <table style="width:100%;color:#444;padding:20px;background-color:#fafafa;border:1px solid #eee;border-radius:4px;font-size:14px">
             <tbody><tr>
               <td style="color:#444">Bike Rental</td>
-              <td style="font-weight:bold;text-align:right;width:80px">₹ ${rentAmount}</td>
+              <td style="font-weight:bold;text-align:right;width:80px">₹ ${bookingPrice.rentAmount}</td>
             </tr>
             <tr>
               <td colspan="2" style="color:#999;font-size:12px">
@@ -471,7 +474,7 @@ async function sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, b
             </tr>
             <tr>
               <td style="color:#444">Late Drop Fee</td>
-              <td style="font-weight:bold;text-align:right">₹ ${lateFee} / Hour
+              <td style="font-weight:bold;text-align:right">₹ ${vehicleBasic.lateFee} / Hour
               </td>
             </tr>
             <tr>
@@ -481,7 +484,7 @@ async function sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, b
             </tr>
             <tr>
               <td style="color:#444">Speed Limit</td>
-              <td style="font-weight:bold;text-align:right">${speedLimit} Km/h
+              <td style="font-weight:bold;text-align:right">${vehicleBasic.speedLimit} Km/h
               </td>
             </tr>
             <tr>
@@ -618,5 +621,79 @@ async function sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, b
     return { success: false, error: error.message };
   }
 }
+
+// async function sendOtpByEmailForBooking(
+//   userId,
+//   stationId,
+//   stationMasterUserId,
+//   bookingId,
+//   vehicleImage,
+//   vehicleName,
+//   stationName,
+//   BookingStartDateAndTime,
+//   BookingEndDateAndTime,
+//   bookingPrice,
+//   vehicleBasic,
+// ) {
+//   try {
+//     // Fetch user details
+//     const user = await User.findOne({ _id: userId });
+//     if (!user) throw new Error("User not found");
+//     const { firstName, lastName, email } = user;
+
+//     // Fetch station details
+//     const stationDetails = await Station.findOne(stationId);
+//     if (!stationDetails) throw new Error("Station not found");
+//     const { address, latitude, longitude, } = stationDetails;
+
+//     // Fetch station master details
+//     const stationMaster = await User.findOne({ _id: stationDetails.userId });
+//     if (!stationMaster) throw new Error("Station master not found");
+
+//     // Generate map link
+//     const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+
+//     // Email content
+//     const emailContent = `<!DOCTYPE html>
+//     <html lang="en">
+//     <head>
+//       <meta charset="UTF-8">
+//       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//       <title>Booking Confirmation</title>
+//     </head>
+//     <body>
+//       <p>Hello ${firstName} ${lastName},</p>
+//       <p>Your booking has been confirmed with ID: ${bookingId}</p>
+//       <p>Details:</p>
+//       <ul>
+//         <li>Vehicle: ${vehicleName}</li>
+//         <li>Start Time: ${BookingStartDateAndTime}</li>
+//         <li>End Time: ${BookingEndDateAndTime}</li>
+//         <li>Location: ${stationName}</li>
+//         <li>Address: ${address}</li>
+//         <li>Google Maps: <a href="${mapLink}">View</a></li>
+//         <li>Total Price: ₹${bookingPrice.totalPrice}</li>
+//       </ul>
+//       <img src="${vehicleImage}" alt="Vehicle" style="width: 100%; max-width: 400px; height: auto;">
+//       <p>Thank you for choosing RentoBikes!</p>
+//     </body>
+//     </html>`;
+
+//     // Send email
+//     const info = await transporter.sendMail({
+//       from: '"Rento-Moto Support" <support@rentobikes.com>',
+//       to: email,
+//       subject: "Booking Confirmation - RentoBikes",
+//       html: emailContent,
+//     });
+
+//     console.log("Email sent: %s", info.messageId);
+//     return true;
+//   } catch (error) {
+//     console.error("Error sending email:", error.message);
+//     return false;
+//   }
+// }
+
 
 module.exports = { sendOtpByEmail, sendOtpByEmailForBooking};
