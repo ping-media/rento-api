@@ -190,7 +190,8 @@ const updateCouponCount = async (_id) => {
 
     // Ensure allowedUsersCount does not go below 0
 
-    if (allowedUsersCount ==0 ) {
+
+    if (allowedUsersCount == 0 ) {
       obj.status = 400;
       obj.message = "Coupon usage limit exceeded";
       return obj;
@@ -259,7 +260,7 @@ const applyCoupon = async (body) => {
     // }
 
     // Check coupon usage limits
-    if (coupon.couponCount >= coupon.allowedUsersCount) {
+    if (coupon.allowedUsersCount == 0) {
     
         obj.status= 400;
         obj.message= "Coupon usage limit reached";
