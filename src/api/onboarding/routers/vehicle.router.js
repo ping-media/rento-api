@@ -424,14 +424,9 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
 
 
 router.get("/getAllVehiclesData",Authentication, async (req, res) => {
-  console.log(req.user)
   getAllVehiclesData(req, res);
 
-  // const ipAddress = 
-  //   req.headers['x-forwarded-for'] || // For clients behind a proxy
-  //   req.socket.remoteAddress || // Direct connection
-  //   null;
-  // console.log(ipAddress)
+  
 
 })
 
@@ -440,28 +435,39 @@ router.get("/getAllInvoice", async (req, res) => {
 })
 
 router.post("/validedToken", async (req, res) => {
- const {token} = req.body;
-     if (!token) {
-       return res.status(401).json({ message: "Authentication token is required" });
-     }
-     try {
-       
-       const decoded = jwt.verify(token, process.env.BCRYPT_TOKEN);
-       req.user = decoded;
-       const _id=req.user.id;
-       console.log(_id)
-      // consele.log(decoded)
-     const Users= await User.findOne({_id})
-     if(!Users) return res.json({ isUserValid: false });
-     if(Users.status=="active")return res.json({ isUserValid: true })
-     return res.json({ isUserValid: false })
- 
-     } catch (error) {
-       return res.status(401).json({ message: "Invalid or expired token" });
-     }
-     
-}
-)
+  const { token, _id } = req.body;
+  console.log("Received token and _id:", token, _id);
+
+  try {
+    let userId = _id;
+
+    if (!userId) {
+      if (!token) {
+        return res.status(401).json({ message: "Authentication token is required" });
+      }
+
+      const decoded = jwt.verify(token, process.env.BCRYPT_TOKEN);
+      req.user = decoded;
+      userId = req.user.id; 
+    }
+
+    console.log("User ID:", userId);
+
+    const user = await User.findOne({ _id: userId });
+    if (!user) {
+      return res.json({ isUserValid: false });
+    }
+
+    if (user.status === "active") {
+      return res.json({ isUserValid: true });
+    }
+
+    return res.json({ isUserValid: false });
+  } catch (error) {
+    console.error("Error during token validation:", error.message);
+    return res.status(401).json({ message: "Invalid or expired token" });
+  }
+});
 
 
 

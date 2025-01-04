@@ -1781,6 +1781,7 @@ const getVehicleTblData = async (query) => {
               cond: {
                 $and: [
                   { $in: ["$$booking.bookingStatus", ["pending", "done"]] },
+                  { $in: ["$$booking.rideStatus", ["ongoing"]] },
                   {
                     $and: [
                       { $lte: ["$$booking.BookingStartDateAndTime", endDate] },

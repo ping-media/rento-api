@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const jwtDecode=require("jwt-decode")
 
 const Authentication = (req, res, next) => {
     const {token} = req.headers;
@@ -8,7 +7,7 @@ const Authentication = (req, res, next) => {
       return res.status(401).json({ message: "Authentication token is required" });
     }
     try {
-      
+
       const decoded = jwt.verify(token, process.env.BCRYPT_TOKEN);
       req.user = decoded;
      // consele.log(decoded)
