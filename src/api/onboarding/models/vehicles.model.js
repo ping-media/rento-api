@@ -851,7 +851,7 @@ async function createInvoice({ _id }) {
     // console.log(bookings)
 
     const paidInvoice = paymentStatus
-    console.log(paidInvoice)
+    // console.log(paidInvoice)
 
     // Validate `paidInvoice` status if provided
     if (paidInvoice && !['pending', 'partiallyPay', 'partially_paid', 'paid', 'failed', 'refunded'].includes(paidInvoice)) {

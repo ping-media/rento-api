@@ -3,6 +3,8 @@ const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 require('dotenv').config();
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
+const Booking = require('../../../db/schemas/onboarding/booking.schema')
+
 
 // Validate required environment variables
 const { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME } = process.env;
@@ -36,6 +38,15 @@ const pickupImageUp = async (req, res) => {
     if (!userId || userId.length !== 24) {
       return res.json({ message: "Invalid user ID provided." });
     }
+
+    const existingInvoice = await Booking.findOne({ bookingId });
+    if (existingInvoice) {
+      return {
+        status: 401,
+        message: "Invoice already exists for this booking",
+      };
+    }
+    const _id=existingInvoice._id
 
     // Prepare an array to store uploaded file details
     const uploadedFiles = [];
@@ -85,6 +96,11 @@ const pickupImageUp = async (req, res) => {
     });
 
     await newDocument.save();
+    const updateResult = await Booking.updateOne(
+      { _id },
+      { $set: { "bookingPrice.isPickupImagaAdded": true } },
+      { new: true }
+    );
 
     return res.json({
       status: 200,
