@@ -1684,7 +1684,7 @@ const getVehicleTblData = async (query) => {
       limit = 20, 
     } = query;
     if (!locationId) {
-      if (!_id && (!BookingStartDateAndTime && !BookingEndDateAndTime && BookingStartDateAndTime == undefined && BookingEndDateAndTime == undefined  )) {
+      if (!_id && (!BookingStartDateAndTime && !BookingEndDateAndTime )) {
         return {
           status: 400,
           message: "Booking start and end dates are required.",
@@ -1707,11 +1707,11 @@ const getVehicleTblData = async (query) => {
       return !isNaN(date.getTime());
     }
 
-    const startDate = isValidISO8601(BookingStartDateAndTime);
-  const endDate = isValidISO8601(BookingEndDateAndTime);
+    const startDateValidation = isValidISO8601(BookingStartDateAndTime);
+  const endDateValidation = isValidISO8601(BookingEndDateAndTime);
  
-
-  if (!startDate || !endDate) {
+//console.log(startDateValidation,endDateValidation)
+  if (!startDateValidation || !endDateValidation) {
     return {
       status: 400,
       message: "Invalid date format",
@@ -1719,38 +1719,10 @@ const getVehicleTblData = async (query) => {
     };
   }
  
-  // const now = new Date();
-
- // console.log(typeof(startDate))
-  // Check if parsing succeeded
-  // if (parseISO(startDate) || parseISO(endDate)) {
-  //   return {
-  //     status: 400,
-  //     message: "Invalid date format. Please provide valid ISO date strings.",
-  //     data: [],
-  //   };
-  // }
-
-  // Validate date logic
-  // if (startDate <= now) {
-  //   return {
-  //     status: 400,
-  //     message: "Booking start date must be in the future.",
-  //     data: [],
-  //   };
-  // }
-
-  // if (endDate <= startDate) {
-  //   return {
-  //     status: 400,
-  //     message: "Booking end date must be after the start date.",
-  //     data: [],
-  //   };
-  // }
-
+ 
   
-  //  const startDate = BookingStartDateAndTime;
-   // const endDate = BookingEndDateAndTime;
+   const startDate = BookingStartDateAndTime;
+   const endDate = BookingEndDateAndTime;
     const matchFilter = {};
 
     if (_id) {

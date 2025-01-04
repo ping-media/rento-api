@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const vehiclesService = require("../services/vehicles.service");
 const auth = require("../../../middlewares/auth/index");
-const Booking = require("../../../api/./onboarding/./models/./booking.model")
+const User = require("../../../db/schemas/onboarding/user.schema")
 const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
@@ -22,13 +22,15 @@ const { getPickupImage, pickupImageUp, getAllPickupImage } = require("../models/
 const { getAllLogs } = require("../models/getlogs.model")
 const {handler}=require("../../../utils/cron");
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
-const requestIp = require('request-ip')
 const Log = require("../models/Logs.model")
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 const {paymentRec} = require ("../models/payment.modol");
 const Authentication = require ("../../../middlewares/Authentication");
 const{deleteS3Bucket}=require("../models/deleteS3Bucket");
-const {getBookingGraphData}= require("../models/graphData")
+const {getBookingGraphData}= require("../models/graphData");
+const jwt = require("jsonwebtoken");
+
+
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
@@ -422,7 +424,9 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
 
 
 router.get("/getAllVehiclesData",Authentication, async (req, res) => {
+  console.log(req.user)
   getAllVehiclesData(req, res);
+
   // const ipAddress = 
   //   req.headers['x-forwarded-for'] || // For clients behind a proxy
   //   req.socket.remoteAddress || // Direct connection
@@ -434,6 +438,30 @@ router.get("/getAllVehiclesData",Authentication, async (req, res) => {
 router.get("/getAllInvoice", async (req, res) => {
   vehiclesService.getAllInvoice(req, res);
 })
+
+router.post("/validedToken", async (req, res) => {
+ const {token} = req.body;
+     if (!token) {
+       return res.status(401).json({ message: "Authentication token is required" });
+     }
+     try {
+       
+       const decoded = jwt.verify(token, process.env.BCRYPT_TOKEN);
+       req.user = decoded;
+       const _id=req.user.id;
+       console.log(_id)
+      // consele.log(decoded)
+     const Users= await User.findOne({_id})
+     if(!Users) return res.json({ isUserValid: false });
+     if(Users.status=="active")return res.json({ isUserValid: true })
+     return res.json({ isUserValid: false })
+ 
+     } catch (error) {
+       return res.status(401).json({ message: "Invalid or expired token" });
+     }
+     
+}
+)
 
 
 

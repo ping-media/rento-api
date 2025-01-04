@@ -110,7 +110,7 @@ async function adminLogin({ email, password }) {
       return obj;
     }
 
-    const token = JWT.sign({ id: result._id }, BCRYPT_TOKEN);
+    const token = JWT.sign({ id: result._id }, BCRYPT_TOKEN,{expiresIn:"43200m"});
     obj.data = result
     obj.token = token
   } else {
