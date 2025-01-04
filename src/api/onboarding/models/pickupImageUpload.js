@@ -30,7 +30,7 @@ const upload = multer({
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
-    const { userId, bookingId, data } = req.body;
+    const { userId, bookingId, data, vehicleMeterReding } = req.body;
 
     // Validate userId
     if (!userId || userId.length !== 24) {
@@ -80,7 +80,8 @@ const pickupImageUp = async (req, res) => {
       userId,
       bookingId,
       files: tempObj,
-      data
+      data,
+      vehicleMeterReding
     });
 
     await newDocument.save();
