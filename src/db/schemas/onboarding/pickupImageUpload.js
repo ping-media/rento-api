@@ -30,7 +30,7 @@ const fileSchema = new mongoose.Schema({
 
 const pickupImageSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
-  bookingId: { type:String,required:true },
+  bookingId: {type: mongoose.Schema.Types.ObjectId, ref: 'BookingId' ,required:true },
   files: { type: Map, of: fileSchema, required: true },
   data:{type:Object},
   vehicleMeterReading:{type:Number},

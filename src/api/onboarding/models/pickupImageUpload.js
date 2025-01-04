@@ -33,20 +33,21 @@ const upload = multer({
 const pickupImageUp = async (req, res) => {
   try {
     const { userId, bookingId, data, vehicleMeterReding } = req.body;
-
+ // console.log(bookingId)
     // Validate userId
     if (!userId || userId.length !== 24) {
       return res.json({ message: "Invalid user ID provided." });
     }
 
-    const existingInvoice = await Booking.findOne({ bookingId });
+    const existingInvoice = await Booking.findOne({bookingId});
     if (existingInvoice) {
       return {
         status: 401,
         message: "Invoice already exists for this booking",
       };
     }
-    const _id=existingInvoice._id
+   // const _id=existingInvoice._id
+   // console.log(_id,existingInvoice)
 
     // Prepare an array to store uploaded file details
     const uploadedFiles = [];
@@ -76,7 +77,7 @@ const pickupImageUp = async (req, res) => {
       uploadedFiles.push({ fileName, imageUrl });
     }
 
-    console.log(uploadedFiles)
+   //console.log(uploadedFiles)
     // Construct the tempObj with proper keys and values
     const tempObj = {};
     uploadedFiles.forEach((file, index) => {
@@ -96,16 +97,17 @@ const pickupImageUp = async (req, res) => {
     });
 
     await newDocument.save();
+    const _id=bookingId;
     const updateResult = await Booking.updateOne(
       { _id },
       { $set: { "bookingPrice.isPickupImagaAdded": true } },
       { new: true }
     );
-
+console.log(updateResult)
     return res.json({
       status: 200,
       message: "Files uploaded successfully.",
-      uploadedFiles,
+      newDocument,
     });
   } catch (error) {
     console.error("Error uploading files:", error);
