@@ -1879,7 +1879,7 @@ const getVehicleTblData = async (query) => {
     // Extract data
     response.data = vehicles[0].data || [];
 
-    console.log( response.data)
+   // console.log( response.data)
     response.status= 200;
       response.message= "Data fetched successfully";
       response.data;

@@ -27,6 +27,7 @@ const getAllDocument = async (req, res) => {
 
     // Fetch documents
     const documents = await Document.find(filter)
+    .populate("userId")
       .skip(skip)
       .limit(pageSize)
       .sort({ createdAt: -1 }); // Sort by creation date (most recent first)

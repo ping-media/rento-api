@@ -4,8 +4,8 @@ const Schema = mongoose.Schema;
 const documentSchema = new Schema(
   {
     userId: {
-      type: String,
-      ref: 'users',
+      type:  Schema.Types.ObjectId,
+      ref: 'User',
       required: true,
     },
     files: [
