@@ -555,7 +555,7 @@ router.delete("/deleteDocument", async (req, res) => {
       response.message = "Invalid _id format";
       return res.json(response);
     }
-
+   
     // Fetch the document by ID
     const document = await Document.findById(_id);
 
@@ -574,13 +574,18 @@ router.delete("/deleteDocument", async (req, res) => {
     // Filter out the file with the specified fileName
     const updatedFiles = document.files.filter(file => file.fileName !== fileName);
 
-    // Update the document or delete it if no files remain
+    if (fileName) {
+      // Delete the file from S3
+      console.log("enter")
+      await deleteS3Bucket(fileName);
+    }
+    
     if (updatedFiles.length === 0) {
       await Document.deleteOne({ _id });
       await Log({
         message: `Document with ID ${_id} deleted`,
         functionName: "deleteDocument",
-        userId,
+       
       });
       response.message = "Document deleted successfully";
 
@@ -589,7 +594,7 @@ router.delete("/deleteDocument", async (req, res) => {
       await Log({
         message: `Document with ID ${_id} deleted`,
         functionName: "deleteDocument",
-        userId,
+        
       });
       response.message = "Document deleted successfully";
 
