@@ -549,12 +549,7 @@ router.post("/deleteDocument", async (req, res) => {
       return res.json(response);
     }
 
-    // Ensure _id is a valid ObjectId
-    if (!mongoose.Types.ObjectId.isValid(_id)) {
-      response.status = 400;
-      response.message = "Invalid _id format";
-      return res.json(response);
-    }
+   
    
     // Fetch the document by ID
     const document = await Document.findById(_id);
@@ -565,11 +560,11 @@ router.post("/deleteDocument", async (req, res) => {
       return res.json(response);
     }
 
-    if (!document.files || !Array.isArray(document.files)) {
-      response.status = 400;
-      response.message = "Files array not found in the document";
-      return res.json(response);
-    }
+    // if (!document.files || !Array.isArray(document.files)) {
+    //   response.status = 400;
+    //   response.message = "Files array not found in the document";
+    //   return res.json(response);
+    // }
 
     // Filter out the file with the specified fileName
     const updatedFiles = document.files.filter(file => file.fileName !== fileName);
@@ -577,7 +572,7 @@ router.post("/deleteDocument", async (req, res) => {
     if (fileName) {
       // Delete the file from S3
    //   console.log("enter")
-      await deleteS3Bucket(fileName);
+       deleteS3Bucket(fileName);
     }
     
     if (updatedFiles.length === 0) {
