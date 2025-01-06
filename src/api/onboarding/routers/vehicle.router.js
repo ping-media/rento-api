@@ -576,7 +576,7 @@ router.post("/deleteDocument", async (req, res) => {
 
     if (fileName) {
       // Delete the file from S3
-      console.log("enter")
+   //   console.log("enter")
       await deleteS3Bucket(fileName);
     }
     
