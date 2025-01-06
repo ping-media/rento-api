@@ -540,7 +540,7 @@ router.delete("/deleteDocument", async (req, res) => {
   const response = { status: 200, message: "", data: [] };
 
   try {
-    const { _id, fileName } = req.query;
+    const { _id, fileName } = req.body;
 
     // Validate input parameters
     if (!_id || !fileName) {
