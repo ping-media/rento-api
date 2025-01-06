@@ -536,7 +536,7 @@ router.post("/uploadDocument", upload.array('images', 5), async (req, res) => {
 
 
 
-router.delete("/deleteDocument", async (req, res) => {
+router.post("/deleteDocument", async (req, res) => {
   const response = { status: 200, message: "", data: [] };
 
   try {
