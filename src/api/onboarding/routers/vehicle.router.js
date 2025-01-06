@@ -436,7 +436,7 @@ router.get("/getAllInvoice", async (req, res) => {
 
 router.post("/validedToken", async (req, res) => {
   const { token, _id } = req.body;
-  console.log("Received token and _id:", token, _id);
+ // console.log("Received token and _id:", token, _id);
 
   try {
     let userId = _id;
@@ -451,7 +451,7 @@ router.post("/validedToken", async (req, res) => {
       userId = req.user.id; 
     }
 
-    console.log("User ID:", userId);
+  //  console.log("User ID:", userId);
 
     const user = await User.findOne({ _id: userId });
     if (!user) {

@@ -228,7 +228,7 @@ const getAllVehiclesData = async (req, res) => {
     ]);
 
     if (!vehicles.length || !vehicles[0].totalCount.length) {
-      return res.status(404).json({
+      return res.json({
         status: 404,
         message: "No records found",
         data: [],

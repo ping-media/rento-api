@@ -1782,6 +1782,7 @@ const getVehicleTblData = async (query) => {
                 $and: [
                   { $in: ["$$booking.bookingStatus", ["pending", "done"]] },
                   { $in: ["$$booking.rideStatus", ["ongoing"]] },
+                //  { $in: ["$$vehicleStatus", ["inactive"]] },
                   {
                     $and: [
                       { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
@@ -1792,6 +1793,11 @@ const getVehicleTblData = async (query) => {
               },
             },
           },
+        },
+      },
+      {
+        $match: {
+          vehicleStatus: "active",
         },
       },
       { $match: { "conflictingBookings.0": { $exists: false } } },
@@ -1851,6 +1857,7 @@ const getVehicleTblData = async (query) => {
     ];
 
     const vehicles = await vehicleTable.aggregate(pipeline);
+   // console.log( await vehicleTable.aggregate(pipeline))
 
     if (!vehicles.length || !vehicles[0].totalCount.length) {
       
@@ -1872,7 +1879,7 @@ const getVehicleTblData = async (query) => {
     // Extract data
     response.data = vehicles[0].data || [];
 
-    
+    console.log( response.data)
     response.status= 200;
       response.message= "Data fetched successfully";
       response.data;
