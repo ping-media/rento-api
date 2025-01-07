@@ -305,14 +305,14 @@ async function booking({
         return new Date(`${year}-${month}-${day}T${hour24}:${minute}:00.000Z`).toISOString();
       };
 
-      if (BookingStartDateAndTime && BookingStartDateAndTime.startDate && BookingStartDateAndTime.startTime) {
-        const { startDate, startTime } = BookingStartDateAndTime;
-        BookingStartDateAndTime = convertToISOFormat(startDate, startTime);
-      }
-      if (BookingEndDateAndTime && BookingEndDateAndTime.endDate && BookingEndDateAndTime.endTime) {
-        const { endDate, endTime } = BookingEndDateAndTime;
-        BookingEndDateAndTime = convertToISOFormat(endDate, endTime);
-      }
+      // if (BookingStartDateAndTime && BookingStartDateAndTime.startDate && BookingStartDateAndTime.startTime) {
+      //   const { startDate, startTime } = BookingStartDateAndTime;
+      //   BookingStartDateAndTime = convertToISOFormat(startDate, startTime);
+      // }
+      // if (BookingEndDateAndTime && BookingEndDateAndTime.endDate && BookingEndDateAndTime.endTime) {
+      //   const { endDate, endTime } = BookingEndDateAndTime;
+      //   BookingEndDateAndTime = convertToISOFormat(endDate, endTime);
+      // }
 
       let sequence = 1;
       const lastBooking = await Booking.findOne({}).sort({ createdAt: -1 }).select('bookingId');

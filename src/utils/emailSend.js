@@ -264,6 +264,8 @@ async function sendOtpByEmailForBooking(body ) {
     + latitude + "," + longitude;
 
 
+    const totalPrice = bookingPrice?.totalPrice || 0; 
+    const userPaid = bookingPrice?.userPaid || 0;
 
     const info = await transporter.sendMail({
       from: '"Rento-Moto Support" <support@rentobikes.com>',
@@ -395,15 +397,15 @@ async function sendOtpByEmailForBooking(body ) {
               <td style="color:#444">Bike Rental</td>
               <td style="font-weight:bold;text-align:right;width:80px">₹ ${bookingPrice.rentAmount}</td>
             </tr>
-            <tr>
-              <td colspan="2" style="color:#999;font-size:12px">
-                <span>&nbsp;&nbsp;Monthly package</span>
-                <span style="float:right">
-                  30 Day
-                  * ₹ 183.33 * 1 Bike(s) = ₹ 5499.900000000001
-                </span>
-              </td>
-            </tr>
+            // <tr>
+            //   <td colspan="2" style="color:#999;font-size:12px">
+            //     <span>&nbsp;&nbsp;Monthly package</span>
+            //     <span style="float:right">
+            //       30 Day
+            //       * ₹ 183.33 * 1 Bike(s) = ₹ 5499.900000000001
+            //     </span>
+            //   </td>
+            // </tr>
             <tr>
               <td style="color:#444;padding-top:5px">Discount</td>
               <td style="font-weight:bold;text-align:right;color:#e23844;padding-top:5px">- ₹
@@ -429,13 +431,13 @@ async function sendOtpByEmailForBooking(body ) {
             <tr>
               <td colspan="2" style="color:#999;font-size:12px">
                 <span>&nbsp;&nbsp;Paid online</span>
-                <span style="float:right"> ₹ ${bookingPrice.userPaid}</span>
+                <span style="float:right"> ₹ ${bookingPrice.userPaid==undefined? 0 : bookingPrice.userPaid}</span>
               </td>
             </tr>
             <tr>
               <td colspan="2" style="color:#999;font-size:12px">
                 <span>&nbsp;&nbsp;Remaining amount to be paid at the time of pickup</span>
-                <span style="float:right"> ₹ ${bookingPrice.totalPrice-bookingPrice.userPaid}</span>
+                <span style="float:right"> ₹ ${totalPrice-userPaid}</span>
               </td>
             </tr>
             <tr>
@@ -644,78 +646,7 @@ async function sendOtpByEmailForBooking(body ) {
   }
 }
 
-// async function sendOtpByEmailForBooking(
-//   userId,
-//   stationId,
-//   stationMasterUserId,
-//   bookingId,
-//   vehicleImage,
-//   vehicleName,
-//   stationName,
-//   BookingStartDateAndTime,
-//   BookingEndDateAndTime,
-//   bookingPrice,
-//   vehicleBasic,
-// ) {
-//   try {
-//     // Fetch user details
-//     const user = await User.findOne({ _id: userId });
-//     if (!user) throw new Error("User not found");
-//     const { firstName, lastName, email } = user;
 
-//     // Fetch station details
-//     const stationDetails = await Station.findOne(stationId);
-//     if (!stationDetails) throw new Error("Station not found");
-//     const { address, latitude, longitude, } = stationDetails;
-
-//     // Fetch station master details
-//     const stationMaster = await User.findOne({ _id: stationDetails.userId });
-//     if (!stationMaster) throw new Error("Station master not found");
-
-//     // Generate map link
-//     const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
-
-//     // Email content
-//     const emailContent = `<!DOCTYPE html>
-//     <html lang="en">
-//     <head>
-//       <meta charset="UTF-8">
-//       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-//       <title>Booking Confirmation</title>
-//     </head>
-//     <body>
-//       <p>Hello ${firstName} ${lastName},</p>
-//       <p>Your booking has been confirmed with ID: ${bookingId}</p>
-//       <p>Details:</p>
-//       <ul>
-//         <li>Vehicle: ${vehicleName}</li>
-//         <li>Start Time: ${BookingStartDateAndTime}</li>
-//         <li>End Time: ${BookingEndDateAndTime}</li>
-//         <li>Location: ${stationName}</li>
-//         <li>Address: ${address}</li>
-//         <li>Google Maps: <a href="${mapLink}">View</a></li>
-//         <li>Total Price: ₹${bookingPrice.totalPrice}</li>
-//       </ul>
-//       <img src="${vehicleImage}" alt="Vehicle" style="width: 100%; max-width: 400px; height: auto;">
-//       <p>Thank you for choosing RentoBikes!</p>
-//     </body>
-//     </html>`;
-
-//     // Send email
-//     const info = await transporter.sendMail({
-//       from: '"Rento-Moto Support" <support@rentobikes.com>',
-//       to: email,
-//       subject: "Booking Confirmation - RentoBikes",
-//       html: emailContent,
-//     });
-
-//     console.log("Email sent: %s", info.messageId);
-//     return true;
-//   } catch (error) {
-//     console.error("Error sending email:", error.message);
-//     return false;
-//   }
-// }
 
 
 module.exports = { sendOtpByEmail, sendOtpByEmailForBooking};

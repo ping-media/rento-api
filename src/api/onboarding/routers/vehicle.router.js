@@ -713,6 +713,7 @@ router.get("/paymentRec",Authentication, async (req, res) => {
 }
 
 )
+
 router.post("/sendEmailForBookingDetails", async (req, res) => {
 
   vehiclesService.sendOtpByEmailForBooking(req,res);

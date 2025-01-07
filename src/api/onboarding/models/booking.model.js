@@ -53,6 +53,7 @@ const getBooking = async (query) => {
 
     // Build filter conditions dynamically
     const filters = {};
+    if (_id) filters._id = _id;
     if (bookingStatus) filters.bookingStatus = bookingStatus;
     if (userId) filters.userId = userId;
     if (bookingId) filters.bookingId = bookingId;
@@ -158,6 +159,7 @@ const getBookings = async (query) => {
 
     // Build filter conditions dynamically
     const filters = {};
+    if (_id) filters._id = _id;
     if (bookingStatus) filters.bookingStatus = bookingStatus;
     if (userId) filters.userId = userId;
     if (bookingId) filters.bookingId = bookingId;
