@@ -327,32 +327,32 @@ async function booking({
 
     }
 
-    const user = await User.findById(userId);
-      if (!user) {
-        obj.status = 404;
-        obj.message = "User not found";
+    // const user = await User.findById(userId);
+    //   if (!user) {
+    //     obj.status = 404;
+    //     obj.message = "User not found";
 
-        await Log({
-          message: `User not found with ID: ${userId}`,
-          functionName: "booking",
-          userId,
-        });
-        return obj;
-      }
+    //     await Log({
+    //       message: `User not found with ID: ${userId}`,
+    //       functionName: "booking",
+    //       userId,
+    //     });
+    //     return obj;
+    //   }
 
-      // Save stationMasterUser details in the booking object
-      const stationMasterUser = await User.findById(stationMasterUserId);
-      if (!stationMasterUser) {
-        obj.status = 404;
-        obj.message = "Station master user not found";
+    //   // Save stationMasterUser details in the booking object
+    //   const stationMasterUser = await User.findById(stationMasterUserId);
+    //   if (!stationMasterUser) {
+    //     obj.status = 404;
+    //     obj.message = "Station master user not found";
 
-        await Log({
-          message: `Station master user not found with ID: ${stationMasterUserId}`,
-          functionName: "booking",
-          userId,
-        });
-        return obj;
-      }
+    //     await Log({
+    //       message: `Station master user not found with ID: ${stationMasterUserId}`,
+    //       functionName: "booking",
+    //       userId,
+    //     });
+    //     return obj;
+    //   }
     
     
 
