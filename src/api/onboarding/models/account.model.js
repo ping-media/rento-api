@@ -27,7 +27,7 @@ const order = require("../../../db/schemas/onboarding/order.schema");
 const location = require("../../../db/schemas/onboarding/location.schema");
 const Otp = require("../../../db/schemas/onboarding/logOtp");
 const { log } = require("winston");
-const {whatsapp} = require("../../../utils/whatsappMessage");
+const {whatsappMessage} = require("../../../utils/whatsappMessage");
 const {sendOtpByEmail}= require("../../../utils/emailSend")
 
 
@@ -574,7 +574,7 @@ async function saveUser(userData) {
       //const name = firstName + lastName;
       const newUser = new User(userObj);
       await newUser.save();
-      whatsapp(firstName, contact)
+      whatsappMessage(contact,"welcome_customer", [firstName])
       sendOtpByEmail(email, firstName, lastName)
       return { status: 200, message: "User created successfully", data: newUser.toObject() };
     }

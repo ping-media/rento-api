@@ -23,7 +23,7 @@ const {
   getLocationData,
   getPlanData,
   getAllInvoice,
-  sendBookingDetailesTosocial,
+  
   
 
   
@@ -35,10 +35,11 @@ const {getBookings, getBooking}= require("../models/booking.model")
 const {getVehicleBookrecode,VehicleBookrecode}= require("../models/Vehicle.Bookrecode.module");
 const {fileUpload} = require("../models/locationUpload.model")
 const {sendOtpByEmailForBooking}=require("../../../utils/emailSend")
+const {whatsappMessage}=require("../../../utils/whatsappMessage")
 
 exports.sendBookingDetailesTosocial = async (req, res) => {
   try {
-    const result = await sendBookingDetailesTosocial(req.body,req.query,req.headers);
+    const result = await whatsappMessage(req.body,req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({

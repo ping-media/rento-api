@@ -28,7 +28,7 @@ const { query } = require("express");
 const Invoice = require('../../../db/schemas/onboarding/invoice-tbl.schema'); // Import the Invoice model
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Log = require("../models/Logs.model");
-const{sendBookingConfirmation}= require("../../../utils/whatsappMessage")
+const{whatsappMessage}= require("../../../utils/whatsappMessage")
 const{sendOtpByEmailForBooking}= require("../../../utils/emailSend")
 
 
@@ -295,24 +295,7 @@ async function booking({
 
       }
 
-      const convertToISOFormat = (dateString, timeString) => {
-        const [day, month, year] = dateString.split("-");
-        const [hour, minute] = timeString.split(":");
-        const ampm = timeString.split(" ")[1];
-        let hour24 = parseInt(hour, 10);
-        if (ampm === "PM" && hour24 < 12) hour24 += 12;
-        if (ampm === "AM" && hour24 === 12) hour24 = 0;
-        return new Date(`${year}-${month}-${day}T${hour24}:${minute}:00.000Z`).toISOString();
-      };
-
-      // if (BookingStartDateAndTime && BookingStartDateAndTime.startDate && BookingStartDateAndTime.startTime) {
-      //   const { startDate, startTime } = BookingStartDateAndTime;
-      //   BookingStartDateAndTime = convertToISOFormat(startDate, startTime);
-      // }
-      // if (BookingEndDateAndTime && BookingEndDateAndTime.endDate && BookingEndDateAndTime.endTime) {
-      //   const { endDate, endTime } = BookingEndDateAndTime;
-      //   BookingEndDateAndTime = convertToISOFormat(endDate, endTime);
-      // }
+      
 
       let sequence = 1;
       const lastBooking = await Booking.findOne({}).sort({ createdAt: -1 }).select('bookingId');
@@ -344,10 +327,36 @@ async function booking({
 
     }
 
+    const user = await User.findById(userId);
+      if (!user) {
+        obj.status = 404;
+        obj.message = "User not found";
+
+        await Log({
+          message: `User not found with ID: ${userId}`,
+          functionName: "booking",
+          userId,
+        });
+        return obj;
+      }
+
+      // Save stationMasterUser details in the booking object
+      const stationMasterUser = await User.findById(stationMasterUserId);
+      if (!stationMasterUser) {
+        obj.status = 404;
+        obj.message = "Station master user not found";
+
+        await Log({
+          message: `Station master user not found with ID: ${stationMasterUserId}`,
+          functionName: "booking",
+          userId,
+        });
+        return obj;
+      }
+    
     
 
-    // const user= await User.findOne({userId})
-    // const station= await User.findOne({stationMasterUserId})
+   
 
     let o = {
       vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, stationId, paymentInitiatedDate,
@@ -410,7 +419,6 @@ async function booking({
         functionName: "updatebooking",
         userId,
       });
-     // sendOtpByEmailForBooking(userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, )
       obj.status = 200;
       obj.message = "Booking Update successfull ";
       // obj.data=_id;
@@ -2480,69 +2488,69 @@ async function getMessages(chatId) {
 
 
 
-async function sendBookingDetailesTosocial(booking) {
-  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+// async function sendBookingDetailesTosocial(booking) {
+//   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
-  try {
-    const {
-      userId,
-      stationMasterUserId,
-      vehicleName,
-      BookingStartDateAndTime,
-      bookingId,
-      stationName,
-      bookingPrice,
-      vehicleBasic,
-    } = booking;
-console.log(booking)
-    // Validate mandatory fields
-    if (
-      !userId ||
-      !stationMasterUserId ||
-      !vehicleName ||
-      !BookingStartDateAndTime ||
-      !bookingId ||
-      !stationName ||
-      !bookingPrice ||
-      !vehicleBasic
-    ) {
-      console.error("Missing required booking details.");
-      obj.status = 404;
-      obj.message = "Missing required booking details.";
-      return obj;
-    }
+//   try {
+//     const {
+//       userId,
+//       stationMasterUserId,
+//       vehicleName,
+//       BookingStartDateAndTime,
+//       bookingId,
+//       stationName,
+//       bookingPrice,
+//       vehicleBasic,
+//     } = booking;
+// console.log(booking)
+//     // Validate mandatory fields
+//     if (
+//       !userId ||
+//       !stationMasterUserId ||
+//       !vehicleName ||
+//       !BookingStartDateAndTime ||
+//       !bookingId ||
+//       !stationName ||
+//       !bookingPrice ||
+//       !vehicleBasic
+//     ) {
+//       console.error("Missing required booking details.");
+//       obj.status = 404;
+//       obj.message = "Missing required booking details.";
+//       return obj;
+//     }
 
-    // Calculate payable amount and user-paid amount
-    const payableAmount = bookingPrice.userPaid
-      ? Number(bookingPrice.totalPrice) - Number(bookingPrice.userPaid)
-      : bookingPrice.totalPrice;
-    const userPaid = bookingPrice.userPaid || 0;
-    const refundableDeposit = vehicleBasic.refundableDeposit;
+//     // Calculate payable amount and user-paid amount
+//     const payableAmount = bookingPrice.userPaid
+//       ? Number(bookingPrice.totalPrice) - Number(bookingPrice.userPaid)
+//       : bookingPrice.totalPrice;
+//     const userPaid = bookingPrice.userPaid || 0;
+//     const refundableDeposit = vehicleBasic.refundableDeposit;
 
-    // Call the function to send booking confirmation
-    await sendBookingConfirmation(
+//     // Call the function to send booking confirmation
+//     await sendBookingConfirmation(
      
-      userId,
-      stationMasterUserId,
-      vehicleName,
-      BookingStartDateAndTime,
-      bookingId,
-      stationName,
-      userPaid,
-      payableAmount,
-      refundableDeposit
-    );
-    obj.status = 200;
-    obj.message = "function sendBookingConfirmation called.";
-    return obj;
+//       userId,
+//       stationMasterUserId,
+//       vehicleName,
+//       BookingStartDateAndTime,
+//       bookingId,
+//       stationName,
+//       userPaid,
+//       payableAmount,
+//       refundableDeposit
+//     );
+//     obj.status = 200;
+//     obj.message = "function sendBookingConfirmation called.";
+//     return obj;
    
-  } catch (error) {
+//   } catch (error) {
     
-    obj.status = 500;
-    obj.message = `Server error: ${err.message}`;
-  }
-  return obj;
-}
+//     obj.status = 500;
+//     obj.message = `Server error: ${err.message}`;
+//   }
+//   return obj;
+// }
 
 
 
@@ -2571,5 +2579,5 @@ module.exports = {
   getLocations,
   booking,
   getMessages,
-  sendBookingDetailesTosocial
+  
 };

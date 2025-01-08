@@ -2,64 +2,85 @@ const axios = require("axios");
 require("dotenv").config();
 const User = require("../db/schemas/onboarding/user.schema")
 const Station = require("../db/schemas/onboarding/station.schema");
-//const { findOne } = require("../db/schemas/onboarding/vehicle.schema");
-const Log= require("../db/schemas/onboarding/log")
+const Log= require("../db/schemas/onboarding/log");
+
+const url = "https://api.interakt.ai/v1/public/message/";
 
 
-async function whatsapp(name, contact) {
+
+async function whatsappMessage(body) {
+  const {contact, templateName, values}=body;
   const obj = { status: 200, message: "Message sent successfully" };
+  console.log("Contact:", contact, "TemplateName:", templateName, "Values:", values);
 
-  // Validate input
-  if (!name || !contact) {
-    obj.status = 400;
-    obj.message = "Failed to send: name and contact are required";
-    await Log({
-      message: obj.message,
-      functionName: "whatsapp message",
-    
-    });
-    return obj;
+  // Validate inputs
+  if (!contact || !templateName || !values || values.length === 0) {
+    console.error("Invalid input: contact, templateName, and values are required");
+    return {
+      status: 400,
+      message: "Invalid input: contact, templateName, and values are required",
+    };
   }
 
   // Prepare request data
   const data = {
-    apiKey: process.env.apiKey,
-    campaignName: process.env.campaignName,
-    destination: `+91${contact}`,
-    userName: `${name}`,
-    templateParams: [`${name}`],
-
+    countryCode: "+91",
+    phoneNumber: contact,
+    type: "Template",
+    template: {
+      name: templateName,
+      languageCode: "en",
+      bodyValues: values,
+    },
   };
-console.log(data)
+
+  const requestBody = JSON.stringify(data);
+
+  const headers = {
+    "Content-Type": "application/json",
+    "Authorization": "Basic UTJpU0pmUXFXVExmbWY1S1JVSVotUjA4M0dhS2VHeGNXZFdoeUNaSU9pQTo="
+};
+
+  console.log("Request Data:", data);
+
   try {
-    const response = await axios.post("https://backend.aisensy.com/campaign/t1/api/v2", data);
-    console.log("API response:", response.data);
-  
-    if (response?.data?.success !== true) {
-      obj.status = 400;
-      obj.message = response.data.message || "Failed to send: API response indicates failure";
-      await Log({
-        message: obj.message,
-        functionName: "whatsapp message",
-      
-      });
-      return obj;
-    }
-  } catch (error) {
-    console.error("Error in whatsapp function:", error.response?.data || error.message);
-    obj.status = error.response?.status || 500;
-    obj.message = error.response?.data?.message || "Internal server error";
-    await Log({
-      message: obj.messagemessage,
-      functionName: "whatsapp message",
-    
+    const response = await fetch("https://api.interakt.ai/v1/public/message/", {
+      method: "POST",
+      headers: headers,
+      body: requestBody,
     });
-    return obj;
+
+    if (!response.ok) {
+      const errorMessage = await response.text();
+      console.error("HTTP error:", response.status, response.statusText);
+      console.error("Error details:", errorMessage);
+      return {
+        status: response.status,
+        message: `Error: ${response.statusText}`,
+        details: errorMessage,
+      };
+    }
+
+    // Parse the response JSON
+    const responseData = await response.json();
+    console.log("Response Data:", responseData);
+
+    obj.message = responseData.message;
+    obj.result = responseData.result;
+
+  } catch (error) {
+    console.error("Fetch Error:", error.message);
+    return {
+      status: 500,
+      message: "Internal server error",
+      details: error.message,
+    };
   }
-  
 
   return obj;
 }
+
+
 
 // const sendBookingConfirmation = async (
 //   userId,stationMasterUserId,vehicleName,BookingStartDateAndTime,bookingId,stationName,mapLink,userPaid,payableAmount,refundableDeposit) => {
@@ -168,145 +189,152 @@ console.log(data)
 //   return obj;
 // };
 
-const sendBookingConfirmation = async (
-  userId,
-  stationMasterUserId,
-  vehicleName,
-  BookingStartDateAndTime,
-  bookingId,
-  stationName,
-  userPaid,
-  payableAmount,
-  refundableDeposit
-) => {
-  const obj = { status: 200, message: "Message sent successfully" };
+// const sendBookingConfirmation = async (
+ 
+// ) => {
+//   const obj = { status: 200, message: "Message sent successfully" };
 
-  try {
+//   try {
 
-    function convertDateString(dateString) {
-      if (!dateString) return "Invalid date";
+//     function convertDateString(dateString) {
+//       if (!dateString) return "Invalid date";
     
-      const date = new Date(dateString);
-      if (isNaN(date)) return "Invalid date";
+//       const date = new Date(dateString);
+//       if (isNaN(date)) return "Invalid date";
     
-      const options = { 
-        day: 'numeric', 
-        month: 'long', 
-        year: 'numeric', 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      };
+//       const options = { 
+//         day: 'numeric', 
+//         month: 'long', 
+//         year: 'numeric', 
+//         hour: 'numeric', 
+//         minute: '2-digit', 
+//         hour12: true 
+//       };
     
-      return date.toLocaleString('en-US', options);
-    }
-    // Fetch user and station details
+//       return date.toLocaleString('en-US', options);
+//     }
+//     // Fetch user and station details
 
     
 
-const user = await User.findOne({ _id: userId }); // Replace 'userId' with the actual field name, e.g., '_id' or another field.
-if (!user) {
-  obj.status = 404;
-  obj.message = `User not found for userId: ${userId}`;
-  await Log({
-    message: obj.message,
-    functionName: "whatsapp message",
-  });
-  console.error(obj.message);
-  return obj;
-}
+// const user = await User.findOne({ _id: userId }); // Replace 'userId' with the actual field name, e.g., '_id' or another field.
+// if (!user) {
+//   obj.status = 404;
+//   obj.message = `User not found for userId: ${userId}`;
+//   await Log({
+//     message: obj.message,
+//     functionName: "whatsapp message",
+//   });
+//   console.error(obj.message);
+//   return obj;
+// }
 
-const station = await User.findOne({ _id: stationMasterUserId }); 
-if (!station) {
-  obj.status = 404;
-  obj.message = `Station master not found for stationMasterUserId: ${stationMasterUserId}`;
-  await Log({
-    message: obj.message,
-    functionName: "whatsapp message",
-  });
-  console.error(obj.message);
-  return obj;
-}
+// const station = await User.findOne({ _id: stationMasterUserId }); 
+// if (!station) {
+//   obj.status = 404;
+//   obj.message = `Station master not found for stationMasterUserId: ${stationMasterUserId}`;
+//   await Log({
+//     message: obj.message,
+//     functionName: "whatsapp message",
+//   });
+//   console.error(obj.message);
+//   return obj;
+// }
 
 
 
-    // Extract required details
-    const name = user.firstName || "Unknown Name";
-    const contact = user.contact || "Unknown Contact";
-    const dealerContact = station.contact || "Unknown Dealer Contact";
-    const mapLink = "https://www.google.com/maps/search/?api=1&query="
-    + station.latitude + "," + station.longitude;
+//     // Extract required details
+//     const name = user.firstName || "Unknown Name";
+//     const contact = user.contact || "Unknown Contact";
+//     const dealerContact = station.contact || "Unknown Dealer Contact";
+//     const mapLink = "https://www.google.com/maps/search/?api=1&query="
+//     + station.latitude + "," + station.longitude;
 
-    // Debug: Log all inputs
-    // console.log(
-    //   "Inputs:",
-    //   { userId, name, contact, dealerContact, stationMasterUserId, vehicleName, BookingStartDateAndTime, bookingId, stationName, mapLink, userPaid, payableAmount, refundableDeposit }
-    // );
-
-    // Validate required fields
-    if (
-      !name ||
-      !contact ||
-      !dealerContact ||
-      !vehicleName ||
-      !BookingStartDateAndTime ||
-      !bookingId ||
-      !stationName ||
-      !mapLink ||
-      typeof userPaid !== "number" ||
-      typeof payableAmount !== "number" ||
-      typeof refundableDeposit !== "number"
-    ) {
-      obj.status = 400;
-      obj.message = "Failed to send: Missing or invalid required fields";
-      await Log({
-        message: obj.message,
-        functionName: "whatsapp message",
+   
+//     if (
+//       !name ||
+//       !contact ||
+//       !dealerContact ||
+//       !vehicleName ||
+//       !BookingStartDateAndTime ||
+//       !bookingId ||
+//       !stationName ||
+//       !mapLink ||
+//       typeof userPaid !== "number" ||
+//       typeof payableAmount !== "number" ||
+//       typeof refundableDeposit !== "number"
+//     ) {
+//       obj.status = 400;
+//       obj.message = "Failed to send: Missing or invalid required fields";
+//       await Log({
+//         message: obj.message,
+//         functionName: "whatsapp message",
       
-      });
-      console.error(obj.message);
-      return obj;
-    }
+//       });
+//       console.error(obj.message);
+//       return obj;
+//     }
 
-    // Prepare API payload
-    const data = {
-      apiKey: process.env.apiKey, 
-      campaignName: "booking_confirmed_message",
-      destination: `+91${contact}`,
-      userName: name,
-      templateParams: [
-        name,
-        vehicleName,
-        convertDateString(BookingStartDateAndTime),
-        bookingId,
-        stationName,
-        mapLink,
-        dealerContact,      
-      (userPaid).toString() , 
-        parseInt(payableAmount).toString(),
-        (refundableDeposit).toString() ,
-      ],
-    };
+//     // Prepare API payload
+//     const data = {
+//       countryCode: "+91",
+//       phoneNumber: contact,
+//       type: "Template",
+//       template: {
+//         name: "booking_confirm_paid", // Replace with the correct template name
+//         languageCode: "en", // Adjust based on your template's language
+//         bodyValues: [
+//           name,
+//           vehicleName,
+//           convertDateString(BookingStartDateAndTime),
+//           bookingId,
+//           stationName,
+//           mapLink,
+//           dealerContact,
+//           userPaid.toString(),
+//           parseInt(payableAmount).toString(),
+//           refundableDeposit.toString(),
+//         ],
+//       },
+//     };
+  
 
-    // console.log("Sending data:", data);
+//     const requestBody = JSON.stringify(data);
+//     const headers = {
+//       "Content-Type": "application/json",
+//       "Authorization": process.env.apiKey
+//   };
+  
+//     const response = await fetch(url, {
+//         method: "POST",
+//         headers: headers,
+//         body: requestBody
+//     });
 
-    // Send the request
-    const response = await axios.post("https://backend.aisensy.com/campaign/t1/api/v2", data);
-  //  console.log("API response:", response.data);
+//     if (!response.ok) {
+//      // const errorMessage = await response.text(); 
+//       console.error("HTTP error:", response.status, response.statusText);
+//      // console.error("Error details:", errorMessage);
+//       return;
+//   }
 
-    if (response?.data?.success !== true) {
-      obj.status = 400;
-      obj.message = response.data.message || "Failed to send: API response indicates failure";
-      return obj;
-    }
-  } catch (error) {
-    console.error("Error in sendBookingConfirmation function:", error.response?.data || error.message);
-    obj.status = error.response?.status || 500;
-    obj.message = error.response?.data?.message || "Internal server error";
-    return obj;
-  }
+//     // Parse the response JSON
+//     const responseData = await response.json();
+    
+//     // Handle the response
+//     const message = responseData.message;
+//     const responseMsg = responseData.result;
 
-  return obj;
-};
+//     console.log("Message:", message);
+//     console.log("Result:", responseMsg);
 
-module.exports = { whatsapp,sendBookingConfirmation };
+    
+
+// } catch (error) {
+//     console.error("Fetch Error:", error.message);
+// }
+
+//   return obj;
+// };
+
+module.exports = { whatsappMessage };
