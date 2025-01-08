@@ -40,7 +40,8 @@ const bookingSchema = new Schema({
         required: true
     },
     stationMasterUserId: {
-        type: String,
+        type: Schema.Types.ObjectId,
+        ref:"User",
         required: true
     },
     userId: {

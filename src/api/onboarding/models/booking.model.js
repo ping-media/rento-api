@@ -179,7 +179,9 @@ const getBookings = async (query) => {
 
     // Fetch bookings
     const bookings = await Booking.find(filters)
-      .sort({ createdAt: -1 });
+    .populate("userId", "firstName lastName contact")
+    .populate("stationMasterUserId", "firstName lastName contact")
+    .sort({ createdAt: -1 });
 
     // If no bookings found
     if (!bookings.length) {
