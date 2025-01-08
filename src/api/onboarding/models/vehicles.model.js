@@ -252,8 +252,8 @@ async function createVehicle({
 
 
 async function booking({
-  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, paymentInitiatedDate,
-  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom, stationId,discountCuopon,
+  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, paymentInitiatedDate,stationMasterUserId,
+  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom, stationId,discountCuopon,bookingId,
   deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = "", paymentgatewayReceiptId
 }) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
@@ -323,38 +323,40 @@ async function booking({
 
       var stationMasterUserId = find[0].userId;
       var stationId = find[0].stationId;
+     
+      
       
 
     }
+   
+    const user = await User.findById(userId);
+      if (!user) {
+        obj.status = 404;
+        obj.message = "User not found";
 
-    // const user = await User.findById(userId);
-    //   if (!user) {
-    //     obj.status = 404;
-    //     obj.message = "User not found";
-
-    //     await Log({
-    //       message: `User not found with ID: ${userId}`,
-    //       functionName: "booking",
-    //       userId,
-    //     });
-    //     return obj;
-    //   }
+        await Log({
+          message: `User not found with ID: ${userId}`,
+          functionName: "booking",
+          userId,
+        });
+        return obj;
+      }
 
     //   // Save stationMasterUser details in the booking object
-    //   const stationMasterUser = await User.findById(stationMasterUserId);
-    //   if (!stationMasterUser) {
-    //     obj.status = 404;
-    //     obj.message = "Station master user not found";
+      const stationMasterUser = await User.findById(stationMasterUserId);
+      if (!stationMasterUser) {
+        obj.status = 404;
+        obj.message = "Station master user not found";
 
-    //     await Log({
-    //       message: `Station master user not found with ID: ${stationMasterUserId}`,
-    //       functionName: "booking",
-    //       userId,
-    //     });
-    //     return obj;
-    //   }
+        await Log({
+          message: `Station master user not found with ID: ${stationMasterUserId}`,
+          functionName: "booking",
+          userId,
+        });
+        return obj;
+      }
     
-    
+      
 
    
 
@@ -419,9 +421,74 @@ async function booking({
         functionName: "updatebooking",
         userId,
       });
+
       obj.status = 200;
       obj.message = "Booking Update successfull ";
       // obj.data=_id;
+  
+      // if (paySuccessId){
+
+      //   const find = await Station.find({ stationName });
+      //   const latitude = find[0].latitude;
+      //   const longitude = find[0].longitude;
+
+      //   const mapLink = "https://www.google.com/maps/search/?api=1&query="
+      //   + latitude + "," + longitude;
+      //   console.log(mapLink)
+      //   const totalPrice= bookingPrice.discountTotalPrice !== 0
+      //             ? bookingPrice.discountTotalPrice
+      //             : bookingPrice.totalPrice
+      //   if(paymentStatus=="paid"){
+         
+      //     whatsappMessage(user.contact,"booking_confirm_paid",[user.firstName,vehicleName,BookingStartDateAndTime,bookingId,stationName,mapLink,stationMasterUser.contact,totalPrice,vehicleBasic.refundableDeposit])
+      //   }
+      //   else if(paymentStatus=="partially_paid"){
+          
+      //     const remenAmount=(Number(totalPrice)- Number(bookingPrice.userPaid))   
+      //    whatsappMessage(user.contact,"booking_confirmed_partial_paid",[user.firstName,vehicleName,BookingStartDateAndTime,bookingId,stationName,mapLink,stationMasterUser.contact,bookingPrice.userPaid,remenAmount,vehicleBasic.refundableDeposit])
+
+      //   }
+      // }
+
+      if (paySuccessId) {
+        const station = await Station.findOne({ stationName }).select("latitude longitude");
+        if (!station) {
+          console.error(`Station not found for stationName: ${stationName}`);
+          return; 
+        }
+      
+        const { latitude, longitude } = station;
+        const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+      //  console.log(mapLink);
+      
+        const totalPrice = bookingPrice.discountTotalPrice > 0 
+          ? bookingPrice.discountTotalPrice 
+          : bookingPrice.totalPrice;
+      
+        // Prepare message data
+        const messageData = [
+          user.firstName,
+          vehicleName,
+          BookingStartDateAndTime,
+          bookingId,
+          stationName,
+          mapLink,
+          stationMasterUser.contact,
+        ];
+      
+        if (paymentStatus === "paid") {
+          messageData.push(totalPrice, vehicleBasic.refundableDeposit);
+      
+          whatsappMessage(user.contact, "booking_confirm_paid", messageData);
+        } else if (paymentStatus === "partially_paid") {
+          const remainingAmount = Number(totalPrice) - Number(bookingPrice.userPaid);
+      
+          messageData.push(bookingPrice.userPaid, remainingAmount, vehicleBasic.refundableDeposit);
+      
+          whatsappMessage(user.contact, "booking_confirmed_partial_paid", messageData);
+        }
+      }
+      
       return obj;
     } else {
       if (
@@ -435,7 +502,7 @@ async function booking({
         const SaveBooking = new Booking(o);
 
         await SaveBooking.save();
-        
+
         obj.message = "New booking saved successfully";
         obj.data = SaveBooking;
 

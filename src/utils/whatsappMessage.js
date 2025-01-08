@@ -7,15 +7,36 @@ const Log= require("../db/schemas/onboarding/log");
 const url = "https://api.interakt.ai/v1/public/message/";
 
 
+// function extractInfo(data) {
+//   if(!data) return
+//     const {userId, stationMasterUserId, bookingId, vehicleName,stationName, BookingStartDateAndTime, bookingPrice, vehicleBasic, paymentMethod} = data;
+//     const templateName = bookingPrice && bookingPrice?.userPaid && bookingPrice?.userPaid !== 0 ? "" : "booking_confirm_paid";
+//     const totalPayment = bookingPrice && bookingPrice?.discountTotalPrice && bookingPrice?.discountTotalPrice !== 0 ? bookingPrice?.discountTotalPrice : bookingPrice?.totalPrice;
+//     const userPaid = bookingPrice && bookingPrice?.userPaid;
+//     const paymentBasedOnTemplate = templateName
+//   return {
+//     "contact": userId?.contact,
+//     "templateName": templateName,
+//     "values":[userId?.firstName,vehicleName,BookingStartDateAndTime,bookingId,stationName,"https://maps.google.com/example",stationMasterUserId?.contact,,vehicleBasic?.refundableDeposit]
+//   }
+// }
 
-async function whatsappMessage(body) {
-  const {contact, templateName, values}=body;
-  const obj = { status: 200, message: "Message sent successfully" };
-  console.log("Contact:", contact, "TemplateName:", templateName, "Values:", values);
+async function whatsappMessage(contact, templateName, values) {
+ 
+  
+   const obj = { status: 200, message: "Message sent successfully" };
+   await Log({
+    message: obj.message,
+    functionName: "whatsapp message",
+  });
 
-  // Validate inputs
+ 
   if (!contact || !templateName || !values || values.length === 0) {
     console.error("Invalid input: contact, templateName, and values are required");
+    await Log({
+          message: "Invalid input: contact, templateName, and values are required",
+          functionName: "whatsapp message",
+        });
     return {
       status: 400,
       message: "Invalid input: contact, templateName, and values are required",
@@ -54,6 +75,10 @@ async function whatsappMessage(body) {
       const errorMessage = await response.text();
       console.error("HTTP error:", response.status, response.statusText);
       console.error("Error details:", errorMessage);
+      await Log({
+            message: `Error: ${response.statusText}`,
+            functionName: "whatsapp message",
+          });
       return {
         status: response.status,
         message: `Error: ${response.statusText}`,
@@ -63,13 +88,17 @@ async function whatsappMessage(body) {
 
     // Parse the response JSON
     const responseData = await response.json();
-    console.log("Response Data:", responseData);
+  //  console.log("Response Data:", responseData);
 
     obj.message = responseData.message;
     obj.result = responseData.result;
 
   } catch (error) {
     console.error("Fetch Error:", error.message);
+    await Log({
+      message: `Error: ${error.message}`,
+      functionName: "whatsapp message",
+    });
     return {
       status: 500,
       message: "Internal server error",
