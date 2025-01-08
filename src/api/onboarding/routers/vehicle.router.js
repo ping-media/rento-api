@@ -135,11 +135,11 @@ router.post("/createBooking", async (req, res) => {
   vehiclesService.booking(req, res);
 })
 
-//Get Booking for admin
 router.get("/getBookings", async (req, res) => {
   vehiclesService.getBookings(req, res);
 })
 
+//Get Booking for admin
 router.get("/getBooking", async (req, res) => {
   vehiclesService.getBooking(req, res);
 })
