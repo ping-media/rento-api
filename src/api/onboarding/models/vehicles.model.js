@@ -1759,6 +1759,7 @@ const getVehicleTblData = async (query) => {
       page = 1,
       limit = 20, 
     } = query;
+    console.log(vehiclePlan)
     if (!locationId) {
       if (!_id && (!BookingStartDateAndTime && !BookingEndDateAndTime )) {
         return {
@@ -1809,13 +1810,12 @@ const getVehicleTblData = async (query) => {
       if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
       if (stationId) matchFilter.stationId = stationId;
       if (locationId) matchFilter.locationId = new ObjectId(locationId);
-
       if (Array.isArray(vehiclePlan)) {
-        matchFilter.vehiclePlan = { $in: vehiclePlan.map((id) => new ObjectId(id)) };
+        matchFilter["vehiclePlan._id"] = { $in: vehiclePlan.map((id) => new ObjectId(id)) };
+      } else if (vehiclePlan) {
+        matchFilter["vehiclePlan._id"] = new ObjectId(vehiclePlan);
       }
-      else if (vehiclePlan) {
-        matchFilter.vehiclePlan = new ObjectId(vehiclePlan);
-      }
+      
 
     }
 
