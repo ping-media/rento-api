@@ -452,7 +452,7 @@ async function booking({
              return obj;
            }}
          
-           
+
         const station = await Station.findOne({ stationName }).select("latitude longitude");
         if (!station) {
           console.error(`Station not found for stationName: ${stationName}`);
@@ -1761,7 +1761,6 @@ const getVehicleTblData = async (query) => {
       page = 1,
       limit = 20, 
     } = query;
-    console.log(vehiclePlan)
     if (!locationId) {
       if (!_id && (!BookingStartDateAndTime && !BookingEndDateAndTime )) {
         return {
@@ -1859,8 +1858,7 @@ const getVehicleTblData = async (query) => {
               cond: {
                 $and: [
                   { $in: ["$$booking.bookingStatus", ["pending", "done"]] },
-                  { $in: ["$$booking.rideStatus", ["ongoing"]] },
-                //  { $in: ["$$vehicleStatus", ["inactive"]] },
+                 // { $in: ["$$booking.rideStatus", ["ongoing"]] },
                   {
                     $and: [
                       { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
