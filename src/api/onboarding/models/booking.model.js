@@ -75,7 +75,7 @@ const getBooking = async (query) => {
     const skip = (page - 1) * limit;
 
     const bookings = await Booking.find(filters)
-      .populate("userId", "firstName lastName contact")
+      .populate("userId", "firstName lastName contact createdAt updatedAt")
       .sort({ createdAt: -1 }) 
       .skip(skip)
       .limit(Number(limit))

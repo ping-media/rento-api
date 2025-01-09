@@ -83,8 +83,8 @@ function sendOtpViaFast2Sms(contact, otp) {
 
     req.json({
       flash: "0",
-      sender_id: "DNRJFN",
-      message: "171382",
+      sender_id: "RNTOBK",
+      message: "178252",
       route: "dlt",
       numbers: contact,
       variables_values: otp,
