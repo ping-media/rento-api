@@ -478,6 +478,7 @@ async function booking({
       
         if (paymentStatus === "paid") {
           messageData.push(totalPrice, vehicleBasic.refundableDeposit);
+          console.log("Enter")
       
           whatsappMessage(user.contact, "booking_confirm_paid", messageData);
         } else if (paymentStatus === "partially_paid") {
