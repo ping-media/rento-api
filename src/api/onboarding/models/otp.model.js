@@ -51,7 +51,12 @@ async function optGernet(req, res) {
 
     await Otp.updateOne(
       { contact },
-      { contact, otp, createdAt: new Date(), expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
+      {
+        contact,
+        otp,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000), 
+      },
       { upsert: true }
     );
 
@@ -122,6 +127,15 @@ async function verify(req, res) {
       const message = "No OTP found for the given contact number";
       await createLog(message, "verify", null, 404);
       return res.json({ status: 404, message });
+    }
+
+
+     // Check if OTP has expired
+     if (new Date() > otpRecord.expiresAt) {
+      const message = "OTP has expired";
+      await createLog(message, "verify", null, 400);
+      await Otp.deleteOne({ contact }); // Clean up expired OTP
+      return res.json({ status: 400, message });
     }
 
     if (otp !== otpRecord.otp) {
