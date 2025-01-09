@@ -71,7 +71,7 @@ const getBooking = async (query) => {
         { paymentMethod: searchRegex },
       ];
     }
-
+   
     const skip = (page - 1) * limit;
 
     const bookings = await Booking.find(filters)
