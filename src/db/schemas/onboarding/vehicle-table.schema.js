@@ -42,11 +42,11 @@ const vehicleTableSchema = new Schema({
         type: Number,
         required: true
     },    
-    vehicleColor: {
+    // vehicleColor: {
         
-        type: String,
-        required: true
-    },
+    //     type: String,
+    //     required: true
+    // },
     vehiclePlan: [vehiclePlanSchema], 
     
     perDayCost: {
@@ -81,10 +81,10 @@ const vehicleTableSchema = new Schema({
         type: Number,
         required: true
     },
-    isBooked: {
-        type: String,
-        required: true
-    },
+    // isBooked: {
+    //     type: String,
+    //     required: true
+    //},
     locationId: {
         type: Schema.Types.ObjectId,
         ref: 'location',
