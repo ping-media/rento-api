@@ -329,7 +329,8 @@ async function booking({
 
     }
    
-    const user = await User.findById(userId);
+   if(userId && stationMasterUserId){
+     const user = await User.findById(userId);
       if (!user) {
         obj.status = 404;
         obj.message = "User not found";
@@ -342,7 +343,6 @@ async function booking({
         return obj;
       }
 
-    //   // Save stationMasterUser details in the booking object
       const stationMasterUser = await User.findById(stationMasterUserId);
       if (!stationMasterUser) {
         obj.status = 404;
@@ -354,7 +354,7 @@ async function booking({
           userId,
         });
         return obj;
-      }
+      }}
     
       
 
