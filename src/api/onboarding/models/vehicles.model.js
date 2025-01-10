@@ -29,7 +29,7 @@ const Invoice = require('../../../db/schemas/onboarding/invoice-tbl.schema'); //
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Log = require("../models/Logs.model");
 const{whatsappMessage}= require("../../../utils/whatsappMessage")
-const{sendOtpByEmailForBooking}= require("../../../utils/emailSend")
+const{sendOtpByEmailForBooking,sendEmailForBookingToStationMaster}= require("../../../utils/emailSend")
 
 
 const logError = async (message, functionName, userId) => {
@@ -509,6 +509,7 @@ async function booking({
       
           whatsappMessage(user.contact, "booking_confirmed_partial_paid", messageData);
         }
+        sendEmailForBookingToStationMaster(userId, stationMasterUserId, vehicleName, BookingStartDateAndTime, BookingEndDateAndTime, bookingId)
       }
       
       return obj;

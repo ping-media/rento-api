@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   secure: true,
   auth: {
     user: "kashyapshivram512@gmail.com",
-    pass:  'kmbc nqqe cavl eyma',
+    pass: 'kmbc nqqe cavl eyma',
   },
 });
 
@@ -22,7 +22,7 @@ async function sendOtpByEmail(email, firstName, lastName) {
       from: '"Rento-Moto Support" <support@rentobikes.com>',
       to: email,
       subject: "Welcome to RentoBikes!",
-      html:`<!DOCTYPE html>
+      html: `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -232,46 +232,46 @@ async function sendOtpByEmail(email, firstName, lastName) {
 
 
 
-async function sendOtpByEmailForBooking(body ) {
-  const {userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic,}=body;
+async function sendOtpByEmailForBooking(body) {
+  const { userId, stationId, stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, } = body;
   try {
-   // console.log(userId, stationId,stationMasterUserId,)
+    // console.log(userId, stationId,stationMasterUserId,)
 
     function convertDateString(dateString) {
       if (!dateString) return "Invalid date";
-    
+
       const date = new Date(dateString);
       if (isNaN(date)) return "Invalid date";
-    
-      const options = { 
-        day: 'numeric', 
-        month: 'long', 
-        year: 'numeric', 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
+
+      const options = {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
       };
-    
+
       return date.toLocaleString('en-US', options);
     }
 
-    const {email, firstName, lastName,}= await User.findOne({_id: userId});
-    const {address, latitude, longitude }=  await Station.findOne({ name: stationId }); 
+    const { email, firstName, lastName, } = await User.findOne({ _id: userId });
+    const { address, latitude, longitude } = await Station.findOne({ name: stationId });
 
-    const station = await User.findOne({ _id: stationMasterUserId }); 
-   // console.log(bookingPrice, vehicleBasic)
+    const station = await User.findOne({ _id: stationMasterUserId });
+    // console.log(bookingPrice, vehicleBasic)
     const mapLink = "https://www.google.com/maps/search/?api=1&query="
-    + latitude + "," + longitude;
+      + latitude + "," + longitude;
 
 
-    const totalPrice = bookingPrice?.totalPrice || 0; 
+    const totalPrice = bookingPrice?.totalPrice || 0;
     const userPaid = bookingPrice?.userPaid || 0;
 
     const info = await transporter.sendMail({
       from: '"Rento-Moto Support" <support@rentobikes.com>',
       to: email,
       subject: ` Booking Confirmed - Your RentoBikes Booking ID ${bookingId} has been confirmed!`,
-      html:`<!DOCTYPE html>
+      html: `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -397,15 +397,7 @@ async function sendOtpByEmailForBooking(body ) {
               <td style="color:#444">Bike Rental</td>
               <td style="font-weight:bold;text-align:right;width:80px">₹ ${bookingPrice.rentAmount}</td>
             </tr>
-            // <tr>
-            //   <td colspan="2" style="color:#999;font-size:12px">
-            //     <span>&nbsp;&nbsp;Monthly package</span>
-            //     <span style="float:right">
-            //       30 Day
-            //       * ₹ 183.33 * 1 Bike(s) = ₹ 5499.900000000001
-            //     </span>
-            //   </td>
-            // </tr>
+           
             <tr>
               <td style="color:#444;padding-top:5px">Discount</td>
               <td style="font-weight:bold;text-align:right;color:#e23844;padding-top:5px">- ₹
@@ -424,20 +416,20 @@ async function sendOtpByEmailForBooking(body ) {
               <td style="color:#444;padding-top:10px">Total Amount</td>
               <td style="font-weight:bold;text-align:right;padding-top:10px">₹
                 ${bookingPrice.discountTotalPrice !== 0
-                  ? bookingPrice.discountTotalPrice
-                  : bookingPrice.totalPrice}
+          ? bookingPrice.discountTotalPrice
+          : bookingPrice.totalPrice}
               </td>
             </tr>
             <tr>
               <td colspan="2" style="color:#999;font-size:12px">
                 <span>&nbsp;&nbsp;Paid online</span>
-                <span style="float:right"> ₹ ${bookingPrice.userPaid==undefined? 0 : bookingPrice.userPaid}</span>
+                <span style="float:right"> ₹ ${bookingPrice.userPaid == undefined ? 0 : bookingPrice.userPaid}</span>
               </td>
             </tr>
             <tr>
               <td colspan="2" style="color:#999;font-size:12px">
                 <span>&nbsp;&nbsp;Remaining amount to be paid at the time of pickup</span>
-                <span style="float:right"> ₹ ${totalPrice-userPaid}</span>
+                <span style="float:right"> ₹ ${totalPrice - userPaid}</span>
               </td>
             </tr>
             <tr>
@@ -646,7 +638,199 @@ async function sendOtpByEmailForBooking(body ) {
   }
 }
 
+async function sendEmailForBookingToStationMaster(userId, stationMasterUserId,vehicleName, BookingStartDateAndTime, BookingEndDateAndTime, bookingId,) {
+  // const {userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic,}=body;
+  try {
+
+
+    function convertDateString(dateString) {
+      if (!dateString) return "Invalid date";
+
+      const date = new Date(dateString);
+      if (isNaN(date)) return "Invalid date";
+
+      const options = {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      };
+
+      return date.toLocaleString('en-US', options);
+    }
+
+    const user = await User.findOne({ _id: userId });
+
+
+    const { email, firstName, lastName, } = await User.findOne({ _id: stationMasterUserId });
+
+
+    const info = await transporter.sendMail({
+      from: '"Rento-Moto Support" <support@rentobikes.com>',
+      to: email,
+      subject: ` Booking Recceived- You have received booking Id ${bookingId} from RentoBikes `,
+      html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RentoBikes</title>
+  <link rel="shortcut icon" href="https://admin.rentobikes.com/assets/rento-logo-2YTjnrFt.png" type="image/png">
+
+</head>
+<body>
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" align="center" style="background-color:#fff;border:1px solid #ccc;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;margin:0px auto;max-width:600px;padding:40px;width:80%;overflow:hidden">
+    <tbody>
+
+      
+      <tr>
+        <td style="color:#e23844;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:20px;padding:30px;padding-left:0;font-weight:bold">
+          Booking Confirmed
+        </td>
+        <td style="text-align:right">
+          <img src="https://admin.rentobikes.com/assets/rento-logo-2YTjnrFt.png" title="Rentobikes Logo" style="height:60px;width:auto;margin-right:20px" class="CToWUd" data-bit="iit">
+        </td>
+      </tr>
+
+      
+      <tr>
+        <td colspan="2" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:30px 0;padding-top:10px;color:#767676">
+          Hello Station master ${firstName} ${lastName},
+          
+        <p>You have received a booking from RentoBikes. ${user.firstName} has booked ${vehicleName} with you. The ride has been scheduled from ${convertDateString(BookingStartDateAndTime)} to ${convertDateString(BookingEndDateAndTime)}. The Booking ID is ${bookingId} and the customer's contact number is ${user.contact}.
+</p>
+<p>We request you to check the dealer's app for more details.</p>
+
+<p>Team RentoBikes.</p>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" align="left" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:20px 30px 20px 30px;border-top:1px solid #ccc;background-color:#fff;color:#767676">
+          <b>GoHub's Terms and Conditions</b>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" align="left" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:0px 30px 10px 30px;background-color:#fff;color:#767676">
+          <div style="background-color:#fafafa;border:1px solid #eee;border-radius:4px;padding:15px 0">
+            <ul style="margin:0">
+              <li style="font-size:14px">Documents Required: Aadhar Card and Driving License. Digilocker documents will work.</li>
+              <li style="font-size:14px">All Scooters are to use within the Bangalore City Limits.</li>
+              <li style="font-size:14px"> In case the vehicle returned is found excessively dirty/muddy, the lessee will have to bear the charge of washing not exceeding Rs. 200. You must report such violations to a Lessor’s Representative as soon as possible.</li>
+              <li style="font-size:14px">Fuel Charges are not included in the security deposit or rent.</li>
+              <li style="font-size:14px">In case of any damage to the vehicle, the customer is liable to pay the repair charges plus the labour charges as per the Authorised Service Center.</li>
+              <li style="font-size:14px"><a href="https://www.rentobikes.com/terms-and-conditions" target="_blank" >Other RentoBikes
+                  Terms and Conditions</a></li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+      <tr style="height:20px"></tr>
+
+      
+      <tr>
+        <td colspan="2" align="left" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:20px 30px 20px 30px;border-top:1px solid #ccc;background-color:#fff;color:#767676">
+          <b>Cancellation Policy</b>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" align="left" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:0px 30px 10px 30px;background-color:#fff;color:#767676">
+          <div style="background-color:#fafafa;border:1px solid #eee;border-radius:4px;padding:15px;font-size:14px">
+            Upon booking a bike with any of our dealers, they reserve the bike for the customer. In the case of
+            cancellation, unnecessary inconvenience is caused to the dealer. To account for the potential
+            financial loss, we withhold some amount as cancellation charges as follows:
+            <ul style="margin:0">
+              <li>No Show - 100% deduction.</li>
+              <li>In case of partial payment - 100% deduction.</li>
+              <li>In case of full payment:
+                <ul>
+                  <li>Before 72 hrs of the pickup time - 25% deduction.</li>
+                  <li>Between 24-72 hrs of the pickup time - 75% deduction.</li>
+                  <li>Between 0-24 hrs of the pickup time - 100% deduction. </li>
+                </ul>
+              </li>
+              <li>Refund Policy for Early Drop-offs: To clarify, refunds will not be provided for cases of early
+                drop-offs.</li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+      <tr style="height:20px"></tr>
+
+      
+      <tr>
+        <td colspan="2">
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" align="center">
+            <tbody>
+              
+              <tr>
+                <td style="background-color:#ddd;font-size:14px;color:#777;padding:30px 10px 30px 20px;min-width:162px">
+                  <b>HELP &amp; SUPPORT</b> <br>
+                  <a href="mailto:support@rentobikes.com" style="color:#7a0;text-decoration:none;font-size:12px" target="_blank"><img data-emoji="✉" class="an1" alt="✉" aria-label="✉" draggable="false" src="https://fonts.gstatic.com/s/e/notoemoji/15.1/2709/72.png" loading="lazy">
+                    support@rentobikes.com</a>
+                </td>
+                <td style="background-color:#ddd;font-size:14px;color:#777;padding:30px 0px 30px 0px">
+                  <b>CALL US ON</b><br>
+                  <a href="tel:+91888448891" style="color:#7a0;text-decoration:none;font-size:12px" target="_blank"><img data-emoji="☎" class="an1" alt="☎" aria-label="☎" draggable="false" src="https://fonts.gstatic.com/s/e/notoemoji/15.1/260e/72.png" loading="lazy"> +91888448891</a>
+                </td>
+              </tr>
+          
+              
+              <tr>
+                <td style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;padding:5px;padding-left:20px;padding-top:20px;border-top:1px solid #ccc;background-color:#ddd;color:#767676;text-align:left">
+                  <a style="text-decoration:none;color:#777" href="https://www.rentobikes.com/contact-us" target="_blank" >Contact
+                    Us</a>
+                </td>
+                <td colspan="1" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;padding:5px;padding-top:20px;border-top:1px solid #ccc;background-color:#ddd;color:#767676;text-align:left">
+                </td>
+              </tr>
+              <tr>
+                <td style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;padding:5px;padding-left:20px;background-color:#ddd;color:#767676;text-align:left">
+                  <a style="text-decoration:none;color:#777" href="https://www.rentobikes.com/privacy-policy" target="_blank" >Privacy Policy</a>
+                </td>
+                <td colspan="1" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;padding:5px;background-color:#ddd;color:#767676;text-align:left">
+                  
+                </td>
+              </tr>
+              <tr>
+                <td style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;padding:5px;padding-left:20px;padding-bottom:20px;background-color:#ddd;color:#767676;text-align:left">
+                  <a style="text-decoration:none;color:#777" href="https://www.rentobikes.com/terms-and-conditions" target="_blank" >Terms and
+                    Conditions</a>
+                </td>
+                <td colspan="1" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;padding:5px;padding-bottom:20px;background-color:#ddd;color:#767676;text-align:left">
+                </td>
+              </tr>
+          
+              
+              <tr style="background-color:#eaeaea">
+                <td align="left">
+                  <img src="https://admin.rentobikes.com/assets/rento-logo-2YTjnrFt.png" title="RentoBikes Logo" style="height:50px;width:auto;margin-right:20px;padding-left:20px;padding-top:10px" class="CToWUd a6T" data-bit="iit" tabindex="0"><div class="a6S" dir="ltr" style="opacity: 0.01; left: 198.469px; top: 1854.81px;"><span data-is-tooltip-wrapper="true" class="a5q" jsaction="JIbuQc:.CLIENT"><button class="VYBDae-JX-I VYBDae-JX-I-ql-ay5-ays CgzRE" jscontroller="PIVayb" jsaction="click:h5M12e; clickmod:h5M12e;pointerdown:FEiYhc;pointerup:mF5Elf;pointerenter:EX0mI;pointerleave:vpvbp;pointercancel:xyn4sd;contextmenu:xexox;focus:h06R8; blur:zjh6rb;mlnRJb:fLiPzd;" data-idom-class="CgzRE" data-use-native-focus-logic="true" jsname="hRZeKc" aria-label="Download attachment " data-tooltip-enabled="true" data-tooltip-id="tt-c34" data-tooltip-classes="AZPksf" id="" jslog="91252; u014N:cOuCgd,Kr2w4b,xr6bB; 4:WyIjbXNnLWY6MTgxOTkzMjY0MDE1NjkxNjM4MyJd; 43:WyJpbWFnZS9qcGVnIl0."><span class="OiePBf-zPjgPe VYBDae-JX-UHGRz"></span><span class="bHC-Q" jscontroller="LBaJxb" jsname="m9ZlFb" soy-skip="" ssk="6:RWVI5c"></span><span class="VYBDae-JX-ank-Rtc0Jf" jsname="S5tZuc" aria-hidden="true"><span class="notranslate bzc-ank" aria-hidden="true"><svg viewBox="0 -960 960 960" height="20" width="20" focusable="false" class=" aoH"><path d="M480-336L288-528l51-51L444-474V-816h72v342L621-579l51,51L480-336ZM263.72-192Q234-192 213-213.15T192-264v-72h72v72H696v-72h72v72q0,29.7-21.16,50.85T695.96-192H263.72Z"></path></svg></span></span><div class="VYBDae-JX-ano"></div></button><div class="ne2Ple-oshW8e-J9" id="tt-c34" role="tooltip" aria-hidden="true">Download</div></span></div>
+                </td>
+                <td align="right" colspan="1" style="padding:20px 20px 20px 0">
+                 
+                </td>
+              </tr>
+            </tbody>
+          </table>              </td>
+      </tr>
+
+
+    </tbody>
+  </table>
+</body>
+</html>`,
+    });
+
+    console.log("Email sent: %s", info.messageId);
+    return { success: true };
+  } catch (error) {
+    console.error("Error sending OTP email:", error.message);
+    return { success: false, error: error.message };
+  }
+}
 
 
 
-module.exports = { sendOtpByEmail, sendOtpByEmailForBooking};
+
+module.exports = { sendOtpByEmail, sendOtpByEmailForBooking, sendEmailForBookingToStationMaster };
