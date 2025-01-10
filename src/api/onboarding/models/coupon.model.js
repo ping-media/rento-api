@@ -226,13 +226,13 @@ const updateCouponCount = async (query) => {
 
 
 const applyCoupon = async (body) => {
-  const { couponName, totalAmount} = body;
+  const { couponName, totalAmount, isExtra} = body;
 
    const obj = { status: 200, message: "Coupon applied successfully", data: {} };
 
   try {
    
-    if (!couponName && !totalAmount ) {
+    if (!couponName && !totalAmount && !isExtra) {
      
         obj.status=400;
        obj.message="Coupon name and total amount are required";
@@ -281,7 +281,7 @@ const applyCoupon = async (body) => {
     const finalAmount = totalAmount - discount;
    const _id=coupon._id
     
-    obj.data = { discount, finalAmount, _id };
+    obj.data = { discount, finalAmount, _id, isExtra };
 
    
   } catch (error) {
