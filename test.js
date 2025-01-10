@@ -396,5 +396,22 @@ async function whatsappMessage(contact, templateName, values) {
 
   return obj;
 }
+function convertDateString(dateString) {
+  if (!dateString) return "Invalid date";
 
-console.log()
+  const date = new Date(dateString);
+  if (isNaN(date)) return "Invalid date";
+
+  const options = { 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric', 
+    hour: 'numeric', 
+    minute: '2-digit', 
+    hour12: true 
+  };
+
+  return date.toLocaleString('en-US', options);
+}
+console.log(convertDateString("2025-01-09T11:00:00Z"))
+

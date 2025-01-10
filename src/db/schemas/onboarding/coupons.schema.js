@@ -30,14 +30,14 @@ const couponSchema = new Schema({
     }
   }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
 
-  couponSchema.pre('save', function (next) {
-    if (this.couponName) {
-      this.couponName = this.couponName.toLowerCase(); 
-    }
+  // couponSchema.pre('save', function (next) {
+  //   if (this.couponName) {
+  //     this.couponName = this.couponName.toLowerCase(); 
+  //   }
     
    
-    next();
-  });
+  //   next();
+  // });
   
   
   const coupon = mongoose.model('coupon', couponSchema);

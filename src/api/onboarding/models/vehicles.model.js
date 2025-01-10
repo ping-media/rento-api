@@ -425,6 +425,23 @@ async function booking({
       // }
 
       if (paySuccessId) {
+        function convertDateString(dateString) {
+                if (!dateString) return "Invalid date";
+              
+                const date = new Date(dateString);
+                if (isNaN(date)) return "Invalid date";
+              
+                const options = { 
+                  day: 'numeric', 
+                  month: 'long', 
+                  year: 'numeric', 
+                  hour: 'numeric', 
+                  minute: '2-digit', 
+                  hour12: true 
+                };
+              
+                return date.toLocaleString('en-US', options);
+              }
         if(userId && stationMasterUserId){
           var user = await User.findById(userId);
            if (!user) {
@@ -468,10 +485,12 @@ async function booking({
           : bookingPrice.totalPrice;
       
         // Prepare message data
+        const date= convertDateString(BookingStartDateAndTime);
+
         const messageData = [
           user.firstName,
           vehicleName,
-          BookingStartDateAndTime,
+          date,
           bookingId,
           stationName,
           mapLink,
@@ -480,7 +499,7 @@ async function booking({
       
         if (paymentStatus === "paid") {
           messageData.push(totalPrice, vehicleBasic.refundableDeposit);
-          console.log("Enter")
+         // console.log("Enter")
       
           whatsappMessage(user.contact, "booking_confirm_paid", messageData);
         } else if (paymentStatus === "partially_paid") {
