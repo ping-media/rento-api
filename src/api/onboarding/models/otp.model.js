@@ -18,7 +18,7 @@ async function createLog(message, functionName, userId, status = 200) {
   }
 }
 
-async function optGernet(req, res) {
+async function otpGenerat(req, res) {
   try {
     const { contact } = req.body;
 
@@ -168,4 +168,4 @@ async function verify(req, res) {
   }
 }
 
-module.exports = { optGernet, verify };
+module.exports = { otpGenerat, verify };

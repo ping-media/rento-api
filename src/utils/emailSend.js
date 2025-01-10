@@ -4,15 +4,26 @@ const Station = require("../db/schemas/onboarding/station.schema");
 const User = require("../db/schemas/onboarding/user.schema");
 
 
+// const transporter = nodemailer.createTransport({
+//   port: 465,
+//   service: "gmail",
+//   secure: true,
+//   auth: {
+//     user: "kashyapshivram512@gmail.com",
+//     pass: 'kmbc nqqe cavl eyma',
+//   },
+// });
+
+
 const transporter = nodemailer.createTransport({
-  port: 465,
-  service: "gmail",
-  secure: true,
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false, // true for 465, false for other ports
   auth: {
-    user: "kashyapshivram512@gmail.com",
-    pass: 'kmbc nqqe cavl eyma',
-  },
-});
+    user: process.env.EMAIL_USER_ID, // generated ethereal user
+    pass: process.env.EMAIL_PASSWORD, // generated ethereal password
+    },
+  });
 
 
 
