@@ -959,11 +959,12 @@ async function createInvoice({ currentBookingId,_id }) {
         message: "Booking not found",
       };
     }
-
+ 
     const { userId, bookingId, bookingPrice, paymentStatus, vehicleBasic, vehicleName } = bookings
     // console.log(bookings)
 
-    const userData = await User.findOne({ userId }).select("firstName lastName contact email");
+    const userData = await User.findOne({_id: userId }).select("firstName lastName contact email");
+    console.log(userData)
 
     if (!userData) {
       return {
