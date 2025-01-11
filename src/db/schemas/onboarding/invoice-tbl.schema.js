@@ -18,6 +18,11 @@ const invoiceSchema = new Schema({
     required: true,
    
   },
+  email: {
+    type: String,
+    required: true,
+   
+  },
   invoiceNumber: {
     type: String,
     required: true,

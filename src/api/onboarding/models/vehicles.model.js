@@ -963,7 +963,7 @@ async function createInvoice({ currentBookingId,_id }) {
     const { userId, bookingId, bookingPrice, paymentStatus, vehicleBasic, vehicleName } = bookings
     // console.log(bookings)
 
-    const userData = await User.findOne({ userId }).select("firstName lastName contact");
+    const userData = await User.findOne({ userId }).select("firstName lastName contact email");
 
     if (!userData) {
       return {
@@ -972,7 +972,7 @@ async function createInvoice({ currentBookingId,_id }) {
       };
     }
 
-    const {firstName,lastName,contact}=userData;
+    const {firstName,lastName,contact,email}=userData;
     const paidInvoice = paymentStatus
     // console.log(paidInvoice)
 
