@@ -948,6 +948,16 @@ async function createInvoice({ _id }) {
     const { userId, bookingId, bookingPrice, paymentStatus, vehicleBasic, vehicleName } = bookings
     // console.log(bookings)
 
+    const userData = await User.findOne({ userId }).select("firstName lastName contact");
+
+    if (!userData) {
+      return {
+        status: 401,
+        message: "userData not found",
+      };
+    }
+
+    const {firstName,lastName,contact}=userData;
     const paidInvoice = paymentStatus
     // console.log(paidInvoice)
 
@@ -991,7 +1001,10 @@ async function createInvoice({ _id }) {
       paidInvoice,
       invoiceNumber: newInvoiceNumber,
       vehicleBasic,
-      vehicleName
+      vehicleName,
+      firstName,
+      lastName,
+      contact
     };
 
     // Create and save the new invoice

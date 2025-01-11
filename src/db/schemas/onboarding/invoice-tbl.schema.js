@@ -3,6 +3,21 @@ const Schema = mongoose.Schema;
 
 const invoiceSchema = new Schema({
   
+  firstName: {
+    type: String,
+    required: true,
+   
+  },
+  lastName: {
+    type: String,
+    required: true,
+  
+  },
+  contact: {
+    type: String,
+    required: true,
+   
+  },
   invoiceNumber: {
     type: String,
     required: true,
