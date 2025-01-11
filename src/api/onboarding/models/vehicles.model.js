@@ -1019,7 +1019,8 @@ async function createInvoice({ currentBookingId,_id }) {
       vehicleName,
       firstName,
       lastName,
-      contact
+      contact,
+      email
     };
 
     // Create and save the new invoice
