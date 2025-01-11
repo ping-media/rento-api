@@ -964,7 +964,7 @@ async function createInvoice({ currentBookingId,_id }) {
     // console.log(bookings)
 
     const userData = await User.findOne({_id: userId }).select("firstName lastName contact email");
-    console.log(userData)
+    //console.log(userData)
 
     if (!userData) {
       return {
@@ -1029,7 +1029,7 @@ async function createInvoice({ currentBookingId,_id }) {
     await newInvoice.save();
 
     const updateResult = await Booking.updateOne(
-      { _id:currentBookingId },
+      { currentBookingId },
       { $set: { "bookingPrice.isInvoiceCreated": true } },
       { new: true }
     );
