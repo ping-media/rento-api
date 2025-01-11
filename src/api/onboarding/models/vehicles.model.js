@@ -98,16 +98,16 @@ const createBookingDuration = async ({ bookingDuration, attachedVehicles, bookin
 
 
 async function createVehicle({
-  _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, vehicleColor, locationId,
-  perDayCost, lastServiceDate, kmsRun, isBooked, condition, deleteRec, vehicleBookingStatus, vehicleStatus,
+  _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, locationId,
+  perDayCost, lastServiceDate, kmsRun, condition, deleteRec, vehicleBookingStatus, vehicleStatus,
   vehiclePlan, refundableDeposit, lateFee, speedLimit
 }) {
   const response = { status: 200, message: "Data fetched successfully", data: [] };
 
   try {
     if (_id || (vehicleMasterId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber &&
-      freeKms && extraKmsCharges && vehicleModel && vehicleColor && perDayCost && lastServiceDate &&
-      kmsRun && isBooked && condition && locationId)) {
+      freeKms && extraKmsCharges && vehicleModel  && perDayCost && lastServiceDate &&
+      kmsRun  && condition && locationId)) {
 
 
 
@@ -125,19 +125,19 @@ async function createVehicle({
         }
       }
 
-      if (isBooked) {
-        const statusCheck = ["false", "true"].includes(isBooked.toString());
-        if (!statusCheck) {
-          response.status = 401;
-          response.message = "Invalid isBooked value";
-          await Log({
-            message: "Invalid isBooked value",
-            functionName: "createVehicle",
-            userId: stationId
-          });
-          return response;
-        }
-      }
+      // if (isBooked) {
+      //   const statusCheck = ["false", "true"].includes(isBooked.toString());
+      //   if (!statusCheck) {
+      //     response.status = 401;
+      //     response.message = "Invalid isBooked value";
+      //     await Log({
+      //       message: "Invalid isBooked value",
+      //       functionName: "createVehicle",
+      //       userId: stationId
+      //     });
+      //     return response;
+      //   }
+      // }
 
       if (condition) {
         const statusCheck = ["old", "new"].includes(condition);
@@ -166,7 +166,7 @@ async function createVehicle({
 
       const o = {
         locationId, vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms,
-        extraKmsCharges, vehicleModel, vehicleColor, perDayCost, lastServiceDate, kmsRun, isBooked, condition,
+        extraKmsCharges, vehicleModel, perDayCost, lastServiceDate, kmsRun, condition,
         vehiclePlan, refundableDeposit, lateFee, speedLimit
       };
 
