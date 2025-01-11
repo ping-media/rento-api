@@ -1029,7 +1029,7 @@ async function createInvoice({ currentBookingId,_id }) {
     await newInvoice.save();
 
     const updateResult = await Booking.updateOne(
-      { _id },
+      { _id:currentBookingId },
       { $set: { "bookingPrice.isInvoiceCreated": true } },
       { new: true }
     );
