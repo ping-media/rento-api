@@ -100,7 +100,7 @@ const pickupImageUp = async (req, res) => {
     const _id=bookingId;
     const updateResult = await Booking.updateOne(
       { _id },
-      { $set: { "bookingPrice.isPickupImagaAdded": true ,"rideStatus":ongoing} },
+      { $set: { "bookingPrice.isPickupImagaAdded": true ,"rideStatus":"ongoing"} },
       { new: true }
     );
 console.log(updateResult)
