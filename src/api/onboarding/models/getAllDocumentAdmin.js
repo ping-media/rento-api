@@ -40,6 +40,7 @@ const getAllDocument = async (req, res) => {
       return res.json({
         status: 404,
         message: "No documents found.",
+        data:[]
       });
     }
 
