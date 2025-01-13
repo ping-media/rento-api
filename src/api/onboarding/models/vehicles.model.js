@@ -951,7 +951,7 @@ async function createInvoice({ currentBookingId,_id }) {
         };
       }
     // Fetch booking details
-    const bookings = await Booking.findOne({ currentBookingId  }).select("userId bookingId paymentStatus bookingPrice vehicleBasic vehicleName");
+    const bookings = await Booking.findOne({ _id:currentBookingId  }).select("userId bookingId paymentStatus bookingPrice vehicleBasic vehicleName");
 
     if (!bookings) {
       return {
@@ -959,6 +959,7 @@ async function createInvoice({ currentBookingId,_id }) {
         message: "Booking not found",
       };
     }
+    
  
     const { userId, bookingId, bookingPrice, paymentStatus, vehicleBasic, vehicleName } = bookings
     // console.log(bookings)
@@ -1029,7 +1030,7 @@ async function createInvoice({ currentBookingId,_id }) {
     await newInvoice.save();
 
     const updateResult = await Booking.updateOne(
-      { currentBookingId },
+      { _id:currentBookingId },
       { $set: { "bookingPrice.isInvoiceCreated": true } },
       { new: true }
     );
