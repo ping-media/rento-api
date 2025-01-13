@@ -32,8 +32,8 @@ const upload = multer({
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
-    const { userId, bookingId, data, vehicleMeterReding,_id } = req.body;
- // console.log(bookingId)
+    const { userId, bookingId, data, vehicleMeterReading,_id } = req.body;
+  console.log(vehicleMeterReading)
     // Validate userId
     if (!userId || userId.length !== 24) {
       return res.json({ message: "Invalid user ID provided." });
@@ -93,14 +93,14 @@ const pickupImageUp = async (req, res) => {
       bookingId,
       files: tempObj,
       data,
-      vehicleMeterReding
+      vehicleMeterReading
     });
 
     await newDocument.save();
     //const _id=bookingId;
     const updateResult = await Booking.updateOne(
       { _id },
-      { $set: { "bookingPrice.isPickupImagaAdded": true ,"rideStatus":"ongoing"} },
+      { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing"} },
       { new: true }
     );
 //console.log(updateResult)
