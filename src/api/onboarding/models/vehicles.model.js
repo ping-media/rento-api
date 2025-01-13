@@ -397,7 +397,7 @@ async function booking({
       });
 
       obj.status = 200;
-      obj.message = "Booking Update successfull ";
+      obj.message = "Booking Update successfull";
       // obj.data=_id;
   
       // if (paySuccessId){

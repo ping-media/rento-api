@@ -39,13 +39,13 @@ const pickupImageUp = async (req, res) => {
       return res.json({ message: "Invalid user ID provided." });
     }
 
-    const existingInvoice = await Booking.findOne({bookingId});
-    if (existingInvoice) {
-      return {
-        status: 401,
-        message: "Invoice already exists for this booking",
-      };
-    }
+    // const existingInvoice = await Booking.findOne({bookingId});
+    // if (existingInvoice) {
+    //   return {
+    //     status: 401,
+    //     message: "Invoice already exists for this booking",
+    //   };
+    // }
    // const _id=existingInvoice._id
    // console.log(_id,existingInvoice)
 
@@ -100,7 +100,7 @@ const pickupImageUp = async (req, res) => {
     const _id=bookingId;
     const updateResult = await Booking.updateOne(
       { _id },
-      { $set: { "bookingPrice.isPickupImagaAdded": true } },
+      { $set: { "bookingPrice.isPickupImagaAdded": true ,"rideStatus":ongoing} },
       { new: true }
     );
 console.log(updateResult)
@@ -198,17 +198,22 @@ console.log(updateResult)
 
 const getPickupImage = async (req, res) => {
     try {
-      const { userId } = req.query;
-  
-  
-     if(userId) {
+      const { userId,bookingId,_id } = req.query;
+    //console.log(userId,bookingId,_id)
+      const filter = {};
+      if (_id) filter._id = _id;
+      if (bookingId) filter.bookingId = bookingId;
+      if (userId) filter.userId = userId;
+     // if (paidInvoice) filter.paidInvoice = paidInvoice;
+
       
-      const documents = await pickupImage.find({ userId });
+      
+      const documents = await pickupImage.find(filter);
   
       if (!documents || documents.length === 0) {
         return res.json({
           status: 400,
-          message: "No data found for the provided User ID.",
+          message: "No data found .",
         });
 
       }
@@ -217,22 +222,22 @@ const getPickupImage = async (req, res) => {
         message: "Image retrieved successfully.",
         data: documents,
       });
-    }
+    
 
-    const documents = await pickupImage.find();
+    // const documents = await pickupImage.find();
   
-    if (!documents || documents.length === 0) {
-      return res.json({
-        status: 400,
-        message: "No data found for the provided User ID.",
-      });
+    // if (!documents || documents.length === 0) {
+    //   return res.json({
+    //     status: 400,
+    //     message: "No data found for the provided User ID.",
+    //   });
 
-    }
-      return res.status(200).json({
-        status: 200,
-        message: "Image retrieved successfully.",
-        data: documents,
-      });
+    // }
+    //   return res.status(200).json({
+    //     status: 200,
+    //     message: "Image retrieved successfully.",
+    //     data: documents,
+    //   });
     } catch (error) {
       console.error("Error fetching documents:", error);
       return res.json({
