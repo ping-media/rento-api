@@ -137,6 +137,7 @@ const getDocument = async (req, res) => {
         return res.json({
           status: 400,
           message: "No documents found for the provided User ID.",
+          data:[]
         });
       }
   

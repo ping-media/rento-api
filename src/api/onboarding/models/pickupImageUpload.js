@@ -103,7 +103,7 @@ const pickupImageUp = async (req, res) => {
       { $set: { "bookingPrice.isPickupImagaAdded": true ,"rideStatus":"ongoing"} },
       { new: true }
     );
-console.log(updateResult)
+//console.log(updateResult)
     return res.json({
       status: 200,
       message: "Files uploaded successfully.",
