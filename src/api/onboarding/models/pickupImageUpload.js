@@ -32,18 +32,18 @@ const upload = multer({
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
-    const { userId, bookingId, data, vehicleMeterReding } = req.body;
+    const { userId, bookingId, data, vehicleMeterReding,_id } = req.body;
  // console.log(bookingId)
     // Validate userId
     if (!userId || userId.length !== 24) {
       return res.json({ message: "Invalid user ID provided." });
     }
 
-    // const existingInvoice = await Booking.findOne({bookingId});
-    // if (existingInvoice) {
+    // const existingBooking = await Booking.findOne({bookingId});
+    // if (!existingBooking) {
     //   return {
     //     status: 401,
-    //     message: "Invoice already exists for this booking",
+    //     message: "No already exists for this booking",
     //   };
     // }
    // const _id=existingInvoice._id
@@ -97,7 +97,7 @@ const pickupImageUp = async (req, res) => {
     });
 
     await newDocument.save();
-    const _id=bookingId;
+    //const _id=bookingId;
     const updateResult = await Booking.updateOne(
       { _id },
       { $set: { "bookingPrice.isPickupImagaAdded": true ,"rideStatus":"ongoing"} },
