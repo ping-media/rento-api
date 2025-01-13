@@ -100,7 +100,7 @@ const fileUpload =async (req, res) => {
     });
     }
     
-    if(req.body && locationName){
+    if(!locationName){
         return res.json({
             status:200,
             message: 'Location name required',
