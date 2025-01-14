@@ -33,6 +33,8 @@ const pickupImageSchema = new mongoose.Schema({
   bookingId: {type: String, ref: 'Booking' ,required:true },
   files: { type: Map, of: fileSchema, required: true },
   data:{type:Object},
+  adminNotes:{type:Object},
+  managerNotes:{type:Object},
   vehicleMeterReading:{type:Number},
   
    
