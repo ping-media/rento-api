@@ -39,7 +39,7 @@ const pickupImageUp = async (req, res) => {
       return res.json({ message: "Invalid user ID provided." });
     }
 
-    if(addNoteUser=="Admin"){
+    if(addNoteUser=="admin"){
       adminNotes=note;
     }
     else{
