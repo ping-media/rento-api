@@ -3,7 +3,8 @@ const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 require('dotenv').config();
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
-const Log = require("../models/Logs.model")
+const Log = require("../models/Logs.model");
+const {reziseImg} = require("../../../utils/resizeImage")
 // Validate required environment variables
 const { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME } = process.env;
 
@@ -61,9 +62,10 @@ const documentUpload = async (req, res) => {
 
       // Prepare an array to store uploaded file details
       const uploadedFiles = [];
-
+    // console.log(req.files,typeof(req.files))
       // Loop through files and upload to S3
       for (const file of req.files) {
+        reziseImg(file)
 
            fileName = `${docType}${userId}`;
           const params = {

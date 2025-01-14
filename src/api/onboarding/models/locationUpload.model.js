@@ -5,6 +5,7 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 require('dotenv').config();
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const Log = require("../models/Logs.model")
+const {reziseImg} = require("../../../utils/resizeImage")
 
 
 
@@ -35,11 +36,7 @@ const upload = multer({
 const fileUpload =async (req, res) => {
     try {
       const {_id,deleteRec,locationName,locationStatus}=req.body
-        // const  _id= req.body._id;
-        // const  deleteRec=req.body.deleteRec;
-        // const locationName = req.body.locationName;
-        // const locationStatus= req.body.locationStatus;
-       
+      //console.log(req.file)
         if (!_id){
             const findName = await Location.findOne({ locationName })
             if (findName) {
@@ -59,16 +56,17 @@ const fileUpload =async (req, res) => {
             });
         }
        
+        const resizedImageBuffer = await reziseImg(req.file); 
         
         // Generate safe file name
         const timestamp = Date.now();
         const safeFileName = `${timestamp}-${path.basename(req.file.originalname)}`;
         const imageFileName = safeFileName
-        console.log(imageFileName)
+        //console.log(imageFileName)
         const params = {
             Bucket: AWS_BUCKET_NAME, // Your bucket name
             Key: safeFileName, // File name in the bucket
-            Body: req.file.buffer, // File content
+            Body: resizedImageBuffer, // File content
             ContentType: req.file.mimetype, // File MIME type
         };
 

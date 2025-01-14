@@ -183,7 +183,7 @@ const upload = multer({
 router.post("/createLocation",Authentication, upload.single('image'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'File upload failed. No file provided.' });
-  }
+  } 
   fileUpload(req, res)
   // vehiclesService.createLocation(req, res);
 })

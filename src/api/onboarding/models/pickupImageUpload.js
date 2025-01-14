@@ -33,23 +33,14 @@ const upload = multer({
 const pickupImageUp = async (req, res) => {
   try {
     const { userId, bookingId, data, vehicleMeterReading,_id } = req.body;
-  //console.log(vehicleMeterReading)
-    // Validate userId
+  
+
     if (!userId || userId.length !== 24) {
       return res.json({ message: "Invalid user ID provided." });
     }
 
-    // const existingBooking = await Booking.findOne({bookingId});
-    // if (!existingBooking) {
-    //   return {
-    //     status: 401,
-    //     message: "No already exists for this booking",
-    //   };
-    // }
-   // const _id=existingInvoice._id
-   // console.log(_id,existingInvoice)
+   
 
-    // Prepare an array to store uploaded file details
     const uploadedFiles = [];
 
     // Helper function to get current timestamp in milliseconds
@@ -58,14 +49,14 @@ const pickupImageUp = async (req, res) => {
     // Loop through files and upload to S3
     for (let index = 0; index < req.files.length; index++) {
       const file = req.files[index];
-
+      const resizedImageBuffer = await reziseImg(file);
       // Generate a unique file name
       const fileName = `${userId}_${getMilliseconds()}_${index}`;
 
       const params = {
         Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
         Key: fileName, // Unique File Name
-        Body: file.buffer, // File Content
+        Body: resizedImageBuffer, // File Content
         ContentType: file.mimetype, // MIME Type
       };
 

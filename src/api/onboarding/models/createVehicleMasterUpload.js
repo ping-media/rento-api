@@ -5,6 +5,7 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 require('dotenv').config();
 const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Log = require("../models/Logs.model")
+const {reziseImg} = require("../../../utils/resizeImage")
 
 
 
@@ -38,12 +39,6 @@ const VehicalfileUpload =async (req, res) => {
     try {
       const {_id,deleteRec,vehicleBrand,vehicleName,vehicleType} =req.body;
 
-        // let _id= req.body._id;
-        // let deleteRec=req.body.deleteRec;
-        // let vehicleName = req.body.vehicleName;
-        // let vehicleType = req.body.vehicleType;
-        // let vehicleBrand = req.body.vehicleBrand;
-
     
         
         const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp"];
@@ -54,6 +49,9 @@ const VehicalfileUpload =async (req, res) => {
             });
         }
         
+        const resizedImageBuffer = await reziseImg(req.file); 
+
+
         // Generate safe file name
         const timestamp = Date.now();
         const safeFileName = `${timestamp}-${path.basename(req.file.originalname)}`;
@@ -62,7 +60,7 @@ const VehicalfileUpload =async (req, res) => {
         const params = {
             Bucket: AWS_BUCKET_NAME, // Your bucket name
             Key: safeFileName, // File name in the bucket
-            Body: req.file.buffer, // File content
+            Body: resizedImageBuffer, // File content
             ContentType: req.file.mimetype, // File MIME type
         };
 
