@@ -99,6 +99,13 @@ const bookingSchema = new Schema({
        // required: true
     },
    
+   
+    notes: {
+        type: Object,
+       // default:"NA"
+       // required: true
+    },
+   
     
     paymentMethod: {
         type: String,
