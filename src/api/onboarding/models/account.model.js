@@ -105,6 +105,7 @@ const getAllUsers = async (query) => {
     if (email) filter.email = { $regex: email, $options: "i" };
     if (contact) filter.contact = { $regex: contact, $options: "i" };
     if (userType) filter.userType = { $regex: userType, $options: "i" };
+    if (isDocumentVerified) filter.isDocumentVerified = { $regex: isDocumentVerified, $options: "i" };
    
 
     // Handle search functionality
@@ -115,7 +116,7 @@ const getAllUsers = async (query) => {
         { email: { $regex: search, $options: "i" } },
         { contact: { $regex: search, $options: "i" } },
         { userType: { $regex: search, $options: "i" } },
-      //  { _id: { $regex: search, $options: "i" } },
+        { isDocumentVerified: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -432,6 +433,7 @@ async function saveUser(userData) {
     kycApproved = "no",
     isEmailVerified = "no",
     isContactVerified = "no",
+    isDocumentVerified="no",
     drivingLicence,
     idProof,
     addressProof,
@@ -526,6 +528,7 @@ async function saveUser(userData) {
       idProof,
       isContactVerified,
       isEmailVerified,
+      isDocumentVerified,
       kycApproved,
       userType,
       status,

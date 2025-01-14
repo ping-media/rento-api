@@ -3,16 +3,25 @@ const Otp = require("../../../db/schemas/onboarding/logOtp");
 const User = require("../../../db/schemas/onboarding/user.schema");
 require("dotenv").config();
 
+// const transporter = nodemailer.createTransport({
+//   host: "smtp-relay.brevo.com",
+//   port: 587,
+//   secure: false, // true for 465, false for other ports
+//   auth: {
+//     user: process.env.EMAIL_USER_ID, // generated ethereal user
+//     pass: process.env.EMAIL_PASSWORD, // generated ethereal password
+//     },
+//   });
+
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
   port: 587,
   secure: false, // true for 465, false for other ports
   auth: {
-    user: process.env.EMAIL_USER_ID, // generated ethereal user
-    pass: process.env.EMAIL_PASSWORD, // generated ethereal password
+    user: "82afd7001@smtp-brevo.com", // generated ethereal user
+    pass: "V2FZcGrQbtPsEdYI", // generated ethereal password
     },
   });
-
 
 async function emailOtp(req, res) {
   try {
@@ -23,7 +32,7 @@ async function emailOtp(req, res) {
         message: "A valid email is required",
       });
     }
-    const contact = Math.floor(100000 + Math.random() * 900000).toString(); // Generate unique contact number
+    const contact = Math.floor(100000 + Math.random() * 900000).toString(); 
 
     const otp = Math.floor(100000 + Math.random() * 900000);
 
@@ -63,9 +72,9 @@ async function emailOtp(req, res) {
 async function sendOtpByEmail(email, otp) {
   try {
     const info = await transporter.sendMail({
-      from: '"Rento-Moto Support" <support@rentomoto.com>',
+      from: '"Rento Bikes" <support@rentomoto.com>',
       to: email,
-      subject: "Your OTP Code",
+      subject: "Your OTP Code from Rento Bikes",
       html: `<p>Your OTP code is <strong>${otp}</strong>. This code is valid for 5 minutes.</p>`,
     });
 

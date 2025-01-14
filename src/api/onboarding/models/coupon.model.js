@@ -178,6 +178,7 @@ const updateCouponCount = async (query) => {
   try {
     const {_id}=query;
     // Fetch coupon by ID
+   // console.log(_id)
     const coupon = await Coupon.findById(_id);
     if (!coupon) {
       obj.status = 400;
@@ -186,12 +187,12 @@ const updateCouponCount = async (query) => {
     }
 
 
-     const { allowedUsersCount } = coupon;
+     const { allowedUsersCount, couponCount } = coupon;
     // let allowedUsersCount = couponCount - 1;
 
     // Ensure allowedUsersCount does not go below 0
 
-
+if(couponCount !== -1){
     if (allowedUsersCount == 0 ) {
       obj.status = 400;
       obj.message = "Coupon usage limit exceeded";
@@ -215,6 +216,7 @@ const updateCouponCount = async (query) => {
     }
 
     obj.data = updatedCoupon;
+  }
   } catch (error) {
     console.error("Error updating coupon:", error);
     obj.status = 500;
@@ -262,13 +264,14 @@ const applyCoupon = async (body) => {
     // }
 
     // Check coupon usage limits
-    if (coupon.allowedUsersCount == 0) {
+   if(coupon.couponCount !== -1){
+     if (coupon.allowedUsersCount == 0) {
     
         obj.status= 400;
         obj.message= "Coupon usage limit reached";
         return obj;
      
-    }
+    }}
 
     // Calculate the discount
     let discount = 0;

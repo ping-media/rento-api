@@ -223,8 +223,8 @@ const getBookings = async (query) => {
       
 
       const booking = await Booking.findById(_id)
-        .populate("userId", "firstName lastName contact")
-        .populate("stationMasterUserId", "firstName lastName contact");
+        .populate("userId", "firstName lastName contact isDocumentVerified")
+        .populate("stationMasterUserId", "firstName lastName contact email status");
       
       if (!booking) {
         await Log({

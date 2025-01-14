@@ -169,7 +169,7 @@ exports.createVehicle = async (req, res) => {
 
 exports.createCoupon = async (req, res) => {
   try {
-    const result = await createCoupon(req.body);
+    const result = await createCoupon(req.body,req.query);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({
@@ -194,9 +194,10 @@ exports.applyCoupon = async (req, res) => {
     });
   }
 }
+
 exports.updateCouponCount = async (req, res) => {
   try {
-    const result = await updateCouponCount(req.body,req.headers);
+    const result = await updateCouponCount(req.body,req.headers,req.query);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({

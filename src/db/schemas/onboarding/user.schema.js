@@ -81,6 +81,11 @@ const userSchema = new mongoose.Schema({
     enum: ["yes", "no"],
     default: "no"
   },
+  isDocumentVerified: {
+    type: String,
+    enum: ["yes", "no"],
+    default: "no"
+  },
   kycApproved: {
     type: String,
     enum: ["yes", "no"],
