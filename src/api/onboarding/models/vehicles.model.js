@@ -22,6 +22,7 @@ const plan = require("../../../db/schemas/onboarding/plan.schema");
 const location = require("../../../db/schemas/onboarding/location.schema");
 const station = require("../../../db/schemas/onboarding/station.schema");
 const order = require("../../../db/schemas/onboarding/order.schema");
+const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const { emailValidation, contactValidation } = require("../../../constant");
 const { query } = require("express");
 //const {generateRandomId } = require('../../../utils/help-scripts/help-functions');

@@ -31,7 +31,7 @@ const fileSchema = new mongoose.Schema({
 const pickupImageSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
   bookingId: {type: String, ref: 'Booking' ,required:true },
-  files: { type: Map, of: fileSchema, required: true },
+  files: { type: Map, of: fileSchema },
   data:{type:Object},
   adminNotes:{type:Object},
   managerNotes:{type:Object},
