@@ -5,7 +5,7 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 require('dotenv').config();
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const Log = require("../models/Logs.model")
-const {reziseImg} = require("../../../utils/resizeImage")
+const {resizeImg} = require("../../../utils/resizeImage")
 
 
 
@@ -56,7 +56,7 @@ const fileUpload =async (req, res) => {
             });
         }
        
-        const resizedImageBuffer = await reziseImg(req.file); 
+        const resizedImageBuffer = await resizeImg(req.file); 
         
         // Generate safe file name
         const timestamp = Date.now();

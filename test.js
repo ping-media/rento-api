@@ -645,4 +645,5 @@ async function sendOtpByEmail(email, firstName, lastName) {
   }
 }
 
+
 console.log(sendOtpByEmail("himanshu.masai@gmail.com","Himanshu","Jain"))

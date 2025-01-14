@@ -273,12 +273,14 @@ const applyCoupon = async (body) => {
      
     }}
 
+    
+
     // Calculate the discount
     let discount = 0;
     if (coupon.discountType === "percentage") {
       discount = (totalAmount * coupon.discount) / 100;
     } else if (coupon.discountType === "fixed") {
-      discount = coupon.discount;
+      discount = totalAmount<coupon.discount? 0:coupon.discount
     }
 
     const finalAmount = totalAmount - discount;

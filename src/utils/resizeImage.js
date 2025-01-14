@@ -1,7 +1,7 @@
 const sharp = require('sharp');
 
 // Resize and compress image using sharp
-const reziseImg = async (file) => {
+const resizeImg = async (file) => {
   try {
     // Convert the Buffer to a sharp instance
     const imageBuffer = file.buffer;
@@ -11,10 +11,9 @@ const reziseImg = async (file) => {
     const height = 600; // Example height (can be auto or based on your needs)
     const format = 'webp'; // Convert image to WebP format
 
-    // Resize and convert the image using sharp
     const resizedBuffer = await sharp(imageBuffer)
       .resize(width, height) // Resize to the specified width and height
-      .webp({ quality }) // Convert to WebP format with the specified quality
+      [format]({ quality }) // Convert to the desired format with the specified quality
       .toBuffer(); // Output as a Buffer
 
     // You can now upload the resized image (resizedBuffer) to S3 or process further.
@@ -27,4 +26,4 @@ const reziseImg = async (file) => {
   }
 };
 
-module.exports = { reziseImg };
+module.exports = { resizeImg };

@@ -3,7 +3,8 @@ const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 require('dotenv').config();
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
-const Booking = require('../../../db/schemas/onboarding/booking.schema')
+const Booking = require('../../../db/schemas/onboarding/booking.schema');
+const {resizeImg} = require('../../../utils/resizeImage')
 
 
 // Validate required environment variables
@@ -49,7 +50,7 @@ const pickupImageUp = async (req, res) => {
     // Loop through files and upload to S3
     for (let index = 0; index < req.files.length; index++) {
       const file = req.files[index];
-      const resizedImageBuffer = await reziseImg(file);
+      const resizedImageBuffer = await resizeImg(file);
       // Generate a unique file name
       const fileName = `${userId}_${getMilliseconds()}_${index}`;
 
