@@ -291,9 +291,6 @@ const applyCoupon = async (body) => {
    
   } catch (error) {
     console.error("Error applying coupon=", error);
-
-   
-  
       obj.status= 500;
       error= error.message;
       obj.message= error;
