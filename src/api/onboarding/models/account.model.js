@@ -77,6 +77,7 @@ const getAllUsers = async (query) => {
       email,
       contact,
       search,
+      isDocumentVerified,
       page = 1,
       limit = 10,
       sortBy = 'createdAt',
