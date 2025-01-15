@@ -247,8 +247,6 @@ async function sendOtpByEmail(email, firstName, lastName) {
     }
 }
 
-
-
 async function sendOtpByEmailForBooking(body) {
   const { userId, stationId, stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, } = body;
   try {
@@ -440,13 +438,15 @@ async function sendOtpByEmailForBooking(body) {
             <tr>
               <td colspan="2" style="color:#999;font-size:12px">
                 <span>&nbsp;&nbsp;Paid online</span>
-                <span style="float:right"> ₹ ${bookingPrice.userPaid == undefined ? 0 : bookingPrice.userPaid}</span>
+                <span style="float:right"> ₹ ${bookingPrice.userPaid == undefined ? bookingPrice.discountTotalPrice !== 0
+                  ? bookingPrice.discountTotalPrice
+                  : bookingPrice.totalPrice : bookingPrice.userPaid}</span>
               </td>
             </tr>
             <tr>
               <td colspan="2" style="color:#999;font-size:12px">
                 <span>&nbsp;&nbsp;Remaining amount to be paid at the time of pickup</span>
-                <span style="float:right"> ₹ ${totalPrice - userPaid}</span>
+                <span style="float:right"> ₹ ${bookingPrice.userPaid == undefined ? 0 : totalPrice - userPaid}</span>
               </td>
             </tr>
             <tr>

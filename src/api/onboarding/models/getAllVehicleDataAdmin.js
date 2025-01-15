@@ -222,6 +222,7 @@ const getAllVehiclesData = async (req, res) => {
           data: [
             { $skip: (parsedPage - 1) * parsedLimit },
             { $limit: parsedLimit },
+            { $sort: { createdAt: -1 } }
           ],
         },
       },

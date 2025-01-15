@@ -1062,7 +1062,7 @@ async function getAllInvoice(query) {
     page = 1,
     limit = 10,
     sortBy = 'createdAt',
-    order = 'asc'
+    order = 'desc'
   } = query;
 
   try {
@@ -2272,9 +2272,11 @@ const getPlanData = async (query) => {
         },
       },
       { $match: matchFilter },
-      { $sort: { planName: 1 } }, // Sort by planName (ascending)
+     // { $sort: { planName: 1 } }, // Sort by planName (ascending)
       { $skip: skip },
       { $limit: Number(limit) },
+      { $sort: { createdAt: -1 } }
+
     ]);
 
     // Total records count
@@ -2502,8 +2504,7 @@ async function getLocation(query) {
       filter.locationStatus = { $ne: "inactive" };
     }
 
-    const result = await Location.find(filter)
-
+    const result = await Location.find(filter).sort({ createdAt: -1 })
     if (result.length) {
       obj.data = result;
 
@@ -2575,7 +2576,7 @@ const getStationData = async (query) => {
   try {
     const totalRecords = await station.count(filter);
 
-    const response = await station.find(filter).skip(skip).limit(Number(limit)).populate("userId", "firstName lastName contact");
+    const response = await station.find(filter).skip(skip).limit(Number(limit)).sort({createdAt:-1}).populate("userId", "firstName lastName contact");
 
     if (response.length) {
       // const enrichedData = await Promise.all(

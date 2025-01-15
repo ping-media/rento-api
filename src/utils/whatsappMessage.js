@@ -92,6 +92,7 @@ async function whatsappMessage(contact, templateName, values) {
 
     obj.message = responseData.message;
     obj.result = responseData.result;
+    console.log(obj)
 
   } catch (error) {
     console.error("Fetch Error:", error.message);
