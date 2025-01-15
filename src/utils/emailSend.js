@@ -533,7 +533,7 @@ async function sendOtpByEmailForBooking(body) {
       
       <tr>
         <td colspan="2" align="left" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:20px 30px 20px 30px;border-top:1px solid #ccc;background-color:#fff;color:#767676">
-          <b>GoHub's Terms and Conditions</b>
+          <b>RentoBikes Terms and Conditions</b>
         </td>
       </tr>
       <tr>
@@ -726,7 +726,7 @@ async function sendEmailForBookingToStationMaster(userId, stationMasterUserId,ve
     </tr>
     <tr>
       <td colspan="2" align="left" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:20px 30px 20px 30px;border-top:1px solid #ccc;background-color:#fff;color:#767676">
-        <b>GoHub's Terms and Conditions</b>
+        <b>RentoBikes Terms and Conditions</b>
       </td>
     </tr>
     <tr>
