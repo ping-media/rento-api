@@ -59,7 +59,7 @@ async function whatsappMessage(contact, templateName, values) {
 
   const headers = {
     "Content-Type": "application/json",
-    "Authorization": "Basic UTJpU0pmUXFXVExmbWY1S1JVSVotUjA4M0dhS2VHeGNXZFdoeUNaSU9pQTo="
+    "Authorization": `Basic ${process.env.whatsappApiKey}` 
 };
 
   console.log("Request Data:", data);
