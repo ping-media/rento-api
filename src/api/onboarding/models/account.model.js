@@ -471,7 +471,13 @@ async function saveUser(userData) {
     if (_id && !validateId(_id)) {
       return { status: 400, message: "Invalid _id" };
     }
-
+    
+    if(userType=="manager" || userType=="admin"){
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return { status: 409, message: "This email  already exists" };
+      }
+    }
     
     if (contact) {
       if (!isValidContact(contact)) {
