@@ -34,7 +34,7 @@ const { createCoupon, getCoupons, updateCouponCount, applyCoupon } = require("..
 const {getBookings, getBooking}= require("../models/booking.model")
 const {getVehicleBookrecode,VehicleBookrecode}= require("../models/Vehicle.Bookrecode.module");
 const {fileUpload} = require("../models/locationUpload.model")
-const {sendOtpByEmailForBooking}=require("../../../utils/emailSend")
+const {sendOtpByEmailForBooking,sendInvoiceByEmail}=require("../../../utils/emailSend")
 const {whatsappMessage}=require("../../../utils/whatsappMessage")
 
 exports.sendBookingDetailesTosocial = async (req, res) => {
@@ -51,10 +51,24 @@ exports.sendBookingDetailesTosocial = async (req, res) => {
   }
 }
 
+// exports.sendBookingDetailesTosocial = async (req, res) => {
+//   try {
+//     const result = await whatsappMessage(req.body,req.query,req.headers);
+//     return res.status(200).json(result);
+//   } catch (err) {
+//     return res.json({
+//       message: err.message,
+//       name: err.name,
+//       stack: err.stack,
+//       status: 400,
+//     });
+//   }
+// }
 
-exports.sendOtpByEmailForBooking = async (req, res) => {
+
+exports.sendInvoiceByEmail = async (req, res) => {
   try {
-    const result = await sendOtpByEmailForBooking(req.body,req.query,req.headers);
+    const result = await sendInvoiceByEmail(req.body,req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({

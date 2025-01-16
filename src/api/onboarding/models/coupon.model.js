@@ -284,9 +284,9 @@ const applyCoupon = async (body) => {
 
     const finalAmount = totalAmount<coupon.discount ? 0 : totalAmount - discount;
 
-   const _id=coupon._id
+   const isDiscountZero= finalAmount===0 ? true :false
     
-    obj.data = { discount, finalAmount, isExtra, coupon };
+    obj.data = { discount, finalAmount, isExtra, coupon , isDiscountZero};
 
    
   } catch (error) {

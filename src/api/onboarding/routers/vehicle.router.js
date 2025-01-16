@@ -29,6 +29,7 @@ const Authentication = require ("../../../middlewares/Authentication");
 const{deleteS3Bucket}=require("../models/deleteS3Bucket");
 const {getBookingGraphData}= require("../models/graphData");
 const jwt = require("jsonwebtoken");
+const{sendInvoiceByEmail}=require("../../../utils/emailSend")
 
 
 
@@ -717,6 +718,16 @@ router.get("/paymentRec",Authentication, async (req, res) => {
 router.post("/sendEmailForBookingDetails", async (req, res) => {
 
   vehiclesService.sendOtpByEmailForBooking(req,res);
+
+})
+
+
+router.post("/sendInvoiceByEmail", async (req, res) => {
+  // if (!req.files || req.files.length === 0) {
+  //     return res.send({ message: 'File upload failed. No files provided.' });
+  //   }
+    console.log(req.file)
+  vehiclesService.sendInvoiceByEmail(req,res)
 
 })
 
