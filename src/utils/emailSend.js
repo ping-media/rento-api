@@ -2,7 +2,8 @@ require("dotenv").config();
 const nodemailer = require("nodemailer");
 const Station = require("../db/schemas/onboarding/station.schema");
 const User = require("../db/schemas/onboarding/user.schema");
-
+const fs = require('fs');
+const path = require('path');
 
 // const transporter = nodemailer.createTransport({
 //   port: 465,
@@ -851,8 +852,13 @@ async function sendEmailForBookingToStationMaster(userId, stationMasterUserId,ve
 
 
 
-async function sendInvoiceByEmail(body) {
- const {email, firstName, lastName, file}=body
+async function sendInvoiceByEmail({
+  email,
+  firstName,
+  lastName,
+  file
+}) {
+ //const {email, firstName, lastName, file}=body
  console.log(file)
   const mailOptions ={
     from: 'Rento Bikes <support@rentobikes.com>',
@@ -883,14 +889,10 @@ async function sendInvoiceByEmail(body) {
         
         <tr>
           <td colspan="2" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:30px 0;padding-top:10px;color:#767676;font-weight: bold;">
-            <span >
-              Welcome to the Rentobikes family! It's great to meet you! 
-            </span>
-            <br>
-            <br>
+           
             <span style="font-size:16px">
-             Thank you for being part of our journey at RentoBikes! We’re excited to have you with us.<br/>
-             Attached is your invoice for the recent service. If you have any questions, feel free to reach out.<br/>
+             Thank you for being part of our journey at RentoBikes! We’re excited to have you with us.
+             Attached is your invoice for the recent service. If you have any questions, feel free to reach out.
              We look forward to sharing more exciting offers and trips with you soon!
             </span>
 
@@ -1053,10 +1055,11 @@ async function sendInvoiceByEmail(body) {
 </html>`,
 attachments: [
   {
-    filename: file.originalname,
-    path: file.path,
-     },
-      ],
+    filename: file.originalname, // The name of the file (same as uploaded)
+    content: file.buffer, // The file content as a buffer
+    encoding: 'base64' // Specify the encoding if needed
+  }
+]
   }
   
 

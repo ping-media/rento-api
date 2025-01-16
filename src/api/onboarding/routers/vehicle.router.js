@@ -3,6 +3,8 @@ const vehiclesService = require("../services/vehicles.service");
 const auth = require("../../../middlewares/auth/index");
 const User = require("../../../db/schemas/onboarding/user.schema")
 const multer = require('multer');
+const storage = multer.memoryStorage(); // Store the file in memory
+const upload1 = multer({ storage: storage });
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
 require('dotenv').config();
@@ -722,15 +724,25 @@ router.post("/sendEmailForBookingDetails", async (req, res) => {
 })
 
 
-router.post("/sendInvoiceByEmail", async (req, res) => {
-  // if (!req.files || req.files.length === 0) {
-  //     return res.send({ message: 'File upload failed. No files provided.' });
-  //   }
-    console.log(req.file)
-  vehiclesService.sendInvoiceByEmail(req,res)
+router.post("/sendInvoiceByEmail",Authentication, upload1.single('file'), async (req, res) => {
+  // `req.file` will contain the file as a buffer
+  const { email, firstName, lastName } = req.body;
+  const file = req.file; // This will be the file object in memory
+  
+  // Process the file, then send the email
+  const result = await sendInvoiceByEmail({
+    email,
+    firstName,
+    lastName,
+    file
+  });
 
-})
-
+  if (result) {
+    return res.status(200).json({ success: true, message: 'Invoice sent' });
+  } else {
+    return res.status(400).json({ success: false, error: result.error });
+  }
+});
 
 
 // router.get("/api/cron", async (req, res) => {
