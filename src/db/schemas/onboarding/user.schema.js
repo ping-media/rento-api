@@ -50,7 +50,8 @@ const userSchema = new mongoose.Schema({
   },
   altContact: {
     type: String,
-    trim: true
+    trim: true,
+    default:"Na"
   },
   email: {
     type: String,
@@ -58,7 +59,7 @@ const userSchema = new mongoose.Schema({
   },
   dateofbirth: {
     type: String,
-   
+    default:"Na"
   },
   gender: {
     type: String,

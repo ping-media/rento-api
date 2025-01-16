@@ -5,7 +5,8 @@ const couponSchema = new Schema({
     couponName: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
+      trim: true,
     },
     allowedUsersCount: {
       type: Number,
