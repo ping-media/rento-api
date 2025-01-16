@@ -424,7 +424,7 @@ async function saveUser(userData) {
     _id,
     userType = "customer",
     status = "active",
-    altContact,
+    altContact="Na",
     firstName,
     lastName,
     contact,
@@ -438,7 +438,7 @@ async function saveUser(userData) {
     drivingLicence,
     idProof,
     addressProof,
-    dateofbirth,
+    dateofbirth="Na",
     gender,
     otp,
   } = userData;
