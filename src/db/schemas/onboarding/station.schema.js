@@ -42,6 +42,16 @@ const stationSchema = new Schema({
       type: String,
       required: true
     },
+    openStartTime: {
+      type: String,
+      required: true,
+      default:"09:00 AM"
+    },
+    openEndTime: {
+      type: String,
+      required: true,
+      default:"09:00 PM"
+    },
    
     latitude: {
       type: String

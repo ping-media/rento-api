@@ -77,6 +77,10 @@ const vehicleTableSchema = new Schema({
         type: String,
         required: true
     },
+     lastMeterReading: {
+        type: Number,
+        required: true
+    },
     kmsRun: {
         type: Number,
         required: true

@@ -572,7 +572,10 @@ async function saveUser(userData) {
      }}
 
      
-     
+     if(altContact && altContact !=""){
+      return { status: 400, message: "Altcontact is required" };
+
+     }
       await User.findByIdAndUpdate(_id, {$set:userObj}, { new: true });
       return { status: 200, message: "User updated successfully", data: userObj };
     } else {

@@ -101,13 +101,13 @@ const createBookingDuration = async ({ bookingDuration, attachedVehicles, bookin
 async function createVehicle({
   _id, vehicleMasterId, stationId, vehicleNumber, freeKms, extraKmsCharges, vehicleModel, locationId,
   perDayCost, lastServiceDate, kmsRun, condition, deleteRec, vehicleBookingStatus, vehicleStatus,
-  vehiclePlan, refundableDeposit, lateFee, speedLimit
+  vehiclePlan, refundableDeposit, lateFee, speedLimit,lastMeterReading
 }) {
   const response = { status: 200, message: "Data fetched successfully", data: [] };
 
   try {
     if (_id || (vehicleMasterId && vehicleBookingStatus && vehicleStatus && stationId && vehicleNumber &&
-      freeKms && extraKmsCharges && vehicleModel  && perDayCost && lastServiceDate &&
+      freeKms && extraKmsCharges && vehicleModel  && perDayCost && lastServiceDate && lastMeterReading &&
       kmsRun  && condition && locationId)) {
 
 
@@ -168,7 +168,7 @@ async function createVehicle({
       const o = {
         locationId, vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms,
         extraKmsCharges, vehicleModel, perDayCost, lastServiceDate, kmsRun, condition,
-        vehiclePlan, refundableDeposit, lateFee, speedLimit
+        vehiclePlan, refundableDeposit, lateFee, speedLimit, lastMeterReading
       };
 
    
@@ -1212,6 +1212,8 @@ async function createStation({
   userId,
   address,
   pinCode,
+  openStartTime,
+  openEndTime,
   latitude,
   longitude,
   _id,
@@ -1229,6 +1231,8 @@ async function createStation({
     city,
     address,
     pinCode,
+    openStartTime,
+    openEndTime,
     latitude,
     longitude,
     userId,

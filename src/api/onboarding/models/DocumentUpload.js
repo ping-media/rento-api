@@ -32,7 +32,8 @@ const upload = multer({
 const documentUpload = async (req, res) => {
   try {
       const { userId, docType, _id, deleteRec} = req.body;
-      
+    //  return console.log(req.files)
+
       if(_id){
         if(deleteRec){
           await Document.deleteOne({ _id });
@@ -52,7 +53,6 @@ const documentUpload = async (req, res) => {
       }
 
 
-
       // Validate userId
       if (!userId || userId.length !== 24) {
           return res.status(400).json({ message: "Invalid user ID provided." });
@@ -60,28 +60,35 @@ const documentUpload = async (req, res) => {
 
       
 
-      // Prepare an array to store uploaded file details
-      const uploadedFiles = [];
-    // console.log(req.files,typeof(req.files))
-      // Loop through files and upload to S3
-      for (const file of req.files) {
-        resizeImg(file)
+      
 
-           fileName = `${docType}${userId}`;
+    const uploadedFiles = [];
+
+    // Helper function to get current timestamp in milliseconds
+        const getMilliseconds = () => new Date().getTime();
+    
+        // Loop through files and upload to S3
+        for (let index = 0; index < req.files.length; index++) {
+          const file = req.files[index];
+          const resizedImageBuffer = await resizeImg(file);
+          // Generate a unique file name
+          const fileName = `${userId}_${getMilliseconds()}_${index}_${docType}`;
+    
           const params = {
-              Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
-              Key: fileName, // File Name
-              Body: file.buffer, // File Content
-              ContentType: file.mimetype, // MIME Type
+            Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
+            Key: fileName, // Unique File Name
+            Body: resizedImageBuffer, // File Content
+            ContentType: file.mimetype, // MIME Type
           };
-
+    
           // Upload to S3
           await s3.send(new PutObjectCommand(params));
-
+    
           // Construct the S3 File URL
           const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
           uploadedFiles.push({ fileName, imageUrl });
-      }
+        }
+
 
       // Check if a document already exists for the user
       const existingDocument = await Document.findOne({ userId }).maxTimeMS(30000); // 30 seconds timeout

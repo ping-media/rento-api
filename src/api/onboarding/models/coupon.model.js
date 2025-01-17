@@ -105,6 +105,7 @@ const createCoupon = async (body) => {
     if(!_id){if (!(couponName && discount && discountType && isCouponActive && couponCount )) {
       return { status: 400, message: "Invalid data: Required fields are missing." };
     }}
+   //allowedUsersCount=couponCount
 
     // Construct data object
     const dataObj = {
