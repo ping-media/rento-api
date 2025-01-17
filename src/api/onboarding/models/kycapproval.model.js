@@ -1,0 +1,1 @@
+const kycApproval= require ("../../../db/schemas/kycApproval.schema")

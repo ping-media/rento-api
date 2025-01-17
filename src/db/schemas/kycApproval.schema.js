@@ -22,6 +22,6 @@ const kycApprovalSchecm = new Schema({
     
   }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
   
-  const kycApproval = mongoose.model('pickupImage', kycApprovalSchecm);
+  const kycApproval = mongoose.model('kycApproval', kycApprovalSchecm);
   
   module.exports = kycApproval;

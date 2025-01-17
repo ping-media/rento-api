@@ -424,7 +424,7 @@ async function saveUser(userData) {
     _id,
     userType = "customer",
     status = "active",
-    altContact="Na",
+    altContact,
     firstName,
     lastName,
     contact,
@@ -444,6 +444,7 @@ async function saveUser(userData) {
   } = userData;
 
   const response = { status: 200, message: "Data processed successfully", data: [] };
+  //console.log(userData)
 
   function isAtLeast18(dob) {
     const dobDate = new Date(dob); // Parse the DOB string into a Date object
@@ -565,17 +566,17 @@ async function saveUser(userData) {
         await User.findByIdAndDelete(_id);
         return { status: 200, message: "User deleted successfully", data: { _id } };
       }
-     if(dateofbirth){
-     if(!isAtLeast18(userObj.dateofbirth)){
-      return { status: 400, message: "User should be 18 " };
+      //console.log(userObj.altContact)
+      if (!userObj.altContact || userObj.altContact === "") {
+        return { status: 400, message: "AltContact is required" };
+      }
 
-     }}
+      if (!userObj.dateofbirth || !isAtLeast18(userObj.dateofbirth)) {
+        return { status: 400, message: "User should be 18 or older" };
+      }
 
      
-     if(altContact && altContact == ""){
-      return { status: 400, message: "Altcontact is required" };
-
-     }
+    
       await User.findByIdAndUpdate(_id, {$set:userObj}, { new: true });
       return { status: 200, message: "User updated successfully", data: userObj };
     } else {
@@ -596,6 +597,186 @@ async function saveUser(userData) {
     return { status: 500, message: "Internal server error" };
   }
 }
+
+
+
+// async function saveUser(userData) {
+//   const {
+//     _id,
+//     userType = "customer",
+//     status = "active",
+//     altContact,
+//     firstName,
+//     lastName,
+//     contact,
+//     email,
+//     password,
+//     deleteRec,
+//     kycApproved = "no",
+//     isEmailVerified = "no",
+//     isContactVerified = "no",
+//     isDocumentVerified = "no",
+//     drivingLicence,
+//     idProof,
+//     addressProof,
+//     dateofbirth = "Na",
+//     gender,
+//     otp,
+//   } = userData;
+
+//   const response = { status: 200, message: "Data processed successfully", data: [] };
+
+//   function isAtLeast18(dob) {
+//     const dobDate = new Date(dob); 
+//     const today = new Date();
+  
+//     console.log("DOB Date: ", dobDate);
+//     console.log("Today's Date: ", today);
+  
+//     let age = today.getFullYear() - dobDate.getFullYear();
+  
+//     const hasHadBirthdayThisYear =
+//       today.getMonth() > dobDate.getMonth() || 
+//       (today.getMonth() === dobDate.getMonth() && today.getDate() >= dobDate.getDate());
+  
+//     if (!hasHadBirthdayThisYear) {
+//       age -= 1; 
+//     }
+  
+//     console.log("Calculated Age: ", age); 
+  
+//     return age >= 18;
+//   }
+
+//   try {
+//     const validateId = (id) => id && id.length === 24;
+//     const isValidContact = (number) => contactValidation(number);
+//     const isValidEmail = (email) => emailValidation(email);
+//     const isValidEnum = (value, validList) => validList.includes(value);
+
+//     if (_id && !validateId(_id)) {
+//       return { status: 400, message: "Invalid _id" };
+//     }
+
+//     if (userType == "manager" || userType == "admin") {
+//       const existingUser = await User.findOne({ email });
+//       if (existingUser) {
+//         return { status: 409, message: "This email already exists" };
+//       }
+//     }
+
+//     if (contact) {
+//       if (!isValidContact(contact)) {
+//         return { status: 400, message: "Invalid phone number" };
+//       }
+//       if (!_id) {
+//         const existingUser = await User.findOne({ contact });
+//         if (existingUser) {
+//           return { status: 409, message: "This contact number already exists" };
+//         }
+//       }
+//     }
+
+//     if (altContact && !isValidContact(altContact)) {
+//       return { status: 400, message: "Invalid alternative contact number" };
+//     }
+
+//     if (altContact === "") {
+//       return { status: 400, message: "AltContact is required" };
+//     }
+
+//     const validUserTypes = ["manager", "customer", "admin"];
+//     if (!isValidEnum(userType, validUserTypes)) {
+//       return { status: 400, message: "Invalid user type" };
+//     }
+
+//     if ((userType === "admin" || userType === "manager") && !password && !_id) {
+//       return { status: 400, message: "Password is required for admin or manager" };
+//     }
+
+//     const validStatuses = ["active", "inactive"];
+//     if (!isValidEnum(status, validStatuses)) {
+//       return { status: 400, message: "Invalid user status" };
+//     }
+
+//     const validKycStatuses = ["yes", "no"];
+//     if (!isValidEnum(kycApproved, validKycStatuses)) {
+//       return { status: 400, message: "Invalid KYC approval status" };
+//     }
+//     if (!isValidEnum(isEmailVerified, validKycStatuses)) {
+//       return { status: 400, message: "Invalid email verification status" };
+//     }
+//     if (!isValidEnum(isContactVerified, validKycStatuses)) {
+//       return { status: 400, message: "Invalid contact verification status" };
+//     }
+
+//     if (email && !isValidEmail(email)) {
+//       return { status: 400, message: "Invalid email address" };
+//     }
+
+//     const userObj = {
+//       addressProof,
+//       drivingLicence,
+//       idProof,
+//       isContactVerified,
+//       isEmailVerified,
+//       isDocumentVerified,
+//       kycApproved,
+//       userType,
+//       status,
+//       altContact,
+//       firstName,
+//       lastName,
+//       contact,
+//       email,
+//       password,
+//       dateofbirth,
+//       gender,
+//     };
+
+//     if (password) {
+//       const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
+//       if (!passwordRegex.test(password)) {
+//         return { status: 400, message: "Password validation does not match" };
+//       }
+//       userObj.password = bcrypt.hashSync(password, 8);
+//     }
+
+//     if (_id) {
+//       const existingUser = await User.findById(_id);
+//       if (!existingUser) {
+//         return { status: 404, message: "User not found" };
+//       }
+//       if (deleteRec) {
+//         await User.findByIdAndDelete(_id);
+//         return { status: 200, message: "User deleted successfully", data: { _id } };
+//       }
+
+//       if (!userObj.altContact || userObj.altContact === "") {
+//         return { status: 400, message: "AltContact is required" };
+//       }
+//       if (dateofbirth || !isAtLeast18(userObj.dateofbirth)) {
+//         return { status: 400, message: "User should be 18 or older" };
+//       }
+
+//       await User.findByIdAndUpdate(_id, { $set: userObj }, { new: true });
+//       return { status: 200, message: "User updated successfully", data: userObj };
+//     } else {
+//       if (!firstName || !lastName || !contact || !email) {
+//         return { status: 400, message: "Missing required fields for new user" };
+//       }
+
+//       const newUser = new User(userObj);
+//       await newUser.save();
+//       whatsappMessage(contact, "welcome_customer", [firstName]);
+//       sendOtpByEmail(email, firstName, lastName);
+//       return { status: 200, message: "User created successfully", data: newUser.toObject() };
+//     }
+//   } catch (error) {
+//     console.error("Error in saveUser:", error.message);
+//     return { status: 500, message: "Internal server error" };
+//   }
+// }
 
 
 
