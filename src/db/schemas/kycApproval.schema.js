@@ -9,13 +9,13 @@ const kycApprovalSchecm = new Schema({
        ref :"User"
     },
   
-    add: {
+    aadharNumber: {
        type: String,
        required: true,
     },
   
-    userId: {
-       type: Schema.Types.ObjectId,
+    licenseNumber: {
+       type: String,
        required: true,
        ref :"User"
     },

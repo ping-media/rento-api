@@ -572,7 +572,7 @@ async function saveUser(userData) {
      }}
 
      
-     if(altContact && altContact !=""){
+     if(altContact && altContact == ""){
       return { status: 400, message: "Altcontact is required" };
 
      }
