@@ -31,7 +31,9 @@ const Authentication = require ("../../../middlewares/Authentication");
 const{deleteS3Bucket}=require("../models/deleteS3Bucket");
 const {getBookingGraphData}= require("../models/graphData");
 const jwt = require("jsonwebtoken");
-const{sendInvoiceByEmail}=require("../../../utils/emailSend")
+const{sendInvoiceByEmail}=require("../../../utils/emailSend");
+const {kycApprovalFunction} = require("../models/kycapproval.model");
+const Booking=require("../../../db/schemas/onboarding/booking.schema")
 
 
 
@@ -724,6 +726,10 @@ router.post("/sendEmailForBookingDetails", async (req, res) => {
 })
 
 
+router.post("/kycApproval",Authentication, async (req, res) => {
+  kycApprovalFunction(req,res)
+});
+
 router.post("/sendInvoiceByEmail",Authentication, upload1.single('file'), async (req, res) => {
   // `req.file` will contain the file as a buffer
   const { email, firstName, lastName } = req.body;
@@ -743,6 +749,105 @@ router.post("/sendInvoiceByEmail",Authentication, upload1.single('file'), async 
     return res.status(400).json({ success: false, error: result.error });
   }
 });
+
+
+
+
+
+
+
+
+
+// Update booking route
+router.put('/rideUpdate', async (req, res) => {
+  const { _id,
+  bookingStatus,
+  paymentStatus,
+  rideStatus,
+  userId,
+  rideOtp
+} = req.body;
+
+  const obj = { status: 200, message: "", data: {} };
+
+  try {
+
+    const booking= await Booking.findOne({_id});
+
+    const {vehicleBasic}=booking;
+ 
+    let objData={
+      bookingStatus,
+      paymentStatus,
+      rideStatus,}
+
+if(rideStatus==="ongoing"){
+  if(rideOtp && rideOtp.length===4){
+    if(vehicleBasic.startRide!==rideOtp){
+
+      
+      await Log({
+        message: `Invalid Otp ${_id} `,
+        functionName: "rideUpdate",
+        userId,
+      });
+  
+      // Notify about the booking update
+      obj.status = 400;
+      obj.message = "Invalid Otp";
+      return res.status(200).json(obj);
+    }
+  }
+  // const OTP=Math.floor(1000 + Math.random() * 9000)
+  // objData = {...objData, endRide: Number(OTP)}
+}
+
+if(rideStatus==="completed"){
+  if(rideOtp && rideOtp.length===4){
+    if(vehicleBasic.endRide!==rideOtp){
+      await Log({
+        message: `Invalid Otp ${_id} `,
+        functionName: "rideUpdate",
+        userId,
+      });
+  
+      // Notify about the booking update
+      obj.status = 400;
+      obj.message = "Invalid Otp";
+      return res.status(200).json(obj);
+    }
+  }
+}
+
+    // Update the booking document
+    const updatedBooking = await Booking.updateOne(
+      { _id: ObjectId(_id) },
+      { $set: objData }, 
+      { new: true }
+    );
+
+    // Log the booking update
+    await Log({
+      message: `Booking with ID ${_id} updated`,
+      functionName: "rideUpdate",
+      userId,
+    });
+
+    // Notify about the booking update
+    obj.status = 200;
+    obj.message = `Ride ${rideStatus==="ongoing" ? "Start": "Completed"} successful`;
+    return res.status(200).json(obj);
+
+  } catch (error) {
+    console.error("Error during booking update:", error);
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
+  }
+});
+
+
 
 
 // router.get("/api/cron", async (req, res) => {

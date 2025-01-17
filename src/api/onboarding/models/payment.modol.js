@@ -55,6 +55,7 @@ const paymentRec = async (req, res) => {
       return res.json({
         status: 404,
         message: "No bookings found.",
+        data:[]
       });
     }
 
