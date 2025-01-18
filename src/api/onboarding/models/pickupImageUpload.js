@@ -121,7 +121,7 @@ const pickupImageUp = async (req, res) => {
 //console.log(updateResult)
     return res.json({
       status: 200,
-      message: "Files uploaded successfully.",
+      message: "Ride started successfully.",
       newDocument,
     });
   } catch (error) {
