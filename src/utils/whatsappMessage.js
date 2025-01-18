@@ -92,7 +92,10 @@ async function whatsappMessage(contact, templateName, values) {
 
     obj.message = responseData.message;
     obj.result = responseData.result;
-    console.log(obj)
+    await Log({
+          message: obj.message,
+          functionName: "whatsapp message",
+        });
 
   } catch (error) {
     console.error("Fetch Error:", error.message);

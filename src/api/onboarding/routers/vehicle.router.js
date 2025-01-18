@@ -635,7 +635,7 @@ router.post("/emailverify", async (req, res) => {
 })
 
 
-router.post("/pickupImage", upload.array('images', 10), async (req, res) => {
+router.post("/pickupImage", upload.array('images', 6), async (req, res) => {
 
 
   // if (!req.files || req.files.length === 0) {

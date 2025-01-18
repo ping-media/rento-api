@@ -1619,15 +1619,7 @@ const getVehicleMasterData = async (query) => {
     if (vehicleType) filter.vehicleType = vehicleType;
     if (vehicleBrand) filter.vehicleBrand = vehicleBrand;
 
-    // if (filter._id) {
-    //   try {
-    //     filter._id = new ObjectId(filter._id);
-    //   } catch (err) {
-    //     obj.status = 400;
-    //     obj.message = "Invalid _id format";
-    //     return obj;
-    //   }
-    // }
+    
 
     if (search) {
       filter.$or = [
@@ -1645,12 +1637,30 @@ const getVehicleMasterData = async (query) => {
       .limit(Number(limit))
       .sort({ createdAt: -1 });
 
-    const totalRecords = await VehicleMaster.count(filter);
+    const totalRecords = await VehicleMaster.countDocuments(filter);
 
+    
     if (response.length) {
-      obj.data = response;
+      // Fetch vehicle counts for each location
+      const vehicleData = await Promise.all(
+        response.map(async (vehicle) => {
+          const vehicleCount = await VehicleTable.countDocuments({
+            vehicleMasterId: vehicle._id,
+            hasAC: true,
+          });
+    
+          return {
+            ...vehicle.toObject(),
+            vehicleCount, // Corrected variable name
+          };
+        })
+      );
+    
+      obj.data = vehicleData; // Correct assignment to obj.data
+    
+      // Add pagination metadata
       obj.pagination = {
-        totalPages: Math.ceil(totalRecords / limit),
+        totalPages: Math.ceil(totalRecords / limit), // Correct pagination calculation
         currentPage: Number(page),
         limit: Number(limit),
       };
@@ -1658,6 +1668,19 @@ const getVehicleMasterData = async (query) => {
       obj.status = 404;
       obj.message = "No data found";
     }
+    
+
+    // if (response.length) {
+    //   obj.data = response;
+    //   obj.pagination = {
+    //     totalPages: Math.ceil(totalRecords / limit),
+    //     currentPage: Number(page),
+    //     limit: Number(limit),
+    //   };
+    // } else {
+    //   obj.status = 404;
+    //   obj.message = "No data found";
+    // }
   } catch (error) {
     console.error("Error in getVehicleMasterData:", error.message);
     obj.status = 500;
@@ -2445,11 +2468,11 @@ async function getLocationData(query) {
         locations.map(async (location) => {
           const stationCount = await Station.countDocuments({
             locationId: location._id,
-            hasAC: true, // Assuming "hasAC" is the field for AC availability in stations
+            hasAC: true, 
           });
 
           return {
-            ...location.toObject(), // Convert Mongoose document to plain object
+            ...location.toObject(), 
             stationCount,
           };
         })
