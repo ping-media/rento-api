@@ -472,11 +472,12 @@ async function saveUser(userData) {
     if (_id && !validateId(_id)) {
       return { status: 400, message: "Invalid _id" };
     }
-
-    if (userType == "manager" || userType == "admin") {
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return { status: 409, message: "This email  already exists" };
+    if (!_id) {
+      if (userType == "manager" || userType == "admin") {
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+          return { status: 409, message: "This email  already exists" };
+        }
       }
     }
 
@@ -571,13 +572,13 @@ async function saveUser(userData) {
         if (!userObj.altContact || userObj.altContact === "") {
           return { status: 400, message: "AltContact is required" };
         }
-        
+
         if (!userObj.dateofbirth || !isAtLeast18(userObj.dateofbirth)) {
           return { status: 400, message: "User should be 18 or older" };
         }
       }
 
-     
+
 
 
 
