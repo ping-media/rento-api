@@ -783,7 +783,7 @@ router.put('/rideUpdate', async (req, res) => {
 
 if(rideStatus==="ongoing"){
   if(rideOtp && rideOtp.length===4){
-    if(vehicleBasic.startRide!==rideOtp){
+    if(vehicleBasic.startRide!==Number(rideOtp)){
 
       
       await Log({
@@ -804,7 +804,7 @@ if(rideStatus==="ongoing"){
 
 if(rideStatus==="completed"){
   if(rideOtp && rideOtp.length===4){
-    if(vehicleBasic.endRide!==rideOtp){
+    if(vehicleBasic.endRide!==Number(rideOtp)){
       await Log({
         message: `Invalid Otp ${_id} `,
         functionName: "rideUpdate",

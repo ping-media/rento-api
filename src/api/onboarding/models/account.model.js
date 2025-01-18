@@ -3,7 +3,7 @@ const { sendEmail } = require("../../../utils/email/index");
 
 // import packages
 const JWT = require("jsonwebtoken");
-const bcrypt=require("bcrypt");
+const bcrypt = require("bcrypt");
 require("dotenv").config();
 const { mongoose } = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
@@ -27,8 +27,8 @@ const order = require("../../../db/schemas/onboarding/order.schema");
 const location = require("../../../db/schemas/onboarding/location.schema");
 const Otp = require("../../../db/schemas/onboarding/logOtp");
 const { log } = require("winston");
-const {whatsappMessage} = require("../../../utils/whatsappMessage");
-const {sendOtpByEmail}= require("../../../utils/emailSend")
+const { whatsappMessage } = require("../../../utils/whatsappMessage");
+const { sendOtpByEmail } = require("../../../utils/emailSend")
 
 
 
@@ -107,7 +107,7 @@ const getAllUsers = async (query) => {
     if (contact) filter.contact = { $regex: contact, $options: "i" };
     if (userType) filter.userType = { $regex: userType, $options: "i" };
     if (isDocumentVerified) filter.isDocumentVerified = { $regex: isDocumentVerified, $options: "i" };
-   
+
 
     // Handle search functionality
     if (search) {
@@ -173,7 +173,7 @@ async function getAllDataCount() {
       return acc + price;
     }, 0);
 
-  // console.log(totalAmount);
+    // console.log(totalAmount);
 
     // Execute count queries in parallel for efficiency
     const [
@@ -434,11 +434,11 @@ async function saveUser(userData) {
     kycApproved = "no",
     isEmailVerified = "no",
     isContactVerified = "no",
-    isDocumentVerified="no",
+    isDocumentVerified = "no",
     drivingLicence,
     idProof,
     addressProof,
-    dateofbirth="Na",
+    dateofbirth = "Na",
     gender,
     otp,
   } = userData;
@@ -449,37 +449,37 @@ async function saveUser(userData) {
   function isAtLeast18(dob) {
     const dobDate = new Date(dob); // Parse the DOB string into a Date object
     const today = new Date();
-  
+
     // Calculate the difference in years
     const age = today.getFullYear() - dobDate.getFullYear();
-  
+
     // Adjust if the birth date has not yet occurred this year
     const hasHadBirthdayThisYear =
-      today.getMonth() > dobDate.getMonth() || 
+      today.getMonth() > dobDate.getMonth() ||
       (today.getMonth() === dobDate.getMonth() && today.getDate() >= dobDate.getDate());
-  
+
     return hasHadBirthdayThisYear ? age >= 18 : age - 1 >= 18;
   }
 
   try {
-    
+
     const validateId = (id) => id && id.length === 24;
     const isValidContact = (number) => contactValidation(number);
     const isValidEmail = (email) => emailValidation(email);
     const isValidEnum = (value, validList) => validList.includes(value);
 
-  
+
     if (_id && !validateId(_id)) {
       return { status: 400, message: "Invalid _id" };
     }
-    
-    if(userType=="manager" || userType=="admin"){
+
+    if (userType == "manager" || userType == "admin") {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
         return { status: 409, message: "This email  already exists" };
       }
     }
-    
+
     if (contact) {
       if (!isValidContact(contact)) {
         return { status: 400, message: "Invalid phone number" };
@@ -492,7 +492,7 @@ async function saveUser(userData) {
       }
     }
 
- 
+
     if (altContact && !isValidContact(altContact)) {
       return { status: 400, message: "Invalid alternative contact number" };
     }
@@ -506,14 +506,14 @@ async function saveUser(userData) {
       return { status: 400, message: "Password is required for admin or manager" };
     }
 
-   
+
     const validStatuses = ["active", "inactive"];
     if (!isValidEnum(status, validStatuses)) {
       return { status: 400, message: "Invalid user status" };
     }
 
-    
-    const validKycStatuses = ["yes", "no"]; 
+
+    const validKycStatuses = ["yes", "no"];
     if (!isValidEnum(kycApproved, validKycStatuses)) {
       return { status: 400, message: "Invalid KYC approval status" };
     }
@@ -524,12 +524,12 @@ async function saveUser(userData) {
       return { status: 400, message: "Invalid contact verification status" };
     }
 
- 
+
     if (email && !isValidEmail(email)) {
       return { status: 400, message: "Invalid email address" };
     }
-   
-   
+
+
     const userObj = {
       addressProof,
       drivingLicence,
@@ -567,28 +567,32 @@ async function saveUser(userData) {
         return { status: 200, message: "User deleted successfully", data: { _id } };
       }
       //console.log(userObj.altContact)
-      if (!userObj.altContact || userObj.altContact === "") {
-        return { status: 400, message: "AltContact is required" };
-      }
-
-      if (!userObj.dateofbirth || !isAtLeast18(userObj.dateofbirth)) {
-        return { status: 400, message: "User should be 18 or older" };
+      if (userObj.userType !== "admin" || userObj.userType !== "manager") {
+        if (!userObj.altContact || userObj.altContact === "") {
+          return { status: 400, message: "AltContact is required" };
+        }
+        
+        if (!userObj.dateofbirth || !isAtLeast18(userObj.dateofbirth)) {
+          return { status: 400, message: "User should be 18 or older" };
+        }
       }
 
      
-    
-      await User.findByIdAndUpdate(_id, {$set:userObj}, { new: true });
+
+
+
+      await User.findByIdAndUpdate(_id, { $set: userObj }, { new: true });
       return { status: 200, message: "User updated successfully", data: userObj };
     } else {
       if (!firstName || !lastName || !contact || !email) {
         return { status: 400, message: "Missing required fields for new user" };
       }
 
-      
+
       //const name = firstName + lastName;
       const newUser = new User(userObj);
       await newUser.save();
-      whatsappMessage(contact,"welcome_customer", [firstName])
+      whatsappMessage(contact, "welcome_customer", [firstName])
       sendOtpByEmail(email, firstName, lastName)
       return { status: 200, message: "User created successfully", data: newUser.toObject() };
     }
@@ -629,22 +633,22 @@ async function saveUser(userData) {
 //   function isAtLeast18(dob) {
 //     const dobDate = new Date(dob); 
 //     const today = new Date();
-  
+
 //     console.log("DOB Date: ", dobDate);
 //     console.log("Today's Date: ", today);
-  
+
 //     let age = today.getFullYear() - dobDate.getFullYear();
-  
+
 //     const hasHadBirthdayThisYear =
 //       today.getMonth() > dobDate.getMonth() || 
 //       (today.getMonth() === dobDate.getMonth() && today.getDate() >= dobDate.getDate());
-  
+
 //     if (!hasHadBirthdayThisYear) {
 //       age -= 1; 
 //     }
-  
+
 //     console.log("Calculated Age: ", age); 
-  
+
 //     return age >= 18;
 //   }
 
@@ -975,7 +979,7 @@ async function login(emailId) {
     throw new Error(error);
   }
 
-  
+
 }
 
 
@@ -1008,7 +1012,7 @@ async function searchUser(data) {
 module.exports = {
   //sendOtps,
   getAllDataCount,
- //verify,
+  //verify,
   getAllUsers,
   updateUser,
   saveUser,

@@ -51,8 +51,9 @@ const pickupImageUp = async (req, res) => {
     }
 
     const {vehicleBasic}=booking;
+    //console.log(vehicleBasic.startRide,rideOtp)
     if(rideOtp && rideOtp.length===4){
-      if(vehicleBasic.startRide!==rideOtp){
+      if(vehicleBasic.startRide!==Number(rideOtp)){
   
     
         // Notify about the booking update
