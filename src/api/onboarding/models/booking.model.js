@@ -14,7 +14,13 @@ const getBooking = async (query) => {
       bookingStatus,          
       userId=null,   
       paymentStatus, 
-      search,     
+      search,    
+      vehicleBrand,
+      vehicleName,
+      stationName,
+      rideStatus,
+      paymentMethod,
+      payInitFrom,
       page = 1,        
       limit = 10,      
     } = query;
@@ -51,24 +57,33 @@ const getBooking = async (query) => {
     }
 
 
-    // Build filter conditions dynamically
     const filters = {};
     if (_id) filters._id = _id;
-    if (bookingStatus) filters.bookingStatus = bookingStatus;
-    if (userId) filters.userId = userId;
     if (bookingId) filters.bookingId = bookingId;
+    if (vehicleBrand) filters.vehicleBrand = vehicleBrand;
+    if (vehicleName) filters.vehicleName = vehicleName;
+    if (stationName) filters.stationName = stationName;
+    if (bookingStatus) filters.bookingStatus = bookingStatus;
     if (paymentStatus) filters.paymentStatus = paymentStatus;
+    if (userId) filters.userId = userId;
+    if (rideStatus) filters.rideStatus = rideStatus;
+    if (paymentMethod) filters.paymentMethod = paymentMethod;
+    if (payInitFrom) filters.payInitFrom = payInitFrom;
 
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, "i"); // Case-insensitive search
       filters.$or = [
         { bookingId: searchRegex },
+        { vehicleBrand: searchRegex },
         { vehicleName: searchRegex },
         { stationName: searchRegex },
         { bookingStatus: searchRegex },
         { paymentStatus: searchRegex },
         { paymentMethod: searchRegex },
+        { rideStatus: searchRegex },
+        { payInitFrom: searchRegex },
+        { updatedAt: searchRegex },
       ];
     }
    

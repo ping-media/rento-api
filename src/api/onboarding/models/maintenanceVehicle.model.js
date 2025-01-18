@@ -1,4 +1,4 @@
-const MaintenanceVehicle = require ("../../../db/schemas/maintenanceVehicleSchema");
+const MaintenanceVehicle = require ("../../../db/schemas/onboarding/maintenanceVehicleSchema");
 const Booking = require('../../../db/schemas/onboarding/booking.schema');
 const { mongoose } = require("mongoose");
 
