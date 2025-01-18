@@ -207,6 +207,7 @@ const getPickupImage = async (req, res) => {
         return res.json({
           status: 400,
           message: "No data found .",
+          data:[]
         });
 
       }

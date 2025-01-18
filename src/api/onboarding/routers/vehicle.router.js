@@ -34,7 +34,7 @@ const jwt = require("jsonwebtoken");
 const{sendInvoiceByEmail}=require("../../../utils/emailSend");
 const {kycApprovalFunction} = require("../models/kycapproval.model");
 const Booking=require("../../../db/schemas/onboarding/booking.schema")
-
+const {maintenanceVehicleFunction} = require("../models/maintenanceVehicle.model")
 
 
 // create messages
@@ -848,7 +848,9 @@ if(rideStatus==="completed"){
 });
 
 
-
+router.post('/maintenanceVehicle', async(req,res)=>{
+  maintenanceVehicleFunction(req,res)
+})
 
 // router.get("/api/cron", async (req, res) => {
 //   console.log("Cron job is working (FROM ROUTE)");
