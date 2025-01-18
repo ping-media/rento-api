@@ -1,5 +1,5 @@
 const MaintenanceVehicle = require ("../../../db/schemas/onboarding/maintenanceVehicleSchema");
-const Booking = require('../../../db/schemas/onboarding/booking.schema');
+const Booking = require('../../../db/schemas/onboarding/maintenanceVehicleSchema');
 const { mongoose } = require("mongoose");
 
 
@@ -120,20 +120,35 @@ const maintenanceVehicleFunction = async (req, res) => {
         });
       }
   
-      // Check if there are any existing bookings for the vehicle within the specified maintenance period
-      const conflictingBookings = await Booking.aggregate([
+
+      const pipeline = [
         {
-          $match: {
-            vehicleTableId: mongoose.Types.ObjectId(vehicleTableId),
-            $or: [
-              {
-                $and: [
-                  { BookingStartDateAndTime: { $lte: endDate } },
-                  { BookingEndDateAndTime: { $gte: startDate } }
-                ]
-              }
-            ]
-          }
+          $lookup: {
+            from: "bookings",
+            localField: "vehicleTableId",
+            foreignField: "vehicleTableId",
+            as: "bookings",
+          },
+        },
+        {
+          $addFields: {
+            conflictingBookings: {
+              $filter: {
+                input: "$bookings",
+                as: "booking",
+                cond: {
+                  $and: [
+                    {
+                      $and: [
+                        { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
+                        { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
         },
         {
           $project: {
@@ -141,18 +156,29 @@ const maintenanceVehicleFunction = async (req, res) => {
             vehicleTableId: 1,
             BookingStartDateAndTime: 1,
             BookingEndDateAndTime: 1,
-          }
-        }
-      ]);
-  
-      if (conflictingBookings.length > 0) {
-        return res.json({
-          status: 400,
-          message: "Vehicle is already booked during the specified maintenance period.",
-          data: [],
-        });
-      }
-  
+            conflictingBookings: {
+              BookingStartDateAndTime: 1,
+              BookingEndDateAndTime: 1,
+              // other relevant fields from the conflicting bookings
+            },
+          },
+        },
+      ];
+      
+
+      // Check if there are any existing bookings for the vehicle within the specified maintenance period
+      const result = await Booking.aggregate(pipeline);
+      
+  console.log(result)
+  const conflictingBookings = result[0]?.conflictingBookings || [];
+
+  if (conflictingBookings.length > 0) {
+    return res.json({
+      status: 400,
+      message: "Vehicle is already booked during the specified maintenance period.",
+      data: [],
+    });
+  }
       // Proceed with adding the vehicle to maintenance if no conflicts
       const maintenanceData = { vehicleTableId, startDate, endDate };
   

@@ -795,7 +795,7 @@ if(rideStatus==="ongoing"){
       // Notify about the booking update
       obj.status = 400;
       obj.message = "Invalid Otp";
-      return res.status(200).json(obj);
+      return res.json(obj);
     }
   }
   // const OTP=Math.floor(1000 + Math.random() * 9000)
@@ -814,7 +814,7 @@ if(rideStatus==="completed"){
       // Notify about the booking update
       obj.status = 400;
       obj.message = "Invalid Otp";
-      return res.status(200).json(obj);
+      return res.json(obj);
     }
   }
 }
@@ -840,7 +840,7 @@ if(rideStatus==="completed"){
 
   } catch (error) {
     console.error("Error during booking update:", error);
-    return res.status(500).json({
+    return res.json({
       status: 500,
       message: "Internal server error",
     });

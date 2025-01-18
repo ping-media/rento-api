@@ -33,15 +33,36 @@ const upload = multer({
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
-    const { userId, bookingId, data, newMeterReading, oldMeterReading, _id } = req.body;
+    const { userId, bookingId, data, newMeterReading, oldMeterReading, _id,rideOtp } = req.body;
   
 
     if (!userId || userId.length !== 24) {
       return res.json({ message: "Invalid user ID provided." });
     }
 
-   
+    const booking= await Booking.findOne({_id}).populate("userId", "kycApproved");
+    const kycStatus = booking?.userId?.kycApproved;
 
+    if(kycStatus==="no"){
+      return res.json(
+        { status:400,
+       message:"Please Approved KYC ",}
+         );
+    }
+
+    const {vehicleBasic}=booking;
+    if(rideOtp && rideOtp.length===4){
+      if(vehicleBasic.startRide!==rideOtp){
+  
+    
+        // Notify about the booking update
+       
+        return res.json(
+       { status:400,
+      message:"Invalid Otp",}
+        );
+      }
+    }
     const uploadedFiles = [];
 
     // Helper function to get current timestamp in milliseconds
@@ -90,10 +111,10 @@ const pickupImageUp = async (req, res) => {
     });
 
     await newDocument.save();
-    //const _id=bookingId;
+    const OTP=Math.floor(1000 + Math.random() * 9000);
     const updateResult = await Booking.updateOne(
       { _id },
-      { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing"} },
+      { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing","vehicleBasic.endRide":OTP} },
       { new: true }
     );
 //console.log(updateResult)
