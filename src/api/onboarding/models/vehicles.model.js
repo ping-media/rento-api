@@ -395,12 +395,18 @@ async function booking({
         return obj;
       }
 
-      const data={
-        ...find,
-        ...o
-      }
+//     let updatedData=find.notes;
+//     if(o.notes)
+//   {updatedData.push(o.notes[0])
+//   o.notes=updatedData
+//   //console.log(o.notes)
+// }
 
-      await Booking.updateOne({ _id: ObjectId(_id) }, { $set: data }, { new: true });
+if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
+  o.notes = [...(find.notes || []), o.notes[0]];
+}
+
+      await Booking.updateOne({ _id: ObjectId(_id) }, { $set: o }, { new: true });
 
       await Log({
         message: `Booking with ID ${_id} updated`,
