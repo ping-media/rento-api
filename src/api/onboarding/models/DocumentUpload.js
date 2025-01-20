@@ -4,7 +4,8 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 require('dotenv').config();
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 const Log = require("../models/Logs.model");
-const {resizeImg} = require("../../../utils/resizeImage")
+const {resizeImg} = require("../../../utils/resizeImage");
+const User = require("../../../db/schemas/onboarding/user.schema")
 // Validate required environment variables
 const { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME } = process.env;
 
@@ -140,8 +141,17 @@ const getDocument = async (req, res) => {
         });
       }
   
+
       const documents = await Document.find({ userId }).populate("userId");
-  
+      //console.log(documents)
+     if(documents.length==0){
+      const documents = await User.findOne({_id: userId });
+      return res.status(200).json({
+        status: 200,
+        message: "User retrieved successfully.",
+        data: documents,
+      });
+     }
       if (!documents || documents.length === 0) {
         return res.json({
           status: 400,
@@ -157,7 +167,7 @@ const getDocument = async (req, res) => {
       });
     } catch (error) {
       console.error("Error fetching documents:", error);
-      return res.status(500).json({
+      return res.json({
         status: 500,
         message: "Failed to retrieve documents.",
         error: error.message,

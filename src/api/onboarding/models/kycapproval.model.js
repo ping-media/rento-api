@@ -14,7 +14,7 @@ const kycApprovalFunction = async (req, res) => {
 
     try {
         const doc = await kycApproval.findOne({userId});
-         console.log(doc)
+       
         if (doc) {
             return res.json({
                 status: 404,
@@ -22,8 +22,17 @@ const kycApprovalFunction = async (req, res) => {
             });
         }
 
+        const findDoc = await kycApproval.findOne({aadharNumber});
+       
+        if (findDoc) {
+            return res.json({
+                status: 404,
+                message: "Document already exits"
+            });
+        }
+
         const user = await User.findById(userId);
-         console.log(user)
+        // console.log(user)
         if (!user) {
             return res.json({
                 status: 404,
