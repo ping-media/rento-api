@@ -395,9 +395,12 @@ async function booking({
         return obj;
       }
 
-      
+      const data={
+        ...find,
+        ...o
+      }
 
-      await Booking.updateOne({ _id: ObjectId(_id) }, { $set: o }, { new: true });
+      await Booking.updateOne({ _id: ObjectId(_id) }, { $set: data }, { new: true });
 
       await Log({
         message: `Booking with ID ${_id} updated`,
