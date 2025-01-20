@@ -354,6 +354,12 @@ async function booking({
 
       return obj;
     }
+    
+    Object.keys(o).forEach((key) => {
+      if (o[key] === undefined || o[key] === null || o[key] === "") {
+        delete o[key];
+      }
+    });
 
     if (_id) {
       const find = await Booking.findOne({ _id: ObjectId(_id) });

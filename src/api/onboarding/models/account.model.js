@@ -581,7 +581,11 @@ async function saveUser(userData) {
 
 
 
-
+      Object.keys(userObj).forEach((key) => {
+        if (userObj[key] === undefined || userObj[key] === null || userObj[key] === "") {
+          delete userObj[key];
+        }
+      });
 
       await User.findByIdAndUpdate(_id, { $set: userObj }, { new: true });
       return { status: 200, message: "User updated successfully", data: userObj };
