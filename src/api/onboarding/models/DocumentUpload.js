@@ -140,7 +140,7 @@ const getDocument = async (req, res) => {
         });
       }
   
-      const documents = await Document.find({ userId });
+      const documents = await Document.find({ userId }).populate("userId");
   
       if (!documents || documents.length === 0) {
         return res.json({

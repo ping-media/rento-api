@@ -828,11 +828,13 @@ if(rideStatus==="completed"){
       { new: true }
     );
 
-    const currentBooking_id = _id
-    const timeline = rideStatus === "canceled" 
-    ? { "Ride Cancelled": updatedBooking.updatedAt } 
-    : { "Drop-off done": updatedBooking.updatedAt };
-      timelineFunction(userId, bookingId, currentBooking_id, timeline  )
+    
+    // const currentBooking_id = _id
+    // const timeline = rideStatus === "canceled" 
+    // ? { "Ride Cancelled": updatedBooking.updatedAt } 
+    // : { "Drop-off done": updatedBooking.updatedAt };
+    // console.log(userId, bookingId, currentBooking_id, { "Drop-off done": "7366t88" }  )
+    //  await timelineFunction(userId, bookingId, currentBooking_id, timeline  )
 
     // Log the booking update
     await Log({
@@ -843,7 +845,8 @@ if(rideStatus==="completed"){
 
     // Notify about the booking update
     obj.status = 200;
-    obj.message = `Ride ${rideStatus==="ongoing" ? "Start": "Completed"} successful`;
+    obj.message = `Ride ${rideStatus === "canceled" ? "Canceled" : rideStatus === "ongoing" ? "Start" : "Completed"} successful`
+;
     return res.status(200).json(obj);
 
   } catch (error) {
