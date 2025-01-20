@@ -4,7 +4,8 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 require('dotenv').config();
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const Booking = require('../../../db/schemas/onboarding/booking.schema');
-const {resizeImg} = require('../../../utils/resizeImage')
+const {resizeImg} = require('../../../utils/resizeImage');
+const {timelineFunction} = require("../models/timeline.model");
 
 
 // Validate required environment variables
@@ -118,6 +119,11 @@ const pickupImageUp = async (req, res) => {
       { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing","vehicleBasic.endRide":OTP} },
       { new: true }
     );
+
+    const currentBooking_id = _id
+    const timeline={"Pick-up done":updateResult.updatedAt}
+    timelineFunction(userId, bookingId, currentBooking_id, timeline  )
+
 //console.log(updateResult)
     return res.json({
       status: 200,

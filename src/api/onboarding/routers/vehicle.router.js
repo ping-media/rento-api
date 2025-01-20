@@ -33,9 +33,10 @@ const {getBookingGraphData}= require("../models/graphData");
 const jwt = require("jsonwebtoken");
 const{sendInvoiceByEmail}=require("../../../utils/emailSend");
 const {kycApprovalFunction} = require("../models/kycapproval.model");
-const Booking=require("../../../db/schemas/onboarding/booking.schema")
-const {maintenanceVehicleFunction} = require("../models/maintenanceVehicle.model")
-
+const Booking=require("../../../db/schemas/onboarding/booking.schema");
+const {maintenanceVehicleFunction} = require("../models/maintenanceVehicle.model");
+const {timelineFunction} = require("../models/timeline.model");
+const Timeline = require("../../../db/schemas/onboarding/timeline.schema")
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
@@ -774,33 +775,33 @@ router.put('/rideUpdate', async (req, res) => {
 
     const booking= await Booking.findOne({_id});
 
-    const {vehicleBasic}=booking;
+    const {vehicleBasic,bookingId}=booking;
  
     let objData={
       bookingStatus,
       paymentStatus,
       rideStatus,}
 
-if(rideStatus==="ongoing"){
-  if(rideOtp && rideOtp.length===4){
-    if(vehicleBasic.startRide!==Number(rideOtp)){
+// if(rideStatus==="ongoing"){
+//   if(rideOtp && rideOtp.length===4){
+//     if(vehicleBasic.startRide!==Number(rideOtp)){
 
       
-      await Log({
-        message: `Invalid Otp ${_id} `,
-        functionName: "rideUpdate",
-        userId,
-      });
+//       await Log({
+//         message: `Invalid Otp ${_id} `,
+//         functionName: "rideUpdate",
+//         userId,
+//       });
   
-      // Notify about the booking update
-      obj.status = 400;
-      obj.message = "Invalid Otp";
-      return res.json(obj);
-    }
-  }
-  // const OTP=Math.floor(1000 + Math.random() * 9000)
-  // objData = {...objData, endRide: Number(OTP)}
-}
+//       // Notify about the booking update
+//       obj.status = 400;
+//       obj.message = "Invalid Otp";
+//       return res.json(obj);
+//     }
+//   }
+//   // const OTP=Math.floor(1000 + Math.random() * 9000)
+//   // objData = {...objData, endRide: Number(OTP)}
+// }
 
 if(rideStatus==="completed"){
   if(rideOtp && rideOtp.length===4){
@@ -817,6 +818,7 @@ if(rideStatus==="completed"){
       return res.json(obj);
     }
   }
+  
 }
 
     // Update the booking document
@@ -825,6 +827,12 @@ if(rideStatus==="completed"){
       { $set: objData }, 
       { new: true }
     );
+
+    const currentBooking_id = _id
+    const timeline = rideStatus === "canceled" 
+    ? { "Ride Cancelled": updatedBooking.updatedAt } 
+    : { "Drop-off done": updatedBooking.updatedAt };
+      timelineFunction(userId, bookingId, currentBooking_id, timeline  )
 
     // Log the booking update
     await Log({
@@ -850,6 +858,10 @@ if(rideStatus==="completed"){
 
 router.post('/maintenanceVehicle', async(req,res)=>{
   maintenanceVehicleFunction(req,res)
+})
+
+router.post('/createTimeline', async(req,res)=>{
+  timelineFunction(req,res)
 })
 
 // router.get("/api/cron", async (req, res) => {

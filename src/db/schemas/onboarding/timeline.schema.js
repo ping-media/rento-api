@@ -1,4 +1,6 @@
 const mongoose = require ("mongoose");
+const Schema = mongoose.Schema;
+
 
 const timelineSchema= new mongoose.Schema({
     bookingId:{
@@ -9,6 +11,11 @@ const timelineSchema= new mongoose.Schema({
       type: Schema.Types.ObjectId,
       require:true,
       ref: 'User'
+    },
+    currentBooking_id:{
+      type: Schema.Types.ObjectId,
+
+      ref: 'Booking'
     },
     timeline:{
         type:Object,

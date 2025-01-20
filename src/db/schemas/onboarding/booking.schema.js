@@ -100,13 +100,15 @@ const bookingSchema = new Schema({
     },
    
    
-    notes: {
-        type: Object,
-       // default:"NA"
-       // required: true
-    },
-   
-    
+    notes: 
+         [
+           {   
+                key: { type: String, required: true }, 
+                value: { type: String, required: true }, 
+                noteType: { type: String, required: true }, 
+            }
+        ],
+        
     paymentMethod: {
         type: String,
         enum: ['cash', 'partiallyPay','online'],
