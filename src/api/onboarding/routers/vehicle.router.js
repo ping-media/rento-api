@@ -860,7 +860,7 @@ if(rideStatus==="completed"){
 });
 
 
-router.put('/vehicleChange',Authentication, async (req, res) => {
+router.post('/vehicleChange',Authentication, async (req, res) => {
   vehicleChangeInBooking(req,res)
 });
 
