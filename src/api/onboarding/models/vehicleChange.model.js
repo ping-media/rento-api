@@ -4,7 +4,7 @@ const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.sch
 const Otp = require("../../../db/schemas/onboarding/logOtp");
 
 const vehicleChangeInBooking= async(req,res)=>{
-    const { vehicleTableId,  extent, _id,vehicleBasic, vehicleMasterId,contact,otp }=req.body;
+    const { vehicleTableId,  extent, _id,vehicleBasic,bookingPrice, vehicleMasterId,contact,otp }=req.body;
     try {
 
         const bookingData= await Booking.findOne({_id:_id});
@@ -35,7 +35,7 @@ const vehicleChangeInBooking= async(req,res)=>{
        const {vehicleImage,vehicleBrand,vehicleName} = vehicleMasterData
 
       
-       const o = {vehicleTableId,vehicleMasterId,extent,vehicleImage,vehicleName,vehicleBrand,vehicleBasic}
+       const o = {vehicleTableId,vehicleMasterId,extent,vehicleImage,vehicleName,vehicleBrand,vehicleBasic,bookingPrice}
 
 
        Object.keys(o).forEach((key) => {
