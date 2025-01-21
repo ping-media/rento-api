@@ -44,8 +44,25 @@ const vehicleChangeInBooking= async(req,res)=>{
         }
       });
 
-       const updatedData = await Booking.updateOne({ _id: ObjectId(_id) }, { $set: o }, { new: true });
-
+      const updatedData = await Booking.findOneAndUpdate(
+        { _id: _id }, // Filter condition
+        { $set: o },  // Update data
+        { new: true } // Return the updated document
+      );
+      
+    //   if (updatedData) {
+    //     return res.status(200).json({
+    //       status: 200,
+    //       message: "Vehicle changed",
+    //       data: updatedData,
+    //     });
+    //   } else {
+    //     return res.status(404).json({
+    //       status: 404,
+    //       message: "Booking not found",
+    //     });
+    //   }
+      
       await Log({
         message: `Vhicle changed for  this booking  ${_id} `,
         functionName: "vehicleChangeInBooking",
