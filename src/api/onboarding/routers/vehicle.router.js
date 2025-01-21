@@ -36,7 +36,8 @@ const {kycApprovalFunction} = require("../models/kycapproval.model");
 const Booking=require("../../../db/schemas/onboarding/booking.schema");
 const {maintenanceVehicleFunction} = require("../models/maintenanceVehicle.model");
 const {timelineFunction} = require("../models/timeline.model");
-const Timeline = require("../../../db/schemas/onboarding/timeline.schema")
+const Timeline = require("../../../db/schemas/onboarding/timeline.schema");
+const {vehicleChangeInBooking} = require("../models/vehicleChange.model")
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
@@ -760,7 +761,7 @@ router.post("/sendInvoiceByEmail",Authentication, upload1.single('file'), async 
 
 
 // Update booking route
-router.put('/rideUpdate', async (req, res) => {
+router.put('/rideUpdate',Authentication, async (req, res) => {
   const { _id,
   bookingStatus,
   paymentStatus,
@@ -859,11 +860,16 @@ if(rideStatus==="completed"){
 });
 
 
-router.post('/maintenanceVehicle', async(req,res)=>{
+router.put('/vehicleChange',Authentication, async (req, res) => {
+  vehicleChangeInBooking(req,res)
+});
+
+
+router.post('/maintenanceVehicle',Authentication, async(req,res)=>{
   maintenanceVehicleFunction(req,res)
 })
 
-router.post('/createTimeline', async(req,res)=>{
+router.post('/createTimeline',Authentication, async(req,res)=>{
   timelineFunction(req,res)
 })
 
