@@ -133,6 +133,10 @@ const bookingSchema = new Schema({
         type: String,
         required: true
     },
+    extent:{
+        type:Object,
+
+    }
     
    
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });

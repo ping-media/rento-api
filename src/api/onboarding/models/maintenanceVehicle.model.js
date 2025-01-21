@@ -169,7 +169,7 @@ const maintenanceVehicleFunction = async (req, res) => {
       // Check if there are any existing bookings for the vehicle within the specified maintenance period
       const result = await Booking.aggregate(pipeline);
       
-  console.log(result)
+  // console.log(result)
   const conflictingBookings = result[0]?.conflictingBookings || [];
 
   if (conflictingBookings.length > 0) {
