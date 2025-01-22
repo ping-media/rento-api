@@ -9,10 +9,14 @@ const extentBooking = async (req, res) => {
   try{
 
    const vehicleData = await getVehicleTblData(req.query);
-  // console.log(vehicleData)
+ 
 
-   const data = vehicleData.data.find((item)=>{item.vehicleTableId===vehicleTableId});
+   const data = vehicleData?.data?.find((item) => {
+    return item._id.toString() === vehicleTableId; // Convert both to strings for comparison
+  });
+    console.log("Matched Vehicle Data:", data);
 
+  
    const o = {  BookingStartDateAndTime, BookingEndDateAndTime, extendBooking, bookingPrice}
 
   if(data){
