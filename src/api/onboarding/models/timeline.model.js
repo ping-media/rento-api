@@ -2,16 +2,16 @@ const Timeline = require("../../../db/schemas/onboarding/timeline.schema");
 
 const timelineFunction = async (req, res) => {
   try {
-    const { bookingId, userId, timeline, currentBooking_id } = req.body;
+    const { bookingId, userId, timeLine, currentBooking_id } = req.body;
 
-    if (!bookingId || !userId || !timeline) {
+    if (!bookingId || !userId || !timeLine) {
       return res.status(400).json({
         status: 400,
         message: "Missing required fields: userId, bookingId, or timeline.",
       });
     }
 
-    const ObjData = { userId, bookingId, timeline };
+    const ObjData = { userId, bookingId, timeLine };
 
     if (currentBooking_id) {
       const existingData = await Timeline.findOne({ currentBooking_id });
@@ -23,11 +23,11 @@ const timelineFunction = async (req, res) => {
         });
       }
 
-      const updatedTimeline = [...existingData.timeline, ...timeline];
+      const updatedTimeline = [...existingData.timeLine, ...timeLine];
 
       await Timeline.updateOne(
         { currentBooking_id },
-        { $set: { timeline: updatedTimeline } }
+        { $set: { timeLine: updatedTimeline } }
       );
 
       return res.status(200).json({

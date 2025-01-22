@@ -17,7 +17,7 @@ const timelineSchema= new mongoose.Schema({
 
       ref: 'Booking'
     },
-    timeline:{
+    timeLine:{
         type:Object,
         require:true
     }

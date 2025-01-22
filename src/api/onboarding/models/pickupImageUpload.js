@@ -120,9 +120,9 @@ const pickupImageUp = async (req, res) => {
       { new: true }
     );
 
-    const currentBooking_id = _id
-    const timeline={"Pick-up done":updateResult.updatedAt}
-    timelineFunction(userId, bookingId, currentBooking_id, timeline  )
+    // const currentBooking_id = _id
+    // const timeline={"Pick-up done":updateResult.updatedAt}
+    // timelineFunction(userId, bookingId, currentBooking_id, timeline  )
 
 //console.log(updateResult)
     return res.json({

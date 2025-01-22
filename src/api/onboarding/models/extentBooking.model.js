@@ -5,14 +5,12 @@ const extentBooking = async (req, res) => {
     let { vehicleTableId, BookingStartDateAndTime, BookingEndDateAndTime, _id, extendAmount,bookingPrice, oldBookings,extendBooking } = req.body;
 
 
-    // Validate input
-    try {
-        // const bookings = await Booking.findOne({_id:_id})
 
-        // const {bookingPrice}=
+    try {
+       
 
         const vehicleData = await getVehicleTblData(req.query);
-
+        
 
         const data = vehicleData?.data?.find((item) => {
             return item._id.toString() === vehicleTableId; 
