@@ -24,10 +24,7 @@ if(isStart && isStart===true)
 
   }
   else{
-   
-
-   
-      const existingData = await Timeline.findOne({ bookingId });
+      const existingData = await Timeline.findOne({ currentBooking_id });
       console.log(existingData)
 
       if (!existingData) {
@@ -40,7 +37,7 @@ if(isStart && isStart===true)
       const updatedTimeline = {...existingData.timeLine, ...timeLine};
 
       await Timeline.updateOne(
-        { bookingId },
+        { currentBooking_id },
         { $set: { timeLine: updatedTimeline } }
       );
 
