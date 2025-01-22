@@ -35,7 +35,7 @@ const{sendInvoiceByEmail}=require("../../../utils/emailSend");
 const {kycApprovalFunction} = require("../models/kycapproval.model");
 const Booking=require("../../../db/schemas/onboarding/booking.schema");
 const {maintenanceVehicleFunction} = require("../models/maintenanceVehicle.model");
-const {timelineFunction} = require("../models/timeline.model");
+const {timelineFunction,timelineFunctionForGet} = require("../models/timeline.model");
 const TimeLine = require("../../../db/schemas/onboarding/timeline.schema");
 const {vehicleChangeInBooking} = require("../models/vehicleChange.model");
 const { Auth } = require("googleapis");
@@ -873,6 +873,10 @@ router.post('/maintenanceVehicle',Authentication, async(req,res)=>{
 
 router.post('/createTimeline',Authentication, async(req,res)=>{
   timelineFunction(req,res)
+})
+
+router.get('/getTimelineData',Authentication, async(req,res)=>{
+  timelineFunctionForGet(req,res)
 })
 
 // router.get("/api/cron", async (req, res) => {
