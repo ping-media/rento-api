@@ -881,7 +881,7 @@ router.post('/createTimeline',Authentication, async(req,res)=>{
 //   handler(req,res)
 // });
 
-router.get('/extentBooking',Authentication,async(req,res)=>{
+router.post('/extentBooking',Authentication,async(req,res)=>{
   extentBooking(req,res)
 })
 
