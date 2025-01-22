@@ -133,7 +133,11 @@ const bookingSchema = new Schema({
         type: String,
         required: true
     },
-    extent:{
+    changeVehicle:{
+        type:Object,
+
+    },
+    extenedBooking:{
         type:Object,
 
     }

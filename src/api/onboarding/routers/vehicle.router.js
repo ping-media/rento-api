@@ -37,7 +37,9 @@ const Booking=require("../../../db/schemas/onboarding/booking.schema");
 const {maintenanceVehicleFunction} = require("../models/maintenanceVehicle.model");
 const {timelineFunction} = require("../models/timeline.model");
 const Timeline = require("../../../db/schemas/onboarding/timeline.schema");
-const {vehicleChangeInBooking} = require("../models/vehicleChange.model")
+const {vehicleChangeInBooking} = require("../models/vehicleChange.model");
+const { Auth } = require("googleapis");
+const {extentBooking} = require("../models/extentBooking.model")
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
@@ -878,6 +880,10 @@ router.post('/createTimeline',Authentication, async(req,res)=>{
 //   //res.send("Cron job is working");
 //   handler(req,res)
 // });
+
+router.get('/extentBooking',Authentication,async(req,res)=>{
+  extentBooking(req,res)
+})
 
 
 module.exports = router;

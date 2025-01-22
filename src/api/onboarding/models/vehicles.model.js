@@ -253,7 +253,7 @@ async function createVehicle({
 
 
 async function booking({
-  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, paymentInitiatedDate,stationMasterUserId,extent,
+  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, paymentInitiatedDate,stationMasterUserId,changeVehicle,
   discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom, stationId,discountCuopon,bookingId,notes,
   deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = "", paymentgatewayReceiptId
 }) {
@@ -336,7 +336,7 @@ async function booking({
    
 
     let o = {
-      vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, stationId, paymentInitiatedDate,notes,extent,
+      vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, stationId, paymentInitiatedDate,notes,changeVehicle,
       discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, paymentgatewayOrderId,discountCuopon,
       payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId, paymentgatewayReceiptId
     };
@@ -2156,6 +2156,7 @@ const getVehicleTblData = async (query) => {
     
     const pipeline = [
       { $match: matchFilter },
+
       {
         $lookup: {
           from: "bookings",
@@ -2182,9 +2183,9 @@ const getVehicleTblData = async (query) => {
       },
       {
         $lookup: {
-          from: "maintenancevehicles", // Join with the MaintenanceVehicle collection
-          localField: "_id", // Match _id of vehicleTable
-          foreignField: "vehicleTableId", // Match 'vehicleTableId' in MaintenanceVehicle collection
+          from: "maintenancevehicles", 
+          localField: "_id", 
+          foreignField: "vehicleTableId", 
           as: "maintenanceData",
         },
       },
@@ -2248,6 +2249,7 @@ const getVehicleTblData = async (query) => {
           ...(vehicleType && { "vehicleMasterData.vehicleType": vehicleType }),
         },
       },
+    
       {
         $project: {
           _id: 1,
@@ -2274,6 +2276,7 @@ const getVehicleTblData = async (query) => {
           stationId: 1,
         },
       },
+      // { $match: matchFilter },
       {
         $facet: {
           totalCount: [{ $count: "totalRecords" }],
