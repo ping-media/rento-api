@@ -137,7 +137,7 @@ const bookingSchema = new Schema({
         type:Object,
 
     },
-    extenedBooking:{
+    extendBooking:{
         type:Object,
 
     }

@@ -2,7 +2,7 @@ const {getVehicleTblData}=require("../models/vehicles.model");
 const Booking = require ("../../../db/schemas/onboarding/booking.schema")
 
 const extentBooking = async (req, res) => {
-  const { vehicleTableId, BookingStartDateAndTime, BookingEndDateAndTime, _id, extenedBooking, bookingPrice  } = req.body;
+  const { vehicleTableId, BookingStartDateAndTime, BookingEndDateAndTime, _id, extendBooking, bookingPrice  } = req.body;
   
 
   // Validate input
@@ -13,7 +13,7 @@ const extentBooking = async (req, res) => {
 
    const data = vehicleData.data.find((item)=>{item.vehicleTableId===vehicleTableId});
 
-   const o = {  BookingStartDateAndTime, BookingEndDateAndTime, extenedBooking, bookingPrice}
+   const o = {  BookingStartDateAndTime, BookingEndDateAndTime, extendBooking, bookingPrice}
 
   if(data){
    
