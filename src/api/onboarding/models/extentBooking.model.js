@@ -17,16 +17,16 @@ const extentBooking = async (req, res) => {
 
   if(data){
    
-    const updatedData = await Booking.findOneAndUpdate(
-        { _id: _id }, // Filter condition
-        { $set: o },  // Update data
-        { new: true } // Return the updated document
-      );
+    // const updatedData = await Booking.findOneAndUpdate(
+    //     { _id: _id }, // Filter condition
+    //     { $set: o },  // Update data
+    //     { new: true } // Return the updated document
+    //   );
 
       return res.status(200).json({
         status: 200,
         message: "booking extened ",
-        data:updatedData
+        data:[]
       });
   }
  
