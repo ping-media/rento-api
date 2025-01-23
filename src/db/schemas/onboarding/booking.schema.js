@@ -119,7 +119,7 @@ const bookingSchema = new Schema({
         ref: 'invoice-tbl'
     },  
     bookingStatus: {
-        enum: ['pending', 'done', 'canceled'],
+        enum: ['pending', 'done', 'canceled', 'extended'],
         type: String,
         required: true
     },

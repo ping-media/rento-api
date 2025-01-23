@@ -21,6 +21,8 @@ const getBooking = async (query) => {
       rideStatus,
       paymentMethod,
       payInitFrom,
+      fromDate,
+      toDate,
       page = 1,        
       limit = 10,      
     } = query;
@@ -69,23 +71,35 @@ const getBooking = async (query) => {
     if (rideStatus) filters.rideStatus = rideStatus;
     if (paymentMethod) filters.paymentMethod = paymentMethod;
     if (payInitFrom) filters.payInitFrom = payInitFrom;
+    
+    
 
     // Add search functionality
-    if (search) {
-      const searchRegex = new RegExp(search, "i"); // Case-insensitive search
-      filters.$or = [
-        { bookingId: searchRegex },
-        { vehicleBrand: searchRegex },
-        { vehicleName: searchRegex },
-        { stationName: searchRegex },
-        { bookingStatus: searchRegex },
-        { paymentStatus: searchRegex },
-        { paymentMethod: searchRegex },
-        { rideStatus: searchRegex },
-        { payInitFrom: searchRegex },
-        { updatedAt: searchRegex },
-      ];
-    }
+if (search) {
+  const searchRegex = new RegExp(search, "i"); // Case-insensitive search
+  filters.$or = [
+    { bookingId: searchRegex },
+    { vehicleBrand: searchRegex },
+    { vehicleName: searchRegex },
+    { stationName: searchRegex },
+    { bookingStatus: searchRegex },
+    { paymentStatus: searchRegex },
+    { paymentMethod: searchRegex },
+    { rideStatus: searchRegex },
+    { payInitFrom: searchRegex },
+    {
+      BookingStartDateAndTime: {
+        $regex: searchRegex,
+      },
+    },
+    {
+      BookingEndDateAndTime: {
+        $regex: searchRegex,
+      },
+    },
+  ];
+}
+
    
     const skip = (page - 1) * limit;
 
