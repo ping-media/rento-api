@@ -668,12 +668,13 @@ router.get("/getGraphData", Authentication,async (req, res) => {
 
 router.post("/createOrderId", async (req, res) => {
   const { amount, booking_id } = req.body
-  const newKey="Payment Initiated";
-  const date=new Date().toLocaleString();
-  const timelinedata = await TimeLine.updateOne(
-    { currentBooking_id:booking_id },
-    { $set: { [`timeline.${newKey}`]:  date} }
-  );
+  
+  // const newKey="Payment Initiated";
+  // const date=new Date().toLocaleString();
+  // const timelinedata = await TimeLine.updateOne(
+  //   { currentBooking_id:booking_id },
+  //   { $set: { [`timeline.${newKey}`]:  date} }
+  // );
 
   const key_id = process.env.VITE_RAZOR_KEY_ID;
   const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
