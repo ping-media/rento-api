@@ -21,8 +21,6 @@ const getBooking = async (query) => {
       rideStatus,
       paymentMethod,
       payInitFrom,
-      fromDate,
-      toDate,
       page = 1,        
       limit = 10,      
     } = query;

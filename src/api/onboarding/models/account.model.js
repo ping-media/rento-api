@@ -77,7 +77,10 @@ const getAllUsers = async (query) => {
       email,
       contact,
       search,
-      isDocumentVerified,
+      status,
+      kycApproved,
+      isEmailVerified,
+      isContactVerified,
       page = 1,
       limit = 10,
       sortBy = 'createdAt',
@@ -106,7 +109,10 @@ const getAllUsers = async (query) => {
     if (email) filter.email = { $regex: email, $options: "i" };
     if (contact) filter.contact = { $regex: contact, $options: "i" };
     if (userType) filter.userType = { $regex: userType, $options: "i" };
-    if (isDocumentVerified) filter.isDocumentVerified = { $regex: isDocumentVerified, $options: "i" };
+    if (kycApproved) filter.kycApproved = { $regex: kycApproved, $options: "i" };
+    if (isEmailVerified) filter.isEmailVerified = { $regex: isEmailVerified, $options: "i" };
+    if (isContactVerified) filter.isContactVerified = { $regex: isContactVerified, $options: "i" };
+    if (status) filter.status = { $regex: status, $options: "i" };
 
 
     // Handle search functionality
@@ -118,6 +124,10 @@ const getAllUsers = async (query) => {
         { contact: { $regex: search, $options: "i" } },
         { userType: { $regex: search, $options: "i" } },
         { isDocumentVerified: { $regex: search, $options: "i" } },
+        { isContactVerified: { $regex: search, $options: "i" } },
+        { isEmailVerified: { $regex: search, $options: "i" } },
+        { status: { $regex: search, $options: "i" } },
+        { kycApproved: { $regex: search, $options: "i" } },
       ];
     }
 
