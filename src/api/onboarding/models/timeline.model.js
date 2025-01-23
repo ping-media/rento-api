@@ -6,14 +6,14 @@ const timelineFunction = async (req, res) => {
 
 if(isStart && isStart===true)
     {
-      if (!bookingId || !userId || !timeLine) {
+      if (!bookingId || !userId || !timeLine || !currentBooking_id) {
       return res.json({
         status: 400,
         message: "Missing required fields: userId, bookingId, or timeline.",
       });
     }
 
-    const ObjData = { userId, bookingId, timeLine };
+    const ObjData = { userId, bookingId, timeLine, currentBooking_id };
     const newData = new Timeline(ObjData);
     await newData.save();
 
