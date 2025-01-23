@@ -877,7 +877,7 @@ router.post('/maintenanceVehicle',Authentication, async(req,res)=>{
   maintenanceVehicleFunction(req,res)
 })
 
-router.post('/createTimeline',Authentication, async(req,res)=>{
+router.post('/createTimeline', async(req,res)=>{
   timelineFunction(req,res)
 })
 
