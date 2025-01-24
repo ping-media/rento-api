@@ -21,6 +21,7 @@ const getBooking = async (query) => {
       rideStatus,
       paymentMethod,
       payInitFrom,
+      stationId,
       page = 1,        
       limit = 10,      
     } = query;
@@ -69,6 +70,7 @@ const getBooking = async (query) => {
     if (rideStatus) filters.rideStatus = rideStatus;
     if (paymentMethod) filters.paymentMethod = paymentMethod;
     if (payInitFrom) filters.payInitFrom = payInitFrom;
+    if (stationId) filters.stationId = stationId;
     
     
 
