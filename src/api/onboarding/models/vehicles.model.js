@@ -1993,38 +1993,6 @@ const getVehicleTblData = async (query) => {
               },
             },
           },
-          conflictingExtendBookings: {
-            $filter: {
-              input: "$bookings",
-              as: "booking",
-              cond: {
-                $and: [
-                  { $ne: ["$$booking.extendBooking", null] }, // Check if extendBooking exists
-                  {
-                    $cond: {
-                      if: { $isArray: "$$booking.extendBooking.oldBooking" },
-                      then: { $gt: [{ $size: "$$booking.extendBooking.oldBooking" }, 0] }, // Check oldBooking is not empty
-                      else: false, // Skip if oldBooking doesn't exist or is not an array
-                    },
-                  },
-                  {
-                    $anyElementTrue: {
-                      $map: {
-                        input: "$$booking.extendBooking.oldBooking", // Loop through oldBooking array
-                        as: "oldBooking",
-                        in: {
-                          $and: [
-                            { $lte: ["$$oldBooking.BookingStartDateAndTime", endDate] }, // Start date is before or equal to range end
-                            { $gte: ["$$oldBooking.BookingEndDateAndTime", startDate] }, // End date is after or equal to range start
-                          ],
-                        },
-                      },
-                    },
-                  },
-                ],
-              },
-            },
-          },
           ongoingBookings: {
             $filter: {
               input: "$bookings",
