@@ -115,7 +115,7 @@ async function verify(req, res) {
       return res.json({ status: 400, message });
     }
 
-    if ((contact === "9389046742" || contact === "8433408211") && otp === "123456") {
+    if ((contact === "9389046740" || contact === "8433408211") && otp === "123456") {
       const user = await User.findOne({ contact });
       const message = "OTP verified successfully (Hardcoded logic)";
       await createLog(message, "verify", user._id, 200);
