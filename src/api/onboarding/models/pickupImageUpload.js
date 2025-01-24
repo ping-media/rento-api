@@ -47,7 +47,10 @@ const pickupImageUp = async (req, res) => {
     if(kycStatus==="no"){
       return res.json(
         { status:400,
-       message:"Please Approved KYC ",}
+       message:"Customer kyc is not Approved",
+       isKyc:false
+      }
+
          );
     }
 
