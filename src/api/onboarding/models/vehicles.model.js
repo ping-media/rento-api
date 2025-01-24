@@ -2155,7 +2155,7 @@ const getVehicleTblData = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                  { $ne: ["$$booking.extendBooking", null] }, // Ensure extendBooking exists
+                //  { $ne: ["$$booking.extendBooking", null] }, // Ensure extendBooking exists
                   {
                     $anyElementTrue: {
                       $map: {
