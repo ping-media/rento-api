@@ -2,10 +2,20 @@ const Booking = require('../../../db/schemas/onboarding/booking.schema')
 
 
 async function getBookingGraphData(req,res) {
+  const { stationId } = req.query;
     try {
+
+      const matchFilter = {};
+
+
+      if (stationId) matchFilter.stationId = stationId;
       // MongoDB aggregation to group bookings by day
       const graphData = await Booking.aggregate([
         {
+          $match: matchFilter, 
+        },
+        {
+
           $project: {
             day: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
             price: {

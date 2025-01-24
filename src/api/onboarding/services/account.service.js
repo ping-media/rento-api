@@ -32,7 +32,7 @@ exports.getAllUsers = async (req, res) => {
 
 exports.getAllDataCount = async (req, res) => {
   try {
-    const result = await getAllDataCount(req.body);
+    const result = await getAllDataCount(req.query);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({

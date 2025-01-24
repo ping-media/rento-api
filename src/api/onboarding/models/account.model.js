@@ -26,6 +26,7 @@ const plan = require("../../../db/schemas/onboarding/plan.schema");
 const order = require("../../../db/schemas/onboarding/order.schema");
 const location = require("../../../db/schemas/onboarding/location.schema");
 const Otp = require("../../../db/schemas/onboarding/logOtp");
+const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema")
 const { log } = require("winston");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
 const { sendOtpByEmail } = require("../../../utils/emailSend")
@@ -170,56 +171,74 @@ const getAllUsers = async (query) => {
 
 
 
-async function getAllDataCount() {
+async function getAllDataCount(query) {
   try {
     const obj = { status: 200, message: "Data fetched successfully", data: {} };
+    const { stationId } = query; // Extract stationId from query
+
+    const stationFilter = stationId ? { stationId } : {};
 
     // Fetch bookings and calculate totalAmount
-    const bookings = await Booking.find();
+    const bookings = await Booking.find(stationFilter); // Apply stationId filter
     const Amount = bookings.reduce((acc, item) => {
-      const price = item.bookingPrice.discountTotalPrice && item.bookingPrice.discountTotalPrice !== 0
-        ? item.bookingPrice.discountTotalPrice
-        : item.bookingPrice.totalPrice;
+      const price =
+        item.bookingPrice.discountTotalPrice &&
+        item.bookingPrice.discountTotalPrice !== 0
+          ? item.bookingPrice.discountTotalPrice
+          : item.bookingPrice.totalPrice;
       return acc + price;
     }, 0);
 
-    // console.log(totalAmount);
+    let usersCount = 0,
+      bookingsCount = 0,
+      vehiclesCount = 0,
+      locationCount = 0,
+      stationsCount = 0,
+      couponsCount = 0,
+      invoicesCount = 0,
+      plansCount = 0;
 
-    // Execute count queries in parallel for efficiency
-    const [
-      usersCount,
-      bookingsCount,
-      vehiclesCount,
-      locationCount,
-      stationsCount,
-      couponsCount,
-      invoicesCount,
-      plansCount,
-      // ordersCount,
-    ] = await Promise.all([
-      User.countDocuments({}),
-      Booking.countDocuments({}),
-      vehicleMaster.countDocuments({}),
-      location.countDocuments({}),
-      station.countDocuments({}),
-      coupon.countDocuments({}),
-      invoiceTbl.countDocuments({}),
-      plan.countDocuments({}),
-      // order.countDocuments({}),
-    ]);
+    if (stationId) {
+      // Fetch only station-specific counts
+      [
+        bookingsCount,
+        vehiclesCount,
+        invoicesCount,
+      ] = await Promise.all([
+        Booking.countDocuments(stationFilter),
+        vehicleTable.countDocuments(stationFilter),
+        invoiceTbl.countDocuments(stationFilter),
+      ]);
+    } else {
+      // Fetch general counts without station filter
+      [
+        usersCount,
+        bookingsCount,
+        vehiclesCount,
+        locationCount,
+        stationsCount,
+        couponsCount,
+        invoicesCount,
+        plansCount,
+      ] = await Promise.all([
+        User.countDocuments({}),
+        Booking.countDocuments({}),
+        vehicleMaster.countDocuments({}),
+        location.countDocuments({}),
+        station.countDocuments({}),
+        coupon.countDocuments({}),
+        invoiceTbl.countDocuments({}),
+        plan.countDocuments({}),
+      ]);
+    }
 
-    // Populate data object
+    // Populate the data object
     obj.data = {
-      usersCount,
+      ...(stationId ? {} : { usersCount, locationCount, stationsCount, couponsCount, plansCount }),
       bookingsCount,
       vehiclesCount,
-      locationCount,
-      stationsCount,
-      couponsCount,
       invoicesCount,
-      plansCount,
-      // ordersCount,
-      Amount,
+      Amount, // Total amount of bookings
     };
 
     return obj;
@@ -227,6 +246,7 @@ async function getAllDataCount() {
     return { status: 500, message: "An error occurred", error: error.message };
   }
 }
+
 
 
 // async function saveUser({
