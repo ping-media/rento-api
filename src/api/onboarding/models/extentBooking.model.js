@@ -2,7 +2,7 @@ const { getVehicleTblData } = require("../models/vehicles.model");
 const Booking = require("../../../db/schemas/onboarding/booking.schema")
 
 const extentBooking = async (req, res) => {
-    let { vehicleTableId, BookingStartDateAndTime, BookingEndDateAndTime, _id, extendAmount,bookingPrice, oldBookings,extendBooking } = req.body;
+    let { vehicleTableId, BookingStartDateAndTime, BookingEndDateAndTime, _id, extendAmount,bookingPrice, oldBookings,extendBooking,bookingStatus } = req.body;
 
 
 
@@ -28,8 +28,8 @@ const extentBooking = async (req, res) => {
         const o = {
             BookingEndDateAndTime,
             extendBooking,
-            bookingPrice
-           
+            bookingPrice,
+            bookingStatus
         }
 
         if (data) {
@@ -42,7 +42,7 @@ const extentBooking = async (req, res) => {
 
             return res.status(200).json({
                 status: 200,
-                message: "booking extened ",
+                message: "booking extended successfully ",
                 data: updatedData
             });
         }
