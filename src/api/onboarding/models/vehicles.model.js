@@ -1936,8 +1936,10 @@ const getVehicleTblData = async (query) => {
     const parsedPage = Math.max(parseInt(page, 10), 1);
     const parsedLimit = Math.max(parseInt(limit, 10), 1);
 
+    
     // const pipeline = [
     //   { $match: matchFilter },
+
     //   {
     //     $lookup: {
     //       from: "bookings",
@@ -1963,111 +1965,11 @@ const getVehicleTblData = async (query) => {
     //     },
     //   },
     //   {
-    //     $addFields: {
-    //       conflictingBookings: {
-    //         $filter: {
-    //           input: "$bookings",
-    //           as: "booking",
-    //           cond: {
-    //             $and: [
-    //               { $in: ["$$booking.bookingStatus", ["pending", "done"]] },
-    //              // { $in: ["$$booking.rideStatus", ["ongoing"]] },
-    //               {
-    //                 $and: [
-    //                   { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
-    //                   { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
-    //                 ],
-    //               },
-    //             ],
-    //           },
-    //         },
-    //       },
-    //     },
-    //   },
-    //   {
-    //     $match: {
-    //       vehicleStatus: "active",
-    //     },
-    //   },
-    //   { $match: { "conflictingBookings.0": { $exists: false } } },
-    //   {
-    //     $addFields: {
-    //       vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
-    //       stationData: { $arrayElemAt: ["$stationData", 0] },
-    //     },
-    //   },
-    //   {
-    //     $match: {
-    //       ...(vehicleBrand && { "vehicleMasterData.vehicleBrand": vehicleBrand }),
-    //       ...(vehicleType && { "vehicleMasterData.vehicleType": vehicleType }),
-    //     },
-    //   },
-    //   {
-    //     $project: {
-    //       _id: 1,
-    //       vehicleImage: "$vehicleMasterData.vehicleImage",
-    //       vehicleBrand: "$vehicleMasterData.vehicleBrand",
-    //       vehicleName: "$vehicleMasterData.vehicleName",
-    //       vehicleType: "$vehicleMasterData.vehicleType",
-    //       stationName: "$stationData.stationName",
-    //       speedLimit: 1,
-    //       refundableDeposit: 1,
-    //       lateFee: 1,
-    //       vehicleStatus: 1,
-    //       freeKms: 1,
-    //       vehicleMasterId: 1,
-    //       extraKmsCharges: 1,
-    //       vehicleNumber: 1,
-    //       vehicleModel: 1,
-    //       vehiclePlan: 1,
-    //       perDayCost: 1,
-    //       lastServiceDate: 1,
-    //       kmsRun: 1,
-    //       condition: 1,
-    //       locationId: 1,
-    //       stationId: 1,
-
-
-
-
-
-    //     },
-    //   },
-    //   {
-    //     $facet: {
-    //       totalCount: [{ $count: "totalRecords" }],
-    //       data: [
-    //         { $skip: (parsedPage - 1) * parsedLimit },
-    //         { $limit: parsedLimit },
-    //       ],
-    //     },
-    //   },
-    // ];
-
-    // const pipeline = [
-    //   { $match: matchFilter },
-    //   {
     //     $lookup: {
-    //       from: "bookings",
-    //       localField: "_id",
-    //       foreignField: "vehicleTableId",
-    //       as: "bookings",
-    //     },
-    //   },
-    //   {
-    //     $lookup: {
-    //       from: "stations",
-    //       localField: "stationId",
-    //       foreignField: "stationId",
-    //       as: "stationData",
-    //     },
-    //   },
-    //   {
-    //     $lookup: {
-    //       from: "vehiclemasters",
-    //       localField: "vehicleMasterId",
-    //       foreignField: "_id",
-    //       as: "vehicleMasterData",
+    //       from: "maintenancevehicles", 
+    //       localField: "_id", 
+    //       foreignField: "vehicleTableId", 
+    //       as: "maintenanceData",
     //     },
     //   },
     //   {
@@ -2096,12 +1998,25 @@ const getVehicleTblData = async (query) => {
     //           cond: { $eq: ["$$booking.rideStatus", "ongoing"] },
     //         },
     //       },
+    //       conflictingMaintenance: {
+    //         $filter: {
+    //           input: "$maintenanceData",  
+    //           as: "maintenance",
+    //           cond: {
+    //             $and: [
+    //               { $lte: ["$$maintenance.startDate", endDate] },  // Maintenance start date is before or equal to the provided endDate
+    //               { $gte: ["$$maintenance.endDate", startDate] },    // Maintenance end date is after or equal to the provided startDate
+    //             ]
+    //           }
+    //         }
+    //       }
     //     },
     //   },
     //   {
     //     $match: {
     //       vehicleStatus: "active",
     //       "ongoingBookings": { $size: 0 }, // Exclude vehicles with ongoing bookings
+    //       "conflictingMaintenance.0": { $exists: false },  // Exclude vehicles with overlapping maintenance
     //     },
     //   },
     //   { $match: { "conflictingBookings.0": { $exists: false } } },
@@ -2117,6 +2032,7 @@ const getVehicleTblData = async (query) => {
     //       ...(vehicleType && { "vehicleMasterData.vehicleType": vehicleType }),
     //     },
     //   },
+    
     //   {
     //     $project: {
     //       _id: 1,
@@ -2143,6 +2059,7 @@ const getVehicleTblData = async (query) => {
     //       stationId: 1,
     //     },
     //   },
+    //   // { $match: matchFilter },
     //   {
     //     $facet: {
     //       totalCount: [{ $count: "totalRecords" }],
@@ -2156,7 +2073,8 @@ const getVehicleTblData = async (query) => {
     
     const pipeline = [
       { $match: matchFilter },
-
+    
+      // Lookup bookings
       {
         $lookup: {
           from: "bookings",
@@ -2165,6 +2083,7 @@ const getVehicleTblData = async (query) => {
           as: "bookings",
         },
       },
+      // Lookup station data
       {
         $lookup: {
           from: "stations",
@@ -2173,6 +2092,7 @@ const getVehicleTblData = async (query) => {
           as: "stationData",
         },
       },
+      // Lookup vehicle master data
       {
         $lookup: {
           from: "vehiclemasters",
@@ -2181,14 +2101,16 @@ const getVehicleTblData = async (query) => {
           as: "vehicleMasterData",
         },
       },
+      // Lookup maintenance data
       {
         $lookup: {
-          from: "maintenancevehicles", 
-          localField: "_id", 
-          foreignField: "vehicleTableId", 
+          from: "maintenancevehicles",
+          localField: "_id",
+          foreignField: "vehicleTableId",
           as: "maintenanceData",
         },
       },
+      // Add fields for filtering
       {
         $addFields: {
           conflictingBookings: {
@@ -2217,39 +2139,68 @@ const getVehicleTblData = async (query) => {
           },
           conflictingMaintenance: {
             $filter: {
-              input: "$maintenanceData",  
+              input: "$maintenanceData",
               as: "maintenance",
               cond: {
                 $and: [
-                  { $lte: ["$$maintenance.startDate", endDate] },  // Maintenance start date is before or equal to the provided endDate
-                  { $gte: ["$$maintenance.endDate", startDate] },    // Maintenance end date is after or equal to the provided startDate
-                ]
-              }
-            }
-          }
+                  { $lte: ["$$maintenance.startDate", endDate] },
+                  { $gte: ["$$maintenance.endDate", startDate] },
+                ],
+              },
+            },
+          },
+          conflictingExtendBookings: {
+            $filter: {
+              input: "$bookings",
+              as: "booking",
+              cond: {
+                $and: [
+                  { $ne: ["$$booking.extendBooking", null] }, // Ensure extendBooking exists
+                  {
+                    $anyElementTrue: {
+                      $map: {
+                        input: "$$booking.extendBooking.oldBookings", // Access oldBookings
+                        as: "oldBooking",
+                        in: {
+                          $and: [
+                            { $lte: ["$$oldBooking.startDate", endDate] },
+                            { $gte: ["$$oldBooking.endDate", startDate] },
+                          ],
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
         },
       },
+      // Exclude vehicles based on conflicting bookings, maintenance, or extend bookings
       {
         $match: {
           vehicleStatus: "active",
           "ongoingBookings": { $size: 0 }, // Exclude vehicles with ongoing bookings
-          "conflictingMaintenance.0": { $exists: false },  // Exclude vehicles with overlapping maintenance
+          "conflictingMaintenance.0": { $exists: false }, // Exclude vehicles with overlapping maintenance
+          "conflictingExtendBookings.0": { $exists: false }, // Exclude vehicles with conflicting extend bookings
         },
       },
       { $match: { "conflictingBookings.0": { $exists: false } } },
+      // Flatten arrays for station and vehicle master data
       {
         $addFields: {
           vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
           stationData: { $arrayElemAt: ["$stationData", 0] },
         },
       },
+      // Match additional filters for brand and type
       {
         $match: {
           ...(vehicleBrand && { "vehicleMasterData.vehicleBrand": vehicleBrand }),
           ...(vehicleType && { "vehicleMasterData.vehicleType": vehicleType }),
         },
       },
-    
+      // Project the required fields
       {
         $project: {
           _id: 1,
@@ -2276,7 +2227,7 @@ const getVehicleTblData = async (query) => {
           stationId: 1,
         },
       },
-      // { $match: matchFilter },
+      // Paginate results
       {
         $facet: {
           totalCount: [{ $count: "totalRecords" }],
