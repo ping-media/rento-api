@@ -1,5 +1,6 @@
 // import files
 const { sendEmail } = require("../../../utils/email/index");
+const Station = require("../../../db/schemas/onboarding/station.schema")
 
 // import packages
 require("dotenv").config();
@@ -84,18 +85,26 @@ async function guestLogin({ ip }) {
 
 
 async function adminLogin({ email, password }) {
-  const obj = { status: 200, message: "Admin logged in successfully", data: [], token: "" }
+  const obj = { status: 200, message: "Admin logged in successfully", data: [], token: "" ,Station:[]}
   if (email && password) {
     // Find the user by email
     const result = await User.findOne({ email });
    // console.log(result)
-   const {userType}=result;
+   const {userType,userId}=result;
+
 
     if (userType=='customer') {
       obj.status = 401;
       obj.message = "Invalid user";
       return obj;
     }
+    
+    let stationData;
+    if(userType=='manager'){
+       stationData= await Station.fineOne({userId});
+
+    }
+
     if (!result) {
       obj.status = 401;
       obj.message = "Invalid credentials";
@@ -123,8 +132,9 @@ async function adminLogin({ email, password }) {
     }
 
     const token = JWT.sign({ id: result._id }, BCRYPT_TOKEN,{expiresIn:"43200m"});
-    obj.data = result
-    obj.token = token
+    obj.data = result;
+    obj.token = token;
+    obj.Station=stationData;
   } else {
     obj.status = 401
     obj.message = "Invalid data or something is missing"
