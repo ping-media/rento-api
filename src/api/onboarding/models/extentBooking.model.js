@@ -26,7 +26,6 @@ const extentBooking = async (req, res) => {
           }
           extendBooking.oldBooking.push(oldBookings);
         const o = {
-            BookingStartDateAndTime,
             BookingEndDateAndTime,
             extendBooking,
             bookingPrice
