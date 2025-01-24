@@ -2163,8 +2163,8 @@ const getVehicleTblData = async (query) => {
                         as: "oldBooking",
                         in: {
                           $and: [
-                            { $lte: ["$$oldBooking.startDate", endDate] },
-                            { $gte: ["$$oldBooking.endDate", startDate] },
+                            { $lte: ["$$oldBooking.BookingStartDateAndTime", endDate] },
+                            { $gte: ["$$oldBooking.BookingEndDateAndTime", startDate] },
                           ],
                         },
                       },
