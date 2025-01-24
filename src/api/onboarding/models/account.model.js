@@ -234,10 +234,9 @@ async function getAllDataCount(query) {
 
     // Populate the data object
     obj.data = {
-      ...(stationId ? {} : { usersCount, locationCount, stationsCount, couponsCount, plansCount }),
+      ...(stationId ? {} : { usersCount, locationCount, stationsCount, couponsCount, plansCount, invoicesCount }),
       bookingsCount,
       vehiclesCount,
-      invoicesCount,
       Amount, // Total amount of bookings
     };
 
