@@ -90,18 +90,18 @@ async function adminLogin({ email, password }) {
     // Find the user by email
     const result = await User.findOne({ email });
    // console.log(result)
-   const {userType,userId}=result;
+   const {userType,_id}=result;
 
-
+console.log(_id)
     if (userType=='customer') {
       obj.status = 401;
       obj.message = "Invalid user";
       return obj;
     }
-    
+
     let stationData;
     if(userType=='manager'){
-       stationData= await Station.fineOne({userId});
+       stationData= await Station.findOne({userId:_id}).select(" stationName stationId");
 
     }
 
