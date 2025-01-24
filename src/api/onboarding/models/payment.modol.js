@@ -5,13 +5,14 @@ const User = require("../../../db/schemas/onboarding/user.schema");
 const paymentRec = async (req, res) => {
   try {
 
-    const {bookingId, email, paymentStatus, paymentMethod, search, page = 1, limit = 10, }=req.query
+    const {bookingId, email, paymentStatus, paymentMethod, search,stationId, page = 1, limit = 10, }=req.query
 
     const filters = {};
     if (bookingId) filters.bookingId = bookingId;
     if (email) filters.email = email;
     if (paymentStatus) filters.paymentStatus = paymentStatus;
     if (paymentMethod) filters.paymentMethod = paymentMethod;
+    if (stationId) filters.stationId = stationId;
 
     if (search) {
       const searchRegex = new RegExp(search, "i"); 

@@ -1076,6 +1076,7 @@ async function getAllInvoice(query) {
     bookingId,
     userId,
     paidInvoice,
+    stationId,
     page = 1,
     limit = 10,
     sortBy = 'createdAt',
@@ -1089,6 +1090,7 @@ async function getAllInvoice(query) {
     if (bookingId) filter.bookingId = bookingId;
     if (userId) filter.userId = userId;
     if (paidInvoice) filter.paidInvoice = paidInvoice;
+    if (stationId) filter.stationId = stationId;
 
     const sort = {};
     sort[sortBy] = order === 'asc' ? 1 : -1;
