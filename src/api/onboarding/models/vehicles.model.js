@@ -406,7 +406,7 @@ if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
   o.notes = [...(find.notes || []), o.notes[0]];
 }
 
-    const UpdatedData=  await Booking.updateOne({ _id: ObjectId(_id) }, { $set: o }, { new: true });
+    const UpdatedData=  await Booking.findByIdAndUpdate({ _id: ObjectId(_id) }, { $set: o }, { new: true });
 
       await Log({
         message: `Booking with ID ${_id} updated`,
