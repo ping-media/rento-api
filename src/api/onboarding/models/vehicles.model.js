@@ -254,7 +254,7 @@ async function createVehicle({
 
 async function booking({
   vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, paymentInitiatedDate,stationMasterUserId,changeVehicle,extendBooking,
-  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom, stationId,discountCuopon,bookingId,notes,
+  discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom, stationId,discountCuopon,bookingId,notes,isCancelled,
   deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = "", paymentgatewayReceiptId
 }) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
@@ -338,7 +338,7 @@ async function booking({
     let o = {
       vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, stationId, paymentInitiatedDate,notes,changeVehicle,
       discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, paymentgatewayOrderId,discountCuopon,extendBooking,
-      payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId, paymentgatewayReceiptId
+      payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId, paymentgatewayReceiptId, isCancelled
     };
     // console.log(o)
     if (_id && _id.length !== 24) {
@@ -395,16 +395,19 @@ async function booking({
         return obj;
       }
 
-//     let updatedData=find.notes;
-//     if(o.notes)
-//   {updatedData.push(o.notes[0])
-//   o.notes=updatedData
-//   //console.log(o.notes)
+// if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
+//   o.notes = [...(find.notes || []), o.notes[0]];
 // }
 
 if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
-  o.notes = [...(find.notes || []), o.notes[0]];
+  if (isCancelled === true) {
+    o.notes = o.notes.filter(note => !note.noteType.includes("canceled"));
+  } else {
+    o.notes = [...(find.notes || []), o.notes[0]];
+  }
 }
+
+
 
     const UpdatedData=  await Booking.findByIdAndUpdate({ _id: ObjectId(_id) }, { $set: o }, { new: true });
 
@@ -416,31 +419,6 @@ if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
 
       obj.status = 200;
       obj.message = "Booking Update successfull";
-      // obj.data=_id;
-  
-      // if (paySuccessId){
-
-      //   const find = await Station.find({ stationName });
-      //   const latitude = find[0].latitude;
-      //   const longitude = find[0].longitude;
-
-      //   const mapLink = "https://www.google.com/maps/search/?api=1&query="
-      //   + latitude + "," + longitude;
-      //   console.log(mapLink)
-      //   const totalPrice= bookingPrice.discountTotalPrice !== 0
-      //             ? bookingPrice.discountTotalPrice
-      //             : bookingPrice.totalPrice
-      //   if(paymentStatus=="paid"){
-         
-      //     whatsappMessage(user.contact,"booking_confirm_paid",[user.firstName,vehicleName,BookingStartDateAndTime,bookingId,stationName,mapLink,stationMasterUser.contact,totalPrice,vehicleBasic.refundableDeposit])
-      //   }
-      //   else if(paymentStatus=="partially_paid"){
-          
-      //     const remenAmount=(Number(totalPrice)- Number(bookingPrice.userPaid))   
-      //    whatsappMessage(user.contact,"booking_confirmed_partial_paid",[user.firstName,vehicleName,BookingStartDateAndTime,bookingId,stationName,mapLink,stationMasterUser.contact,bookingPrice.userPaid,remenAmount,vehicleBasic.refundableDeposit])
-
-      //   }
-      // }
 
       if (paySuccessId) {
         function convertDateString(dateString) {

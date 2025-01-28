@@ -242,7 +242,7 @@ if (search) {
 
 // get booking
 const getBookings = async (query) => {
-  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+  const obj = { status: 200, message: "Data fetched successfully", data: [], isEmpty:false };
 
   try {
     const { _id, bookingId, bookingStatus, userId, paymentStatus, search } = query;
@@ -263,6 +263,7 @@ const getBookings = async (query) => {
         });
         obj.status = 404;
         obj.message = "Booking not found";
+        obj.isEmpty=true
         return obj;
       }
 
@@ -309,6 +310,8 @@ const getBookings = async (query) => {
 
     // Add bookings to the response
     obj.data = bookings;
+
+    
   } catch (error) {
     console.error("Error fetching bookings:", error);
     await Log({
