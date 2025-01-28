@@ -693,31 +693,3 @@ function convertTo24Hour(timeString) {
 
 console.log(convertTo24Hour("10:00 PM"))
 
-function convertDate(inputDate) {
-  // Split the date and time
-  const [datePart, timePart] = inputDate.split(", ");
-  
-  // Rearrange the date to MM/DD/YYYY
-  const [day, month, year] = datePart.split("/");
-  const formattedDate = `${month}/${day}/${year}`;
-  
-  // Combine formatted date and time
-  const fullDateTime = new Date(`${formattedDate} ${timePart}`);
-  
-  // Format the date to the desired output
-  const options = {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    second: "numeric",
-    hour12: true,
-  };
-  return new Intl.DateTimeFormat("en-US", options).format(fullDateTime);
-}
-
-// Example usage
-const input = "28/01/2025, 16:00:08";
-const output = convertDate(input);
-console.log(output); // Output: "1/28/2025, 4:00:08 PM"

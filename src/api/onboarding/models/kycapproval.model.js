@@ -42,7 +42,7 @@ const kycApprovalFunction = async (req, res) => {
 
         
        // const isAadharValid = validateAadhar(aadharNumber); 
-        if (!aadharNumber.length==16) {
+        if (aadharNumber.length!=16) {
             return res.json({
                 status: 400,
                 message: "Invalid Aadhar number"
@@ -51,7 +51,7 @@ const kycApprovalFunction = async (req, res) => {
 
         
        // const isLicenseValid = validateLicense(licenseNumber); 
-        if (!licenseNumber.length==16) {
+        if (licenseNumber.length!=16) {
             return res.json({
                 status: 400,
                 message: "Invalid license number"
