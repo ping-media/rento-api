@@ -1,8 +1,41 @@
 const Timeline = require("../../../db/schemas/onboarding/timeline.schema");
 
 const timelineFunction = async (req, res) => {
+  function convertDate(inputDate) {
+    // Split the date and time
+    const [datePart, timePart] = inputDate.split(", ");
+    
+    // Rearrange the date to MM/DD/YYYY
+    const [day, month, year] = datePart.split("/");
+    const formattedDate = `${month}/${day}/${year}`;
+    
+    // Combine formatted date and time
+    const fullDateTime = new Date(`${formattedDate} ${timePart}`);
+    
+    // Format the date to the desired output
+    const options = {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      hour12: true,
+    };
+    return new Intl.DateTimeFormat("en-US", options).format(fullDateTime);
+  }
   try {
-    const { bookingId, userId, timeLine, currentBooking_id, isStart} = req.body;
+    const { bookingId, userId, currentBooking_id, isStart} = req.body;
+    let {timeLine}=req.body;
+    const keys = Object.keys(timeLine);
+const lastKey = keys[keys.length - 1];
+
+if(!timeLine["Payment Link"]){
+  timeLine[lastKey] = convertDate(timeLine[lastKey]);
+
+}
+//console.log(timeLine)
+    
 
 if(isStart && isStart===true)
     {
@@ -25,7 +58,7 @@ if(isStart && isStart===true)
   }
   else{
       const existingData = await Timeline.findOne({ currentBooking_id });
-      console.log(existingData)
+      
 
       if (!existingData) {
         return res.json({

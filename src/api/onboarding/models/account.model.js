@@ -105,15 +105,15 @@ const getAllUsers = async (query) => {
       }
       filter._id = mongoose.Types.ObjectId(_id);
     }
-    if (firstName) filter.firstName = { $regex: firstName, $options: "i" };
-    if (lastName) filter.lastName = { $regex: lastName, $options: "i" };
-    if (email) filter.email = { $regex: email, $options: "i" };
-    if (contact) filter.contact = { $regex: contact, $options: "i" };
-    if (userType) filter.userType = { $regex: userType, $options: "i" };
-    if (kycApproved) filter.kycApproved = { $regex: kycApproved, $options: "i" };
-    if (isEmailVerified) filter.isEmailVerified = { $regex: isEmailVerified, $options: "i" };
-    if (isContactVerified) filter.isContactVerified = { $regex: isContactVerified, $options: "i" };
-    if (status) filter.status = { $regex: status, $options: "i" };
+    if (firstName) filter.firstName = firstName;
+    if (lastName) filter.lastName = lastName;
+    if (email) filter.email = email;
+    if (contact) filter.contact = contact;
+    if (userType) filter.userType = userType;
+    if (kycApproved) filter.kycApproved = kycApproved;
+    if (isEmailVerified) filter.isEmailVerified = isEmailVerified;
+    if (isContactVerified) filter.isContactVerified = isContactVerified;
+    if (status) filter.status = status;
 
 
     // Handle search functionality

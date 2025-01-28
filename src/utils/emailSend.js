@@ -425,11 +425,11 @@ async function sendOtpByEmailForBooking(body) {
                 ${bookingPrice.discountPrice}
               </td>
             </tr>
-            <!-- <tr>
-              <td style="color:#444;padding-top:5px">Go Coins Used</td>
-              <td style="font-weight:bold;text-align:right;color:#e23844;padding-top:5px">- ₹
-                0.00</td>
-            </tr> -->
+             <tr>
+              <td style="color:#444;padding-top:5px">Tax</td>
+              <td style="font-weight:bold;text-align:right;color:#e23844;padding-top:5px"> ₹
+               ${bookingPrice.tax}</td>
+            </tr>
             <tr>
               <td colspan="2" style="border-bottom:1px solid #777;padding:5px"></td>
             </tr>
