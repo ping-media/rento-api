@@ -240,7 +240,7 @@ if (search) {
 //   return obj;
 // };
 
-
+// get booking
 const getBookings = async (query) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
