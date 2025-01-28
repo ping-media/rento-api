@@ -406,7 +406,7 @@ if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
   o.notes = [...(find.notes || []), o.notes[0]];
 }
 
-      await Booking.updateOne({ _id: ObjectId(_id) }, { $set: o }, { new: true });
+    const UpdatedData=  await Booking.updateOne({ _id: ObjectId(_id) }, { $set: o }, { new: true });
 
       await Log({
         message: `Booking with ID ${_id} updated`,
@@ -530,8 +530,11 @@ if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
         sendEmailForBookingToStationMaster(userId, stationMasterUserId, vehicleName, BookingStartDateAndTime, BookingEndDateAndTime, bookingId)
       }
       
+
+      obj.data = UpdatedData;
       return obj;
     } else {
+     
       if (
         vehicleTableId && userId && BookingStartDateAndTime && BookingEndDateAndTime &&
         bookingPrice && paymentStatus && rideStatus && bookingId &&
@@ -539,7 +542,7 @@ if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
         vehicleMasterId && vehicleBrand && vehicleImage && vehicleName && stationName && vehicleBasic
       ) {
 
-
+       
         const SaveBooking = new Booking(o);
 
         await SaveBooking.save();
