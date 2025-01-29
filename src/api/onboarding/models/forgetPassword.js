@@ -23,9 +23,9 @@ const forgetPasswordFunction = async (req, res) => {
             }
             const hasPassword = bcrypt.hashSync(password, 8);
 
-            await User.findOneAndUpdate(
+            const user = await User.findOneAndUpdate(
                 { email },
-                { password: hasPassword },
+                { $set: { password: hasPassword } },  
                 { new: true }
             );
 
@@ -66,17 +66,22 @@ const forgetPasswordFunction = async (req, res) => {
             });
         }
 
+        const userData = await User.findOne({email});
+       
+
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
         if (!passwordRegex.test(password)) {
             return { status: 400, message: "Password validation not match" };
         }
        const hasPassword = bcrypt.hashSync(password, 8);
 
-        const user = await User.findOneAndUpdate(
-            { email },
-            { password: hasPassword },
-            { new: true }
-        );
+       const obj ={}
+
+       const user = await User.findOneAndUpdate(
+        { email },
+        { $set: { password: hasPassword } },  
+        { new: true }
+    );
 
         // console.log(user)
 

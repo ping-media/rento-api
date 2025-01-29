@@ -26,16 +26,6 @@ const timelineFunction = async (req, res) => {
   // }
   try {
     const { bookingId, userId, currentBooking_id, timeLine, isStart} = req.body;
-   // let {timeLine}=req.body;
-//     const keys = Object.keys(timeLine);
-// const lastKey = keys[keys.length - 1];
-
-// if(!timeLine["Payment Link"]){
-//   timeLine[lastKey] = convertDate(timeLine[lastKey]);
-
-// }
-//console.log(timeLine)
-    
 
 if(isStart && isStart===true)
     {
