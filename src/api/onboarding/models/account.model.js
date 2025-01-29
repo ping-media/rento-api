@@ -594,17 +594,21 @@ async function saveUser(userData) {
       }
       if (deleteRec) {
         await User.findByIdAndDelete(_id);
-        return { status: 200, message: "User deleted successfully", data: { _id } };
+        return { status: 200, message: "User deleted successfully.", data: { _id } };
       }
       //console.log(userObj.altContact)
       //console.log(userType)
       if (userType !== "admin" && userType !== "manager") {
         if (!userObj.altContact || userObj.altContact === "") {
-          return { status: 400, message: "AltContact is required" };
+          return { status: 400, message: "AltContact is required." };
         }
       
         if (!userObj.dateofbirth || !isAtLeast18(userObj.dateofbirth)) {
-          return { status: 400, message: "User should be 18 or older" };
+          return { status: 400, message: "User should be 18 or older." };
+        }
+        if(userObj.altContact==existingUser.contact){
+          return { status: 400, message: "Alternate contact should not be the same as primary contact." };
+
         }
       }
 

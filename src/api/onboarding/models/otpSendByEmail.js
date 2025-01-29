@@ -252,7 +252,7 @@ async function verify(req, res) {
     });
   } catch (error) {
     console.error("Error in verify:", error.message);
-    return res.status(500).json({
+    return res.json({
       status: 500,
       message: "An error occurred while verifying OTP",
     });

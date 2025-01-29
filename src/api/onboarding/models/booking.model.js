@@ -253,7 +253,7 @@ const getBookings = async (query) => {
 
       const booking = await Booking.findById(_id)
         .populate("userId", "firstName lastName contact email kycApproved")
-        .populate("stationMasterUserId", "firstName lastName contact email status");
+        .populate("stationMasterUserId", "firstName lastName contact email status latitude longitude");
       
       if (!booking) {
         await Log({

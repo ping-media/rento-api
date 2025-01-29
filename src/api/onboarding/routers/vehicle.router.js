@@ -39,7 +39,8 @@ const {timelineFunction,timelineFunctionForGet} = require("../models/timeline.mo
 const TimeLine = require("../../../db/schemas/onboarding/timeline.schema");
 const {vehicleChangeInBooking} = require("../models/vehicleChange.model");
 const { Auth } = require("googleapis");
-const {extentBooking} = require("../models/extentBooking.model")
+const {extentBooking} = require("../models/extentBooking.model");
+const {forgetPasswordFunction} = require("../models/forgetPassword")
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
@@ -741,10 +742,14 @@ router.post("/kycApproval",Authentication, async (req, res) => {
   kycApprovalFunction(req,res)
 });
 
+router.post("/forgetPassword", async (req, res) => {
+  forgetPasswordFunction(req,res)
+});
+
 router.post("/sendInvoiceByEmail",Authentication, upload1.single('file'), async (req, res) => {
   // `req.file` will contain the file as a buffer
   const { email, firstName, lastName } = req.body;
-  const file = req.file; // This will be the file object in memory
+  const file = req.file; 
   
   // Process the file, then send the email
   const result = await sendInvoiceByEmail({
