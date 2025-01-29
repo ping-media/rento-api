@@ -407,6 +407,9 @@ if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
   }
 }
 
+if (o.paymentUpdates) {
+  o.paymentUpdates = { ...find.paymentUpdates, ...o.paymentUpdates };
+}
 
 
     const UpdatedData=  await Booking.findByIdAndUpdate({ _id: ObjectId(_id) }, { $set: o }, { new: true });
