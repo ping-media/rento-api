@@ -92,7 +92,7 @@ async function adminLogin({ email, password }) {
    // console.log(result)
    const {userType,_id}=result;
 
-console.log(_id)
+
     if (userType=='customer') {
       obj.status = 401;
       obj.message = "Invalid user";
@@ -101,7 +101,7 @@ console.log(_id)
 
     let stationData;
     if(userType=='manager'){
-       stationData= await Station.findOne({userId:_id}).select(" stationName stationId");
+       stationData= await Station.findOne({userId:_id}).select(" stationName stationId locationId");
 
     }
 
