@@ -140,6 +140,10 @@ const bookingSchema = new Schema({
     extendBooking:{
         type:Object,
 
+    },
+    paymentUpdates:{
+        type:Object,
+
     }
     
    

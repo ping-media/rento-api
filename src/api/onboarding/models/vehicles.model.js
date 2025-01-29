@@ -253,7 +253,7 @@ async function createVehicle({
 
 
 async function booking({
-  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, paymentInitiatedDate,stationMasterUserId,changeVehicle,extendBooking,
+  vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, paymentInitiatedDate,stationMasterUserId,changeVehicle,extendBooking,paymentUpdates,
   discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, payInitFrom, stationId,discountCuopon,bookingId,notes,isCancelled,
   deleteRec, _id, discountPrice, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, paymentgatewayOrderId, userType = "", paymentgatewayReceiptId
 }) {
@@ -336,7 +336,7 @@ async function booking({
    
 
     let o = {
-      vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, stationId, paymentInitiatedDate,notes,changeVehicle,
+      vehicleTableId, userId, BookingStartDateAndTime, BookingEndDateAndTime, extraAddon, bookingPrice, stationId, paymentInitiatedDate,notes,changeVehicle,paymentUpdates,
       discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, paymentgatewayOrderId,discountCuopon,extendBooking,
       payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId, paymentgatewayReceiptId, isCancelled
     };
