@@ -40,7 +40,9 @@ const TimeLine = require("../../../db/schemas/onboarding/timeline.schema");
 const {vehicleChangeInBooking} = require("../models/vehicleChange.model");
 const { Auth } = require("googleapis");
 const {extentBooking} = require("../models/extentBooking.model");
-const {forgetPasswordFunction} = require("../models/forgetPassword")
+const {forgetPasswordFunction} = require("../models/forgetPassword");
+const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
+
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
@@ -777,8 +779,7 @@ router.post("/sendInvoiceByEmail",Authentication, upload1.single('file'), async 
 // Update booking route
 router.put('/rideUpdate',Authentication, async (req, res) => {
   const { _id,
-  bookingStatus,
-  paymentStatus,
+  endMeterReading,
   rideStatus,
   userId,
   rideOtp
@@ -792,31 +793,8 @@ router.put('/rideUpdate',Authentication, async (req, res) => {
 
     const {vehicleBasic,bookingId}=booking;
  
-    let objData={
-      bookingStatus,
-      paymentStatus,
-      rideStatus,}
+    
 
-// if(rideStatus==="ongoing"){
-//   if(rideOtp && rideOtp.length===4){
-//     if(vehicleBasic.startRide!==Number(rideOtp)){
-
-      
-//       await Log({
-//         message: `Invalid Otp ${_id} `,
-//         functionName: "rideUpdate",
-//         userId,
-//       });
-  
-//       // Notify about the booking update
-//       obj.status = 400;
-//       obj.message = "Invalid Otp";
-//       return res.json(obj);
-//     }
-//   }
-//   // const OTP=Math.floor(1000 + Math.random() * 9000)
-//   // objData = {...objData, endRide: Number(OTP)}
-// }
 
 if(rideStatus==="completed"){
   if(rideOtp && rideOtp.length===4){
@@ -837,20 +815,19 @@ if(rideStatus==="completed"){
 }
 
     // Update the booking document
+    const pickupImageData = await pickupImage.updateOne(
+      {userId },
+      { $set: {endMeterReading} }, 
+      { new: true }
+    );
+
     const updatedBooking = await Booking.updateOne(
       { _id: ObjectId(_id) },
-      { $set: objData }, 
+      { $set: {rideStatus} }, 
       { new: true }
     );
 
     
-    // const currentBooking_id = _id
-    // const timeline = rideStatus === "canceled" 
-    // ? { "Ride Cancelled": updatedBooking.updatedAt } 
-    // : { "Drop-off done": updatedBooking.updatedAt };
-    // console.log(userId, bookingId, currentBooking_id, { "Drop-off done": "7366t88" }  )
-    //  await timelineFunction(userId, bookingId, currentBooking_id, timeline  )
-
     // Log the booking update
     await Log({
       message: `Booking with ID ${_id} updated`,
