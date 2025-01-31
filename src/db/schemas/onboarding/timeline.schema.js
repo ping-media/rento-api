@@ -17,10 +17,10 @@ const timelineSchema= new mongoose.Schema({
 
       ref: 'Booking'
     },
-    timeLine:{
+    timeLine:[{
         type:Object,
         require:true
-    }
+    }]
 },{timestamps:{ createdAt: 'createdAt', updatedAt: 'updatedAt' }})
 
 const Timeline = mongoose.model('Timeline', timelineSchema);

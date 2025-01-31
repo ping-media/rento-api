@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const moment = require('moment-timezone');
 
 const bookingSchema = new Schema({
 
@@ -165,9 +166,18 @@ bookingSchema.pre('save', function (next) {
     if (this.payInitFrom) {
       this.payInitFrom = this.payInitFrom.toLowerCase(); 
     }
+    // if (this.BookingStartDateAndTime) {
+    //     this.BookingStartDateAndTime = moment(this.BookingStartDateAndTime).tz("Asia/Kolkata").toDate();
+    // }
+    // if (this.BookingEndDateAndTime) {
+    //     this.BookingEndDateAndTime = moment(this.BookingEndDateAndTime).tz("Asia/Kolkata").toDate();
+    // }
    
     next();
   });
+
+
+
   
 
 const booking = mongoose.model('booking', bookingSchema);

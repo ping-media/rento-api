@@ -57,7 +57,7 @@ if(isStart && isStart===true)
         });
       }
 
-      const updatedTimeline = {...existingData.timeLine, ...timeLine};
+      const updatedTimeline = [...existingData.timeLine, ...timeLine];
 
       await Timeline.updateOne(
         { currentBooking_id },

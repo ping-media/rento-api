@@ -34,7 +34,7 @@ const pickupImageSchema = new mongoose.Schema({
   files: { type: Map, of: fileSchema, required: true },
   data:{type:Object},
   newMeterReading:{type:Number},
-  oldMeterReading:{type:Number},
+  // oldMeterReading:{type:Number},
   
    
 },

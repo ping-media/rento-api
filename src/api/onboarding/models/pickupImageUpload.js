@@ -34,7 +34,7 @@ const upload = multer({
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
-    const { userId, bookingId, data, newMeterReading, oldMeterReading, _id,rideOtp } = req.body;
+    const { userId, bookingId, data, newMeterReading, _id,rideOtp } = req.body;
   
 
     if (!userId || userId.length !== 24) {
@@ -112,7 +112,7 @@ const pickupImageUp = async (req, res) => {
       files: tempObj,
       data,
       newMeterReading,
-      oldMeterReading
+       
     });
 
     await newDocument.save();

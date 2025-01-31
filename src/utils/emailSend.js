@@ -5,6 +5,7 @@ const User = require("../db/schemas/onboarding/user.schema");
 const fs = require('fs');
 const path = require('path');
 
+
 // const transporter = nodemailer.createTransport({
 //   port: 465,
 //   service: "gmail",
@@ -15,6 +16,7 @@ const path = require('path');
 //   },
 // });
 
+require('dotenv').config();
 
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
@@ -254,7 +256,7 @@ async function sendOtpByEmail(email, firstName, lastName) {
 }
 
 async function sendOtpByEmailForBooking(body) {
-  const { userId, stationId, stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, } = body;
+  const { email, userId, stationId, stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, } = body;
   try {
     // console.log(userId, stationId,stationMasterUserId,)
 
@@ -276,7 +278,7 @@ async function sendOtpByEmailForBooking(body) {
       return date.toLocaleString('en-US', options);
     }
 
-    const { email, firstName, lastName, } = await User.findOne({ _id: userId });
+    const {  firstName, lastName, } = await User.findOne({ _id: userId });
     const { address, latitude, longitude } = await Station.findOne({ name: stationId });
 
     const station = await User.findOne({ _id: stationMasterUserId });
@@ -694,6 +696,7 @@ async function sendEmailForBookingToStationMaster(userId, stationMasterUserId,ve
    const mailOptions= {
     from: 'Rento Bikes <support@rentobikes.com>',
     to: email,
+    cc: adminEmail,
     subject: ` Booking Recceived- You have received booking Id ${bookingId} from RentoBikes `,
     html: `<!DOCTYPE html>
 <html lang="en">

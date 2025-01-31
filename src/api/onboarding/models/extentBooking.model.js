@@ -1,8 +1,11 @@
 const { getVehicleTblData } = require("../models/vehicles.model");
 const Booking = require("../../../db/schemas/onboarding/booking.schema")
+const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema")
 
 const extentBooking = async (req, res) => {
-    let { vehicleTableId, BookingStartDateAndTime, BookingEndDateAndTime, _id, extendAmount,bookingPrice, oldBookings,extendBooking,bookingStatus } = req.body;
+    let {  _id, extendAmount,bookingPrice, oldBookings,extendBooking,bookingStatus } = req.body;
+  //  const res = { status: 200, message: "Data fetched successfully", data: [] };
+  const {vehicleTableId,BookingEndDateAndTime,BookingStartDateAndTime}=req.query
 
 
 
@@ -12,9 +15,10 @@ const extentBooking = async (req, res) => {
         const vehicleData = await getVehicleTblData(req.query);
         
 
-        const data = vehicleData?.data?.find((item) => {
+        const data = vehicleData?.data?.filter((item) => {
             return item._id.toString() === vehicleTableId; 
         });
+        // console.log(data)
        
         if (!bookingPrice.extendAmount) {
             bookingPrice.extendAmount = [];
@@ -60,6 +64,8 @@ const extentBooking = async (req, res) => {
             message: "Internal server error",
         });
     }
+
+  
 };
 
 module.exports = { extentBooking };
