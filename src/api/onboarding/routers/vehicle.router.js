@@ -22,25 +22,25 @@ const { getAllDocument } = require("../models/getAllDocumentAdmin")
 const { emailOtp, verify } = require("../models/otpSendByEmail")
 const { getPickupImage, pickupImageUp, getAllPickupImage } = require("../models/pickupImageUpload")
 const { getAllLogs } = require("../models/getlogs.model")
-const {handler}=require("../../../utils/cron");
+const { handler } = require("../../../utils/cron");
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const Log = require("../models/Logs.model")
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
-const {paymentRec} = require ("../models/payment.modol");
-const Authentication = require ("../../../middlewares/Authentication");
-const{deleteS3Bucket}=require("../models/deleteS3Bucket");
-const {getBookingGraphData}= require("../models/graphData");
+const { paymentRec } = require("../models/payment.modol");
+const Authentication = require("../../../middlewares/Authentication");
+const { deleteS3Bucket } = require("../models/deleteS3Bucket");
+const { getBookingGraphData } = require("../models/graphData");
 const jwt = require("jsonwebtoken");
-const{sendInvoiceByEmail}=require("../../../utils/emailSend");
-const {kycApprovalFunction} = require("../models/kycapproval.model");
-const Booking=require("../../../db/schemas/onboarding/booking.schema");
-const {maintenanceVehicleFunction} = require("../models/maintenanceVehicle.model");
-const {timelineFunction,timelineFunctionForGet} = require("../models/timeline.model");
+const { sendInvoiceByEmail } = require("../../../utils/emailSend");
+const { kycApprovalFunction } = require("../models/kycapproval.model");
+const Booking = require("../../../db/schemas/onboarding/booking.schema");
+const { maintenanceVehicleFunction } = require("../models/maintenanceVehicle.model");
+const { timelineFunction, timelineFunctionForGet } = require("../models/timeline.model");
 const TimeLine = require("../../../db/schemas/onboarding/timeline.schema");
-const {vehicleChangeInBooking} = require("../models/vehicleChange.model");
+const { vehicleChangeInBooking } = require("../models/vehicleChange.model");
 const { Auth } = require("googleapis");
-const {extentBooking} = require("../models/extentBooking.model");
-const {forgetPasswordFunction} = require("../models/forgetPassword");
+const { extentBooking } = require("../models/extentBooking.model");
+const { forgetPasswordFunction } = require("../models/forgetPassword");
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 
 
@@ -49,14 +49,14 @@ router.post("/sendBookingDetailesTosocial", async (req, res) => {
   vehiclesService.sendBookingDetailesTosocial(req, res);
 });
 
-router.post("/createVehicle",Authentication, async (req, res) => {
+router.post("/createVehicle", Authentication, async (req, res) => {
   vehiclesService.createVehicle(req, res);
 });
 
 
-router.post("/updateMultipleVehicles",Authentication, async (req, res) => {
+router.post("/updateMultipleVehicles", Authentication, async (req, res) => {
   updateMultipleVehicles(req, res);
-  
+
 });
 
 router.post("/createBookingDuration", async (req, res) => {
@@ -65,11 +65,11 @@ router.post("/createBookingDuration", async (req, res) => {
 
 
 
-router.post("/createPlan",Authentication, async (req, res) => {
+router.post("/createPlan", Authentication, async (req, res) => {
   vehiclesService.createPlan(req, res);
 })
 
-router.post("/createInvoice", Authentication,async (req, res) => {
+router.post("/createInvoice", Authentication, async (req, res) => {
   vehiclesService.createInvoice(req, res);
 })
 
@@ -77,7 +77,7 @@ router.post("/createInvoice", Authentication,async (req, res) => {
 //   vehiclesService.discountCoupons(req, res);
 // })
 
-router.post("/createCoupon",Authentication, async (req, res) => {
+router.post("/createCoupon", Authentication, async (req, res) => {
   vehiclesService.createCoupon(req, res);
 })
 
@@ -93,7 +93,7 @@ router.post("/VehicleBookrecode", async (req, res) => {
   vehiclesService.VehicleBookrecode(req, res);
 })
 
-router.post("/createStation",Authentication, async (req, res) => {
+router.post("/createStation", Authentication, async (req, res) => {
   vehiclesService.createStation(req, res);
 })
 
@@ -192,10 +192,10 @@ const upload = multer({
 });
 
 
-router.post("/createLocation",Authentication, upload.single('image'), async (req, res) => {
+router.post("/createLocation", Authentication, upload.single('image'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'File upload failed. No file provided.' });
-  } 
+  }
   fileUpload(req, res)
   // vehiclesService.createLocation(req, res);
 })
@@ -204,7 +204,7 @@ router.post("/createLocation",Authentication, upload.single('image'), async (req
 
 
 // Update Location (image is optional)
-router.put("/updateLocation",Authentication, upload.single('image'), async (req, res) => {
+router.put("/updateLocation", Authentication, upload.single('image'), async (req, res) => {
   const obj = { status: 200, message: "location update successfully", data: [] }
 
   try {
@@ -223,16 +223,16 @@ router.put("/updateLocation",Authentication, upload.single('image'), async (req,
         return res.json(obj);
 
       }
-       const objData={};
-       if (locationName) objData.locationName = locationName;
-       if (locationStatus) objData.locationStatus = locationStatus;
-//console.log(objData)
-const updatedLocation = await Location.updateOne(
-  { _id },
-  { $set: objData }
-);
+      const objData = {};
+      if (locationName) objData.locationName = locationName;
+      if (locationStatus) objData.locationStatus = locationStatus;
+      //console.log(objData)
+      const updatedLocation = await Location.updateOne(
+        { _id },
+        { $set: objData }
+      );
 
-//console.log(updatedLocation)
+      //console.log(updatedLocation)
       obj.message = "location updated successfully";
       obj.status = 200;
       return res.status(200).json(obj);
@@ -286,7 +286,7 @@ router.delete("/deleteLocation", async (req, res) => {
     await Log({
       message: `Location with ID ${_id} deleted`,
       functionName: "deleteLoaction",
-     
+
     });
 
     //deleteS3Bucket()
@@ -296,7 +296,7 @@ router.delete("/deleteLocation", async (req, res) => {
     return res.status(200).json(obj); // Return the response with status 200
 
   } catch (error) {
-     console.error("Error in deleteLocation:", error.message);
+    console.error("Error in deleteLocation:", error.message);
 
 
     obj.status = 500;
@@ -308,11 +308,11 @@ router.delete("/deleteLocation", async (req, res) => {
 
 
 
-router.post("/createVehicleMaster",Authentication, upload.single('image'), async (req, res) => {
+router.post("/createVehicleMaster", Authentication, upload.single('image'), async (req, res) => {
 
 
   if (!req.file) {
-    return res.json({ message: 'File upload failed. No file provided.',status:400 });
+    return res.json({ message: 'File upload failed. No file provided.', status: 400 });
   }
   VehicalfileUpload(req, res)
   // vehiclesService.createLocation(req, res);
@@ -320,7 +320,7 @@ router.post("/createVehicleMaster",Authentication, upload.single('image'), async
 
 
 
-router.put("/updateVehicleMaster",Authentication, upload.single('image'), async (req, res) => {
+router.put("/updateVehicleMaster", Authentication, upload.single('image'), async (req, res) => {
   const obj = { status: 200, message: "VehicleMaster updated successfully", data: [] };
 
   try {
@@ -384,7 +384,7 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
 
   try {
     const _id = req.query._id;
-    const vehicleMasterId= req.query._id;
+    const vehicleMasterId = req.query._id;
     // console.log(_id)
     if (!_id) {
       obj.message = "Invalid vehicle _id"
@@ -410,17 +410,17 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
         return res.json(obj);
       }
     }
-  //   if(vehicleMasterId)
-  //  {const vehicleRec= await vehicleTable.find({vehicleMasterId});
-  //                  //  await vehicleTable.deleteMany({vehicleRec})
-  //                  console.log(vehicleRec)
-  //                   }
-   //console.log(vehicleRec)
+    //   if(vehicleMasterId)
+    //  {const vehicleRec= await vehicleTable.find({vehicleMasterId});
+    //                  //  await vehicleTable.deleteMany({vehicleRec})
+    //                  console.log(vehicleRec)
+    //                   }
+    //console.log(vehicleRec)
     await vehicleMaster.deleteOne({ _id });
     await Log({
       message: `VehicleMaster with ID ${_id} deleted`,
       functionName: "deleteVehicleMaster",
-      
+
     });
     obj.message = "VehicleMaster deleted successfully"
     obj.status = 200
@@ -435,10 +435,10 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
 });
 
 
-router.get("/getAllVehiclesData",Authentication, async (req, res) => {
+router.get("/getAllVehiclesData", Authentication, async (req, res) => {
   getAllVehiclesData(req, res);
 
-  
+
 
 })
 
@@ -448,7 +448,7 @@ router.get("/getAllInvoice", async (req, res) => {
 
 router.post("/validedToken", async (req, res) => {
   const { token, _id } = req.body;
- // console.log("Received token and _id:", token, _id);
+  // console.log("Received token and _id:", token, _id);
 
   try {
     let userId = _id;
@@ -460,10 +460,10 @@ router.post("/validedToken", async (req, res) => {
 
       const decoded = jwt.verify(token, process.env.BCRYPT_TOKEN);
       req.user = decoded;
-      userId = req.user.id; 
+      userId = req.user.id;
     }
 
-  //  console.log("User ID:", userId);
+    //  console.log("User ID:", userId);
 
     const user = await User.findOne({ _id: userId });
     if (!user) {
@@ -561,8 +561,8 @@ router.post("/deleteDocument", async (req, res) => {
       return res.json(response);
     }
 
-   
-   
+
+
     // Fetch the document by ID
     const document = await Document.findById(_id);
 
@@ -583,16 +583,16 @@ router.post("/deleteDocument", async (req, res) => {
 
     if (fileName) {
       // Delete the file from S3
-   //   console.log("enter")
-       deleteS3Bucket(fileName);
+      //   console.log("enter")
+      deleteS3Bucket(fileName);
     }
-    
+
     if (updatedFiles.length === 0) {
       await Document.deleteOne({ _id });
       await Log({
         message: `Document with ID ${_id} deleted`,
         functionName: "deleteDocument",
-       
+
       });
       response.message = "Document deleted successfully";
 
@@ -601,7 +601,7 @@ router.post("/deleteDocument", async (req, res) => {
       await Log({
         message: `Document with ID ${_id} deleted`,
         functionName: "deleteDocument",
-        
+
       });
       response.message = "Document deleted successfully";
 
@@ -648,7 +648,7 @@ router.post("/pickupImage", upload.array('images', 7), async (req, res) => {
   // if (!req.files || req.files.length === 0) {
   //   return res.send({ message: 'File upload failed. No files provided.' });
   // }
-//console.log(req.files)
+  //console.log(req.files)
   pickupImageUp(req, res)
 })
 
@@ -661,17 +661,17 @@ router.get("/getAllPickupImage", async (req, res) => {
 })
 
 
-router.get("/getAllLogs", Authentication,async (req, res) => {
+router.get("/getAllLogs", Authentication, async (req, res) => {
   getAllLogs(req, res);
 })
 
-router.get("/getGraphData", Authentication,async (req, res) => {
+router.get("/getGraphData", Authentication, async (req, res) => {
   getBookingGraphData(req, res);
 })
 
 router.post("/createOrderId", async (req, res) => {
   const { amount, booking_id } = req.body
-  
+
   // const newKey="Payment Initiated";
   // const date=new Date().toLocaleString();
   // const timelinedata = await TimeLine.updateOne(
@@ -691,7 +691,7 @@ router.post("/createOrderId", async (req, res) => {
     amount: amount * 100, // Razorpay expects the amount in paise (100 paise = 1 INR)
     currency: "INR",
     receipt: "receipt#" + booking_id,
-    payment_capture:1
+    payment_capture: 1
   };
 
   try {
@@ -725,9 +725,9 @@ router.post("/createOrderId", async (req, res) => {
 })
 
 
-router.get("/paymentRec",Authentication, async (req, res) => {
+router.get("/paymentRec", Authentication, async (req, res) => {
 
-  paymentRec(req,res);
+  paymentRec(req, res);
 
 }
 
@@ -735,24 +735,24 @@ router.get("/paymentRec",Authentication, async (req, res) => {
 
 router.post("/sendEmailForBookingDetails", async (req, res) => {
 
-  vehiclesService.sendOtpByEmailForBooking(req,res);
+  vehiclesService.sendOtpByEmailForBooking(req, res);
 
 })
 
 
-router.post("/kycApproval",Authentication, async (req, res) => {
-  kycApprovalFunction(req,res)
+router.post("/kycApproval", Authentication, async (req, res) => {
+  kycApprovalFunction(req, res)
 });
 
 router.post("/forgetPassword", async (req, res) => {
-  forgetPasswordFunction(req,res)
+  forgetPasswordFunction(req, res)
 });
 
-router.post("/sendInvoiceByEmail",Authentication, upload1.single('file'), async (req, res) => {
+router.post("/sendInvoiceByEmail", Authentication, upload1.single('file'), async (req, res) => {
   // `req.file` will contain the file as a buffer
   const { email, firstName, lastName } = req.body;
-  const file = req.file; 
-  
+  const file = req.file;
+
   // Process the file, then send the email
   const result = await sendInvoiceByEmail({
     email,
@@ -777,57 +777,65 @@ router.post("/sendInvoiceByEmail",Authentication, upload1.single('file'), async 
 
 
 // Update booking route
-router.put('/rideUpdate',Authentication, async (req, res) => {
+router.put('/rideUpdate', Authentication, async (req, res) => {
   const { _id,
-  endMeterReading,
-  rideStatus,
-  userId,
-  rideOtp
-} = req.body;
+    endMeterReading,
+    rideStatus,
+    userId,
+    rideOtp
+  } = req.body;
 
   const obj = { status: 200, message: "", data: {} };
 
   try {
 
-    const booking= await Booking.findOne({_id});
+    const booking = await Booking.findOne({ _id });
 
-    const {vehicleBasic,bookingId}=booking;
- 
-    
+    const { vehicleBasic } = booking;
 
 
-if(rideStatus==="completed"){
-  if(rideOtp && rideOtp.length===4){
-    if(vehicleBasic.endRide!==Number(rideOtp)){
+
+
+
+    if (!rideOtp || rideOtp?.toString().length != 4) {
       await Log({
-        message: `Invalid Otp ${_id} `,
+        message: `Ride OTP is required or invalid ${_id}`,
         functionName: "rideUpdate",
         userId,
       });
-  
-      // Notify about the booking update
       obj.status = 400;
-      obj.message = "Invalid Otp";
+      obj.message = "Ride OTP is required and must be a 4-digit";
       return res.json(obj);
     }
-  }
-  
-}
+
+
+    if (rideOtp !== vehicleBasic.endRide) {
+      await Log({
+        message: `Invalid Otp ${_id}`,
+        functionName: "rideUpdate",
+        userId,
+      });
+
+      obj.status = 400;
+      obj.message = "Invalid Otp";
+      return res.json(obj)
+    }
+
 
     // Update the booking document
     const pickupImageData = await pickupImage.updateOne(
-      {userId },
-      { $set: {endMeterReading} }, 
+      { userId },
+      { $set: { endMeterReading } },
       { new: true }
     );
 
     const updatedBooking = await Booking.updateOne(
       { _id: ObjectId(_id) },
-      { $set: {rideStatus} }, 
+      { $set: { rideStatus } },
       { new: true }
     );
 
-    
+
     // Log the booking update
     await Log({
       message: `Booking with ID ${_id} updated`,
@@ -838,7 +846,7 @@ if(rideStatus==="completed"){
     // Notify about the booking update
     obj.status = 200;
     obj.message = `Ride ${rideStatus === "canceled" ? "Canceled" : rideStatus === "ongoing" ? "Start" : "Completed"} successful`
-;
+      ;
     return res.status(200).json(obj);
 
   } catch (error) {
@@ -851,21 +859,21 @@ if(rideStatus==="completed"){
 });
 
 
-router.post('/vehicleChange',Authentication, async (req, res) => {
-  vehicleChangeInBooking(req,res)
+router.post('/vehicleChange', Authentication, async (req, res) => {
+  vehicleChangeInBooking(req, res)
 });
 
 
-router.post('/maintenanceVehicle',Authentication, async(req,res)=>{
-  maintenanceVehicleFunction(req,res)
+router.post('/maintenanceVehicle', Authentication, async (req, res) => {
+  maintenanceVehicleFunction(req, res)
 })
 
-router.post('/createTimeline', async(req,res)=>{
-  timelineFunction(req,res)
+router.post('/createTimeline', async (req, res) => {
+  timelineFunction(req, res)
 })
 
-router.get('/getTimelineData',Authentication, async(req,res)=>{
-  timelineFunctionForGet(req,res)
+router.get('/getTimelineData', Authentication, async (req, res) => {
+  timelineFunctionForGet(req, res)
 })
 
 // router.get("/api/cron", async (req, res) => {
@@ -874,8 +882,8 @@ router.get('/getTimelineData',Authentication, async(req,res)=>{
 //   handler(req,res)
 // });
 
-router.post('/extendBooking',Authentication,async(req,res)=>{
-  extentBooking(req,res)
+router.post('/extendBooking', Authentication, async (req, res) => {
+  extentBooking(req, res)
 })
 
 
