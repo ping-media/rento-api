@@ -620,8 +620,8 @@ async function saveUser(userData) {
         }
       });
 
-      await User.findByIdAndUpdate(_id, { $set: userObj }, { new: true });
-      return { status: 200, message: "User updated successfully", data: userObj };
+      const data = await User.findByIdAndUpdate(_id, { $set: userObj }, { new: true });
+      return { status: 200, message: "User updated successfully", data: data };
     } else {
       if (!firstName || !lastName || !contact || !email) {
         return { status: 400, message: "Missing required fields for new user" };

@@ -2110,7 +2110,7 @@ const getVehicleTblData = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                  { $in: ["$$booking.bookingStatus", ["pending", "done"]] },
+                //  { $nin: ["$$booking.bookingStatus", ["pending"]] },
                   {
                     $or: [
                       {
@@ -2137,13 +2137,13 @@ const getVehicleTblData = async (query) => {
               },
             },
           },
-          ongoingBookings: {
-            $filter: {
-              input: "$bookings",
-              as: "booking",
-              cond: { $eq: ["$$booking.rideStatus", "ongoing"] },
-            },
-          },
+          // ongoingBookings: {
+          //   $filter: {
+          //     input: "$bookings",
+          //     as: "booking",
+          //     cond: { $eq: ["$$booking.rideStatus", "ongoing"] },
+          //   },
+          // },
           conflictingMaintenance: {
             $filter: {
               input: "$maintenanceData",
@@ -2163,7 +2163,7 @@ const getVehicleTblData = async (query) => {
       {
         $match: {
           vehicleStatus: "active",
-          "ongoingBookings.0": { $exists: false }, // Exclude vehicles with ongoing bookings
+        //  "ongoingBookings.0": { $exists: false }, // Exclude vehicles with ongoing bookings
           "conflictingBookings.0": { $exists: false }, // Exclude vehicles with overlapping bookings
           "conflictingMaintenance.0": { $exists: false }, // Exclude vehicles with overlapping maintenance
         },
@@ -2272,7 +2272,7 @@ const getVehicleTblData = async (query) => {
 };
 
 
-const getVehicleTblDataforStationmaster = async (query) => {
+const getVehicleTblData1 = async (query) => {
   const response = { status: 200, message: "Data fetched successfully", data: [] };
 
   try {
@@ -2289,21 +2289,20 @@ const getVehicleTblDataforStationmaster = async (query) => {
       stationId,
       locationId,
       page = 1,
-      limit = 20, 
+      limit = 20,
     } = query;
 
-    if (!locationId) {
-      if (!_id && (!BookingStartDateAndTime && !BookingEndDateAndTime)) {
-        return {
-          status: 400,
-          message: "Booking start and end dates are required.",
-          data: [],
-        };
-      }
+    // Ensure booking start and end dates are provided when locationId is missing
+    if (!locationId && !_id && (!BookingStartDateAndTime || !BookingEndDateAndTime)) {
+      return {
+        status: 400,
+        message: "Booking start and end dates are required.",
+        data: [],
+      };
     }
 
     function isValidISO8601(dateString) {
-      const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+      const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
       return iso8601Regex.test(dateString) && !isNaN(new Date(dateString).getTime());
     }
 
@@ -2315,16 +2314,22 @@ const getVehicleTblDataforStationmaster = async (query) => {
       };
     }
 
+    const startDate = new Date(BookingStartDateAndTime);
+    const endDate = new Date(BookingEndDateAndTime);
+
+    // Constructing match filter
     const matchFilter = {};
 
     if (_id) {
-      matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id;
+      matchFilter._id = ObjectId.isValid(_id) ? new ObjectId(_id) : _id;
     } else {
       if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
       if (condition) matchFilter.condition = condition;
       if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
       if (stationId) matchFilter.stationId = stationId;
-      if (locationId) matchFilter.locationId = new ObjectId(locationId);
+      if (locationId && ObjectId.isValid(locationId)) {
+        matchFilter.locationId = new ObjectId(locationId);
+      }
       if (Array.isArray(vehiclePlan)) {
         matchFilter["vehiclePlan._id"] = { $in: vehiclePlan.map((id) => new ObjectId(id)) };
       } else if (vehiclePlan) {
@@ -2337,61 +2342,107 @@ const getVehicleTblDataforStationmaster = async (query) => {
     const skip = (parsedPage - 1) * parsedLimit;
 
     const pipeline = [
-      { "$match": matchFilter },
+      { $match: matchFilter },
     
+      // Lookup bookings for the vehicle
       {
-        "$lookup": {
-          "from": "bookings",
-          "localField": "_id",
-          "foreignField": "vehicleTableId",
-          "as": "bookings"
-        }
+        $lookup: {
+          from: "bookings",
+          localField: "_id",
+          foreignField: "vehicleTableId",
+          as: "bookings",
+        },
       },
+      
+      // Lookup station data
       {
-        "$lookup": {
-          "from": "stations",
-          "localField": "stationId",
-          "foreignField": "stationId",
-          "as": "stationData"
-        }
-      },
-      {
-        "$lookup": {
-          "from": "vehiclemasters",
-          "localField": "vehicleMasterId",
-          "foreignField": "_id",
-          "as": "vehicleMasterData"
-        }
-      },
-      {
-        "$lookup": {
-          "from": "maintenancevehicles",
-          "localField": "_id",
-          "foreignField": "vehicleTableId",
-          "as": "maintenanceData"
-        }
+        $lookup: {
+          from: "stations",
+          localField: "stationId",
+          foreignField: "stationId",
+          as: "stationData",
+        },
       },
     
-      // Unwind all the necessary fields while preserving null values
-      { "$unwind": { "path": "$stationData", "preserveNullAndEmptyArrays": true } },
-      { "$unwind": { "path": "$vehicleMasterData", "preserveNullAndEmptyArrays": true } },
-      { "$unwind": { "path": "$bookings", "preserveNullAndEmptyArrays": true } },
-      { "$unwind": { "path": "$maintenanceData", "preserveNullAndEmptyArrays": true } },
-    
-      // Optionally, project only needed fields
+      // Lookup vehicle master data
       {
-        "$project": {
+        $lookup: {
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
+        },
+      },
+    
+      // Identify vehicles with conflicting bookings
+      {
+        $addFields: {
+          bookedVehicles: {
+            $filter: {
+              input: "$bookings",
+              as: "booking",
+              cond: {
+                $or: [
+                  // Booking starts or ends within the requested range
+                  {
+                    $and: [
+                      { $gte: ["$$booking.BookingStartDateAndTime", startDate] },
+                      { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
+                    ],
+                  },
+                  {
+                    $and: [
+                      { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
+                      { $lte: ["$$booking.BookingEndDateAndTime", endDate] },
+                    ],
+                  },
+                  // Booking completely overlaps the requested range
+                  {
+                    $and: [
+                      { $lte: ["$$booking.BookingStartDateAndTime", startDate] },
+                      { $gte: ["$$booking.BookingEndDateAndTime", endDate] },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+    
+      // Filter only booked vehicles (those with at least one conflicting booking)
+      {
+        $match: {
+          "bookedVehicles.0": { $exists: true }, // Ensures the vehicle has at least one booking
+        },
+      },
+    
+      // Flatten vehicle master and station data
+      {
+        $addFields: {
+          vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
+          stationData: { $arrayElemAt: ["$stationData", 0] },
+        },
+      },
+    
+      // Apply additional filters
+      {
+        $match: {
+          vehicleStatus: "active",
+          ...(vehicleBrand ? { "vehicleMasterData.vehicleBrand": vehicleBrand } : {}),
+          ...(vehicleType ? { "vehicleMasterData.vehicleType": vehicleType } : {}),
+        },
+      },
+    
+      // Project the required fields
+      {
+        $project: {
           _id: 1,
           vehicleImage: "$vehicleMasterData.vehicleImage",
           vehicleBrand: "$vehicleMasterData.vehicleBrand",
           vehicleName: "$vehicleMasterData.vehicleName",
           vehicleType: "$vehicleMasterData.vehicleType",
           stationName: "$stationData.stationName",
-          BookingStartDateAndTime: "$bookings.BookingStartDateAndTime",
-          BookingEndDateAndTime: "$bookings.BookingEndDateAndTime",
-          bookingid: "$bookings.bookingId",
-          startDate: "$maintenanceData.startDate",
-          endDate: "$maintenanceData.endDate",
           speedLimit: 1,
           refundableDeposit: 1,
           lateFee: 1,
@@ -2408,52 +2459,53 @@ const getVehicleTblDataforStationmaster = async (query) => {
           condition: 1,
           locationId: 1,
           stationId: 1,
-        }
+          bookedVehicles: 1, // Show bookings for reference
+        },
       },
-
-      // Pagination
+    
+      // Pagination using $facet
       {
-        "$facet": {
-          "data": [
-            { "$skip": skip },
-            { "$limit": parsedLimit }
+        $facet: {
+          totalCount: [{ $count: "totalRecords" }],
+          data: [
+            { $skip: (parsedPage - 1) * parsedLimit },
+            { $limit: parsedLimit },
           ],
-          "totalCount": [
-            { "$count": "totalRecords" }
-          ]
-        }
-      }
+        },
+      },
     ];
-
+    
+    
     const result = await vehicleTable.aggregate(pipeline);
 
-    if (!result.length) {
-      return {
-        status: 404,
-        message: "No records found",
-        data: [],
-        pagination: {
-          totalRecords: 0,
-          totalPages: 0,
-          currentPage: parsedPage,
-          limit: parsedLimit,
-        }
-      };
-    }
 
-    const totalRecords = result[0].totalCount.length ? result[0].totalCount[0].totalRecords : 0;
-    const totalPages = Math.ceil(totalRecords / parsedLimit);
+    console.log(result)
+    // if (!result.length || !result[0].data.length) {
+    //   return {
+    //     status: 404,
+    //     message: "No records found",
+    //     data: [],
+    //     pagination: {
+    //       totalRecords: 0,
+    //       totalPages: 0,
+    //       currentPage: parsedPage,
+    //       limit: parsedLimit,
+    //     },
+    //   };
+    // }
+
+    // const totalRecords = result[0].totalCount.length ? result[0].totalCount[0].totalRecords : 0;
+    // const totalPages = Math.ceil(totalRecords / parsedLimit);
 
     response.status = 200;
     response.message = "Data fetched successfully";
-    response.data = result[0].data;
-    response.pagination = {
-      totalRecords,
-      totalPages,
-      currentPage: parsedPage,
-      limit: parsedLimit,
-    };
-
+    response.data = result;
+    // response.pagination = {
+    //   totalRecords,
+    //   totalPages,
+    //   currentPage: parsedPage,
+    //   limit: parsedLimit,
+    // };
   } catch (error) {
     console.error("Error in getVehicleTblData:", error.message);
     response.status = 500;
@@ -2462,6 +2514,8 @@ const getVehicleTblDataforStationmaster = async (query) => {
 
   return response;
 };
+
+
 
 
 

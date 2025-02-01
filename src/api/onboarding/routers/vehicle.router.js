@@ -778,6 +778,7 @@ router.post("/sendInvoiceByEmail", Authentication, upload1.single('file'), async
 
 // Update booking route
 router.put('/rideUpdate', Authentication, async (req, res) => {
+  
   const { _id,
     endMeterReading,
     rideStatus,

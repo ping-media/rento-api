@@ -4,7 +4,7 @@ const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.sch
 const Otp = require("../../../db/schemas/onboarding/logOtp");
 
 const vehicleChangeInBooking= async(req,res)=>{
-    const { vehicleTableId,  changeVehicle, _id,vehicleBasic,bookingPrice, vehicleMasterId,contact,otp }=req.body;
+    const { vehicleTableId,  changeVehicle, _id,vehicleBasic,bookingPrice, vehicleMasterId,contact,otp,vehicleImage,vehicleBrand,vehicleName }=req.body;
     try {
 
         const bookingData= await Booking.findOne({_id:_id});
@@ -28,11 +28,11 @@ const vehicleChangeInBooking= async(req,res)=>{
 
        
 
-       const vehicleMasterData = await VehicleMaster.findOne({_id:vehicleMasterId});
-       if(!vehicleMasterData){
-        res.json({status:401,message:"vehicleMasterData not found"})
-    }
-       const {vehicleImage,vehicleBrand,vehicleName} = vehicleMasterData
+    //    const vehicleMasterData = await VehicleMaster.findOne({_id:vehicleMasterId});
+    //    if(!vehicleMasterData){
+    //     res.json({status:401,message:"vehicleMasterData not found"})
+    // }
+    //    const {vehicleImage,vehicleBrand,vehicleName} = vehicleMasterData
 
       
        const o = {vehicleTableId,vehicleMasterId,changeVehicle,vehicleImage,vehicleName,vehicleBrand,vehicleBasic,bookingPrice}

@@ -1,6 +1,8 @@
 const MaintenanceVehicle = require ("../../../db/schemas/onboarding/maintenanceVehicleSchema");
 const Booking = require('../../../db/schemas/onboarding/maintenanceVehicleSchema');
+const vehicleTable = require('../../../db/schemas/onboarding/vehicle-table.schema');
 const { mongoose } = require("mongoose");
+const {getVehicleTblData}= require("../models/vehicles.model")
 
 
 // const maintenanceVehicleFunction=async(req,res)=>{
@@ -120,66 +122,128 @@ const maintenanceVehicleFunction = async (req, res) => {
         });
       }
   
-
-      const pipeline = [
-        {
-          $lookup: {
-            from: "bookings",
-            localField: "vehicleTableId",
-            foreignField: "vehicleTableId",
-            as: "bookings",
-          },
-        },
-        {
-          $addFields: {
-            conflictingBookings: {
-              $filter: {
-                input: "$bookings",
-                as: "booking",
-                cond: {
-                  $and: [
-                    {
-                      $and: [
-                        { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
-                        { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
-                      ],
-                    },
-                  ],
-                },
-              },
-            },
-          },
-        },
-        {
-          $project: {
-            _id: 1,
-            vehicleTableId: 1,
-            BookingStartDateAndTime: 1,
-            BookingEndDateAndTime: 1,
-            conflictingBookings: {
-              BookingStartDateAndTime: 1,
-              BookingEndDateAndTime: 1,
-              // other relevant fields from the conflicting bookings
-            },
-          },
-        },
-      ];
       
 
-      // Check if there are any existing bookings for the vehicle within the specified maintenance period
-      const result = await Booking.aggregate(pipeline);
-      
-  // console.log(result)
-  const conflictingBookings = result[0]?.conflictingBookings || [];
+    //   const pipeline = [      
+    //     // Lookup bookings for the vehicle
+    //     {
+    //         $lookup: {
+    //             from: "bookings",
+    //             localField: "_id",
+    //             foreignField: "vehicleTableId",
+    //             as: "bookings",
+    //         },
+    //     },
+    //     // Lookup station data
+    //     {
+    //         $lookup: {
+    //             from: "stations",
+    //             localField: "stationId",
+    //             foreignField: "stationId",
+    //             as: "stationData",
+    //         },
+    //     },
+    //     // Lookup vehicle master data
+    //     {
+    //         $lookup: {
+    //             from: "vehiclemasters",
+    //             localField: "vehicleMasterId",
+    //             foreignField: "_id",
+    //             as: "vehicleMasterData",
+    //         },
+    //     },
+    //     // Lookup maintenance records
+    //     {
+    //         $lookup: {
+    //             from: "maintenancevehicles",
+    //             localField: "_id",
+    //             foreignField: "vehicleTableId",
+    //             as: "maintenanceData",
+    //         },
+    //     },
+    
+    //     // Filter conflicting bookings & maintenance
+    //     {
+    //         $addFields: {
+    //             conflictingBookings: {
+    //                 $filter: {
+    //                     input: "$bookings",
+    //                     as: "booking",
+    //                     cond: {
+    //                         $and: [
+    //                             { $ne: ["$$booking.bookingStatus", "pending"] }, // Exclude pending bookings
+    //                             {
+    //                                 $or: [
+    //                                     {
+    //                                         $and: [
+    //                                             { $gte: ["$$booking.BookingStartDateAndTime", startDate] },
+    //                                             { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
+    //                                         ],
+    //                                     },
+    //                                     {
+    //                                         $and: [
+    //                                             { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
+    //                                             { $lte: ["$$booking.BookingEndDateAndTime", endDate] },
+    //                                         ],
+    //                                     },
+    //                                     {
+    //                                         $and: [
+    //                                             { $lte: ["$$booking.BookingStartDateAndTime", startDate] },
+    //                                             { $gte: ["$$booking.BookingEndDateAndTime", endDate] },
+    //                                         ],
+    //                                     },
+    //                                 ],
+    //                             },
+    //                         ],
+    //                     },
+    //                 },
+    //             },
+    //             conflictingMaintenance: {
+    //                 $filter: {
+    //                     input: "$maintenanceData",
+    //                     as: "maintenance",
+    //                     cond: {
+    //                         $and: [
+    //                             { $lte: ["$$maintenance.startDate", endDate] },
+    //                             { $gte: ["$$maintenance.endDate", startDate] },
+    //                         ],
+    //                     },
+    //                 },
+    //             },
+    //         },
+    //     },
+    
+    //     // Flatten vehicle master and station data
+    //     {
+    //         $addFields: {
+    //             vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
+    //             stationData: { $arrayElemAt: ["$stationData", 0] },
+    //         },
+    //     },
+    
+    //     // Project the required fields
+    //     {
+    //         $project: {
+    //             _id: 1,
+    //             vehicleMasterData: 1,
+    //             stationData: 1,
+    //             conflictingBookings: 1,
+    //             conflictingMaintenance: 1,
+    //         },
+    //     },
+    // ];
+    
 
-  if (conflictingBookings.length > 0) {
-    return res.json({
-      status: 400,
-      message: "Vehicle is already booked during the specified maintenance period.",
-      data: [],
+     
+     const vehicleData =await getVehicleTblData(req.query)
+     console.log(vehicleData)
+
+      const data = vehicleData?.data?.filter((item) => {
+        return item._id.toString() === vehicleTableId; 
     });
-  }
-      // Proceed with adding the vehicle to maintenance if no conflicts
+   // console.log(data)
+    if(data.length){
+    //Proceed with adding the vehicle to maintenance if no conflicts
       const maintenanceData = { vehicleTableId, startDate, endDate };
   
       // Save the maintenance data
@@ -191,6 +255,20 @@ const maintenanceVehicleFunction = async (req, res) => {
         message: "Vehicle successfully added to maintenance",
       });
   
+     
+    }
+      
+   // Proceed with adding the vehicle to maintenance if no conflicts
+      // const maintenanceData = { vehicleTableId, startDate, endDate };
+  
+      // // Save the maintenance data
+      // const newMaintenanceData = new MaintenanceVehicle(maintenanceData);
+      // await newMaintenanceData.save();
+  
+      return res.json({
+        status: 200,
+        message: "Vehicle is not available",
+      });
     } catch (error) {
       console.error("Error during maintenance vehicle process:", error);
       return res.json({
