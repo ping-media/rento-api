@@ -598,7 +598,7 @@ async function saveUser(userData) {
       }
       //console.log(userObj.altContact)
       //console.log(userType)
-      if (userType !== "admin") {
+      if (userType !== "admin" ) {
         if (!userObj.altContact || userObj.altContact === "") {
           return { status: 400, message: "AltContact is required." };
         }
@@ -611,7 +611,11 @@ async function saveUser(userData) {
 
         }
       }
-
+      if(userType !== "admin" && userType !== "manager"){
+        if (!userObj.dateofbirth || !isAtLeast18(userObj.dateofbirth)) {
+          return { status: 400, message: "User should be 18 or older." };
+        }
+      }
 
 
       Object.keys(userObj).forEach((key) => {
