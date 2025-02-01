@@ -598,7 +598,7 @@ async function saveUser(userData) {
       }
       //console.log(userObj.altContact)
       //console.log(userType)
-      if (userType !== "admin" && userType !== "manager") {
+      if (userType !== "admin") {
         if (!userObj.altContact || userObj.altContact === "") {
           return { status: 400, message: "AltContact is required." };
         }
