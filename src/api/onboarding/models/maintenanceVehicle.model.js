@@ -236,7 +236,7 @@ const maintenanceVehicleFunction = async (req, res) => {
 
      
      const vehicleData =await getVehicleTbl(req.query)
-     console.log(vehicleData)
+   //  console.log(vehicleData)
 
       const data = vehicleData?.data?.filter((item) => {
         return item._id.toString() === vehicleTableId; 

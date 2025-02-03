@@ -2190,9 +2190,18 @@ const getVehicleTblData = async (query) => {
 
     // Constructing match filter
     const matchFilter = {};
+    console.log(_id)
 
     if (_id) {
-      matchFilter._id = ObjectId.isValid(_id) ? new ObjectId(_id) : _id;
+     // matchFilter._id = ObjectId.isValid(_id) ? new ObjectId(_id) : _id;
+
+     const data= await vehicleTable.findById({_id})
+//console.log(data)
+     response.status = 200;
+    response.message = "Data fetched successfully";
+    response.data = data;
+    return response;
+
     } else {
       if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
       if (condition) matchFilter.condition = condition;
