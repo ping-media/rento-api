@@ -787,6 +787,7 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
     endMeterReading,
     rideStatus,
     userId,
+    bookingId,
     rideOtp
   } = req.body;
 
@@ -829,7 +830,7 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
 
     // Update the booking document
     const pickupImageData = await pickupImage.updateOne(
-      { userId },
+      { bookingId },
       { $set: { endMeterReading } },
       { new: true }
     );

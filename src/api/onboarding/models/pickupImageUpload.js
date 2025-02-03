@@ -233,7 +233,7 @@ const getPickupImage = async (req, res) => {
 
       
       
-      const documents = await pickupImage.find(filter).select("files bookingId");
+      const documents = await pickupImage.find(filter);
   
       if (!documents || documents.length === 0) {
         return res.json({
