@@ -2190,18 +2190,9 @@ const getVehicleTblData = async (query) => {
 
     // Constructing match filter
     const matchFilter = {};
-    
 
     if (_id) {
-     // matchFilter._id = ObjectId.isValid(_id) ? new ObjectId(_id) : _id;
-
-     const data= await vehicleTable.findById({_id})
-//console.log(data)
-     response.status = 200;
-    response.message = "Data fetched successfully";
-    response.data = [data];
-    return response;
-
+      matchFilter._id = ObjectId.isValid(_id) ? new ObjectId(_id) : _id;
     } else {
       if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
       if (condition) matchFilter.condition = condition;
@@ -2344,7 +2335,8 @@ const getVehicleTblData = async (query) => {
           ...(vehicleType ? { "vehicleMasterData.vehicleType": vehicleType } : {}),
         },
       },
-      
+      { $skip: (parsedPage - 1) * parsedLimit },
+      { $limit: parsedLimit },
       // Use $facet to create separate datasets for available and excluded vehicles
       {
         $facet: {
@@ -2356,8 +2348,7 @@ const getVehicleTblData = async (query) => {
               },
             },
             { $project: { conflictingBookings: 0, conflictingMaintenance: 0 } },
-            { $skip: (parsedPage - 1) * parsedLimit },
-            { $limit: parsedLimit },
+           
             {
               $project: {
                 _id: 1,
@@ -2395,7 +2386,9 @@ const getVehicleTblData = async (query) => {
                 ],
               },
             },
+           
             { $project: { conflictingBookings: 0, conflictingMaintenance: 0 } },
+            
             {
               $project: {
                 _id: 1,
@@ -2429,6 +2422,7 @@ const getVehicleTblData = async (query) => {
                 MaintenanceEndDate: { $ifNull: [{ $arrayElemAt: ["$maintenanceData.endDate", -1] }, null] },
               },
             },
+            
           ],
           
           totalCount: [{ $count: "totalRecords" }],
@@ -2444,32 +2438,40 @@ const getVehicleTblData = async (query) => {
 
     
     if (!result.length || !result[0].availableVehicles.length) {
-
       return {
         status: 404,
         message: "No records found",
         data: [],
-        pagination: {
-          totalRecords: 0,
-          totalPages: 0,
-          currentPage: parsedPage,
-          limit: parsedLimit,
-        },
+        pagination: { totalRecords: 0, totalPages: 0, currentPage: parsedPage, limit: parsedLimit },
       };
     }
 
+    // Extract available and excluded vehicles
+    let availableVehicles = result[0].availableVehicles;
+    let excludedVehicles = result[0].excludedVehicles;
     const totalRecords = result[0].totalCount.length ? result[0].totalCount[0].totalRecords : 0;
+
+    // Ensure pagination dynamically distributes vehicles
+    let finalAvailableVehicles = [];
+    let finalExcludedVehicles = [];
+
+    if (excludedVehicles.length > 0) {
+      if (excludedVehicles.length >= parsedLimit) {
+        finalExcludedVehicles = excludedVehicles.slice(0, parsedLimit);
+      } else {
+        finalExcludedVehicles = excludedVehicles;
+        finalAvailableVehicles = availableVehicles.slice(0, parsedLimit - excludedVehicles.length);
+      }
+    } else {
+      finalAvailableVehicles = availableVehicles.slice(0, parsedLimit);
+    }
+
     const totalPages = Math.ceil(totalRecords / parsedLimit);
 
     response.status = 200;
     response.message = "Data fetched successfully";
-    response.data = result;
-    response.pagination = {
-      totalRecords,
-      totalPages,
-      currentPage: parsedPage,
-      limit: parsedLimit,
-    };
+    response.data = { availableVehicles: finalAvailableVehicles, excludedVehicles: finalExcludedVehicles };
+    response.pagination = { totalRecords, totalPages, currentPage: parsedPage, limit: parsedLimit };
   } catch (error) {
     console.error("Error in getVehicleTblData:", error.message);
     response.status = 500;
