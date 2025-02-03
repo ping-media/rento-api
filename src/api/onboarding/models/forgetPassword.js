@@ -1,19 +1,23 @@
 const User = require("../../../db/schemas/onboarding/user.schema");
-const { emailOtp, verify } = require("../models/otpSendByEmail");
+//const { Otp, verify } = require("../models/otpSendBycontact");
 const Otp = require("../../../db/schemas/onboarding/logOtp");
 const bcrypt = require("bcrypt");
 
 
 const forgetPasswordFunction = async (req, res) => {
     try {
-        const { email, password, otp, userType } = req.body;
+        const {contact_For, password_For, otp, userType } = req.body;
+
+        const contact = contact_For;
+        const password = password_For;
+       // console.log(contact,password)
 
         if (userType === "admin") {
 
-            if (!email || !password) {
+            if (!contact || !password) {
                 return res.status(400).json({
                     status: 400,
-                    message: "Email and Password are required",
+                    message: "contact and Password are required",
                 });
             }
 
@@ -24,7 +28,7 @@ const forgetPasswordFunction = async (req, res) => {
             const hasPassword = bcrypt.hashSync(password, 8);
 
             const user = await User.findOneAndUpdate(
-                { email },
+                { contact },
                 { $set: { password: hasPassword } },  
                 { new: true }
             );
@@ -36,23 +40,23 @@ const forgetPasswordFunction = async (req, res) => {
             });
         }
 
-        if (!email || !otp || !password) {
+        if (!contact || !otp || !password) {
             return res.status(400).json({
                 status: 400,
-                message: "Email, Password and OTP are required",
+                message: "contact, Password and OTP are required",
             });
         }
 
-        const record = await Otp.findOne({ email });
+        const record = await Otp.findOne({ contact });
         if (!record) {
             return res.status(404).json({
                 status: 404,
-                message: "No OTP found for the given email",
+                message: "No OTP found for the given contact",
             });
         }
 
         if (new Date() > record.expiresAt) {
-            await Otp.deleteOne({ email });
+            await Otp.deleteOne({ contact });
             return res.status(404).json({
                 status: 404,
                 message: "OTP has expired",
@@ -66,7 +70,7 @@ const forgetPasswordFunction = async (req, res) => {
             });
         }
 
-        const userData = await User.findOne({email});
+        const userData = await User.findOne({contact});
        
 
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
@@ -75,17 +79,17 @@ const forgetPasswordFunction = async (req, res) => {
         }
        const hasPassword = bcrypt.hashSync(password, 8);
 
-       const obj ={}
+      
 
        const user = await User.findOneAndUpdate(
-        { email },
+        { contact },
         { $set: { password: hasPassword } },  
         { new: true }
     );
 
         // console.log(user)
 
-        await Otp.deleteOne({ email });
+        await Otp.deleteOne({ contact });
 
         return res.status(200).json({
             status: 200,

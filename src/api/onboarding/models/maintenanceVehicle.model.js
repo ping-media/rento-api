@@ -2,7 +2,7 @@ const MaintenanceVehicle = require ("../../../db/schemas/onboarding/maintenanceV
 const Booking = require('../../../db/schemas/onboarding/maintenanceVehicleSchema');
 const vehicleTable = require('../../../db/schemas/onboarding/vehicle-table.schema');
 const { mongoose } = require("mongoose");
-const {getVehicleTblData}= require("../models/vehicles.model")
+const {getVehicleTbl}= require("../models/vehicles.model")
 
 
 // const maintenanceVehicleFunction=async(req,res)=>{
@@ -235,7 +235,7 @@ const maintenanceVehicleFunction = async (req, res) => {
     
 
      
-     const vehicleData =await getVehicleTblData(req.query)
+     const vehicleData =await getVehicleTbl(req.query)
      console.log(vehicleData)
 
       const data = vehicleData?.data?.filter((item) => {

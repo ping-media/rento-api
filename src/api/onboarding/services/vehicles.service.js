@@ -23,6 +23,7 @@ const {
   getLocationData,
   getPlanData,
   getAllInvoice,
+  getVehicleTbl
   
   
 
@@ -112,6 +113,21 @@ exports.getVehicleBookrecode = async (req, res) => {
 exports.getCoupons = async (req, res) => {
   try {
     const result = await getCoupons(req.query,req.headers);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+}
+
+// for checking vehicle is available or not
+exports.getVehicleTbl = async (req, res) => {
+  try {
+    const result = await getVehicleTbl(req.query,req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({

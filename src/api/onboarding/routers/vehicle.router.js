@@ -131,6 +131,10 @@ router.get("/getVehicleTblData", async (req, res) => {
   vehiclesService.getVehicleTblData(req, res);
 })
 
+router.get("/getAllVehiclesAvailable", async (req, res) => {
+  vehiclesService.getVehicleTbl(req, res);
+})
+
 router.get("/getStationData", async (req, res) => {
   vehiclesService.getStationData(req, res);
 })

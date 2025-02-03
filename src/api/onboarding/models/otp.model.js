@@ -41,7 +41,7 @@ async function otpGenerat(req, res) {
       return res.json({ status: 400, message });
     }
 
-    if (contact === "9389046742" || contact === "8433408211") {
+    if (contact === "9389046740" || contact === "8433408211") {
       const message = "Login allowed without OTP validation";
       await createLog(message, "optGernet", user._id, 200);
       return res.status(200).json({ status: 200, message });

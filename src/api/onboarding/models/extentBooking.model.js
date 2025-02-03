@@ -1,4 +1,4 @@
-const { getVehicleTblData } = require("../models/vehicles.model");
+const { getVehicleTbl } = require("../models/vehicles.model");
 const Booking = require("../../../db/schemas/onboarding/booking.schema")
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema")
 
@@ -12,7 +12,7 @@ const extentBooking = async (req, res) => {
     try {
        
 
-        const vehicleData = await getVehicleTblData(req.query);
+        const vehicleData = await getVehicleTbl(req.query);
         
 
         const data = vehicleData?.data?.filter((item) => {
