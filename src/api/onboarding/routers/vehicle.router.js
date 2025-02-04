@@ -788,20 +788,48 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
     rideStatus,
     userId,
     bookingId,
-    rideOtp
+    rideOtp,
+    rideEndDate,
+    startMeterReading
   } = req.body;
 
   const obj = { status: 200, message: "", data: {} };
+  const getDurationInDaysAndHours = (date1Str, date2Str) => {
+    // Parse the input strings into Date objects
+    const date1 = new Date(date1Str);
+    const date2 = new Date(date2Str);
+  
+    // Check if the dates are valid
+    if (isNaN(date1) || isNaN(date2)) {
+      return "Invalid date format";
+    }
+  
+    // Get the difference between the two dates in milliseconds
+    const differenceInMs = Math.abs(date2 - date1);
+  
+    // Convert milliseconds to days and hours
+    const totalHours = Math.floor(differenceInMs / (1000 * 60 * 60));
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24; // Remaining hours after full days
+  
+    return { days, hours };
+  };
 
   try {
 
     const booking = await Booking.findOne({ _id });
 
-    const { vehicleBasic } = booking;
+    let { vehicleBasic,bookingPrice,BookingEndDateAndTime, BookingStartDateAndTime } = booking;
+    const duration = getDurationInDaysAndHours(BookingEndDateAndTime, rideEndDate);
 
+    const lateFeeBasedOnHour= vehicleBasic.lateFee*((duration?.days*24)+(duration?.hours)) || 0;
+    console.log(lateFeeBasedOnHour)
+    const lateKm = endMeterReading > startMeterReading && (Number(endMeterReading)-Number(startMeterReading)) || 0;
+    const allowKm = getDurationInDaysAndHours(BookingStartDateAndTime, BookingEndDateAndTime)?.days * vehicleBasic?.freeLimit;
+    const lateFeeBasedOnKM= (lateKm - allowKm) * vehicleBasic?.extraKmCharge;
 
-
-
+    const newBookingPrice = {...bookingPrice, lateFeeBasedOnHour, lateFeeBasedOnKM};
+    // return console.log(newBookingPrice);
 
     if (!rideOtp || rideOtp?.toString().length != 4) {
       await Log({
@@ -831,7 +859,7 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
     // Update the booking document
     const pickupImageData = await pickupImage.updateOne(
       { bookingId },
-      { $set: { endMeterReading } },
+      { $set: { endMeterReading,rideEndDate } },
       { new: true }
     );
 

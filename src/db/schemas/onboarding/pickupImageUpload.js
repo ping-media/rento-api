@@ -35,6 +35,7 @@ const pickupImageSchema = new mongoose.Schema({
   data:{type:Object},
   startMeterReading:{type:Number},
   endMeterReading:{type:Number, default:0},
+  rideEndDate:{type:String},
   
    
 },
