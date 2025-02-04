@@ -820,8 +820,13 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
   try {
 
     const booking = await Booking.findOne({ _id });
-
     let { vehicleBasic,bookingPrice,BookingEndDateAndTime, BookingStartDateAndTime } = booking;
+    const rideStatusFromBooking = booking?.rideStatus;
+    if(rideStatusFromBooking==="completed"){
+      obj.status = 400;
+      obj.message = "Ride already finished";
+      return res.json(obj);
+    }
     // const duration = getDurationInDaysAndHours(BookingEndDateAndTime, rideEndDate);
 
     // const lateFeeBasedOnHour= vehicleBasic.lateFee*((duration?.days*24)+(duration?.hours)) || 0;
