@@ -790,7 +790,9 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
     bookingId,
     rideOtp,
     rideEndDate,
-    startMeterReading
+    startMeterReading,
+    lateFeeBasedOnHour,
+    lateFeeBasedOnKM
   } = req.body;
 
   const obj = { status: 200, message: "", data: {} };
@@ -820,13 +822,13 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
     const booking = await Booking.findOne({ _id });
 
     let { vehicleBasic,bookingPrice,BookingEndDateAndTime, BookingStartDateAndTime } = booking;
-    const duration = getDurationInDaysAndHours(BookingEndDateAndTime, rideEndDate);
+    // const duration = getDurationInDaysAndHours(BookingEndDateAndTime, rideEndDate);
 
-    const lateFeeBasedOnHour= vehicleBasic.lateFee*((duration?.days*24)+(duration?.hours)) || 0;
-    console.log(lateFeeBasedOnHour)
-    const lateKm = endMeterReading > startMeterReading && (Number(endMeterReading)-Number(startMeterReading)) || 0;
-    const allowKm = getDurationInDaysAndHours(BookingStartDateAndTime, BookingEndDateAndTime)?.days * vehicleBasic?.freeLimit;
-    const lateFeeBasedOnKM= (lateKm - allowKm) * vehicleBasic?.extraKmCharge;
+    // const lateFeeBasedOnHour= vehicleBasic.lateFee*((duration?.days*24)+(duration?.hours)) || 0;
+    // console.log(lateFeeBasedOnHour)
+    // const lateKm = endMeterReading > startMeterReading && (Number(endMeterReading)-Number(startMeterReading)) || 0;
+    // const allowKm = getDurationInDaysAndHours(BookingStartDateAndTime, BookingEndDateAndTime)?.days * vehicleBasic?.freeLimit;
+    // const lateFeeBasedOnKM= (lateKm - allowKm) * vehicleBasic?.extraKmCharge;
 
     const newBookingPrice = {...bookingPrice, lateFeeBasedOnHour, lateFeeBasedOnKM};
     // return console.log(newBookingPrice);
@@ -842,8 +844,7 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
       return res.json(obj);
     }
 
-
-    if (rideOtp !== vehicleBasic.endRide) {
+    if (rideOtp != vehicleBasic.endRide) {
       await Log({
         message: `Invalid Otp ${_id}`,
         functionName: "rideUpdate",
@@ -880,8 +881,8 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
     // Notify about the booking update
     obj.status = 200;
     obj.message = `Ride ${rideStatus === "canceled" ? "Canceled" : rideStatus === "ongoing" ? "Start" : "Completed"} successful` ;
-    const response={lateFeeBasedOnHour,lateFeeBasedOnKM,rideStatus}
-    obj.data=response;
+    // const response={lateFeeBasedOnHour,lateFeeBasedOnKM,rideStatus}
+    // obj.data=response;
     return res.status(200).json(obj);
 
   } catch (error) {
