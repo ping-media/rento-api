@@ -881,8 +881,8 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
     // Notify about the booking update
     obj.status = 200;
     obj.message = `Ride ${rideStatus === "canceled" ? "Canceled" : rideStatus === "ongoing" ? "Start" : "Completed"} successful` ;
-    // const response={lateFeeBasedOnHour,lateFeeBasedOnKM,rideStatus}
-    // obj.data=response;
+    const response={lateFeeBasedOnHour,lateFeeBasedOnKM,rideStatus}
+    obj.data=response;
     return res.status(200).json(obj);
 
   } catch (error) {
