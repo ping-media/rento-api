@@ -247,7 +247,7 @@ const applyCoupon = async (body) => {
     const coupon = await Coupon.findOne({ couponName });
 
     // Validate the coupon
-    if (!coupon || !coupon.isCouponActive) {
+    if (!coupon || coupon.isCouponActive=="inActive") {
       
         obj.status= 400;
         obj.message= "Invalid or inactive coupon";

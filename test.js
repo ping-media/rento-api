@@ -721,6 +721,6 @@ const getDurationInDaysAndHours = (date1Str, date2Str) => {
   return { days, hours };
 };
 
-const t=getDurationInDaysAndHours("2025-02-03T10:00:00Z","2025-02-04T10:00:00Z")
+const t="2025-02-03"+1
 
 console.log(t)
