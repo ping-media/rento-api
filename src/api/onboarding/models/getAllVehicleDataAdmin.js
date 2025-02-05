@@ -206,6 +206,7 @@ const getAllVehiclesData = async (req, res) => {
          refundableDeposit: 1,
          lateFee: 1,
          speedLimit: 1,
+         lastMeterReading:1,
           stationName: "$stationData.stationName",
          vehicleImage: "$vehicleMasterData.vehicleImage",
           vehicleName: "$vehicleMasterData.vehicleName",
