@@ -45,7 +45,7 @@ const extentBooking = async (req, res) => {
                 { new: true } // Return the updated document
               );
 
-              const Amount=oldBookings.extendAmount[oldBookings.extendAmount.length-1].amount
+              const Amount=extendAmount.amount
 
               const messageData=[
                 firstName,
