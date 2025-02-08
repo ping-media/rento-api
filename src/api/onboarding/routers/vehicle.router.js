@@ -925,7 +925,7 @@ router.post('/extendBooking', Authentication, async (req, res) => {
   extentBooking(req, res)
 })
 
-router.post('/sendReminder ', Authentication, async (req, res) => {
+router.post('/sendReminder', Authentication, async (req, res) => {
   function convertDateString(dateString) {
     if (!dateString) return "Invalid date";
   
