@@ -76,6 +76,8 @@ const vehicleChangeInBooking= async(req,res)=>{
         const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
         const Oldvehicle=`${changeVehicle.vehicleName}(${changeVehicle.vehicleNumber})`
         const Newvehicle=`${vehicleName}(${vehicleBasic.vehicleNumber})`
+        const Amount= bookingPrice.diffAmount[bookingPrice.diffAmount.length-1].amount
+
       const messageData = [
         firstName,
         bookingData.bookingId,
@@ -83,9 +85,9 @@ const vehicleChangeInBooking= async(req,res)=>{
         Newvehicle,
         bookingData.stationName,
         mapLink,
-        bookingPrice.diffAmount,
+        Amount,
         "1223",
-        bookingData.vehicleBasic.refundableDeposit,
+        vehicleBasic.refundableDeposit,
         managerContact
       ]
       whatsappMessage(contact,"bike_change",messageData)
