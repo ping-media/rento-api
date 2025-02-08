@@ -43,20 +43,7 @@ const vehicleChangeInBooking= async(req,res)=>{
         { $set: o },  // Update data
         { new: true } // Return the updated document
       );
-      
-    //   if (updatedData) {
-    //     return res.status(200).json({
-    //       status: 200,
-    //       message: "Vehicle changed",
-    //       data: updatedData,
-    //     });
-    //   } else {
-    //     return res.status(404).json({
-    //       status: 404,
-    //       message: "Booking not found",
-    //     });
-    //   }
-      
+    
       await Log({
         message: `Vhicle changed for  this booking  ${_id} `,
         functionName: "vehicleChangeInBooking",
@@ -75,7 +62,9 @@ const vehicleChangeInBooking= async(req,res)=>{
         
         const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
         const Oldvehicle=`${changeVehicle.vehicleName}(${changeVehicle.vehicleNumber})`
-        const Newvehicle=`${vehicleName}(${vehicleBasic.vehicleNumber})`
+        const Newvehicle=`${bookingData.vehicleName}(${vehicleBasic.vehicleNumber})`
+      
+
         const Amount= bookingPrice.diffAmount[bookingPrice.diffAmount.length-1].amount
 
       const messageData = [
@@ -86,10 +75,11 @@ const vehicleChangeInBooking= async(req,res)=>{
         bookingData.stationName,
         mapLink,
         Amount,
-        "1223",
+        Amount,
         vehicleBasic.refundableDeposit,
         managerContact
       ]
+      
       whatsappMessage(contact,"bike_change",messageData)
       res.json({status:200,message:"vehicle Changed",data:updatedData})
         
