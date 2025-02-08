@@ -34,7 +34,7 @@ const upload = multer({
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
-    const { userId, bookingId, data, startMeterReading, endMeterReading, _id,rideOtp,paymentMode,paymentStatus } = req.body;
+    const { userId, bookingId, data, startMeterReading, endMeterReading, _id,rideOtp,PaymentMode,paymentStatus } = req.body;
   
 
     if (!userId || userId.length !== 24) {
@@ -43,7 +43,7 @@ const pickupImageUp = async (req, res) => {
 
     const booking= await Booking.findOne({_id}).populate("userId", "kycApproved");
     const kycStatus = booking?.userId?.kycApproved;
-
+//console.log(booking)
     if(kycStatus==="no"){
       return res.json(
         { status:400,
@@ -120,10 +120,11 @@ const pickupImageUp = async (req, res) => {
     const OTP=Math.floor(1000 + Math.random() * 9000);
 
     if(paymentStatus=="partially_paid" || paymentStatus=="partiallyPay"){
+     // console.log("enter")
    
       const updateResult = await Booking.updateOne(
         { _id },
-        { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing","vehicleBasic.endRide":OTP,"bookingPrice.AmountLeftAfterUserPaid.status":"paid","bookingPrice.AmountLeftAfterUserPaid.paymentMethod":paymentMode} },
+        { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing","vehicleBasic.endRide":OTP,"bookingPrice.AmountLeftAfterUserPaid.status":"paid","bookingPrice.AmountLeftAfterUserPaid.paymentMethod":PaymentMode,"paymentStatus":"paid"} },
         { new: true }
       );
     }
