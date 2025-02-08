@@ -8,7 +8,23 @@ const extentBooking = async (req, res) => {
   //  const res = { status: 200, message: "Data fetched successfully", data: [] };
   const {vehicleTableId,BookingEndDateAndTime,BookingStartDateAndTime}=req.query
 
-
+  function convertDateString(dateString) {
+    if (!dateString) return "Invalid date";
+  
+    const date = new Date(dateString);
+    if (isNaN(date)) return "Invalid date";
+  
+    const options = { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric', 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    };
+  
+    return date.toLocaleString('en-US', options);
+  }
 
     try {
        
@@ -19,7 +35,7 @@ const extentBooking = async (req, res) => {
         const data = vehicleData?.data?.filter((item) => {
             return item._id.toString() === vehicleTableId; 
         });
-        // console.log(data)
+       
        
         if (!bookingPrice.extendAmount) {
             bookingPrice.extendAmount = [];
@@ -37,7 +53,7 @@ const extentBooking = async (req, res) => {
             bookingStatus
         }
 
-        if (data) {
+        if (data.length>0) {
 
             const updatedData = await Booking.findOneAndUpdate(
                 { _id: _id }, // Filter condition
@@ -45,14 +61,15 @@ const extentBooking = async (req, res) => {
                 { new: true } // Return the updated document
               );
 
-              const Amount=extendAmount.amount
+              const Amount=extendAmount.amount;
+              const vehicle=data[0].vehicleName;
 
               const messageData=[
                 firstName,
-                data.vehicleName,
+                vehicle,
                 updatedData.bookingId,
-                BookingStartDateAndTime,
-                BookingEndDateAndTime,
+                convertDateString(BookingStartDateAndTime),
+                convertDateString(BookingEndDateAndTime),
                 Amount,
                 Amount,
                 managerContact
