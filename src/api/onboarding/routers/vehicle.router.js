@@ -948,6 +948,7 @@ router.post('/sendReminder', Authentication, async (req, res) => {
  try {
   const{firstName,vehicleName,BookingStartDateAndTime,bookingId,stationName,bookingPrice,vehicleBasic,managerContact,contact}=req.body;
  const station = await Station.findOne({stationName}).select("latitude longitude");
+ console.log(station)
  if (!station) {
    console.error(`Station not found for stationName: ${stationName}`);
    return; 
@@ -970,11 +971,10 @@ router.post('/sendReminder', Authentication, async (req, res) => {
  managerContact,
 totalPrice,
  vehicleBasic.refundableDeposit
-
-
 ]
 
- const result= await whatsappMessage(contact,"booking_reminder",messageData)
+ const result=  whatsappMessage(contact,"booking_reminder",messageData)
+ return res.json({status:200,message:"Reminder send successfully"})
 
  } catch (error) {
   return res.status(400).send(error.message);
