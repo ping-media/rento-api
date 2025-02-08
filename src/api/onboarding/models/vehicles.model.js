@@ -340,7 +340,7 @@ async function booking({
       discount, bookingStatus, paymentStatus, rideStatus, pickupLocation, invoice, paymentMethod, paySuccessId, paymentgatewayOrderId,discountCuopon,extendBooking,
       payInitFrom, bookingId, vehicleBasic, vehicleMasterId, vehicleBrand, vehicleImage, vehicleName, stationName, stationMasterUserId, paymentgatewayReceiptId, isCancelled
     };
-     console.log(o)
+    // console.log(o)
     if (_id && _id.length !== 24) {
       obj.status = 401;
       obj.message = "Invalid booking id";

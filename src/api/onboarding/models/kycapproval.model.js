@@ -18,7 +18,7 @@ const kycApprovalFunction = async (req, res) => {
         if (doc) {
             return res.json({
                 status: 404,
-                message: "Document already exits"
+                message: "KYC already done"
             });
         }
 
@@ -27,7 +27,7 @@ const kycApprovalFunction = async (req, res) => {
         if (findDoc) {
             return res.json({
                 status: 404,
-                message: "Document already exits"
+                message: "aadhar and license number already exits"
             });
         }
 

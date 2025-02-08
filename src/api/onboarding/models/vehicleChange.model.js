@@ -1,10 +1,12 @@
 const Booking= require("../../../db/schemas/onboarding/booking.schema");
 const Log= require("../../../db/schemas/onboarding/log");
 const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
+const Station = require("../../../db/schemas/onboarding/station.schema");
 const Otp = require("../../../db/schemas/onboarding/logOtp");
+const {whatsappMessage}=require("../../../utils/whatsappMessage")
 
 const vehicleChangeInBooking= async(req,res)=>{
-    const { vehicleTableId,  changeVehicle, _id,vehicleBasic,bookingPrice, vehicleMasterId,contact,otp,vehicleImage,vehicleBrand,vehicleName }=req.body;
+    const { vehicleTableId,  changeVehicle, _id,vehicleBasic,bookingPrice, vehicleMasterId,contact,otp,vehicleImage,vehicleBrand,vehicleName,managerContact,firstName}=req.body;
     try {
 
         const bookingData= await Booking.findOne({_id:_id});
@@ -25,14 +27,6 @@ const vehicleChangeInBooking= async(req,res)=>{
 
           await Otp.deleteOne({ contact });
 
-
-       
-
-    //    const vehicleMasterData = await VehicleMaster.findOne({_id:vehicleMasterId});
-    //    if(!vehicleMasterData){
-    //     res.json({status:401,message:"vehicleMasterData not found"})
-    // }
-    //    const {vehicleImage,vehicleBrand,vehicleName} = vehicleMasterData
 
       
        const o = {vehicleTableId,vehicleMasterId,changeVehicle,vehicleImage,vehicleName,vehicleBrand,vehicleBasic,bookingPrice}
@@ -68,6 +62,33 @@ const vehicleChangeInBooking= async(req,res)=>{
         functionName: "vehicleChangeInBooking",
         
       });
+
+
+
+      const station = await Station.findOne({ stationName:bookingData.stationName }).select("latitude longitude");
+        if (!station) {
+          console.error(`Station not found for stationName: ${stationName}`);
+          return; 
+        }
+      
+        const {latitude,longitude}=station
+        
+        const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+        const Oldvehicle=`${changeVehicle.vehicleName}(${changeVehicle.vehicleNumber})`
+        const Newvehicle=`${vehicleName}(${vehicleBasic.vehicleNumber})`
+      const messageData = [
+        firstName,
+        bookingData.bookingId,
+        Oldvehicle,
+        Newvehicle,
+        bookingData.stationName,
+        mapLink,
+        bookingPrice.diffAmount,
+        "1223",
+        bookingData.vehicleBasic.refundableDeposit,
+        managerContact
+      ]
+      whatsappMessage(contact,"bike_change",messageData)
       res.json({status:200,message:"vehicle Changed",data:updatedData})
         
     } catch (error) {
