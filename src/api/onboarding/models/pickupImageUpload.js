@@ -34,7 +34,7 @@ const upload = multer({
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
-    const { userId, bookingId, data, startMeterReading, endMeterReading, _id,rideOtp } = req.body;
+    const { userId, bookingId, data, startMeterReading, endMeterReading, _id,rideOtp,paymentMode,paymentStatus } = req.body;
   
 
     if (!userId || userId.length !== 24) {
@@ -118,11 +118,25 @@ const pickupImageUp = async (req, res) => {
 
     await newDocument.save();
     const OTP=Math.floor(1000 + Math.random() * 9000);
-    const updateResult = await Booking.updateOne(
-      { _id },
-      { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing","vehicleBasic.endRide":OTP} },
-      { new: true }
-    );
+
+    if(paymentStatus=="partially_paid" || paymentStatus=="partiallyPay"){
+   
+      const updateResult = await Booking.updateOne(
+        { _id },
+        { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing","vehicleBasic.endRide":OTP,"bookingPrice.AmountLeftAfterUserPaid.status":"paid","bookingPrice.AmountLeftAfterUserPaid.paymentMethod":paymentMode} },
+        { new: true }
+      );
+    }
+    else{
+      const updateResult = await Booking.updateOne(
+        { _id },
+        { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing","vehicleBasic.endRide":OTP} },
+        { new: true }
+      );
+    }
+
+
+   
 
     // const currentBooking_id = _id
     // const timeline={"Pick-up done":updateResult.updatedAt}

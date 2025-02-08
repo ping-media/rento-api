@@ -31,6 +31,7 @@ const Authentication = require("../../../middlewares/Authentication");
 const { deleteS3Bucket } = require("../models/deleteS3Bucket");
 const { getBookingGraphData } = require("../models/graphData");
 const jwt = require("jsonwebtoken");
+const Station=require('../../../db/schemas/onboarding/station.schema')
 const { sendInvoiceByEmail } = require("../../../utils/emailSend");
 const { kycApprovalFunction } = require("../models/kycapproval.model");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
@@ -42,6 +43,7 @@ const { Auth } = require("googleapis");
 const { extentBooking } = require("../models/extentBooking.model");
 const { forgetPasswordFunction } = require("../models/forgetPassword");
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
+const {whatsappMessage}=require("../../../utils/whatsappMessage")
 
 
 // create messages
@@ -669,19 +671,14 @@ router.get("/getAllLogs", Authentication, async (req, res) => {
   getAllLogs(req, res);
 })
 
+
 router.get("/getGraphData", Authentication, async (req, res) => {
   getBookingGraphData(req, res);
 })
 
+
 router.post("/createOrderId", async (req, res) => {
   const { amount, booking_id } = req.body
-
-  // const newKey="Payment Initiated";
-  // const date=new Date().toLocaleString();
-  // const timelinedata = await TimeLine.updateOne(
-  //   { currentBooking_id:booking_id },
-  //   { $set: { [`timeline.${newKey}`]:  date} }
-  // );
 
   const key_id = process.env.VITE_RAZOR_KEY_ID;
   const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
@@ -792,30 +789,31 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
     rideEndDate,
     startMeterReading,
     lateFeeBasedOnHour,
-    lateFeeBasedOnKM
+    lateFeeBasedOnKM,
+    
   } = req.body;
 
   const obj = { status: 200, message: "", data: {} };
-  const getDurationInDaysAndHours = (date1Str, date2Str) => {
-    // Parse the input strings into Date objects
-    const date1 = new Date(date1Str);
-    const date2 = new Date(date2Str);
+  // const getDurationInDaysAndHours = (date1Str, date2Str) => {
+  //   // Parse the input strings into Date objects
+  //   const date1 = new Date(date1Str);
+  //   const date2 = new Date(date2Str);
   
-    // Check if the dates are valid
-    if (isNaN(date1) || isNaN(date2)) {
-      return "Invalid date format";
-    }
+  //   // Check if the dates are valid
+  //   if (isNaN(date1) || isNaN(date2)) {
+  //     return "Invalid date format";
+  //   }
   
-    // Get the difference between the two dates in milliseconds
-    const differenceInMs = Math.abs(date2 - date1);
+  //   // Get the difference between the two dates in milliseconds
+  //   const differenceInMs = Math.abs(date2 - date1);
   
-    // Convert milliseconds to days and hours
-    const totalHours = Math.floor(differenceInMs / (1000 * 60 * 60));
-    const days = Math.floor(totalHours / 24);
-    const hours = totalHours % 24; // Remaining hours after full days
+  //   // Convert milliseconds to days and hours
+  //   const totalHours = Math.floor(differenceInMs / (1000 * 60 * 60));
+  //   const days = Math.floor(totalHours / 24);
+  //   const hours = totalHours % 24; // Remaining hours after full days
   
-    return { days, hours };
-  };
+  //   return { days, hours };
+  // };
 
   try {
 
@@ -925,6 +923,63 @@ router.get('/getTimelineData', Authentication, async (req, res) => {
 
 router.post('/extendBooking', Authentication, async (req, res) => {
   extentBooking(req, res)
+})
+
+router.post('/sendReminder ', Authentication, async (req, res) => {
+  function convertDateString(dateString) {
+    if (!dateString) return "Invalid date";
+  
+    const date = new Date(dateString);
+    if (isNaN(date)) return "Invalid date";
+  
+    const options = { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric', 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    };
+  
+    return date.toLocaleString('en-US', options);
+  }
+
+
+ try {
+  const{firstName,vehicleName,BookingStartDateAndTime,bookingId,stationName,bookingPrice,vehicleBasic,managerContact}=req.body;
+ const station = await Station.findOne({ stationName:bookingData.stationName }).select("latitude longitude");
+ if (!station) {
+   console.error(`Station not found for stationName: ${stationName}`);
+   return; 
+ }
+
+ const {latitude,longitude}=station
+ 
+ const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+ const totalPrice = bookingPrice.discountTotalPrice > 0 
+          ? bookingPrice.discountTotalPrice 
+          : bookingPrice.totalPrice;
+
+ const messageData = [
+  firstName,
+ vehicleName,
+ BookingStartDateAndTime,
+ bookingId,
+ stationName,
+ mapLink,
+ managerContact,
+totalPrice,
+ vehicleBasic.refundableDeposit
+
+
+]
+
+ const result= await whatsappMessage(contact,"booking_reminder",messageData)
+
+ } catch (error) {
+  return res.status(400).send(error.message);
+
+ }
 })
 
 
