@@ -23,20 +23,20 @@ const transporter = nodemailer.createTransport({
   port: 587, // You can also try 465 for SSL
   secure: false, // Use true for port 465
   auth: {
-  user: process.env.EMAIL_USER_ID, 
-  pass: process.env.EMAIL_PASSWORD, 
- },
+    user: process.env.EMAIL_USER_ID,
+    pass: process.env.EMAIL_PASSWORD,
+  },
 });
 
 
 
 async function sendOtpByEmail(email, firstName, lastName) {
- 
-    const mailOptions ={
-      from: 'Rento Bikes <support@rentobikes.com>',
-      to: email,
-      subject: "Welcome to RentoBikes!",
-      html: `<!DOCTYPE html>
+
+  const mailOptions = {
+    from: 'Rento Bikes <support@rentobikes.com>',
+    to: email,
+    subject: "Welcome to RentoBikes!",
+    html: `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -239,26 +239,26 @@ async function sendOtpByEmail(email, firstName, lastName) {
       </table>
 </body>
 </html>`,
-    }
+  }
 
-    try {
-      // Send email and wait for the result
-      const info = await transporter.sendMail(mailOptions);
-  
-      // Log the response from the email sending
-      console.log('Email sent: ' + info.response);
-      return { success: true };
-    } catch (error) {
-      // Log any errors that occur
-      console.log('Error occurred:', error);
-      return { success: false, error: error.message };
-    }
+  try {
+    // Send email and wait for the result
+    const info = await transporter.sendMail(mailOptions);
+
+    // Log the response from the email sending
+    console.log('Email sent: ' + info.response);
+    return { success: true };
+  } catch (error) {
+    // Log any errors that occur
+    console.log('Error occurred:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 async function sendOtpByEmailForBooking(body) {
-  const {  userId, stationId, stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, } = body;
+  const { userId, stationId, stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, } = body;
   try {
-    // console.log(userId, stationId,stationMasterUserId,)
+     console.log(userId, stationId,stationMasterUserId,vehicleImage)
 
     function convertDateString(dateString) {
       if (!dateString) return "Invalid date";
@@ -278,7 +278,7 @@ async function sendOtpByEmailForBooking(body) {
       return date.toLocaleString('en-US', options);
     }
 
-    const {  email,firstName, lastName, } = await User.findOne({ _id: userId });
+    const { email, firstName, lastName, } = await User.findOne({ _id: userId });
     const { address, latitude, longitude } = await Station.findOne({ name: stationId });
 
     const station = await User.findOne({ _id: stationMasterUserId });
@@ -289,8 +289,8 @@ async function sendOtpByEmailForBooking(body) {
 
     const totalPrice = bookingPrice?.totalPrice || 0;
     const userPaid = bookingPrice?.userPaid || 0;
-     
-   const mailOptions={
+
+    const mailOptions = {
       from: 'Rento Bikes <support@rentobikes.com>',
       to: email,
       subject: ` Booking Confirmed - Your RentoBikes Booking ID ${bookingId} has been confirmed!`,
@@ -337,7 +337,8 @@ async function sendOtpByEmailForBooking(body) {
       <tr>
         <td style="padding-left:30px;width:50%" rowspan="3">
           <div style="width:70%">
-            <img style="width:90%;height:auto" src="${vehicleImage}" class="CToWUd" data-bit="iit">
+            <img style="width:90%; height:auto;" src="${vehicleImage}" class="CToWUd" data-bit="iit" alt="${vehicleName}">
+            
             <p style="text-align:center;margin:0px auto;color:#777;padding-top:5px;font-size:14px">
             ${vehicleName}</p>
           </div>
@@ -447,8 +448,8 @@ async function sendOtpByEmailForBooking(body) {
               <td colspan="2" style="color:#999;font-size:12px">
                 <span>&nbsp;&nbsp;Paid online</span>
                 <span style="float:right"> ₹ ${bookingPrice.userPaid == undefined ? bookingPrice.discountTotalPrice !== 0
-                  ? bookingPrice.discountTotalPrice
-                  : bookingPrice.totalPrice : bookingPrice.userPaid}</span>
+          ? bookingPrice.discountTotalPrice
+          : bookingPrice.totalPrice : bookingPrice.userPaid}</span>
               </td>
             </tr>
             <tr>
@@ -665,7 +666,7 @@ async function sendOtpByEmailForBooking(body) {
   }
 }
 
-async function sendEmailForBookingToStationMaster(userId, stationMasterUserId,vehicleName, BookingStartDateAndTime, BookingEndDateAndTime, bookingId,) {
+async function sendEmailForBookingToStationMaster(userId, stationMasterUserId, vehicleName, BookingStartDateAndTime, BookingEndDateAndTime, bookingId,) {
   // const {userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic,}=body;
   try {
 
@@ -693,12 +694,12 @@ async function sendEmailForBookingToStationMaster(userId, stationMasterUserId,ve
 
     const { email, firstName, lastName, } = await User.findOne({ _id: stationMasterUserId });
 
-   const mailOptions= {
-    from: 'Rento Bikes <support@rentobikes.com>',
-    to: email,
-    cc: 'support@rentobikes.com',
-    subject: ` Booking Recceived- You have received booking Id ${bookingId} from RentoBikes `,
-    html: `<!DOCTYPE html>
+    const mailOptions = {
+      from: 'Rento Bikes <support@rentobikes.com>',
+      to: email,
+      cc: 'support@rentobikes.com',
+      subject: ` Booking Recceived- You have received booking Id ${bookingId} from RentoBikes `,
+      html: `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -847,7 +848,7 @@ async function sendEmailForBookingToStationMaster(userId, stationMasterUserId,ve
 </table>
 </body>
 </html>`,
-  }
+    }
     const info = await transporter.sendMail(mailOptions);
 
     console.log("Email sent: %s", info.messageId);
@@ -866,9 +867,9 @@ async function sendInvoiceByEmail({
   lastName,
   file
 }) {
- //const {email, firstName, lastName, file}=body
- console.log(file)
-  const mailOptions ={
+  //const {email, firstName, lastName, file}=body
+  console.log(file)
+  const mailOptions = {
     from: 'Rento Bikes <support@rentobikes.com>',
     to: email,
     subject: "Invoice for Your Recent RentoBikes Service!",
@@ -1061,15 +1062,15 @@ async function sendInvoiceByEmail({
     </table>
 </body>
 </html>`,
-attachments: [
-  {
-    filename: file.originalname, // The name of the file (same as uploaded)
-    content: file.buffer, // The file content as a buffer
-    encoding: 'base64' // Specify the encoding if needed
+    attachments: [
+      {
+        filename: file.originalname, // The name of the file (same as uploaded)
+        content: file.buffer, // The file content as a buffer
+        encoding: 'base64' // Specify the encoding if needed
+      }
+    ]
   }
-]
-  }
-  
+
 
   try {
     // Send email and wait for the result
@@ -1088,4 +1089,4 @@ attachments: [
 
 
 
-module.exports = { sendOtpByEmail, sendOtpByEmailForBooking, sendEmailForBookingToStationMaster,sendInvoiceByEmail };
+module.exports = { sendOtpByEmail, sendOtpByEmailForBooking, sendEmailForBookingToStationMaster, sendInvoiceByEmail };
