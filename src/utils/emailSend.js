@@ -256,7 +256,7 @@ async function sendOtpByEmail(email, firstName, lastName) {
 }
 
 async function sendOtpByEmailForBooking(body) {
-  const { email, userId, stationId, stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, } = body;
+  const {  userId, stationId, stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, } = body;
   try {
     // console.log(userId, stationId,stationMasterUserId,)
 
@@ -278,7 +278,7 @@ async function sendOtpByEmailForBooking(body) {
       return date.toLocaleString('en-US', options);
     }
 
-    const {  firstName, lastName, } = await User.findOne({ _id: userId });
+    const {  email,firstName, lastName, } = await User.findOne({ _id: userId });
     const { address, latitude, longitude } = await Station.findOne({ name: stationId });
 
     const station = await User.findOne({ _id: stationMasterUserId });
@@ -696,7 +696,7 @@ async function sendEmailForBookingToStationMaster(userId, stationMasterUserId,ve
    const mailOptions= {
     from: 'Rento Bikes <support@rentobikes.com>',
     to: email,
-    cc: adminEmail,
+    cc: 'support@rentobikes.com',
     subject: ` Booking Recceived- You have received booking Id ${bookingId} from RentoBikes `,
     html: `<!DOCTYPE html>
 <html lang="en">

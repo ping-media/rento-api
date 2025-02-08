@@ -424,6 +424,7 @@ if (o.paymentUpdates) {
       obj.message = "Booking Update successfull";
 
       if (paySuccessId) {
+        console.log("first")
         function convertDateString(dateString) {
                 if (!dateString) return "Invalid date";
               
@@ -498,10 +499,12 @@ if (o.paymentUpdates) {
       
         if (paymentStatus === "paid") {
           messageData.push(totalPrice, vehicleBasic.refundableDeposit);
-         // console.log("Enter")
+         console.log("Enter")
       
           whatsappMessage(user.contact, "booking_confirm_paid", messageData);
         } else if (paymentStatus === "partially_paid") {
+          console.log("first")
+
           const remainingAmount = Number(totalPrice) - Number(bookingPrice.userPaid);
       
           messageData.push(bookingPrice.userPaid, remainingAmount, vehicleBasic.refundableDeposit);
@@ -509,6 +512,7 @@ if (o.paymentUpdates) {
           whatsappMessage(user.contact, "booking_confirmed_partial_paid", messageData);
         }
         sendEmailForBookingToStationMaster(userId, stationMasterUserId, vehicleName, BookingStartDateAndTime, BookingEndDateAndTime, bookingId)
+        console.log(userId, stationMasterUserId, vehicleName, BookingStartDateAndTime, BookingEndDateAndTime, bookingId)
       }
       
 
