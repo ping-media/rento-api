@@ -947,7 +947,7 @@ router.post('/sendReminder ', Authentication, async (req, res) => {
 
  try {
   const{firstName,vehicleName,BookingStartDateAndTime,bookingId,stationName,bookingPrice,vehicleBasic,managerContact}=req.body;
- const station = await Station.findOne({ stationName:bookingData.stationName }).select("latitude longitude");
+ const station = await Station.findOne({stationName}).select("latitude longitude");
  if (!station) {
    console.error(`Station not found for stationName: ${stationName}`);
    return; 
