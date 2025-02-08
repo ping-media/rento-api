@@ -963,7 +963,7 @@ router.post('/sendReminder ', Authentication, async (req, res) => {
  const messageData = [
   firstName,
  vehicleName,
- BookingStartDateAndTime,
+ convertDateString(BookingStartDateAndTime),
  bookingId,
  stationName,
  mapLink,
