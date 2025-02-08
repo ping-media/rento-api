@@ -4,9 +4,9 @@ const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schem
 const {whatsappMessage}=require("../../../utils/whatsappMessage")
 
 const extentBooking = async (req, res) => {
-    let {  _id, extendAmount,bookingPrice, oldBookings,extendBooking,bookingStatus,firstName,managerContact,contact } = req.body;
+    let {  _id,vehicleTableId, extendAmount,bookingPrice, oldBookings,extendBooking,bookingStatus,firstName,managerContact,contact } = req.body;
   //  const res = { status: 200, message: "Data fetched successfully", data: [] };
-  const {vehicleTableId,BookingEndDateAndTime,BookingStartDateAndTime}=req.query
+  const {BookingEndDateAndTime,BookingStartDateAndTime}=req.query
 
   function convertDateString(dateString) {
     if (!dateString) return "Invalid date";
