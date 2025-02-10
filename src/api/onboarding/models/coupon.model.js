@@ -283,7 +283,7 @@ const applyCoupon = async (body) => {
       discount = coupon.discount;
     }
 
-    const finalAmount = totalAmount<coupon.discount ? 0 : totalAmount - discount;
+    const finalAmount = totalAmount<discount ? 0 : totalAmount - discount;
 
    const isDiscountZero= finalAmount===0 ? true :false
     

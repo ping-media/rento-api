@@ -90,7 +90,9 @@ async function adminLogin({ email, password }) {
     // Find the user by email
     const result = await User.findOne({ email });
    // console.log(result)
+   let stationData;
    if(result){
+
     const {userType,_id}=result;
 
 
@@ -100,22 +102,19 @@ async function adminLogin({ email, password }) {
       return obj;
     }
 
-    let stationData;
+    
     if(userType=='manager'){
        stationData= await Station.findOne({userId:_id}).select(" stationName stationId locationId");
 
     }
+    
   }
     if (!result) {
       obj.status = 401;
       obj.message = "Invalid credentials";
       return obj;
     }
-    if (!result) {
-      obj.status = 401;
-      obj.message = "Invalid credentials";
-      return obj;
-    }
+   
 
     if(result.status=="inactive"){
       obj.status = 401;
@@ -135,7 +134,7 @@ async function adminLogin({ email, password }) {
     const token = JWT.sign({ id: result._id }, BCRYPT_TOKEN,{expiresIn:"43200m"});
     obj.data = result;
     obj.token = token;
-    obj.Station=stationData;
+    obj.Station=stationData||null;
   } else {
     obj.status = 401
     obj.message = "Invalid data or something is missing"
