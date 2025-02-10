@@ -90,7 +90,8 @@ async function adminLogin({ email, password }) {
     // Find the user by email
     const result = await User.findOne({ email });
    // console.log(result)
-   const {userType,_id}=result;
+   if(result){
+    const {userType,_id}=result;
 
 
     if (userType=='customer') {
@@ -104,7 +105,7 @@ async function adminLogin({ email, password }) {
        stationData= await Station.findOne({userId:_id}).select(" stationName stationId locationId");
 
     }
-
+  }
     if (!result) {
       obj.status = 401;
       obj.message = "Invalid credentials";
