@@ -43,7 +43,8 @@ const { Auth } = require("googleapis");
 const { extentBooking } = require("../models/extentBooking.model");
 const { forgetPasswordFunction } = require("../models/forgetPassword");
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
-const {whatsappMessage}=require("../../../utils/whatsappMessage")
+const {whatsappMessage}=require("../../../utils/whatsappMessage");
+const {sendReminderEmail}=require("../../../utils/emailSend")
 
 
 // create messages
@@ -928,10 +929,10 @@ router.post('/extendBooking', Authentication, async (req, res) => {
 router.post('/sendReminder', Authentication, async (req, res) => {
   function convertDateString(dateString) {
     if (!dateString) return "Invalid date";
-  
+
     const date = new Date(dateString);
     if (isNaN(date)) return "Invalid date";
-  
+
     const options = { 
       day: 'numeric', 
       month: 'long', 
@@ -940,47 +941,64 @@ router.post('/sendReminder', Authentication, async (req, res) => {
       minute: '2-digit', 
       hour12: true 
     };
-  
+
     return date.toLocaleString('en-US', options);
   }
 
+  try {
+    const { userEmail, firstName, vehicleName, BookingStartDateAndTime, bookingId, stationName, bookingPrice, vehicleBasic, managerContact, contact } = req.body;
+    
+    // Fetch station details
+    const station = await Station.findOne({ stationName }).select("latitude longitude");
+    if (!station) {
+      console.error(`Station not found for stationName: ${stationName}`);
+      return res.status(400).json({ status: 400, message: "Station not found" });
+    }
 
- try {
-  const{firstName,vehicleName,BookingStartDateAndTime,bookingId,stationName,bookingPrice,vehicleBasic,managerContact,contact}=req.body;
- const station = await Station.findOne({stationName}).select("latitude longitude");
- console.log(station)
- if (!station) {
-   console.error(`Station not found for stationName: ${stationName}`);
-   return; 
- }
+    const { latitude, longitude } = station;
+    const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
 
- const {latitude,longitude}=station
- 
- const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
- const totalPrice = bookingPrice.discountTotalPrice > 0 
-          ? bookingPrice.discountTotalPrice 
-          : bookingPrice.totalPrice;
+    // Calculate total price
+    const totalPrice = bookingPrice.discountTotalPrice > 0 
+                        ? bookingPrice.discountTotalPrice 
+                        : bookingPrice.totalPrice;
+    const refundableDeposit = vehicleBasic.refundableDeposit;
 
- const messageData = [
-  firstName,
- vehicleName,
- convertDateString(BookingStartDateAndTime),
- bookingId,
- stationName,
- mapLink,
- managerContact,
-totalPrice,
- vehicleBasic.refundableDeposit
-]
+    // Prepare message data for WhatsApp
+    const messageData = [
+      firstName,
+      vehicleName,
+      convertDateString(BookingStartDateAndTime),
+      bookingId,
+      stationName,
+      mapLink,
+      managerContact,
+      totalPrice,
+      refundableDeposit
+    ];
 
- const result=  whatsappMessage(contact,"booking_reminder",messageData)
- return res.json({status:200,message:"Reminder send successfully"})
+    // Send WhatsApp reminder (assuming async function)
+    const whatsappResult = await whatsappMessage(contact, "booking_reminder", messageData);
+    // console.log(whatsappResult.success)
+    // if (!whatsappResult.success) {
+    //   return res.status(500).json({ status: 500, message: "Failed to send WhatsApp reminder"  });
+    // }
 
- } catch (error) {
-  return res.status(400).send(error.message);
+    // Send email reminder
+    const emailResult = await sendReminderEmail(req.body);
 
- }
-})
+    if (!emailResult.success) {
+      return res.status(500).json({ status: 500, message: "Failed to send email reminder" });
+    }
+
+    return res.json({ status: 200, message: "Reminder sent successfully" });
+
+  } catch (error) {
+    console.error("Error occurred:", error);
+    return res.status(500).send({ status: 500, message: error.message });
+  }
+});
+
 
 
 module.exports = router;
