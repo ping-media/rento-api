@@ -936,11 +936,11 @@ async function createPlan({ _id, planName, planPrice, planDuration, deleteRec, u
 
 
 
-async function createInvoice({ currentBookingId,_id }) {
+async function createInvoice({ currentBookingId,_id,deletRec }) {
   const obj = { status: 200, message: "Invoice created successfully", data: [] };
 
   try {
-      if(_id && true){
+      if(_id && deletRec==true){
         const invoice = await InvoiceTbl.deleteOne({ _id });
     
         // If no document was deleted
