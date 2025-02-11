@@ -1012,12 +1012,8 @@ router.post('/cancelledBooking',Authentication, async(req,res)=>{
     }
 
 
-    if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
-      if (isCancelled === true) {
-        o.notes = o.notes.filter(note => !note.noteType.includes("canceled"));
-      } else {
-        o.notes = [...(find.notes || []), o.notes[0]];
-      }
+    if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) { 
+        o.notes = [...(find.notes || []), o.notes[0]]
     }
     
 
