@@ -879,7 +879,7 @@ async function sendInvoiceByEmail({
     from: 'Rento Bikes <support@rentobikes.com>',
     to: email,
     subject: "Invoice for Your Recent RentoBikes Service!",
-    html: `<!DOCTYPE html>
+    html:`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1065,7 +1065,7 @@ async function sendInvoiceByEmail({
                   </td>
                 </tr>
               </tbody>
-            </table>              </td>
+            </table>               </td>
         </tr>
 
       </tbody>
