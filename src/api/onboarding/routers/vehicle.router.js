@@ -1013,7 +1013,7 @@ router.post('/cancelledBooking',Authentication, async(req,res)=>{
 
 
     if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) { 
-        o.notes = [...(find.notes || []), o.notes[0]]
+        o.notes = [...(booking.notes || []), o.notes[0]]
     }
     
 
