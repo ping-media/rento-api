@@ -384,7 +384,7 @@ async function booking({
 
         obj.message = "Booking deleted successfully";
         obj.status = 200;
-        // obj.data = { _id };
+      
 
         await Log({
           message: `Booking with ID ${_id} deleted`,
@@ -395,9 +395,7 @@ async function booking({
         return obj;
       }
 
-// if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
-//   o.notes = [...(find.notes || []), o.notes[0]];
-// }
+
 
 if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
   if (isCancelled === true) {
@@ -422,6 +420,8 @@ if (o.paymentUpdates) {
 
       obj.status = 200;
       obj.message = "Booking Update successfull";
+
+
 
       if (paySuccessId) {
         console.log("first")

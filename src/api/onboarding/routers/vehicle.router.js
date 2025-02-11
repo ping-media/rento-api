@@ -44,7 +44,7 @@ const { extentBooking } = require("../models/extentBooking.model");
 const { forgetPasswordFunction } = require("../models/forgetPassword");
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const {whatsappMessage}=require("../../../utils/whatsappMessage");
-const {sendReminderEmail}=require("../../../utils/emailSend")
+const {sendReminderEmail,sendCancelEmail}=require("../../../utils/emailSend")
 
 
 // create messages
@@ -826,13 +826,7 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
       obj.message = "Ride already finished";
       return res.json(obj);
     }
-    // const duration = getDurationInDaysAndHours(BookingEndDateAndTime, rideEndDate);
-
-    // const lateFeeBasedOnHour= vehicleBasic.lateFee*((duration?.days*24)+(duration?.hours)) || 0;
-    // console.log(lateFeeBasedOnHour)
-    // const lateKm = endMeterReading > startMeterReading && (Number(endMeterReading)-Number(startMeterReading)) || 0;
-    // const allowKm = getDurationInDaysAndHours(BookingStartDateAndTime, BookingEndDateAndTime)?.days * vehicleBasic?.freeLimit;
-    // const lateFeeBasedOnKM= (lateKm - allowKm) * vehicleBasic?.extraKmCharge;
+    
 
     const newBookingPrice = {...bookingPrice, lateFeeBasedOnHour, lateFeeBasedOnKM};
     // return console.log(newBookingPrice);
@@ -977,7 +971,7 @@ router.post('/sendReminder', Authentication, async (req, res) => {
       refundableDeposit
     ];
 
-    // Send WhatsApp reminder (assuming async function)
+    
     const whatsappResult = await whatsappMessage(contact, "booking_reminder", messageData);
     // console.log(whatsappResult.success)
     // if (!whatsappResult.success) {
@@ -1000,5 +994,63 @@ router.post('/sendReminder', Authentication, async (req, res) => {
 });
 
 
+router.post('/cancelledBooking',Authentication, async(req,res)=>{
+  const {_id,bookingStatus,paymentStatus,rideStatus,notes,firstName,contact,managerContact,email,managerEmail}=req.body;
+  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+
+  try {
+   
+
+
+    const o={bookingStatus,paymentStatus,rideStatus,notes};
+
+    const booking = await Booking.findOne({ _id });
+    if(!booking){
+      obj.status = 401;
+      obj.message = "Booking not found";
+   return  res.json(obj)
+    }
+
+
+    if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
+      if (isCancelled === true) {
+        o.notes = o.notes.filter(note => !note.noteType.includes("canceled"));
+      } else {
+        o.notes = [...(find.notes || []), o.notes[0]];
+      }
+    }
+    
+
+    const UpdatedData=  await Booking.findByIdAndUpdate({ _id: ObjectId(_id) }, { $set: o }, { new: true });
+
+      await Log({
+        message: `Booking with ID ${_id} updated`,
+        functionName: "cancelledBooking",
+       
+      });
+
+      obj.status = 200;
+      obj.message = "Booking cancelled successfull";
+
+      const {vehicleName,BookingStartDateAndTime,stationName,bookingId,bookingPrice}=booking;
+
+      const totalPrice = bookingPrice.discountTotalPrice > 0 
+                        ? bookingPrice.discountTotalPrice 
+                        : bookingPrice.totalPrice;
+
+      const messageData=[firstName,vehicleName,bookingId,BookingStartDateAndTime,stationName,totalPrice,managerContact]
+
+      whatsappMessage(contact,"booking_cancel",messageData);
+
+      sendCancelEmail(email,firstName,vehicleName,bookingId,BookingStartDateAndTime,stationName,totalPrice,managerContact)
+
+   return  res.json(obj)
+
+
+  } catch (error) {
+    return res.json({ status: 500, message: error.message });
+  }
+ 
+})
 
 module.exports = router;
