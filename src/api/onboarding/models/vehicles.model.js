@@ -936,11 +936,11 @@ async function createPlan({ _id, planName, planPrice, planDuration, deleteRec, u
 
 
 
-async function createInvoice({ currentBookingId,_id,deletRec,bookingId }) {
+async function createInvoice({ bookingID,currentBookingId,_id,deletRec }) {
   const obj = { status: 200, message: "Invoice created successfully", data: [] };
 
   try {
-      if(_id && deletRec==true){
+      if(_id && deletRec){
         const invoice = await InvoiceTbl.deleteOne({ _id });
     
         // If no document was deleted
@@ -952,7 +952,7 @@ async function createInvoice({ currentBookingId,_id,deletRec,bookingId }) {
         }
 
         const updateResult = await Booking.updateOne(
-          { bookingId },
+          { bookingID },
           { $set: { "bookingPrice.isInvoiceCreated": false } },
           { new: true }
         );
@@ -962,6 +962,7 @@ async function createInvoice({ currentBookingId,_id,deletRec,bookingId }) {
           message: "Invoice deleted successfully",
         };
       }
+
     // Fetch booking details
     const bookings = await Booking.findOne({ _id:currentBookingId  }).select("userId bookingId paymentStatus bookingPrice vehicleBasic vehicleName");
 
