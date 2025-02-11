@@ -936,7 +936,7 @@ async function createPlan({ _id, planName, planPrice, planDuration, deleteRec, u
 
 
 
-async function createInvoice({ currentBookingId,_id,deletRec }) {
+async function createInvoice({ currentBookingId,_id,deletRec,bookingId }) {
   const obj = { status: 200, message: "Invoice created successfully", data: [] };
 
   try {
@@ -950,6 +950,12 @@ async function createInvoice({ currentBookingId,_id,deletRec }) {
             message: "Invoice not found.",
           };
         }
+
+        const updateResult = await Booking.updateOne(
+          { bookingId },
+          { $set: { "bookingPrice.isInvoiceCreated": false } },
+          { new: true }
+        );
         
         return {
           status: 200,
