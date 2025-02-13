@@ -791,6 +791,7 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
     startMeterReading,
     lateFeeBasedOnHour,
     lateFeeBasedOnKM,
+    closingDate
     
   } = req.body;
 
@@ -861,6 +862,14 @@ router.put('/rideUpdate', Authentication, async (req, res) => {
       { $set: { endMeterReading,rideEndDate } },
       { new: true }
     );
+
+    if(closingDate){
+      const updatedBooking = await Booking.updateOne(
+        { _id: ObjectId(_id) },
+        { $set: { rideStatus,bookingPrice:newBookingPrice,BookingEndDateAndTime:closingDate,"extendBooking.originalEndDate":BookingEndDateAndTime } },
+        { new: true }
+      );
+    }
 
     const updatedBooking = await Booking.updateOne(
       { _id: ObjectId(_id) },
