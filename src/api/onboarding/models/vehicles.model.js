@@ -2445,9 +2445,9 @@ const getVehicleTblData = async (query) => {
     
     
     const pipeline = [
-      { $match: matchFilter }, 
-      
+      { $match: matchFilter },
     
+      // Lookup bookings
       {
         $lookup: {
           from: "bookings",
@@ -2456,7 +2456,7 @@ const getVehicleTblData = async (query) => {
           as: "bookings",
         },
       },
-      
+    
       // Lookup station data
       {
         $lookup: {
@@ -2466,7 +2466,7 @@ const getVehicleTblData = async (query) => {
           as: "stationData",
         },
       },
-      
+    
       // Lookup vehicle master data
       {
         $lookup: {
@@ -2476,7 +2476,7 @@ const getVehicleTblData = async (query) => {
           as: "vehicleMasterData",
         },
       },
-      
+    
       // Lookup maintenance records
       {
         $lookup: {
@@ -2486,40 +2486,52 @@ const getVehicleTblData = async (query) => {
           as: "maintenanceData",
         },
       },
-      
-      // Identify conflicting bookings & maintenance
+    
+    
       {
         $addFields: {
+          completedBookings: {
+            $filter: {
+              input: "$bookings",
+              as: "booking",
+              cond: { $eq: ["$$booking.rideStatus", "completed"] }, 
+            },
+          },
+    
           conflictingBookings: {
             $filter: {
               input: "$bookings",
               as: "booking",
               cond: {
-                $or: [
-                  {$eq:["$$booking.rideStatus","completed"]},
+                $and: [
+                  { $ne: ["$$booking.rideStatus", "completed"] }, 
                   {
-                    $and: [
-                      { $gte: ["$$booking.BookingStartDateAndTime", startDate] },
-                      { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
-                    ],
-                  },
-                  {
-                    $and: [
-                      { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
-                      { $lte: ["$$booking.BookingEndDateAndTime", endDate] },
-                    ],
-                  },
-                  {
-                    $and: [
-                      { $lte: ["$$booking.BookingStartDateAndTime", startDate] },
-                      { $gte: ["$$booking.BookingEndDateAndTime", endDate] },
+                    $or: [
+                      {
+                        $and: [
+                          { $gte: ["$$booking.BookingStartDateAndTime", startDate] },
+                          { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
+                        ],
+                      },
+                      {
+                        $and: [
+                          { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
+                          { $lte: ["$$booking.BookingEndDateAndTime", endDate] },
+                        ],
+                      },
+                      {
+                        $and: [
+                          { $lte: ["$$booking.BookingStartDateAndTime", startDate] },
+                          { $gte: ["$$booking.BookingEndDateAndTime", endDate] },
+                        ],
+                      },
                     ],
                   },
                 ],
               },
             },
           },
-          
+    
           conflictingMaintenance: {
             $filter: {
               input: "$maintenanceData",
@@ -2550,15 +2562,15 @@ const getVehicleTblData = async (query) => {
           },
         },
       },
+    
       
-      // Flatten vehicle master and station data
       {
         $addFields: {
           vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
           stationData: { $arrayElemAt: ["$stationData", 0] },
         },
       },
-      
+    
       // Apply additional filters
       {
         $match: {
@@ -2567,20 +2579,24 @@ const getVehicleTblData = async (query) => {
           ...(vehicleType ? { "vehicleMasterData.vehicleType": vehicleType } : {}),
         },
       },
+    
       { $skip: (parsedPage - 1) * parsedLimit },
       { $limit: parsedLimit },
-      // Use $facet to create separate datasets for available and excluded vehicles
+    
+     
       {
         $facet: {
           availableVehicles: [
             {
               $match: {
-                conflictingBookings: { $size: 0 }, // Ensure no conflicting bookings
-                conflictingMaintenance: { $size: 0 }, // Ensure no conflicting maintenance
+                $or: [
+                  { $expr: { $eq: [{ $size: "$conflictingBookings" }, 0] } }, 
+                  { $expr: { $gt: [{ $size: "$completedBookings" }, 0] } }, 
+                ],
+                conflictingMaintenance: { $size: 0 }, 
               },
             },
-            { $project: { conflictingBookings: 0, conflictingMaintenance: 0 } },
-           
+            { $project: { conflictingBookings: 0, conflictingMaintenance: 0, completedBookings: 0 } },
             {
               $project: {
                 _id: 1,
@@ -2608,19 +2624,17 @@ const getVehicleTblData = async (query) => {
               },
             },
           ],
-          
+    
           excludedVehicles: [
             {
               $match: {
-                $or: [
-                  { $expr: { $gt: [{ $size: "$conflictingBookings" }, 0] } }, // Vehicles with conflicting bookings
-                  { $expr: { $gt: [{ $size: "$conflictingMaintenance" }, 0] } }, // Vehicles with conflicting maintenance
+                $and: [
+                  { $expr: { $gt: [{ $size: "$conflictingBookings" }, 0] } }, 
+                  { $expr: { $eq: [{ $size: "$completedBookings" }, 0] } }, 
                 ],
               },
             },
-           
-            { $project: { conflictingBookings: 0, conflictingMaintenance: 0 } },
-            
+            { $project: { conflictingBookings: 0, conflictingMaintenance: 0, completedBookings: 0 } },
             {
               $project: {
                 _id: 1,
@@ -2640,28 +2654,24 @@ const getVehicleTblData = async (query) => {
                 locationId: 1,
                 condition: 1,
                 vehicleStatus: 1,
-               // vehicleImage: 1,
+                vehicleImage: { $ifNull: ["$vehicleMasterData.vehicleImage", ""] },
                 vehicleBrand: { $ifNull: ["$vehicleMasterData.vehicleBrand", ""] },
                 vehicleName: { $ifNull: ["$vehicleMasterData.vehicleName", ""] },
                 vehicleType: { $ifNull: ["$vehicleMasterData.vehicleType", ""] },
-                vehicleImage: { $ifNull: ["$vehicleMasterData.vehicleImage", ""] },
                 stationName: { $ifNull: ["$stationData.stationName", ""] },
                 BookingStartDate: { $ifNull: [{ $arrayElemAt: ["$bookings.BookingStartDateAndTime", -1] }, null] },
                 BookingEndDate: { $ifNull: [{ $arrayElemAt: ["$bookings.BookingEndDateAndTime", -1] }, null] },
-                
-                // Last Maintenance Dates (startDate and endDate)
                 MaintenanceStartDate: { $ifNull: [{ $arrayElemAt: ["$maintenanceData.startDate", -1] }, null] },
                 MaintenanceEndDate: { $ifNull: [{ $arrayElemAt: ["$maintenanceData.endDate", -1] }, null] },
               },
             },
-            
           ],
-         
-          
+    
           totalCount: [{ $count: "totalRecords" }],
         },
       },
     ];
+    
 
     const result = await vehicleTable.aggregate(pipeline);
 
