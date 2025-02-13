@@ -149,7 +149,7 @@ const pickupImageUp = async (req, res) => {
        
     });
 
-    // await newDocument.save();
+    await newDocument.save();
     const OTP=Math.floor(1000 + Math.random() * 9000);
 
     if(paymentStatus=="partially_paid" || paymentStatus=="partiallyPay"){
@@ -171,12 +171,6 @@ const pickupImageUp = async (req, res) => {
 
 
    
-
-    // const currentBooking_id = _id
-    // const timeline={"Pick-up done":updateResult.updatedAt}
-    // timelineFunction(userId, bookingId, currentBooking_id, timeline  )
-
-//console.log(updateResult)
     return res.json({
       status: 200,
       message: "Ride started successfully.",
