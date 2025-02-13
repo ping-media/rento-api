@@ -1936,6 +1936,177 @@ const getVehicleTbl = async (query) => {
     
   
     
+    // const pipeline = [
+    //   { $match: matchFilter },
+    
+    //   // Lookup bookings for the vehicle
+    //   {
+    //     $lookup: {
+    //       from: "bookings",
+    //       localField: "_id",
+    //       foreignField: "vehicleTableId",
+    //       as: "bookings",
+    //     },
+    //   },
+    
+    //   // Lookup station data
+    //   {
+    //     $lookup: {
+    //       from: "stations",
+    //       localField: "stationId",
+    //       foreignField: "stationId",
+    //       as: "stationData",
+    //     },
+    //   },
+    
+    //   // Lookup vehicle master data
+    //   {
+    //     $lookup: {
+    //       from: "vehiclemasters",
+    //       localField: "vehicleMasterId",
+    //       foreignField: "_id",
+    //       as: "vehicleMasterData",
+    //     },
+    //   },
+    
+    //   // Lookup maintenance records
+    //   {
+    //     $lookup: {
+    //       from: "maintenancevehicles",
+    //       localField: "_id",
+    //       foreignField: "vehicleTableId",
+    //       as: "maintenanceData",
+    //     },
+    //   },
+    
+    //   // Filter conflicting bookings & maintenance
+    //   {
+    //     $addFields: {
+    //       conflictingBookings: {
+    //         $filter: {
+    //           input: "$bookings",
+    //           as: "booking",
+    //           cond: {
+    //             $or: [
+    //               {
+    //                 $and: [
+    //                   { $gte: ["$$booking.BookingStartDateAndTime", startDate] },
+    //                   { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
+    //                 ],
+    //               },
+    //               {
+    //                 $and: [
+    //                   { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
+    //                   { $lte: ["$$booking.BookingEndDateAndTime", endDate] },
+    //                 ],
+    //               },
+    //               {
+    //                 $and: [
+    //                   { $lte: ["$$booking.BookingStartDateAndTime", startDate] },
+    //                   { $gte: ["$$booking.BookingEndDateAndTime", endDate] },
+    //                 ],
+    //               },
+    //             ],
+    //           },
+    //         },
+    //       },
+    
+    //       conflictingMaintenance: {
+    //         $filter: {
+    //           input: "$maintenanceData",
+    //           as: "maintenance",
+    //           cond: {
+    //             $or: [
+    //               {
+    //                 $and: [
+    //                   { $gte: ["$$maintenance.startDate", startDate] },
+    //                   { $lte: ["$$maintenance.startDate", endDate] },
+    //                 ],
+    //               },
+    //               {
+    //                 $and: [
+    //                   { $gte: ["$$maintenance.endDate", startDate] },
+    //                   { $lte: ["$$maintenance.endDate", endDate] },
+    //                 ],
+    //               },
+    //               {
+    //                 $and: [
+    //                   { $lte: ["$$maintenance.startDate", startDate] },
+    //                   { $gte: ["$$maintenance.endDate", endDate] },
+    //                 ],
+    //               },
+    //             ],
+    //           },
+    //         },
+    //       },
+    //     },
+    //   },
+    
+    //   // Match active vehicles and filter out those with conflicting bookings or maintenance
+    //   {
+    //     $match: {
+    //       vehicleStatus: "active",
+    //       "conflictingBookings.0": { $exists: false },
+    //       "conflictingMaintenance.0": { $exists: false },
+    //     },
+    //   },
+    
+    //   // Flatten vehicle master and station data
+    //   {
+    //     $addFields: {
+    //       vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
+    //       stationData: { $arrayElemAt: ["$stationData", 0] },
+    //     },
+    //   },
+    
+    //   // Apply additional filters
+    //   {
+    //     $match: {
+    //       ...(vehicleBrand ? { "vehicleMasterData.vehicleBrand": vehicleBrand } : {}),
+    //       ...(vehicleType ? { "vehicleMasterData.vehicleType": vehicleType } : {}),
+    //     },
+    //   },
+    
+    //   // Project the required fields
+    //   {
+    //     $project: {
+    //       _id: 1,
+    //       vehicleImage: "$vehicleMasterData.vehicleImage",
+    //       vehicleBrand: "$vehicleMasterData.vehicleBrand",
+    //       vehicleName: "$vehicleMasterData.vehicleName",
+    //       vehicleType: "$vehicleMasterData.vehicleType",
+    //       stationName: "$stationData.stationName",
+    //       speedLimit: 1,
+    //       refundableDeposit: 1,
+    //       lateFee: 1,
+    //       vehicleStatus: 1,
+    //       freeKms: 1,
+    //       vehicleMasterId: 1,
+    //       extraKmsCharges: 1,
+    //       vehicleNumber: 1,
+    //       vehicleModel: 1,
+    //       vehiclePlan: 1,
+    //       perDayCost: 1,
+    //       lastServiceDate: 1,
+    //       kmsRun: 1,
+    //       condition: 1,
+    //       locationId: 1,
+    //       stationId: 1,
+    //     },
+    //   },
+    
+    //   // Pagination using $facet
+    //   {
+    //     $facet: {
+    //       totalCount: [{ $count: "totalRecords" }],
+    //       data: [
+    //         { $skip: (parsedPage - 1) * parsedLimit },
+    //         { $limit: parsedLimit },
+    //       ],
+    //     },
+    //   },
+    // ];
+    
     const pipeline = [
       { $match: matchFilter },
     
@@ -1979,31 +2150,46 @@ const getVehicleTbl = async (query) => {
         },
       },
     
-      // Filter conflicting bookings & maintenance
+      // Separate completed bookings and filter conflicting bookings
       {
         $addFields: {
+          // ✅ Store completed bookings separately
+          completedBookings: {
+            $filter: {
+              input: "$bookings",
+              as: "booking",
+              cond: { $eq: ["$$booking.rideStatus", "completed"] }, // Only completed bookings
+            },
+          },
+    
+          // ✅ Filter out completed bookings from conflicts
           conflictingBookings: {
             $filter: {
               input: "$bookings",
               as: "booking",
               cond: {
-                $or: [
+                $and: [
+                  { $ne: ["$$booking.rideStatus", "completed"] }, // Exclude completed bookings
                   {
-                    $and: [
-                      { $gte: ["$$booking.BookingStartDateAndTime", startDate] },
-                      { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
-                    ],
-                  },
-                  {
-                    $and: [
-                      { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
-                      { $lte: ["$$booking.BookingEndDateAndTime", endDate] },
-                    ],
-                  },
-                  {
-                    $and: [
-                      { $lte: ["$$booking.BookingStartDateAndTime", startDate] },
-                      { $gte: ["$$booking.BookingEndDateAndTime", endDate] },
+                    $or: [
+                      {
+                        $and: [
+                          { $gte: ["$$booking.BookingStartDateAndTime", startDate] },
+                          { $lte: ["$$booking.BookingStartDateAndTime", endDate] },
+                        ],
+                      },
+                      {
+                        $and: [
+                          { $gte: ["$$booking.BookingEndDateAndTime", startDate] },
+                          { $lte: ["$$booking.BookingEndDateAndTime", endDate] },
+                        ],
+                      },
+                      {
+                        $and: [
+                          { $lte: ["$$booking.BookingStartDateAndTime", startDate] },
+                          { $gte: ["$$booking.BookingEndDateAndTime", endDate] },
+                        ],
+                      },
                     ],
                   },
                 ],
@@ -2042,12 +2228,15 @@ const getVehicleTbl = async (query) => {
         },
       },
     
-      // Match active vehicles and filter out those with conflicting bookings or maintenance
+      // ✅ Ensure vehicles with completed bookings are always included
       {
         $match: {
           vehicleStatus: "active",
-          "conflictingBookings.0": { $exists: false },
-          "conflictingMaintenance.0": { $exists: false },
+          $or: [
+            { "conflictingBookings.0": { $exists: false } }, // No conflicting bookings
+            { "completedBookings.0": { $exists: true } }, // ✅ Include vehicles with completed bookings
+          ],
+          "conflictingMaintenance.0": { $exists: false }, // No maintenance conflicts
         },
       },
     
