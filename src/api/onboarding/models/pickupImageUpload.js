@@ -175,6 +175,7 @@ const pickupImageUp = async (req, res) => {
       status: 200,
       message: "Ride started successfully.",
       newDocument,
+      endOtp:OTP
     });
   } catch (error) {
     console.error("Error uploading files:", error);

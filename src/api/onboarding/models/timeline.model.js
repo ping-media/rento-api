@@ -67,10 +67,10 @@ if(isStart && isStart===true)
     
       const updatedTimeline = [...existingData.timeLine, ...timeLine];
 
-      // await Timeline.updateOne(
-      //   { currentBooking_id },
-      //   { $set: { timeLine: updatedTimeline } }
-      // );
+      await Timeline.updateOne(
+        { currentBooking_id },
+        { $set: { timeLine: updatedTimeline } }
+      );
 
 
   if(timeLine[timeLine.length-1].PaymentLink && timeLine[timeLine.length-1].PaymentLink !=="")
