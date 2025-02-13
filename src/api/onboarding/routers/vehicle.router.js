@@ -194,8 +194,8 @@ router.get("/getVehicleBookrecode", async (req, res) => {
 
 // Configure Multer to use Memory Storage
 const upload = multer({
-  storage: multer.memoryStorage(), // Store files in memory for manual upload to S3
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB file size limit
+  storage: multer.memoryStorage(), 
+  limits: { fileSize: 5 * 1024 * 1024 }, 
 });
 
 

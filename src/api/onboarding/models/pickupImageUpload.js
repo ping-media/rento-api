@@ -34,16 +34,15 @@ const upload = multer({
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
-    const { userId, bookingId, data, startMeterReading, endMeterReading, _id,rideOtp,PaymentMode,paymentStatus } = req.body;
+    const { userId, bookingId, data, startMeterReading, endMeterReading, _id,rideOtp,PaymentMode,paymentStatus,isVehicleUpdate,vehicleNumber,oldVehicleEndMeterReading } = req.body;
   
-
     if (!userId || userId.length !== 24) {
       return res.json({ message: "Invalid user ID provided." });
     }
 
     const booking= await Booking.findOne({_id}).populate("userId", "kycApproved");
     const kycStatus = booking?.userId?.kycApproved;
-//console.log(booking)
+
     if(kycStatus==="no"){
       return res.json(
         { status:400,
@@ -55,19 +54,17 @@ const pickupImageUp = async (req, res) => {
     }
 
     const {vehicleBasic}=booking;
-    //console.log(vehicleBasic.startRide,rideOtp)
-    if(rideOtp && rideOtp.length===4){
+    
+   
+     
       if(vehicleBasic.startRide!==Number(rideOtp)){
   
-    
-        // Notify about the booking update
-       
         return res.json(
        { status:400,
       message:"Invalid Otp",}
         );
       }
-    }
+      
     const uploadedFiles = [];
 
     // Helper function to get current timestamp in milliseconds
@@ -95,8 +92,7 @@ const pickupImageUp = async (req, res) => {
       uploadedFiles.push({ fileName, imageUrl });
     }
 
-   //console.log(uploadedFiles)
-    // Construct the tempObj with proper keys and values
+   
     const tempObj = {};
     uploadedFiles.forEach((file, index) => {
       tempObj[`file_${index}`] = {
@@ -105,7 +101,44 @@ const pickupImageUp = async (req, res) => {
       };
     });
 
-    // Save the document to the database
+    if (isVehicleUpdate) {
+      
+      const pickupData = await pickupImage.findOne({ bookingId });
+  
+      
+      const updatedData = [
+        ...(pickupData?.data?.updatedData ?? []), 
+        {
+            vehicleNumber,
+            startMeterReading: pickupData?.startMeterReading, 
+            oldVehicleEndMeterReading
+        }
+    ];
+    
+  
+   
+      const newDocument = await pickupImage.findOneAndUpdate(
+          { userId, bookingId }, 
+          { 
+              $set: { 
+                  files: tempObj, 
+                  data: updatedData, 
+                  startMeterReading, 
+                  endMeterReading 
+              } 
+          }, 
+          { new: true }
+      );
+  
+      if (newDocument) {
+          return res.json({
+              status: 200,
+              message: "Vehicle changed successfully.",
+              newDocument: newDocument.toObject({ flattenMaps: true }), 
+          });
+      }
+  }
+  
     const newDocument = new pickupImage({
       userId,
       bookingId,
@@ -116,11 +149,11 @@ const pickupImageUp = async (req, res) => {
        
     });
 
-    await newDocument.save();
+    // await newDocument.save();
     const OTP=Math.floor(1000 + Math.random() * 9000);
 
     if(paymentStatus=="partially_paid" || paymentStatus=="partiallyPay"){
-     // console.log("enter")
+   
    
       const updateResult = await Booking.updateOne(
         { _id },
