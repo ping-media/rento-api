@@ -217,17 +217,18 @@ const getAllVehiclesData = async (req, res) => {
       },
 
       { $match: filter },
+      { $sort: { createdAt: -1 } },
       {
         $facet: {
           totalCount: [{ $count: "totalRecords" }],
           data: [
             { $skip: (parsedPage - 1) * parsedLimit },
             { $limit: parsedLimit },
-            { $sort: { createdAt: 1 } }
+           //{ $sort: { createdAt: -1 } }
           ],
         },
       },
-    ]);
+    ]) ;
 
     if (!vehicles.length || !vehicles[0].totalCount.length) {
       return res.json({
