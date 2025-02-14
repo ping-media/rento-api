@@ -1013,7 +1013,7 @@ router.post('/cancelledBooking',Authentication, async(req,res)=>{
 
     const o={bookingStatus,paymentStatus,rideStatus,notes};
 
-    const booking = await Booking.findOne({ _id });
+    const booking = await Booking.findOne({ _id }).populate('userId');
     if(!booking){
       obj.status = 401;
       obj.message = "Booking not found";
@@ -1037,17 +1037,17 @@ router.post('/cancelledBooking',Authentication, async(req,res)=>{
       obj.status = 200;
       obj.message = "Booking cancelled successfull";
 
-      const {vehicleName,BookingStartDateAndTime,stationName,bookingId,bookingPrice}=booking;
+      const {vehicleName,BookingStartDateAndTime,stationName,bookingId,bookingPrice,userId}=booking;
 
       const totalPrice = bookingPrice.discountTotalPrice > 0 
                         ? bookingPrice.discountTotalPrice 
                         : bookingPrice.totalPrice;
 
-      const messageData=[firstName,vehicleName,bookingId,BookingStartDateAndTime,stationName,totalPrice,managerContact]
+      const messageData=[userId.firstName,vehicleName,bookingId,BookingStartDateAndTime,stationName,totalPrice,managerContact]
 
       whatsappMessage(contact,"booking_cancel",messageData);
 
-      sendCancelEmail(email,firstName,vehicleName,bookingId,BookingStartDateAndTime,stationName,totalPrice,managerContact)
+      sendCancelEmail(email,userId.firstName,vehicleName,bookingId,BookingStartDateAndTime,stationName,totalPrice,managerContact)
 
    return  res.json(obj)
 

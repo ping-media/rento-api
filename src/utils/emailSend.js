@@ -1707,7 +1707,7 @@ async function sendEmailForExtendOrVehicleChange(email,firstName, flag, bookingI
   const mailOptions = {
     from: 'Rento Bikes <support@rentobikes.com>',
     to: email,
-    subject: `${flag}: Your Bike Booking is Cancelled!`,
+    subject: `${flag}: Your Bike Booking is ${flag}!`,
     html: `<!DOCTYPE html>
 <html lang="en">
 <head>
