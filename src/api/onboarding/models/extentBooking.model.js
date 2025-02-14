@@ -50,15 +50,16 @@ const extentBooking = async (req, res) => {
             BookingEndDateAndTime,
             extendBooking,
             bookingPrice,
-            bookingStatus
+            bookingStatus,
+            
         }
 
         if (data.length>0) {
 
             const updatedData = await Booking.findOneAndUpdate(
-                { _id: _id }, // Filter condition
-                { $set: o },  // Update data
-                { new: true } // Return the updated document
+                { _id: _id }, 
+                { $set: o },  
+                { new: true } 
               );
 
               const Amount=extendAmount.amount;
