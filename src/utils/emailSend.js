@@ -258,7 +258,7 @@ async function sendOtpByEmail(email, firstName, lastName) {
 async function sendOtpByEmailForBooking(body) {
   const { userId, stationId, stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, } = body;
   try {
-     console.log(userId, stationId,stationMasterUserId,vehicleImage)
+   //  console.log(userId, stationId,stationMasterUserId,vehicleImage)
 
     function convertDateString(dateString) {
       if (!dateString) return "Invalid date";
@@ -702,7 +702,7 @@ async function sendEmailForBookingToStationMaster(userId, stationMasterUserId, v
       from: 'Rento Bikes <support@rentobikes.com>',
       to: email,
       cc: 'support@rentobikes.com',
-      subject: ` Booking Recceived- You have received booking Id ${bookingId} from RentoBikes `,
+      subject: ` Booking Received- You have received booking Id ${bookingId} from RentoBikes `,
       html: `<!DOCTYPE html>
 <html lang="en">
 <head>

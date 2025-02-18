@@ -405,8 +405,8 @@ if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
   }
 }
 
-if (o.paymentUpdates) {
-  o.paymentUpdates = { ...find.paymentUpdates, ...o.paymentUpdates };
+if (o.bookingPrice) {
+  o.bookingPrice = { ...find.bookingPrice, ...o.bookingPrice };
 }
 
 
