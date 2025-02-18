@@ -982,12 +982,7 @@ router.post('/sendReminder', Authentication, async (req, res) => {
 
     
     const whatsappResult = await whatsappMessage(contact, "booking_reminder", messageData);
-    // console.log(whatsappResult.success)
-    // if (!whatsappResult.success) {
-    //   return res.status(500).json({ status: 500, message: "Failed to send WhatsApp reminder"  });
-    // }
-
-    // Send email reminder
+  
     const emailResult = await sendReminderEmail(req.body);
 
     if (!emailResult.success) {
@@ -1056,6 +1051,27 @@ router.post('/cancelledBooking',Authentication, async(req,res)=>{
     return res.json({ status: 500, message: error.message });
   }
  
+})
+
+router.post('/gerGeneratePaymentToken',async(req,res)=>{
+  
+
+
+    const {payload} = req.body;
+    if (!payload) {
+      return res.status(401).json({ message: "payload is required" });
+    }
+    try {
+
+      const decoded = jwt.sign(payload, process.env.BCRYPT_TOKEN);
+      
+     
+    return res.status(200).json({token:decoded})
+
+    } catch (error) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    
 })
 
 module.exports = router;
