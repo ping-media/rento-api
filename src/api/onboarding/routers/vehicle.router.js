@@ -1053,7 +1053,7 @@ router.post('/cancelledBooking',Authentication, async(req,res)=>{
  
 })
 
-router.post('/gerGeneratePaymentToken',async(req,res)=>{
+router.post('/GeneratePaymentToken',async(req,res)=>{
   
 
 
