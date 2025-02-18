@@ -1001,13 +1001,13 @@ async function createInvoice({ bookingID,currentBookingId,_id,deletRec }) {
 
 
 
-    // const existingInvoice = await InvoiceTbl.findOne({ bookingId });
-    // if (existingInvoice) {
-    //   return {
-    //     status: 401,
-    //     message: "Invoice already exists for this booking",
-    //   };
-    // }
+    const existingInvoice = await InvoiceTbl.findOne({ bookingId });
+    if (existingInvoice) {
+      return {
+        status: 401,
+        message: "Invoice already exists for this booking",
+      };
+    }
 
     // Generate a new invoice number
     const currentYear = new Date().getFullYear();
