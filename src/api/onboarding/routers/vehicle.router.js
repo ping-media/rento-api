@@ -919,16 +919,16 @@ router.get('/getTimelineData', Authentication, async (req, res) => {
   timelineFunctionForGet(req, res)
 })
 
-
-router.get("/api/cron", async (req, res) => {
-  console.log("Cron job is working (FROM ROUTE)");
-  //res.send("Cron job is working");
-  handler(req,res)
-});
+// router.get("/api/cron", async (req, res) => {
+//   console.log("Cron job is working (FROM ROUTE)");
+//   //res.send("Cron job is working");
+//   handler(req,res)
+// });
 
 router.post('/extendBooking', Authentication, async (req, res) => {
   extentBooking(req, res)
 })
+
 
 router.post('/sendReminder', Authentication, async (req, res) => {
   function convertDateString(dateString) {

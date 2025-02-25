@@ -1064,6 +1064,7 @@ async function createInvoice({ bookingID,currentBookingId,_id,deletRec }) {
 }
 
 
+
 async function getAllInvoice(query) {
   const obj = { status: 200, message: "Invoices retrieved successfully", data: [], pagination:{} };
   const {
