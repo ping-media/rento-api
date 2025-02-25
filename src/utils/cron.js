@@ -1,5 +1,5 @@
-import Booking from '../api/onboarding/models/booking.model'; // Your Booking model
-import cron from "node-cron";
+const Booking = require ('../../src/db/schemas/onboarding/booking.schema'); 
+
 
 // Function to handle booking cancellation logic
 async function cancelPendingPayments() {
