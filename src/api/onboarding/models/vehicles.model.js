@@ -604,7 +604,7 @@ cron.schedule("0 * * * *", async () => {
   } catch (error) {
     console.error("Error in scheduler for canceling pending payments:", error.message);
   }
-});
+}, { timezone: "UTC" });
 
 
 
