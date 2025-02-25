@@ -3,21 +3,21 @@ const Booking = require ('../../src/db/schemas/onboarding/booking.schema');
 
 // Function to handle booking cancellation logic
 async function cancelPendingPayments() {
-  console.log("Running scheduler to cancel pending payments older than 5 minutes...");
+  console.log("Running scheduler to cancel pending payments older than 1 hour...");
 
   try {
-    const fiveMinutesAgo = new Date();
-    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5); // Change to 5 minutes
+    const oneHourAgo = new Date();
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
-    // Find and update bookings with paymentStatus "pending" older than 5 minutes
+    // Find and update bookings with paymentStatus "pending" older than 1 hour
     const result = await Booking.updateMany(
       {
         paymentStatus: "pending",
-        createdAt: { $lte: fiveMinutesAgo },
+        createdAt: { $lte: oneHourAgo },
       },
       {
         $set: {
-          paymentStatus: "canceled",
+          paymentStatus: "failed",
           bookingStatus: "canceled",
           rideStatus: "canceled",
         },
@@ -27,7 +27,7 @@ async function cancelPendingPayments() {
     if (result.modifiedCount > 0) {
       console.log(`Canceled ${result.modifiedCount} bookings with pending payment.`);
     } else {
-      console.log("No pending payments older than 5 minutes to cancel.");
+      console.log("No pending payments older than 1 hour to cancel.");
     }
   } catch (error) {
     console.error("Error in scheduler for canceling pending payments:", error.message);
