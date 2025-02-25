@@ -35,9 +35,9 @@ async function cancelPendingPayments() {
 }
 
 // Express.js route handler to trigger the cron job manually
-async function handler(req, res) {
-      await cancelPendingPayments();
-  res.status(200).send("Cron job is working (FROM ROUTE)");
-}
+// async function handler(req, res) {
+//       await cancelPendingPayments();
+//   res.status(200).send("Cron job is working (FROM ROUTE)");
+// }
 
-module.exports = { handler };
+module.exports = { cancelPendingPayments };
