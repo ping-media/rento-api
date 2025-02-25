@@ -11,9 +11,6 @@
             "src": "/(.*)",
             "dest": "/app.js"
         }
-    ],
-    "crons": [
-    {
-      "path": "/src/api/onboarding/utils/cron",
-      "schedule": "0 * * * *"}]
+    ]
+    
 }
