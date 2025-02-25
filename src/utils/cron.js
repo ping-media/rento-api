@@ -1,7 +1,7 @@
 import Booking from '../api/onboarding/models/booking.model'; // Your Booking model
 import cron from "node-cron";
 
-let isCronScheduled = false;
+//let isCronScheduled = false;
 
 // Function to handle the actual booking cancellation logic
 async function cancelPendingPayments() {
@@ -39,15 +39,15 @@ async function cancelPendingPayments() {
 // Express.js route handler
  async function handler(req, res) {
   // Ensure cron is scheduled once
-  if (!isCronScheduled) {
-    cron.schedule("* * * * *", async () => {
+  // if (!isCronScheduled) {
+  //   cron.schedule("* * * * *", async () => {
       await cancelPendingPayments();
-    });
-    isCronScheduled = true;
-    console.log("Cron job scheduled to run every minute.");
-  }
+  //  });
+   // isCronScheduled = true;
+  //   console.log("Cron job scheduled to run every minute.");
+  // }
 
-  console.log("Cron job is working (FROM ROUTE)");
+//  console.log("Cron job is working (FROM ROUTE)");
   res.status(200).send("Cron job is working (FROM ROUTE)");
 }
 
