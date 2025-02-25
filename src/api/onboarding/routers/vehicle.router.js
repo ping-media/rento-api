@@ -922,7 +922,8 @@ router.get('/getTimelineData', Authentication, async (req, res) => {
 router.get("/api/cron", async (req, res) => {
   console.log("Cron job is working (FROM ROUTE)");
   //res.send("Cron job is working");
-  cancelPendingPayments(req,res)
+  cancelPendingPayments(req,res);
+  res.json({ message: "Cron job executed !" });
 });
 
 router.post('/extendBooking', Authentication, async (req, res) => {
