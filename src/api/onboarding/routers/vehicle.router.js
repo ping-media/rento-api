@@ -22,7 +22,7 @@ const { getAllDocument } = require("../models/getAllDocumentAdmin")
 const { emailOtp, verify } = require("../models/otpSendByEmail")
 const { getPickupImage, pickupImageUp, getAllPickupImage } = require("../models/pickupImageUpload")
 const { getAllLogs } = require("../models/getlogs.model")
-const { handler } = require("../../../utils/cron");
+const { cancelPendingPayments } = require("../../../utils/cron");
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const Log = require("../models/Logs.model")
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
@@ -922,7 +922,7 @@ router.get('/getTimelineData', Authentication, async (req, res) => {
 router.get("/api/cron", async (req, res) => {
   console.log("Cron job is working (FROM ROUTE)");
   //res.send("Cron job is working");
-  handler(req,res)
+  cancelPendingPayments(req,res)
 });
 
 router.post('/extendBooking', Authentication, async (req, res) => {
