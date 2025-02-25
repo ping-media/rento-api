@@ -15,7 +15,5 @@
     "crons": [
     {
       "path": "/src/api/onboarding/utils/cron",
-      "schedule": "0 * * * *"
-    }
-  ]
+      "schedule": "0 * * * *"}]
 }
