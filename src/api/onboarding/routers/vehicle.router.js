@@ -478,7 +478,7 @@ router.post("/validedToken", async (req, res) => {
     }
 
     if (user.status === "active") {
-      return res.json({ isUserValid: true });
+      return res.json({ data: user, isUserValid: true });
     }
 
     return res.json({ isUserValid: false });
