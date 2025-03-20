@@ -454,7 +454,7 @@ router.get("/getAllInvoice", async (req, res) => {
 })
 
 router.post("/validedToken", async (req, res) => {
-  const { token, _id } = req.body;
+  const { token, _id, isMobile } = req.body;
   // console.log("Received token and _id:", token, _id);
 
   try {
@@ -478,7 +478,10 @@ router.post("/validedToken", async (req, res) => {
     }
 
     if (user.status === "active") {
+      if(isMobile === true){ 
       return res.json({ data: user, isUserValid: true });
+      }
+      return res.json({ isUserValid: true });
     }
 
     return res.json({ isUserValid: false });
