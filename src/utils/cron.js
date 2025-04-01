@@ -14,6 +14,7 @@ async function cancelPendingPayments() {
       {
         paymentStatus: "pending",
         createdAt: { $lte: oneHourAgo },
+        paymentMethod: { $ne: "cash" }
       },
       {
         $set: {
