@@ -155,12 +155,10 @@ const pickupImageUp = async (req, res) => {
     if(paymentStatus=="pending"){
       const updateResult = await Booking.updateOne(
         { _id },
-        { $set: { "bookingPrice.payOnPickupMethod": PaymentMode,"rideStatus":"ongoing","vehicleBasic.endRide":OTP,"paymentStatus":"paid"} },
+        { $set: { "bookingPrice.isPickupImageAdded": true,"bookingPrice.payOnPickupMethod": PaymentMode,"rideStatus":"ongoing","vehicleBasic.endRide":OTP,"paymentStatus":"paid"} },
         { new: true }
       );
     } else if(paymentStatus=="partially_paid" || paymentStatus=="partiallyPay"){
-   
-   
       const updateResult = await Booking.updateOne(
         { _id },
         { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing","vehicleBasic.endRide":OTP,"bookingPrice.AmountLeftAfterUserPaid.status":"paid","bookingPrice.AmountLeftAfterUserPaid.paymentMethod":PaymentMode,"paymentStatus":"paid"} },
