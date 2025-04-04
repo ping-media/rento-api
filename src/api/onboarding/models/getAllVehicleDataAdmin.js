@@ -31,20 +31,23 @@ const updateManyVehicles = async (filter, updateData) => {
     if (typeof updateData !== 'object' || Array.isArray(updateData)) {
       throw new Error('Update data must be an object');
     }
+
     const { vehiclePlan, ...restUpdateData } = updateData;
-    
     let totalModified = 0;
-    
+
     if (vehiclePlan !== undefined) {
       const withVehiclePlanResult = await vehicleTable.updateMany(
-        { ...filter, vehiclePlan: { $exists: true } },
-        { $set: { ...restUpdateData, vehiclePlan } }
+        { ...filter, vehiclePlan: { $exists: true, $type: 'array' } },
+        {
+          $set: { ...restUpdateData },
+          $push: { vehiclePlan }
+        }
       );
       totalModified += withVehiclePlanResult.modifiedCount;
     }
 
     const withoutVehiclePlanResult = await vehicleTable.updateMany(
-      { ...filter, vehiclePlan: { $exists: false } },
+      { ...filter, $or: [ { vehiclePlan: { $exists: false } }, { vehiclePlan: { $not: { $type: 'array' } } } ] },
       { $set: restUpdateData }
     );
     totalModified += withoutVehiclePlanResult.modifiedCount;
@@ -64,6 +67,7 @@ const updateManyVehicles = async (filter, updateData) => {
     };
   }
 };
+
 
 
 
