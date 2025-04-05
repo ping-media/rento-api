@@ -2,64 +2,22 @@ const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schem
 const mongoose = require("mongoose")
 const jwt = require("jsonwebtoken")
 
-// const updateManyVehicles = async (filter, updateData) => {
-//   try {
-//     if (typeof updateData !== 'object' || Array.isArray(updateData)) {
-//       throw new Error('Update data must be an object');
-//     }
-//     // Perform the updateMany operation
-//     const result = await vehicleTable.updateMany(filter, { $set: updateData });
-//     return {
-//       status: 200,
-//       message: `${result.modifiedCount} vehicle(s) updated successfully.`,
-//       data: result
-//     };
-//   } catch (error) {
-//     console.error('Error during updateMany:', error.message);
-
-//     // Return error response
-//     return {
-//       status: 500,
-//       message: `Error during updateMany: ${error.message}`,
-//       data: []
-//     };
-//   }
-// };
-
 const updateManyVehicles = async (filter, updateData) => {
   try {
     if (typeof updateData !== 'object' || Array.isArray(updateData)) {
       throw new Error('Update data must be an object');
     }
-
-    const { vehiclePlan, ...restUpdateData } = updateData;
-    let totalModified = 0;
-
-    if (vehiclePlan !== undefined) {
-      const withVehiclePlanResult = await vehicleTable.updateMany(
-        { ...filter, vehiclePlan: { $exists: true, $type: 'array' } },
-        {
-          $set: { ...restUpdateData },
-          $push: { vehiclePlan }
-        }
-      );
-      totalModified += withVehiclePlanResult.modifiedCount;
-    }
-
-    const withoutVehiclePlanResult = await vehicleTable.updateMany(
-      { ...filter, $or: [ { vehiclePlan: { $exists: false } }, { vehiclePlan: { $not: { $type: 'array' } } } ] },
-      { $set: restUpdateData }
-    );
-    totalModified += withoutVehiclePlanResult.modifiedCount;
-
+    // Perform the updateMany operation
+    const result = await vehicleTable.updateMany(filter, { $set: updateData });
     return {
       status: 200,
-      message: `${totalModified} vehicle(s) updated successfully.`,
-      data: { modifiedCount: totalModified }
+      message: `${result.modifiedCount} vehicle(s) updated successfully.`,
+      data: result
     };
-
   } catch (error) {
     console.error('Error during updateMany:', error.message);
+
+    // Return error response
     return {
       status: 500,
       message: `Error during updateMany: ${error.message}`,
@@ -67,9 +25,6 @@ const updateManyVehicles = async (filter, updateData) => {
     };
   }
 };
-
-
-
 
 const getAllVehiclesData = async (req, res) => {
   const response = { status: 200, message: "Data fetched successfully", data: [] };
