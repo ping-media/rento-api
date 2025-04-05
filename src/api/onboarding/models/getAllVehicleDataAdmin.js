@@ -264,45 +264,68 @@ const getAllVehiclesData = async (req, res) => {
 };
 
 
-
 const updateMultipleVehicles = async (req, res) => {
-  const { vehicleIds, updateData, deleteRec } = req.body;
+  const { vehicleIds, updateData, deleteRec, vehiclePlan } = req.body;
 
-  // Ensure valid vehicleIds and updateData
   if (!Array.isArray(vehicleIds) || vehicleIds.length === 0) {
     return res.json({
       status: 400,
-      message: "Invalid vehicle IDs"
+      message: "Invalid vehicle IDs",
     });
   }
 
   if (deleteRec) {
     const result = await vehicleTable.deleteMany({
-      _id: { $in: vehicleIds.map(id => mongoose.Types.ObjectId(id)) }
+      _id: { $in: vehicleIds.map((id) => mongoose.Types.ObjectId(id)) },
     });
 
     return res.status(200).json({
       status: 200,
       message: `${result.deletedCount} vehicle(s) deleted successfully.`,
-      data: result
+      data: result,
     });
   }
 
-  if (!updateData || typeof updateData !== 'object') {
+  if (!updateData || typeof updateData !== "object") {
     return res.json({
       status: 400,
-      message: "Invalid update data"
+      message: "Invalid update data",
     });
   }
 
+  const objectIds = vehicleIds.map((id) => mongoose.Types.ObjectId(id));
+  const filter = { _id: { $in: objectIds } };
 
+  if (vehiclePlan && Array.isArray(vehiclePlan)) {
+    const vehicles = await vehicleTable.find({
+      _id: { $in: objectIds },
+      vehiclePlan: { $exists: true, $not: { $size: 0 } },
+    });
 
+    for (const vehicle of vehicles) {
+      let updated = false;
 
-  // Filter for the vehicles to be updated
-  const filter = { _id: { $in: vehicleIds.map(id => mongoose.Types.ObjectId(id)) } };
+      const updatedPlan = vehicle.vehiclePlan.map((plan) => {
+        const match = vehiclePlan.find((p) => p._id === String(plan._id));
+        if (match) {
+          updated = true;
+          return { ...plan.toObject(), planPrice: match.planPrice };
+        }
+        return plan;
+      });
 
-  // Call the updateMany function to update the vehicles
-  const result = await updateManyVehicles(filter, updateData);
+      if (updated) {
+        await vehicleTable.updateOne(
+          { _id: vehicle._id },
+          { $set: { vehiclePlan: updatedPlan } }
+        );
+      }
+    }
+  }
+
+  const { vehiclePlan: _, ...restUpdateData } = updateData;
+
+  const result = await updateManyVehicles(filter, restUpdateData);
 
   return res.status(result.status).json(result);
 };
