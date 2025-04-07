@@ -30,7 +30,8 @@ const Invoice = require('../../../db/schemas/onboarding/invoice-tbl.schema'); //
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Log = require("../models/Logs.model");
 const{whatsappMessage}= require("../../../utils/whatsappMessage")
-const{sendOtpByEmailForBooking,sendEmailForBookingToStationMaster}= require("../../../utils/emailSend")
+const{sendOtpByEmailForBooking,sendEmailForBookingToStationMaster}= require("../../../utils/emailSend");
+const General = require("../../../db/schemas/onboarding/general.schema");
 
 
 const logError = async (message, functionName, userId) => {
