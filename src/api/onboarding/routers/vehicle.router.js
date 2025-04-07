@@ -44,7 +44,11 @@ const { extentBooking } = require("../models/extentBooking.model");
 const { forgetPasswordFunction } = require("../models/forgetPassword");
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const {whatsappMessage}=require("../../../utils/whatsappMessage");
-const {sendReminderEmail,sendCancelEmail}=require("../../../utils/emailSend")
+const {sendReminderEmail,sendCancelEmail}=require("../../../utils/emailSend");
+const {
+  createAndUpdateGeneral,
+  getGeneral,
+} = require("../models/general.model");
 
 
 // create messages
@@ -59,7 +63,14 @@ router.post("/createVehicle", Authentication, async (req, res) => {
 
 router.post("/updateMultipleVehicles", Authentication, async (req, res) => {
   updateMultipleVehicles(req, res);
+});
 
+router.post("/updateGeneral", async (req, res) => {
+  createAndUpdateGeneral(req, res);
+});
+
+router.get("/general", async (req, res) => {
+  getGeneral(req, res);
 });
 
 router.post("/createBookingDuration", async (req, res) => {
