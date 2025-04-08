@@ -51,7 +51,7 @@ const kycApprovalFunction = async (req, res) => {
 
         
        // const isLicenseValid = validateLicense(licenseNumber); 
-        if (licenseNumber.length!=10) {
+      if (licenseNumber.length != 15) {
             return res.json({
                 status: 400,
                 message: "Invalid license number"
