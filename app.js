@@ -28,12 +28,12 @@ const server = app.listen(
   console.log(`Server running on PORT ${PORT}...`)
 );
 
-const io = require("socket.io")(server, {
-  //pingTimeout: 60000,
-  cors: {
-    origin: ['http://localhost:3000', 'https://promise-web.pages.dev', 'https://rento.indyside.com', 'http://localhost:3001','http://localhost:5174', 'http://192.168.1.16:5173', 'http://192.168.1.16:5174', 'https://rent-moto-admin.vercel.app', 'https://rent-moto-front-end.vercel.app','https://rento-frontend.vercel.app']
-  },
-});
+// const io = require("socket.io")(server, {
+//   //pingTimeout: 60000,
+//   cors: {
+//     origin: ['http://localhost:3000', 'https://promise-web.pages.dev', 'https://rento.indyside.com', 'http://localhost:3001','http://localhost:5174', 'http://192.168.1.16:5173', 'http://192.168.1.16:5174', 'https://rent-moto-admin.vercel.app', 'https://rent-moto-front-end.vercel.app','https://rento-frontend.vercel.app']
+//   },
+// });
 const startServer = async () => {
   app.use(morgan("dev"));
   app.set("views", path.join(__dirname, "/src/views/pages"));
