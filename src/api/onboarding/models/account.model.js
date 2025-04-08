@@ -603,7 +603,7 @@ async function saveUser(userData) {
           return { status: 400, message: "AltContact is required." };
         }
       
-        if (!userObj.dateofbirth || !isAtLeast18(userObj.dateofbirth)) {
+        if (userObj.dateofbirth && !isAtLeast18(userObj.dateofbirth)) {
           return { status: 400, message: "User should be 18 or older." };
         }
         if(userObj.altContact==existingUser.contact){
@@ -612,7 +612,7 @@ async function saveUser(userData) {
         }
       }
       if(userType !== "admin" && userType !== "manager"){
-        if (!userObj.dateofbirth || !isAtLeast18(userObj.dateofbirth)) {
+        if (userObj.dateofbirth && !isAtLeast18(userObj.dateofbirth)) {
           return { status: 400, message: "User should be 18 or older." };
         }
       }
