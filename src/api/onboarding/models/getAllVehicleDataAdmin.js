@@ -26,6 +26,180 @@ const updateManyVehicles = async (filter, updateData) => {
   }
 };
 
+// const getAllVehiclesData = async (req, res) => {
+//   const response = {
+//     status: 200,
+//     message: "Data fetched successfully",
+//     data: [],
+//   };
+
+//   try {
+//     const {
+//       _id,
+//       vehicleMasterId,
+//       stationId,
+//       vehicleStatus,
+//       vehicleColor,
+//       condition,
+//       vehicleName,
+//       stationName,
+//       search,
+//       page = 1,
+//       limit = 10,
+//     } = req.query;
+
+//     const filter = {};
+//     if (vehicleMasterId)
+//       filter.vehicleMasterId = mongoose.Types.ObjectId(vehicleMasterId);
+//     if (stationId) filter.stationId = stationId;
+//     if (vehicleStatus) filter.vehicleStatus = vehicleStatus;
+//     if (vehicleColor) filter.vehicleColor = vehicleColor;
+//     if (condition) filter.condition = condition;
+//     if (vehicleName) filter.vehicleName = vehicleName;
+//     if (_id) filter._id = mongoose.Types.ObjectId(_id);
+
+//     let stationNameFilter = {};
+//     if (stationName) {
+//       stationNameFilter = { "stationData.stationName": stationName };
+//     }
+
+//     if (search) {
+//       filter.$or = [
+//         { vehicleName: { $regex: search, $options: "i" } },
+//         { stationName: { $regex: search, $options: "i" } },
+//         { vehicleNumber: { $regex: search, $options: "i" } },
+//         { vehicleStatus: { $regex: search, $options: "i" } },
+//       ];
+//     }
+
+//     const parsedPage = Math.max(parseInt(page, 10), 1);
+//     const parsedLimit = Math.max(parseInt(limit, 10), 1);
+
+//     const vehicles = await vehicleTable.aggregate([
+//       {
+//         $lookup: {
+//           from: "vehiclemasters",
+//           localField: "vehicleMasterId",
+//           foreignField: "_id",
+//           as: "vehicleMasterData",
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "stations",
+//           localField: "stationId",
+//           foreignField: "stationId",
+//           as: "stationData",
+//         },
+//       },
+
+//       ...(stationName ? [{ $match: stationNameFilter }] : []),
+//       {
+//         $lookup: {
+//           from: "bookings",
+//           localField: "_id",
+//           foreignField: "vehicleId",
+//           as: "bookingData",
+//         },
+//       },
+//       {
+//         $addFields: {
+//           bookingStatus: {
+//             $cond: {
+//               if: { $gt: [{ $size: "$bookingData" }, 0] },
+//               then: "Booked",
+//               else: "Available",
+//             },
+//           },
+//         },
+//       },
+//       {
+//         $unwind: {
+//           path: "$vehicleMasterData",
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+//       { $unwind: { path: "$stationData", preserveNullAndEmptyArrays: true } },
+//       { $unwind: { path: "$bookingData", preserveNullAndEmptyArrays: true } },
+//       {
+//         $project: {
+//           _id: 1,
+//           vehicleMasterId: 1,
+//           vehicleBookingStatus: 1,
+//           vehicleStatus: 1,
+//           freeKms: 1,
+//           extraKmsCharges: 1,
+//           stationId: 1,
+//           vehicleNumber: 1,
+//           vehiclePlan: 1,
+//           vehicleModel: 1,
+//           vehicleColor: 1,
+//           perDayCost: 1,
+//           lastServiceDate: 1,
+//           kmsRun: 1,
+//           condition: 1,
+//           locationId: 1,
+//           refundableDeposit: 1,
+//           lateFee: 1,
+//           speedLimit: 1,
+//           lastMeterReading: 1,
+//           stationName: "$stationData.stationName",
+//           vehicleImage: "$vehicleMasterData.vehicleImage",
+//           vehicleName: "$vehicleMasterData.vehicleName",
+//           createdAt: 1,
+//           updatedAt: 1,
+//         },
+//       },
+//       { $match: filter },
+//       { $sort: { createdAt: -1 } },
+//       {
+//         $facet: {
+//           totalCount: [{ $count: "totalRecords" }],
+//           data: [
+//             { $skip: (parsedPage - 1) * parsedLimit },
+//             { $limit: parsedLimit },
+//           ],
+//         },
+//       },
+//     ]);
+
+//     if (!vehicles.length || !vehicles[0].totalCount.length) {
+//       return res.json({
+//         status: 404,
+//         message: "No records found",
+//         data: [],
+//         pagination: {
+//           totalPages: 0,
+//           currentPage: parsedPage,
+//           limit: parsedLimit,
+//         },
+//       });
+//     }
+
+//     const totalRecords = vehicles[0].totalCount[0]?.totalRecords || 0;
+//     const totalPages = Math.ceil(totalRecords / parsedLimit);
+
+//     const data = vehicles[0].data || [];
+
+//     return res.json({
+//       status: 200,
+//       message: "Data fetched successfully",
+//       data,
+//       pagination: {
+//         totalRecords,
+//         totalPages,
+//         currentPage: parsedPage,
+//         limit: parsedLimit,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error fetching vehicle data:", error.message);
+//     response.status = 500;
+//     response.message = "An error occurred while fetching vehicle data";
+//     return res.json(response);
+//   }
+// };
+
 const getAllVehiclesData = async (req, res) => {
   const response = {
     status: 200,
@@ -52,23 +226,33 @@ const getAllVehiclesData = async (req, res) => {
     if (vehicleMasterId)
       filter.vehicleMasterId = mongoose.Types.ObjectId(vehicleMasterId);
     if (stationId) filter.stationId = stationId;
-    if (vehicleStatus) filter.vehicleStatus = vehicleStatus;
-    if (vehicleColor) filter.vehicleColor = vehicleColor;
-    if (condition) filter.condition = condition;
-    if (vehicleName) filter.vehicleName = vehicleName;
+
+    if (vehicleStatus)
+      filter.vehicleStatus = { $regex: vehicleStatus, $options: "i" };
+    if (vehicleColor)
+      filter.vehicleColor = { $regex: vehicleColor, $options: "i" };
+    if (condition) filter.condition = { $regex: condition, $options: "i" };
+    if (vehicleName)
+      filter.vehicleName = { $regex: vehicleName, $options: "i" };
     if (_id) filter._id = mongoose.Types.ObjectId(_id);
 
     let stationNameFilter = {};
     if (stationName) {
-      stationNameFilter = { "stationData.stationName": stationName };
+      stationNameFilter = {
+        "stationData.stationName": {
+          $regex: stationName,
+          $options: "i",
+        },
+      };
     }
 
     if (search) {
+      const searchRegex = { $regex: search, $options: "i" };
       filter.$or = [
-        { vehicleName: { $regex: search, $options: "i" } },
-        { stationName: { $regex: search, $options: "i" } },
-        { vehicleNumber: { $regex: search, $options: "i" } },
-        { vehicleStatus: { $regex: search, $options: "i" } },
+        { vehicleName: searchRegex },
+        { stationName: searchRegex },
+        { vehicleNumber: searchRegex },
+        { vehicleStatus: searchRegex },
       ];
     }
 
@@ -199,6 +383,7 @@ const getAllVehiclesData = async (req, res) => {
     return res.json(response);
   }
 };
+
 
 const updateMultipleVehicles = async (req, res) => {
   const { vehicleIds, updateData, deleteRec, vehiclePlan } = req.body;
