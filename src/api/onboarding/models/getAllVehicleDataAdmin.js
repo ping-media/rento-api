@@ -234,27 +234,25 @@ const getAllVehiclesData = async (req, res) => {
     if (stationId) filter.stationId = stationId;
 
     if (vehicleStatus)
-      filter.vehicleStatus = { $regex: `^${vehicleStatus}$`, $options: "i" };
+      filter.vehicleStatus = { $regex: vehicleStatus, $options: "i" };
     if (vehicleColor)
-      filter.vehicleColor = { $regex: `^${vehicleColor}$`, $options: "i" };
-    if (condition)
-      filter.condition = { $regex: `^${condition}$`, $options: "i" };
+      filter.vehicleColor = { $regex: vehicleColor, $options: "i" };
+    if (condition) filter.condition = { $regex: condition, $options: "i" };
     if (vehicleName)
-      filter.vehicleName = { $regex: `^${vehicleName}$`, $options: "i" };
+      filter.vehicleName = { $regex: vehicleName, $options: "i" };
     if (_id) filter._id = mongoose.Types.ObjectId(_id);
 
     let stationNameFilter = {};
     if (stationName) {
       stationNameFilter = {
         "stationData.stationName": {
-          $regex: `^${stationName}$`,
+          $regex: stationName,
           $options: "i",
         },
       };
     }
 
     if (search) {
-      // Use case-insensitive matching for search terms
       const searchRegex = { $regex: search, $options: "i" };
       filter.$or = [
         { vehicleName: searchRegex },
@@ -391,6 +389,7 @@ const getAllVehiclesData = async (req, res) => {
     return res.json(response);
   }
 };
+
 
 
 
