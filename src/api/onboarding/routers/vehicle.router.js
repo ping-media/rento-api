@@ -35,7 +35,7 @@ const Station=require('../../../db/schemas/onboarding/station.schema')
 const { sendInvoiceByEmail } = require("../../../utils/emailSend");
 const { kycApprovalFunction } = require("../models/kycapproval.model");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
-const { maintenanceVehicleFunction } = require("../models/maintenanceVehicle.model");
+const { maintenanceVehicleFunction, getMaintenanceVehicle } = require("../models/maintenanceVehicle.model");
 const { timelineFunction, timelineFunctionForGet } = require("../models/timeline.model");
 const TimeLine = require("../../../db/schemas/onboarding/timeline.schema");
 const { vehicleChangeInBooking } = require("../models/vehicleChange.model");
@@ -924,6 +924,10 @@ router.post('/vehicleChange', Authentication, async (req, res) => {
 router.post('/maintenanceVehicle', Authentication, async (req, res) => {
   maintenanceVehicleFunction(req, res)
 })
+
+router.get("/maintenanceVehicle", Authentication, async (req, res) => {
+  getMaintenanceVehicle(req, res);
+});
 
 router.post('/createTimeline', async (req, res) => {
   timelineFunction(req, res)
