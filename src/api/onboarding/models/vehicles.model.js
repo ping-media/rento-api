@@ -3138,9 +3138,9 @@ const getVehicleTblData = async (query) => {
       locationId,
       page = 1,
       limit = 20,
+      bypassLimit = false,
     } = query;
 
-    // Ensure booking start and end dates are provided when locationId is missing
     if (
       !locationId &&
       !_id &&
@@ -3196,9 +3196,17 @@ const getVehicleTblData = async (query) => {
       }
     }
 
+    // Parse pagination parameters
     const parsedPage = Math.max(parseInt(page, 10), 1);
-    const parsedLimit = Math.max(parseInt(limit, 10), 1);
+
+    const parsedLimit = bypassLimit ? 10000 : Math.max(parseInt(limit, 10), 1);
     const skip = (parsedPage - 1) * parsedLimit;
+
+    const countPipeline = [{ $match: matchFilter }, { $count: "totalRecords" }];
+
+    const countResult = await vehicleTable.aggregate(countPipeline);
+    const totalRecords = countResult.length ? countResult[0].totalRecords : 0;
+    const totalPages = Math.ceil(totalRecords / parsedLimit);
 
     const pipeline = [
       { $match: matchFilter },
@@ -3251,7 +3259,7 @@ const getVehicleTblData = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                  { $ne: ["$$booking.rideStatus", "canceled"] }, // Exclude canceled bookings
+                  { $ne: ["$$booking.rideStatus", "canceled"] },
                   {
                     $or: [
                       {
@@ -3477,15 +3485,17 @@ const getVehicleTblData = async (query) => {
               },
             },
           ],
-
-          totalCount: [{ $count: "totalRecords" }],
         },
       },
     ];
 
     const result = await vehicleTable.aggregate(pipeline);
 
-    if (!result.length || !result[0].availableVehicles.length) {
+    if (
+      !result.length ||
+      (result[0].availableVehicles.length === 0 &&
+        result[0].excludedVehicles.length === 0)
+    ) {
       return {
         status: 404,
         message: "No records found",
@@ -3499,29 +3509,30 @@ const getVehicleTblData = async (query) => {
       };
     }
 
-    // Extract available and excluded vehicles
-    let availableVehicles = result[0].availableVehicles;
-    let excludedVehicles = result[0].excludedVehicles;
-    const totalRecords = result[0].totalCount.length
-      ? result[0].totalCount[0].totalRecords
-      : 0;
+    let availableVehicles = result[0].availableVehicles || [];
+    let excludedVehicles = result[0].excludedVehicles || [];
 
-    // Ensure pagination dynamically distributes vehicles
     let finalAvailableVehicles = [];
     let finalExcludedVehicles = [];
 
-    if (excludedVehicles.length > 0) {
-      if (excludedVehicles.length >= parsedLimit) {
-        finalExcludedVehicles = excludedVehicles.slice(0, parsedLimit);
-      } else {
-        finalExcludedVehicles = excludedVehicles;
-        finalAvailableVehicles = availableVehicles.slice(
-          0,
-          parsedLimit - excludedVehicles.length
-        );
-      }
+    if (bypassLimit) {
+      finalAvailableVehicles = availableVehicles;
+      finalExcludedVehicles = excludedVehicles;
     } else {
-      finalAvailableVehicles = availableVehicles.slice(0, parsedLimit);
+      // Normal pagination with limit
+      if (excludedVehicles.length > 0) {
+        if (excludedVehicles.length >= parsedLimit) {
+          finalExcludedVehicles = excludedVehicles.slice(0, parsedLimit);
+        } else {
+          finalExcludedVehicles = excludedVehicles;
+          finalAvailableVehicles = availableVehicles.slice(
+            0,
+            parsedLimit - excludedVehicles.length
+          );
+        }
+      } else {
+        finalAvailableVehicles = availableVehicles.slice(0, parsedLimit);
+      }
     }
 
     const pricingRules = await General.findOne({});
@@ -3531,15 +3542,12 @@ const getVehicleTblData = async (query) => {
       finalAvailableVehicles = finalAvailableVehicles.map((vehicle) => {
         const adjustedVehicle = { ...vehicle };
 
-        // Get original per day cost
         const originalPerDayCost = adjustedVehicle.perDayCost;
         let finalPerDayCost = originalPerDayCost;
 
-        // Check date range from booking start to booking end
         const startDateObj = new Date(startDate);
         const endDateObj = new Date(endDate);
 
-        // Loop through each day in the booking period
         const currentDate = new Date(startDateObj);
         while (currentDate <= endDateObj) {
           const dayOfWeek = currentDate.getDay();
@@ -3547,7 +3555,6 @@ const getVehicleTblData = async (query) => {
 
           // Check if it's a weekend (Saturday = 6, Sunday = 0)
           if (dayOfWeek === 6 || dayOfWeek === 0) {
-            // Weekend pricing rule
             if (pricingRules.weakend) {
               const weekendPrice = pricingRules.weakend.Price;
               const weekendPriceType = pricingRules.weakend.PriceType;
@@ -3571,7 +3578,6 @@ const getVehicleTblData = async (query) => {
               const fromDate = new Date(specialDay.From);
               const toDate = new Date(specialDay.Too);
 
-              // Check if current date falls within this special period
               if (currentDate >= fromDate && currentDate <= toDate) {
                 const specialPrice = specialDay.Price;
                 const specialPriceType = specialDay.PriceType;
@@ -3589,19 +3595,15 @@ const getVehicleTblData = async (query) => {
             });
           }
 
-          // Move to next day
           currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        // Update vehicle with adjusted price
         adjustedVehicle.originalPerDayCost = originalPerDayCost;
         adjustedVehicle.perDayCost = Math.round(finalPerDayCost);
 
         return adjustedVehicle;
       });
     }
-
-    const totalPages = Math.ceil(totalRecords / parsedLimit);
 
     response.status = 200;
     response.message = "Data fetched successfully";
@@ -3614,6 +3616,7 @@ const getVehicleTblData = async (query) => {
       totalPages,
       currentPage: parsedPage,
       limit: parsedLimit,
+      bypassLimit,
     };
   } catch (error) {
     console.error("Error in getVehicleTblData:", error.message);
