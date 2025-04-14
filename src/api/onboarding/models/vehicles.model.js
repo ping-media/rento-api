@@ -155,16 +155,16 @@ async function createVehicle({
         }
       }
 
-      if (vehicleNumber && vehicleNumber.length !== 10) {
-        response.status = 401;
-        response.message = "Invalid vehicle number";
-        await Log({
-          message: "Invalid vehicle number length",
-          functionName: "createVehicle",
-          userId: stationId
-        });
-        return response;
-      }
+      // if (vehicleNumber && vehicleNumber.length !== 10) {
+      //   response.status = 401;
+      //   response.message = "Invalid vehicle number";
+      //   await Log({
+      //     message: "Invalid vehicle number length",
+      //     functionName: "createVehicle",
+      //     userId: stationId
+      //   });
+      //   return response;
+      // }
 
       const o = {
         locationId, vehicleBookingStatus, vehicleStatus, vehicleMasterId, stationId, vehicleNumber, freeKms,
