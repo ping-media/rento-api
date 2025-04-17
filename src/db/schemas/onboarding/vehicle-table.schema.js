@@ -1,132 +1,115 @@
-const mongoose = require('mongoose');
-const vehiclemasters = require("../../schemas/onboarding/vehicle-master.schema")
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-const vehiclePlanSchema = new Schema({
-    planId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Plan',
-    //   required: true, 
-    },
-    planPrice: {
-      type: Number,
-     min: [0, 'Plan price must be a positive value'],
-    },
-  });
 
-const vehicleTableSchema = new Schema({
+const vehiclePlanSchema = new Schema({
+  planId: {
+    type: Schema.Types.ObjectId,
+    ref: "Plan",
+  },
+  planPrice: {
+    type: Number,
+    min: [0, "Plan price must be a positive value"],
+  },
+  planName: {
+    type: String,
+  },
+  planDuration: {
+    type: Number,
+    min: [0, "Plan duration must be a positive value"],
+  },
+});
+
+const vehicleTableSchema = new Schema(
+  {
     vehicleMasterId: {
-        type: Schema.Types.ObjectId,
-        ref: 'vehiclemasters',
-        required: true
+      type: Schema.Types.ObjectId,
+      ref: "vehiclemasters",
+      required: true,
     },
-   
     vehicleNumber: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
     freeKms: {
-        type: Number,
-        required: true
-    }, 
+      type: Number,
+      required: true,
+    },
     extraKmsCharges: {
-        type: Number,
-        required: true
+      type: Number,
+      required: true,
     },
     stationId: {
-        type: String,
-        ref: 'station',
-        required: true
+      type: String,
+      ref: "station",
+      required: true,
     },
-   
+
     vehicleModel: {
-        type: Number,
-        required: true
-    },    
-    // vehicleColor: {
-        
-    //     type: String,
-    //     required: true
-    // },
-    vehiclePlan: [vehiclePlanSchema], 
-    
+      type: Number,
+      required: true,
+    },
+    vehiclePlan: [vehiclePlanSchema],
     perDayCost: {
       type: Number,
-      required: [true, 'Per day cost is required'],
-      min: [0, 'Per day cost must be a positive value'],
+      required: [true, "Per day cost is required"],
+      min: [0, "Per day cost must be a positive value"],
     },
-    // perDayCost: {
-    //     type: Number,
-    //     required: true
-    // },
     refundableDeposit: {
-        type: Number,
-        default:1000,
-        required: true
+      type: Number,
+      default: 1000,
+      required: true,
     },
     lateFee: {
-        type: Number,
-        default:100,
-        required: true
+      type: Number,
+      default: 100,
+      required: true,
     },
     speedLimit: {
-        type: Number,
-        default:60,
-        required: true
+      type: Number,
+      default: 60,
+      required: true,
     },
     lastServiceDate: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
-     lastMeterReading: {
-        type: Number,
-        required: true
+    lastMeterReading: {
+      type: Number,
+      required: true,
     },
     kmsRun: {
-        type: Number,
-        required: true
+      type: Number,
+      required: true,
     },
-    // isBooked: {
-    //     type: String,
-    //     required: true
-    //},
+    isBooked: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
     locationId: {
-        type: Schema.Types.ObjectId,
-        ref: 'location',
-        required: true
-      },
+      type: Schema.Types.ObjectId,
+      ref: "location",
+      required: true,
+    },
     condition: {
-        enum: ["old", "new"],
-        type: String,
-        required: true
+      enum: ["old", "new"],
+      type: String,
+      required: true,
     },
     vehicleBookingStatus: {
-        type: String,
-        enum: ["available", "booked"],
-        required: true
+      type: String,
+      enum: ["available", "booked"],
+      required: true,
     },
     vehicleStatus: {
-        type: String,
-        enum: ["active", "inactive"],
-        required: true
+      type: String,
+      enum: ["active", "inactive"],
+      required: true,
     },
-}, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
+  },
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+);
 
-// Pre-save middleware to convert fields to lowercase
-vehicleTableSchema.pre('save', function (next) {
-    if (this.name) {
-      this.name = this.name.toLowerCase(); 
-    }
-    if (this.brand) {
-      this.brand = this.brand.toLowerCase(); 
-    }
-    if(this.vehicleColor){
-        this.vehicleColor = this.vehicleColor.toLowerCase();
-    }
-    next();
-  });
-
-const vehicleTable = mongoose.model('vehicleTable', vehicleTableSchema);
+const vehicleTable = mongoose.model("vehicleTable", vehicleTableSchema);
 
 module.exports = vehicleTable;
-
-
