@@ -28,7 +28,7 @@ const updateManyVehicles = async (filter, updateData) => {
   }
 };
 
-// get maintenance data with all other data
+// this is new update code with pagination fixed
 const getAllVehiclesData = async (req, res) => {
   const response = {
     status: 200,
@@ -196,6 +196,7 @@ const getAllVehiclesData = async (req, res) => {
     const totalPages = Math.ceil(totalRecords / parsedLimit);
 
     const data = vehicles[0].data || [];
+
     let filteredVehicles = [];
     if (data.length > 0) {
       const vehicleIds = data.map((vehicle) => vehicle._id);
@@ -252,19 +253,72 @@ const getAllVehiclesData = async (req, res) => {
         });
     }
 
+    // Fix for pagination data
+    const finalData = filteredVehicles?.length > 0 ? filteredVehicles : data;
+    let finalTotalRecords = totalRecords;
+    let finalTotalPages = totalPages;
+
+    // If we're filtering by maintenance type, we need to adjust the total records and pages
+    if (maintenanceType && filteredVehicles.length > 0) {
+      // Count all vehicles that match the maintenance type filter
+      const allVehicles = await vehicleTable.aggregate([
+        {
+          $lookup: {
+            from: "vehiclemasters",
+            localField: "vehicleMasterId",
+            foreignField: "_id",
+            as: "vehicleMasterData",
+          },
+        },
+        {
+          $lookup: {
+            from: "stations",
+            localField: "stationId",
+            foreignField: "stationId",
+            as: "stationData",
+          },
+        },
+        ...(stationName ? [{ $match: stationNameFilter }] : []),
+        { $match: filter },
+        { $project: { _id: 1 } },
+      ]);
+
+      // Get all vehicle IDs
+      const allVehicleIds = allVehicles.map((v) => v._id);
+
+      // Get maintenance data for all vehicles based on the filter
+      const allMaintenanceFilter = {
+        vehicleTableId: { $in: allVehicleIds },
+      };
+
+      if (maintenanceType === "upcoming") {
+        allMaintenanceFilter.endDate = { $gte: today };
+      } else if (maintenanceType === "expired") {
+        allMaintenanceFilter.endDate = { $lt: today };
+      }
+
+      const allMaintenance = await MaintenanceVehicle.find(
+        allMaintenanceFilter
+      );
+
+      // Get unique vehicle IDs that have maintenance matching the filter
+      const vehicleIdsWithMatchingMaintenance = [
+        ...new Set(
+          allMaintenance.map((item) => item.vehicleTableId.toString())
+        ),
+      ];
+
+      finalTotalRecords = vehicleIdsWithMatchingMaintenance.length;
+      finalTotalPages = Math.ceil(finalTotalRecords / parsedLimit);
+    }
+
     return res.json({
       status: 200,
       message: "Data fetched successfully",
-      data: filteredVehicles?.length > 0 ? filteredVehicles : data,
+      data: finalData,
       pagination: {
-        totalRecords:
-          filteredVehicles?.length > 0
-            ? filteredVehicles?.length
-            : totalRecords,
-        totalPages:
-          filteredVehicles?.length > 0
-            ? Math.ceil(filteredVehicles?.length / parsedLimit)
-            : totalPages,
+        totalRecords: finalTotalRecords,
+        totalPages: finalTotalPages,
         currentPage: parsedPage,
         limit: parsedLimit,
       },
@@ -308,6 +362,33 @@ const updateMultipleVehicles = async (req, res) => {
 
   const objectIds = vehicleIds.map((id) => mongoose.Types.ObjectId(id));
   const filter = { _id: { $in: objectIds } };
+
+  // if (vehiclePlan && Array.isArray(vehiclePlan)) {
+  //   const vehicles = await vehicleTable.find({
+  //     _id: { $in: objectIds },
+  //     vehiclePlan: { $exists: true, $not: { $size: 0 } },
+  //   });
+
+  //   for (const vehicle of vehicles) {
+  //     let updated = false;
+
+  //     const updatedPlan = vehicle.vehiclePlan.map((plan) => {
+  //       const match = vehiclePlan.find((p) => p._id === String(plan._id));
+  //       if (match) {
+  //         updated = true;
+  //         return { ...plan.toObject(), planPrice: match.planPrice };
+  //       }
+  //       return plan;
+  //     });
+
+  //     if (updated) {
+  //       await vehicleTable.updateOne(
+  //         { _id: vehicle._id },
+  //         { $set: { vehiclePlan: updatedPlan } }
+  //       );
+  //     }
+  //   }
+  // }
 
   if (vehiclePlan && Array.isArray(vehiclePlan)) {
     const vehicles = await vehicleTable.find({
