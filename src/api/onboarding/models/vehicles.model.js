@@ -3073,6 +3073,7 @@ const getVehicleTbl = async (query) => {
       locationId,
       page = 1,
       limit = 20,
+      search,
     } = query;
     if (!locationId) {
       if (!_id && !BookingStartDateAndTime && !BookingEndDateAndTime) {
@@ -3132,7 +3133,31 @@ const getVehicleTbl = async (query) => {
 
     const pipeline = [
       { $match: matchFilter },
-
+      ...(search
+        ? [
+            {
+              $lookup: {
+                from: "vehiclemasters",
+                localField: "vehicleMasterId",
+                foreignField: "_id",
+                as: "searchVehicleMaster",
+              },
+            },
+            {
+              $match: {
+                $or: [
+                  { vehicleNumber: { $regex: search, $options: "i" } },
+                  {
+                    "searchVehicleMaster.vehicleName": {
+                      $regex: search,
+                      $options: "i",
+                    },
+                  },
+                ],
+              },
+            },
+          ]
+        : []),
       // Lookup bookings for the vehicle
       {
         $lookup: {
@@ -3142,7 +3167,6 @@ const getVehicleTbl = async (query) => {
           as: "bookings",
         },
       },
-
       // Lookup station data
       {
         $lookup: {
