@@ -4455,7 +4455,6 @@ const getVehicleTblData = async (query) => {
       vehiclePlan,
       vehicleModel,
       condition,
-      // vehicleColor,
       BookingStartDateAndTime,
       BookingEndDateAndTime,
       _id,
@@ -4466,6 +4465,7 @@ const getVehicleTblData = async (query) => {
       page = 1,
       limit = 20,
       bypassLimit = false,
+      search,
     } = query;
 
     // All validation code remains the same
@@ -4509,7 +4509,6 @@ const getVehicleTblData = async (query) => {
     } else {
       if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
       if (condition) matchFilter.condition = condition;
-      // if (vehicleColor) matchFilter.vehicleColor = vehicleColor;
       if (stationId) matchFilter.stationId = stationId;
       if (locationId && ObjectId.isValid(locationId)) {
         matchFilter.locationId = new ObjectId(locationId);
@@ -4525,7 +4524,39 @@ const getVehicleTblData = async (query) => {
 
     const pipeline = [
       { $match: matchFilter },
-
+      ...(search
+        ? [
+            {
+              $lookup: {
+                from: "vehiclemasters",
+                localField: "vehicleMasterId",
+                foreignField: "_id",
+                as: "searchVehicleMaster",
+              },
+            },
+            {
+              $match: {
+                $or: [
+                  {
+                    "searchVehicleMaster.vehicleName": {
+                      $regex: search,
+                      $options: "i",
+                    },
+                  },
+                  {
+                    "searchVehicleMaster.vehicleBrand": {
+                      $regex: search,
+                      $options: "i",
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $unset: "searchVehicleMaster",
+            },
+          ]
+        : []),
       {
         $lookup: {
           from: "bookings",
@@ -4672,7 +4703,7 @@ const getVehicleTblData = async (query) => {
     // Get total count for pagination
     const countPipeline = [{ $match: matchFilter }, { $count: "totalRecords" }];
     const cursor = vehicleTable.aggregate(countPipeline);
-    // const totalRecords = cursor.length ? cursor[0]?.totalRecords || 0 : 0;
+    const totalRecords = cursor.length ? cursor[0]?.totalRecords || 0 : 0;
 
     // Execute the pipeline to get all vehicles
     const allVehicles = await vehicleTable.aggregate(pipeline);
