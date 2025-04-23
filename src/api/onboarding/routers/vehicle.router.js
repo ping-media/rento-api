@@ -488,9 +488,8 @@ router.get("/getAllInvoice", async (req, res) => {
 });
 
 router.post("/validedToken", async (req, res) => {
-  const { token, _id } = req.body;
-  // console.log("Received token and _id:", token, _id);
-
+  const { token, _id, dataFlag } = req.body;
+  const flag = dataFlag !== undefined ? dataFlag : true;
   try {
     let userId = _id;
 
@@ -506,15 +505,15 @@ router.post("/validedToken", async (req, res) => {
       userId = req.user.id;
     }
 
-    //  console.log("User ID:", userId);
-
     const user = await User.findOne({ _id: userId });
     if (!user) {
       return res.json({ isUserValid: false });
     }
 
-    if (user.status === "active") {
+    if (user.status === "active" && flag === true) {
       return res.json({ data: user, isUserValid: true });
+    } else if (user.status === "active" && flag === false) {
+      return res.json({ isUserValid: true });
     }
 
     return res.json({ isUserValid: false });
