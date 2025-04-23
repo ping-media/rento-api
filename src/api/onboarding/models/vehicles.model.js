@@ -3196,7 +3196,6 @@ const getVehicleTbl = async (query) => {
           as: "maintenanceData",
         },
       },
-
       // Filter conflicting bookings & maintenance
       {
         $addFields: {
@@ -3206,7 +3205,7 @@ const getVehicleTbl = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                  { $ne: ["$$booking.rideStatus", "canceled"] }, // Exclude canceled bookings
+                  { $ne: ["$$booking.rideStatus", "canceled"] },
                   {
                     $or: [
                       {
@@ -3257,7 +3256,6 @@ const getVehicleTbl = async (query) => {
               },
             },
           },
-
           conflictingMaintenance: {
             $filter: {
               input: "$maintenanceData",
@@ -4597,83 +4595,58 @@ const getVehicleTblData = async (query) => {
               input: "$bookings",
               as: "booking",
               cond: {
-                $or: [
+                $and: [
                   {
-                    $and: [
+                    $ne: ["$$booking.rideStatus", ["canceled"]],
+                  },
+                  {
+                    $not: [
+                      { $lt: ["$$booking.BookingEndDateAndTime", startDate] },
+                    ],
+                  },
+                  {
+                    $or: [
                       {
-                        $not: {
-                          $in: [
-                            "$$booking.rideStatus",
-                            ["canceled", "pending", "ongoing"],
-                          ],
-                        },
-                      },
-                      {
-                        $or: [
+                        $and: [
                           {
-                            $and: [
-                              {
-                                $gte: [
-                                  "$$booking.BookingStartDateAndTime",
-                                  startDate,
-                                ],
-                              },
-                              {
-                                $lte: [
-                                  "$$booking.BookingStartDateAndTime",
-                                  endDate,
-                                ],
-                              },
+                            $gte: [
+                              "$$booking.BookingStartDateAndTime",
+                              startDate,
                             ],
                           },
                           {
-                            $and: [
-                              {
-                                $gte: [
-                                  "$$booking.BookingEndDateAndTime",
-                                  startDate,
-                                ],
-                              },
-                              {
-                                $lte: [
-                                  "$$booking.BookingEndDateAndTime",
-                                  endDate,
-                                ],
-                              },
-                            ],
-                          },
-                          {
-                            $and: [
-                              {
-                                $lte: [
-                                  "$$booking.BookingStartDateAndTime",
-                                  startDate,
-                                ],
-                              },
-                              {
-                                $gte: [
-                                  "$$booking.BookingEndDateAndTime",
-                                  endDate,
-                                ],
-                              },
+                            $lte: [
+                              "$$booking.BookingStartDateAndTime",
+                              endDate,
                             ],
                           },
                         ],
                       },
-                    ],
-                  },
-                  //Booking end date has passed but ride status is not finalized
-                  {
-                    $and: [
-                      // End date is in the past compared to current time
-                      { $lt: ["$$booking.BookingEndDateAndTime", new Date()] },
                       {
-                        $not: {
-                          $in: [
-                            "$$booking.rideStatus",
-                            ["completed", "canceled"],
-                          ],
-                        },
+                        $and: [
+                          {
+                            $gte: [
+                              "$$booking.BookingEndDateAndTime",
+                              startDate,
+                            ],
+                          },
+                          {
+                            $lte: ["$$booking.BookingEndDateAndTime", endDate],
+                          },
+                        ],
+                      },
+                      {
+                        $and: [
+                          {
+                            $lte: [
+                              "$$booking.BookingStartDateAndTime",
+                              startDate,
+                            ],
+                          },
+                          {
+                            $gte: ["$$booking.BookingEndDateAndTime", endDate],
+                          },
+                        ],
                       },
                     ],
                   },
