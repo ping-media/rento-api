@@ -1,6 +1,58 @@
 const MaintenanceVehicle = require("../../../db/schemas/onboarding/maintenanceVehicleSchema");
 const { getVehicleTbl } = require("../models/vehicles.model");
 
+const getMaintenanceVehicle = async (req, res) => {
+  try {
+    const { vehicleTableId, page = 1, limit = 20 } = req.query;
+    let query = {};
+
+    if (vehicleTableId) {
+      query.vehicleTableId = vehicleTableId;
+    }
+    const skip = (page - 1) * limit;
+    const maintenanceData = await MaintenanceVehicle.find(query)
+      .sort({
+        createdAt: -1,
+      })
+      .skip(skip)
+      .limit(Number(limit));
+
+    if (!maintenanceData || maintenanceData.length === 0) {
+      return res.json({
+        status: 404,
+        message: "No Maintenance record found.",
+        data: [],
+      });
+    }
+
+    const totalRecords = await MaintenanceVehicle.count({
+      vehicleTableId: vehicleTableId,
+    });
+
+    const pagination = {
+      totalPages: Math.ceil(totalRecords / limit),
+      currentPage: Number(page),
+      limit: Number(limit),
+    };
+
+    return res.json({
+      status: 200,
+      success: true,
+      message: "Maintenance data retrieved successfully",
+      data: maintenanceData,
+      pagination,
+    });
+  } catch (error) {
+    console.error("Error retrieving maintenance data:", error);
+    return res.json({
+      status: 500,
+      success: false,
+      message: "Internal server error",
+      data: [],
+    });
+  }
+};
+
 const maintenanceVehicleFunction = async (req, res) => {
   const {
     vehicleTableId,
@@ -12,6 +64,7 @@ const maintenanceVehicleFunction = async (req, res) => {
     action,
   } = req.body;
 
+  // Validate input for new or edit operations
   if (maintenanceIds?.length === 0) {
     if (action !== "delete" && (!vehicleTableId || !startDate || !endDate)) {
       return res.json({
@@ -120,10 +173,7 @@ const maintenanceVehicleFunction = async (req, res) => {
         });
       }
 
-      existingMaintenance.vehicleTableId = vehicleTableId;
-      existingMaintenance.startDate = startDate;
       existingMaintenance.endDate = endDate;
-      existingMaintenance.reason = reason;
 
       await existingMaintenance.save();
 
@@ -133,7 +183,37 @@ const maintenanceVehicleFunction = async (req, res) => {
         message: "Maintenance schedule updated successfully",
       });
     } else {
-      // Create new record
+      // Check for overlapping maintenance schedules
+      const overlappingMaintenance = await MaintenanceVehicle.findOne({
+        vehicleTableId: vehicleTableId,
+        $or: [
+          // Case 1: New schedule starts during an existing schedule
+          {
+            startDate: { $lte: startDate },
+            endDate: { $gte: startDate },
+          },
+          // Case 2: New schedule ends during an existing schedule
+          {
+            startDate: { $lte: endDate },
+            endDate: { $gte: endDate },
+          },
+          // Case 3: New schedule completely contains an existing schedule
+          {
+            startDate: { $gte: startDate },
+            endDate: { $lte: endDate },
+          },
+        ],
+      });
+
+      if (overlappingMaintenance) {
+        return res.json({
+          status: 400,
+          success: false,
+          message:
+            "Vehicle already has a maintenance schedule that overlaps with these dates and time",
+        });
+      }
+
       const vehicleData = await getVehicleTbl(req.query);
 
       const data = vehicleData?.data?.filter((item) => {
@@ -145,7 +225,7 @@ const maintenanceVehicleFunction = async (req, res) => {
           vehicleTableId,
           startDate,
           endDate,
-          reason
+          reason,
         };
         const newMaintenanceData = new MaintenanceVehicle(maintenanceData);
         await newMaintenanceData.save();
@@ -169,37 +249,6 @@ const maintenanceVehicleFunction = async (req, res) => {
       status: 500,
       success: false,
       message: "Internal server error",
-    });
-  }
-};
-
-const getMaintenanceVehicle = async (req, res) => {
-  try {
-    const { vehicleTableId } = req.query;
-    let query = {};
-
-    if (vehicleTableId) {
-      query.vehicleTableId = vehicleTableId;
-    }
-
-    const maintenanceData = await MaintenanceVehicle.find(query).sort({
-      createdAt: -1,
-    });
-
-    return res.json({
-      status: 200,
-      success: true,
-      message: "Maintenance data retrieved successfully",
-      data: maintenanceData,
-      count: maintenanceData.length,
-    });
-  } catch (error) {
-    console.error("Error retrieving maintenance data:", error);
-    return res.json({
-      status: 500,
-      success: false,
-      message: "Internal server error",
-      data: [],
     });
   }
 };
