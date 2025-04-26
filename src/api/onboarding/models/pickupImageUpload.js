@@ -169,6 +169,29 @@ const pickupImageUp = async (req, res) => {
       paymentStatus === "partially_paid" ||
       paymentStatus === "partiallyPay"
     ) {
+      const AmountLeftAfterUserPaid =
+        booking?.bookingPrice?.AmountLeftAfterUserPaid ||
+        booking?.bookingPrice?.AmountLeftAfterUserPaid?.amount;
+
+      let updatedAmountLeft = {};
+      if (
+        AmountLeftAfterUserPaid &&
+        typeof AmountLeftAfterUserPaid === "object" &&
+        !Array.isArray(AmountLeftAfterUserPaid)
+      ) {
+        updatedAmountLeft = {
+          ...AmountLeftAfterUserPaid,
+          status: "paid",
+          paymentMethod: PaymentMode,
+        };
+      } else {
+        updatedAmountLeft = {
+          status: "paid",
+          paymentMethod: PaymentMode,
+          ...AmountLeftAfterUserPaid,
+        };
+      }
+
       await Booking.updateOne(
         { _id },
         {
@@ -176,8 +199,9 @@ const pickupImageUp = async (req, res) => {
             "bookingPrice.isPickupImageAdded": true,
             rideStatus: "ongoing",
             "vehicleBasic.endRide": OTP,
-            "bookingPrice.AmountLeftAfterUserPaid.status": "paid",
-            "bookingPrice.AmountLeftAfterUserPaid.paymentMethod": PaymentMode,
+            "bookingPrice.AmountLeftAfterUserPaid": updatedAmountLeft,
+            // "bookingPrice.AmountLeftAfterUserPaid.status": "paid",
+            // "bookingPrice.AmountLeftAfterUserPaid.paymentMethod": PaymentMode,
             paymentStatus: "paid",
           },
         },
