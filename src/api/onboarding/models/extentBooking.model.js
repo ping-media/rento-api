@@ -43,8 +43,6 @@ const extentBooking = async (req, res) => {
       ...req.query,
       _id: vehicleTableId,
     });
-    // console.log(vehicleData);
-    // return;
 
     const data = vehicleData?.data?.filter((item) => {
       return item._id.toString() === vehicleTableId;
