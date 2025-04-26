@@ -198,12 +198,12 @@ const getAllVehiclesData = async (req, res) => {
     const data = vehicles[0].data || [];
 
     let filteredVehicles = [];
+
     if (data.length > 0) {
       const vehicleIds = data.map((vehicle) => vehicle._id);
+      const today = new Date().toISOString().split("T")[0];
 
       let maintenanceData = [];
-
-      const today = new Date().toISOString().split("T")[0];
 
       const baseFilter = {
         vehicleTableId: { $in: vehicleIds },
@@ -253,10 +253,11 @@ const getAllVehiclesData = async (req, res) => {
         });
     }
 
-    // Fix for pagination data
     const finalData = filteredVehicles?.length > 0 ? filteredVehicles : data;
     let finalTotalRecords = totalRecords;
     let finalTotalPages = totalPages;
+
+    console.log(finalData, filteredVehicles);
 
     // If we're filtering by maintenance type, we need to adjust the total records and pages
     if (maintenanceType && filteredVehicles.length > 0) {
