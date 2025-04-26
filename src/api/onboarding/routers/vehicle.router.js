@@ -50,9 +50,7 @@ const {
   timelineFunction,
   timelineFunctionForGet,
 } = require("../models/timeline.model");
-// const TimeLine = require("../../../db/schemas/onboarding/timeline.schema");
 const { vehicleChangeInBooking } = require("../models/vehicleChange.model");
-// const { Auth } = require("googleapis");
 const { extentBooking } = require("../models/extentBooking.model");
 const { forgetPasswordFunction } = require("../models/forgetPassword");
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
@@ -810,32 +808,13 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     startMeterReading,
     lateFeeBasedOnHour,
     lateFeeBasedOnKM,
+    additionalPrice,
     closingDate,
     paymentMode,
+    refundAmount,
   } = req.body;
 
   const obj = { status: 200, message: "", data: {} };
-  // const getDurationInDaysAndHours = (date1Str, date2Str) => {
-  //   // Parse the input strings into Date objects
-  //   const date1 = new Date(date1Str);
-  //   const date2 = new Date(date2Str);
-
-  //   // Check if the dates are valid
-  //   if (isNaN(date1) || isNaN(date2)) {
-  //     return "Invalid date format";
-  //   }
-
-  //   // Get the difference between the two dates in milliseconds
-  //   const differenceInMs = Math.abs(date2 - date1);
-
-  //   // Convert milliseconds to days and hours
-  //   const totalHours = Math.floor(differenceInMs / (1000 * 60 * 60));
-  //   const days = Math.floor(totalHours / 24);
-  //   const hours = totalHours % 24; // Remaining hours after full days
-
-  //   return { days, hours };
-  // };
-
   try {
     const booking = await Booking.findOne({ _id });
     let {
@@ -850,19 +829,29 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       obj.message = "Ride already finished";
       return res.json(obj);
     }
+
     let lateFeePaymentMethod = "NA";
+    let additionFeePaymentMethod = "NA";
 
     if (lateFeeBasedOnHour !== 0 || lateFeeBasedOnKM !== 0) {
       lateFeePaymentMethod = paymentMode;
     }
+    if (additionalPrice !== 0) {
+      additionFeePaymentMethod = paymentMode;
+    }
 
-    const newBookingPrice = {
+    let newBookingPrice = {
       ...bookingPrice,
       lateFeeBasedOnHour,
       lateFeeBasedOnKM,
+      additionalPrice,
       lateFeePaymentMethod,
+      additionFeePaymentMethod,
     };
-    // return console.log(newBookingPrice);
+
+    if (refundAmount) {
+      newBookingPrice = { ...newBookingPrice, refundAmount };
+    }
 
     if (!rideOtp || rideOtp?.toString().length != 4) {
       await Log({
@@ -895,6 +884,10 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     );
 
     if (closingDate) {
+      let paymentStatus = booking?.paymentStatus;
+      if (refundAmount > 0) {
+        paymentStatus = "refunded";
+      }
       const updatedBooking = await Booking.updateOne(
         { _id: ObjectId(_id) },
         {
@@ -903,6 +896,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
             bookingPrice: newBookingPrice,
             BookingEndDateAndTime: closingDate,
             "extendBooking.originalEndDate": BookingEndDateAndTime,
+            paymentStatus: paymentStatus,
           },
         },
         { new: true }
