@@ -142,7 +142,7 @@ const vehicleTableSchema = new Schema(
       required: true,
     },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+  { timestamps: true }
 );
 
 const vehicleTable = mongoose.model("vehicleTable", vehicleTableSchema);
