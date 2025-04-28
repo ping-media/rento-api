@@ -1,21 +1,16 @@
-import Booking from '../api/onboarding/models/booking.model'; // Your Booking model
+import Booking from "../api/onboarding/models/booking.model";
 import cron from "node-cron";
 
+let isCronScheduled = false;
 
-// Function to handle booking cancellation logic
 async function cancelPendingPayments() {
-  console.log("Running scheduler to cancel pending payments older than 1 hour...");
+  console.log("Running scheduler to cancel all pending payments...");
 
   try {
-    const oneHourAgo = new Date();
-    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-
-    // Find and update bookings with paymentStatus "pending" older than 1 hour
     const result = await Booking.updateMany(
       {
         paymentStatus: "pending",
-        createdAt: { $lte: oneHourAgo },
-        paymentMethod: { $ne: "cash" }
+        paymentMethod: { $ne: "cash" },
       },
       {
         $set: {
@@ -27,19 +22,30 @@ async function cancelPendingPayments() {
     );
 
     if (result.modifiedCount > 0) {
-      console.log(`Canceled ${result.modifiedCount} bookings with pending payment.`);
+      console.log(`Canceled ${result.modifiedCount} pending bookings.`);
     } else {
-      console.log("No pending payments older than 1 hour to cancel.");
+      console.log("No pending bookings to cancel.");
     }
   } catch (error) {
-    console.error("Error in scheduler for canceling pending payments:", error.message);
+    console.error(
+      "Error in scheduler for canceling pending payments:",
+      error.message
+    );
   }
 }
 
-// Express.js route handler to trigger the cron job manually
-// async function handler(req, res) {
-//       await cancelPendingPayments();
-//   res.status(200).send("Cron job is working (FROM ROUTE)");
-// }
+// Express.js route handler
+async function handler(req, res) {
+  if (!isCronScheduled) {
+    cron.schedule("0 0 * * *", async () => {
+      await cancelPendingPayments();
+    });
+    isCronScheduled = true;
+    console.log("Cron job scheduled to run every day at 12:00 AM.");
+  }
 
-module.exports = { cancelPendingPayments };
+  console.log("Cron job is working (FROM ROUTE)");
+  res.status(200).send("Cron job is working (FROM ROUTE)");
+}
+
+module.exports = { handler };
