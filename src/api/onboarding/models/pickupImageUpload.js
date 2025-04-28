@@ -1,70 +1,89 @@
-const path = require('path');
-const multer = require('multer');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-require('dotenv').config();
+const path = require("path");
+const multer = require("multer");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+require("dotenv").config();
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
-const Booking = require('../../../db/schemas/onboarding/booking.schema');
-const {resizeImg} = require('../../../utils/resizeImage');
-const {timelineFunction} = require("../models/timeline.model");
-
+const Booking = require("../../../db/schemas/onboarding/booking.schema");
+const { resizeImg } = require("../../../utils/resizeImage");
+const { timelineFunction } = require("../models/timeline.model");
 
 // Validate required environment variables
-const { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME } = process.env;
+const {
+  AWS_REGION,
+  AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY,
+  AWS_BUCKET_NAME,
+} = process.env;
 
-if (!AWS_REGION || !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_BUCKET_NAME) {
-    console.error("Missing required environment variables for AWS configuration.");
-    process.exit(1);
+if (
+  !AWS_REGION ||
+  !AWS_ACCESS_KEY_ID ||
+  !AWS_SECRET_ACCESS_KEY ||
+  !AWS_BUCKET_NAME
+) {
+  console.error(
+    "Missing required environment variables for AWS configuration."
+  );
+  process.exit(1);
 }
 
 // Configure AWS S3 Client
 const s3 = new S3Client({
-    region: AWS_REGION,
-    credentials: {
-        accessKeyId: AWS_ACCESS_KEY_ID,
-        secretAccessKey: AWS_SECRET_ACCESS_KEY,
-    },
+  region: AWS_REGION,
+  credentials: {
+    accessKeyId: AWS_ACCESS_KEY_ID,
+    secretAccessKey: AWS_SECRET_ACCESS_KEY,
+  },
 });
 
 // Configure Multer for Memory Storage
 const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 }, // Limit to 10 MB
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // Limit to 10 MB
 });
 
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
-    const { userId, bookingId, data, startMeterReading, endMeterReading, _id,rideOtp,PaymentMode,paymentStatus,isVehicleUpdate,vehicleNumber,oldVehicleEndMeterReading } = req.body;
-  
+    const {
+      userId,
+      bookingId,
+      data,
+      startMeterReading,
+      endMeterReading,
+      _id,
+      rideOtp,
+      PaymentMode,
+      paymentStatus,
+      isVehicleUpdate,
+      vehicleNumber,
+      oldVehicleEndMeterReading,
+    } = req.body;
+
     if (!userId || userId.length !== 24) {
       return res.json({ message: "Invalid user ID provided." });
     }
 
-    const booking= await Booking.findOne({_id}).populate("userId", "kycApproved");
+    const booking = await Booking.findOne({ _id }).populate(
+      "userId",
+      "kycApproved"
+    );
     const kycStatus = booking?.userId?.kycApproved;
 
-    if(kycStatus==="no"){
-      return res.json(
-        { status:400,
-       message:"Customer kyc is not Approved",
-       isKyc:false
-      }
-
-         );
+    if (kycStatus === "no") {
+      return res.json({
+        status: 400,
+        message: "Customer kyc is not Approved",
+        isKyc: false,
+      });
     }
 
-    const {vehicleBasic}=booking;
-    
-   
-     
-      if(vehicleBasic.startRide!==Number(rideOtp)){
-  
-        return res.json(
-       { status:400,
-      message:"Invalid Otp",}
-        );
-      }
-      
+    const { vehicleBasic, paymentMethod } = booking;
+
+    if (vehicleBasic.startRide !== Number(rideOtp)) {
+      return res.json({ status: 400, message: "Invalid Otp" });
+    }
+
     const uploadedFiles = [];
 
     // Helper function to get current timestamp in milliseconds
@@ -92,7 +111,6 @@ const pickupImageUp = async (req, res) => {
       uploadedFiles.push({ fileName, imageUrl });
     }
 
-   
     const tempObj = {};
     uploadedFiles.forEach((file, index) => {
       tempObj[`file_${index}`] = {
@@ -102,84 +120,129 @@ const pickupImageUp = async (req, res) => {
     });
 
     if (isVehicleUpdate) {
-      
       const pickupData = await pickupImage.findOne({ bookingId });
-  
-      
+
       const updatedData = [
-        ...(pickupData?.data?.updatedData ?? []), 
+        ...(pickupData?.data?.updatedData ?? []),
         {
-            vehicleNumber,
-            startMeterReading: pickupData?.startMeterReading, 
-            oldVehicleEndMeterReading
-        }
-    ];
-    
-  
-   
+          vehicleNumber,
+          startMeterReading: pickupData?.startMeterReading,
+          oldVehicleEndMeterReading,
+        },
+      ];
+
       const newDocument = await pickupImage.findOneAndUpdate(
-          { userId, bookingId }, 
-          { 
-              $set: { 
-                  files: tempObj, 
-                  data: updatedData, 
-                  startMeterReading, 
-                  endMeterReading 
-              } 
-          }, 
-          { new: true }
+        { userId, bookingId },
+        {
+          $set: {
+            files: tempObj,
+            data: updatedData,
+            startMeterReading,
+            endMeterReading,
+          },
+        },
+        { new: true }
       );
-  
+
       if (newDocument) {
-          return res.json({
-              status: 200,
-              message: "Vehicle changed successfully.",
-              newDocument: newDocument.toObject({ flattenMaps: true }), 
-          });
+        return res.json({
+          status: 200,
+          message: "Vehicle changed successfully.",
+          newDocument: newDocument.toObject({ flattenMaps: true }),
+        });
       }
-  }
-  
+    }
+
     const newDocument = new pickupImage({
       userId,
       bookingId,
       files: tempObj,
       data,
       startMeterReading,
-      endMeterReading
-       
+      endMeterReading,
     });
 
     await newDocument.save();
-    const OTP=Math.floor(1000 + Math.random() * 9000);
+    const OTP = Math.floor(1000 + Math.random() * 9000);
 
-    if(paymentStatus=="pending"){
-      const updateResult = await Booking.updateOne(
+    if (
+      paymentStatus === "partially_paid" ||
+      paymentStatus === "partiallyPay"
+    ) {
+      const AmountLeftAfterUserPaid =
+        booking?.bookingPrice?.AmountLeftAfterUserPaid ||
+        booking?.bookingPrice?.AmountLeftAfterUserPaid?.amount;
+
+      let updatedAmountLeft = {};
+      if (
+        AmountLeftAfterUserPaid &&
+        typeof AmountLeftAfterUserPaid === "object" &&
+        !Array.isArray(AmountLeftAfterUserPaid)
+      ) {
+        updatedAmountLeft = {
+          ...AmountLeftAfterUserPaid,
+          status: "paid",
+          paymentMethod: PaymentMode,
+        };
+      } else {
+        updatedAmountLeft = {
+          status: "paid",
+          paymentMethod: PaymentMode,
+          ...AmountLeftAfterUserPaid,
+        };
+      }
+
+      await Booking.updateOne(
         { _id },
-        { $set: { "bookingPrice.isPickupImageAdded": true,"bookingPrice.payOnPickupMethod": PaymentMode,"rideStatus":"ongoing","vehicleBasic.endRide":OTP,"paymentStatus":"paid"} },
+        {
+          $set: {
+            "bookingPrice.isPickupImageAdded": true,
+            rideStatus: "ongoing",
+            "vehicleBasic.endRide": OTP,
+            "bookingPrice.AmountLeftAfterUserPaid": updatedAmountLeft,
+            // "bookingPrice.AmountLeftAfterUserPaid.status": "paid",
+            // "bookingPrice.AmountLeftAfterUserPaid.paymentMethod": PaymentMode,
+            paymentStatus: "paid",
+          },
+        },
         { new: true }
       );
-    } else if(paymentStatus=="partially_paid" || paymentStatus=="partiallyPay"){
-      const updateResult = await Booking.updateOne(
+    } else if (
+      paymentMethod?.toLowerCase() === "cash" &&
+      paymentStatus === "pending"
+    ) {
+      await Booking.updateOne(
         { _id },
-        { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing","vehicleBasic.endRide":OTP,"bookingPrice.AmountLeftAfterUserPaid.status":"paid","bookingPrice.AmountLeftAfterUserPaid.paymentMethod":PaymentMode,"paymentStatus":"paid"} },
+        {
+          $set: {
+            "bookingPrice.isPickupImageAdded": true,
+            rideStatus: "ongoing",
+            "vehicleBasic.endRide": OTP,
+            "bookingPrice.payOnPickupMethod": PaymentMode,
+            paymentStatus: "paid",
+          },
+        },
+        { new: true }
+      );
+    } else {
+      await Booking.updateOne(
+        { _id },
+        {
+          $set: {
+            "bookingPrice.isPickupImageAdded": true,
+            rideStatus: "ongoing",
+            "vehicleBasic.endRide": OTP,
+          },
+        },
         { new: true }
       );
     }
-    else{
-      const updateResult = await Booking.updateOne(
-        { _id },
-        { $set: { "bookingPrice.isPickupImageAdded": true ,"rideStatus":"ongoing","vehicleBasic.endRide":OTP} },
-        { new: true }
-      );
-    }
 
-
-   
     return res.json({
       status: 200,
       message: "Ride started successfully.",
       newDocument,
-      endOtp:OTP
+      endOtp: OTP,
     });
   } catch (error) {
     console.error("Error uploading files:", error);
@@ -190,9 +253,6 @@ const pickupImageUp = async (req, res) => {
     });
   }
 };
-
-
-
 
 // const pickupImageUp = async (req, res) => {
 //   try {
@@ -264,41 +324,33 @@ const pickupImageUp = async (req, res) => {
 //   }
 // };
 
-
-
-
-
 const getPickupImage = async (req, res) => {
-    try {
-      const { userId,bookingId,_id } = req.query;
+  try {
+    const { userId, bookingId, _id } = req.query;
     //console.log(userId,bookingId,_id)
-      const filter = {};
-      if (_id) filter._id = _id;
-      if (bookingId) filter.bookingId = bookingId;
-      if (userId) filter.userId = userId;
-     // if (paidInvoice) filter.paidInvoice = paidInvoice;
+    const filter = {};
+    if (_id) filter._id = _id;
+    if (bookingId) filter.bookingId = bookingId;
+    if (userId) filter.userId = userId;
+    // if (paidInvoice) filter.paidInvoice = paidInvoice;
 
-      
-      
-      const documents = await pickupImage.find(filter);
-  
-      if (!documents || documents.length === 0) {
-        return res.json({
-          status: 400,
-          message: "No data found .",
-          data:[]
-        });
+    const documents = await pickupImage.find(filter);
 
-      }
-      return res.status(200).json({
-        status: 200,
-        message: "Image retrieved successfully.",
-        data: documents,
+    if (!documents || documents.length === 0) {
+      return res.json({
+        status: 400,
+        message: "No data found .",
+        data: [],
       });
-    
+    }
+    return res.status(200).json({
+      status: 200,
+      message: "Image retrieved successfully.",
+      data: documents,
+    });
 
     // const documents = await pickupImage.find();
-  
+
     // if (!documents || documents.length === 0) {
     //   return res.json({
     //     status: 400,
@@ -311,41 +363,40 @@ const getPickupImage = async (req, res) => {
     //     message: "Image retrieved successfully.",
     //     data: documents,
     //   });
-    } catch (error) {
-      console.error("Error fetching documents:", error);
-      return res.json({
-        status: 500,
-        message: "Failed to retrieve Image.",
-        error: error.message,
-      });
-    }
-  };
-  
-
-  const getAllPickupImage= async(req,res)=>{
-    try {
-      const documents = await pickupImage.find();
-  
-      if (!documents || documents.length === 0) {
-        return res.json({
-          status: 400,
-          message: "No data found for the provided User ID.",
-        });
-      }
-  
-      return res.status(200).json({
-        status: 200,
-        message: "Image retrieved successfully.",
-        data: documents,
-      });
-    } catch (error) {
-      console.error("Error fetching documents:", error);
-      return res.json({
-        status: 500,
-        message: "Failed to retrieve Image.",
-        error: error.message,
-      });
-    }
+  } catch (error) {
+    console.error("Error fetching documents:", error);
+    return res.json({
+      status: 500,
+      message: "Failed to retrieve Image.",
+      error: error.message,
+    });
   }
+};
+
+const getAllPickupImage = async (req, res) => {
+  try {
+    const documents = await pickupImage.find();
+
+    if (!documents || documents.length === 0) {
+      return res.json({
+        status: 400,
+        message: "No data found for the provided User ID.",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      message: "Image retrieved successfully.",
+      data: documents,
+    });
+  } catch (error) {
+    console.error("Error fetching documents:", error);
+    return res.json({
+      status: 500,
+      message: "Failed to retrieve Image.",
+      error: error.message,
+    });
+  }
+};
 
 module.exports = { pickupImageUp, getPickupImage, getAllPickupImage };
