@@ -8,7 +8,7 @@ require("dotenv").config();
 const { mongoose } = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { Auth } = require("two-step-auth");
-const nodemailer = require('nodemailer');
+const nodemailer = require("nodemailer");
 // import errors
 const errorMessages = require("../errors/errors");
 const { sendMessage } = require("../../../utils/Phone");
@@ -26,38 +26,40 @@ const plan = require("../../../db/schemas/onboarding/plan.schema");
 const order = require("../../../db/schemas/onboarding/order.schema");
 const location = require("../../../db/schemas/onboarding/location.schema");
 const Otp = require("../../../db/schemas/onboarding/logOtp");
-const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema")
+const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const { log } = require("winston");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
-const { sendOtpByEmail } = require("../../../utils/emailSend")
+const { sendOtpByEmail } = require("../../../utils/emailSend");
 
-
-
-
-
-async function updateUser({ _id, userType, firstName, contact, lastName, email }) {
-  const o = { status: 200, message: "data fetched successfully", data: [] }
+async function updateUser({
+  _id,
+  userType,
+  firstName,
+  contact,
+  lastName,
+  email,
+}) {
+  const o = { status: 200, message: "data fetched successfully", data: [] };
   try {
-    const result = await User.findOne({ _id: ObjectId(_id) })
+    const result = await User.findOne({ _id: ObjectId(_id) });
     if (result) {
       const obj = {
         userType: userType ? userType : "USER",
         firstName: firstName ? firstName : "",
         lastName: lastName ? lastName : "",
         contact: contact ? contact : "",
-        email: email ? email : ""
-      }
+        email: email ? email : "",
+      };
       await User.updateOne(
         { _id: ObjectId(_id) },
         {
-          $set: obj
+          $set: obj,
         },
         { new: true }
       );
-      o.message = "user updated successfully"
+      o.message = "user updated successfully";
     } else {
-      o.message = "Invalid details",
-        o.status = "401"
+      (o.message = "Invalid details"), (o.status = "401");
     }
     return "Updated Successfully";
   } catch (error) {
@@ -66,7 +68,12 @@ async function updateUser({ _id, userType, firstName, contact, lastName, email }
 }
 
 const getAllUsers = async (query) => {
-  const obj = { status: 200, message: "Data fetched successfully", data: [], pagination: {} };
+  const obj = {
+    status: 200,
+    message: "Data fetched successfully",
+    data: [],
+    pagination: {},
+  };
 
   try {
     // Destructure query parameters with defaults
@@ -84,8 +91,8 @@ const getAllUsers = async (query) => {
       isContactVerified,
       page = 1,
       limit = 10,
-      sortBy = 'createdAt',
-      order = 'desc',
+      sortBy = "createdAt",
+      order = "desc",
     } = query;
 
     // Validate and normalize inputs
@@ -115,7 +122,6 @@ const getAllUsers = async (query) => {
     if (isContactVerified) filter.isContactVerified = isContactVerified;
     if (status) filter.status = status;
 
-
     // Handle search functionality
     if (search) {
       filter.$or = [
@@ -135,14 +141,18 @@ const getAllUsers = async (query) => {
     // Build sort object
     const sortFields = ["createdAt", "firstName", "lastName", "email"];
     const sort = {};
-    sort[sortBy] = sortFields.includes(sortBy) ? (order === "asc" ? 1 : -1) : -1;
+    sort[sortBy] = sortFields.includes(sortBy)
+      ? order === "asc"
+        ? 1
+        : -1
+      : -1;
 
     // Pagination logic
     const skip = (pageNumber - 1) * pageSize;
     const totalRecords = await User.count(filter);
 
     // Fetch users with pagination and sorting
-    const users = await User.find(filter, { otp: 0, password: 0 }) // Exclude sensitive fields
+    const users = await User.find(filter, { otp: 0, password: 0 })
       .sort(sort)
       .skip(skip)
       .limit(pageSize);
@@ -169,24 +179,37 @@ const getAllUsers = async (query) => {
   return obj;
 };
 
-
-
 async function getAllDataCount(query) {
   try {
     const obj = { status: 200, message: "Data fetched successfully", data: {} };
-    const { stationId } = query; // Extract stationId from query
+    const { stationId } = query;
 
     const stationFilter = stationId ? { stationId } : {};
 
     // Fetch bookings and calculate totalAmount
-    const bookings = await Booking.find(stationFilter); // Apply stationId filter
+    const bookings = await Booking.find(stationFilter);
     const Amount = bookings.reduce((acc, item) => {
-      const price =
+      if (item.bookingStatus === "canceled") return acc;
+
+      const basePrice =
         item.bookingPrice.discountTotalPrice &&
         item.bookingPrice.discountTotalPrice !== 0
           ? item.bookingPrice.discountTotalPrice
           : item.bookingPrice.totalPrice;
-      return acc + price;
+
+      const extendTotal = Array.isArray(item.bookingPrice.extendPrice)
+        ? item.bookingPrice.extendPrice.reduce((sum, e) => {
+            return e.status === "paid" ? sum + (e.amount || 0) : sum;
+          }, 0)
+        : 0;
+
+      const diffTotal = Array.isArray(item.bookingPrice.diffAmount)
+        ? item.bookingPrice.diffAmount.reduce((sum, d) => {
+            return d.status === "paid" ? sum + (d.amount || 0) : sum;
+          }, 0)
+        : 0;
+
+      return acc + basePrice + extendTotal + diffTotal;
     }, 0);
 
     let usersCount = 0,
@@ -200,11 +223,7 @@ async function getAllDataCount(query) {
 
     if (stationId) {
       // Fetch only station-specific counts
-      [
-        bookingsCount,
-        vehiclesCount,
-        invoicesCount,
-      ] = await Promise.all([
+      [bookingsCount, vehiclesCount, invoicesCount] = await Promise.all([
         Booking.countDocuments(stationFilter),
         vehicleTable.countDocuments(stationFilter),
         invoiceTbl.countDocuments(stationFilter),
@@ -234,10 +253,19 @@ async function getAllDataCount(query) {
 
     // Populate the data object
     obj.data = {
-      ...(stationId ? {} : { usersCount, locationCount, stationsCount, couponsCount, plansCount, invoicesCount }),
+      ...(stationId
+        ? {}
+        : {
+            usersCount,
+            locationCount,
+            stationsCount,
+            couponsCount,
+            plansCount,
+            invoicesCount,
+          }),
       bookingsCount,
       vehiclesCount,
-      Amount, // Total amount of bookings
+      Amount,
     };
 
     return obj;
@@ -245,8 +273,6 @@ async function getAllDataCount(query) {
     return { status: 500, message: "An error occurred", error: error.message };
   }
 }
-
-
 
 // async function saveUser({
 //   _id,
@@ -447,7 +473,6 @@ async function getAllDataCount(query) {
 //   return response;
 // }
 
-
 async function saveUser(userData) {
   const {
     _id,
@@ -472,7 +497,11 @@ async function saveUser(userData) {
     otp,
   } = userData;
 
-  const response = { status: 200, message: "Data processed successfully", data: [] };
+  const response = {
+    status: 200,
+    message: "Data processed successfully",
+    data: [],
+  };
   //console.log(userData)
 
   function isAtLeast18(dob) {
@@ -485,18 +514,17 @@ async function saveUser(userData) {
     // Adjust if the birth date has not yet occurred this year
     const hasHadBirthdayThisYear =
       today.getMonth() > dobDate.getMonth() ||
-      (today.getMonth() === dobDate.getMonth() && today.getDate() >= dobDate.getDate());
+      (today.getMonth() === dobDate.getMonth() &&
+        today.getDate() >= dobDate.getDate());
 
     return hasHadBirthdayThisYear ? age >= 18 : age - 1 >= 18;
   }
 
   try {
-
     const validateId = (id) => id && id.length === 24;
     const isValidContact = (number) => contactValidation(number);
     const isValidEmail = (email) => emailValidation(email);
     const isValidEnum = (value, validList) => validList.includes(value);
-
 
     if (_id && !validateId(_id)) {
       return { status: 400, message: "Invalid _id" };
@@ -522,26 +550,25 @@ async function saveUser(userData) {
       }
     }
 
-
     if (altContact && !isValidContact(altContact)) {
       return { status: 400, message: "Invalid alternative contact number" };
     }
-
 
     const validUserTypes = ["manager", "customer", "admin"];
     if (!isValidEnum(userType, validUserTypes)) {
       return { status: 400, message: "Invalid user type" };
     }
     if ((userType === "admin" || userType === "manager") && !password && !_id) {
-      return { status: 400, message: "Password is required for admin or manager" };
+      return {
+        status: 400,
+        message: "Password is required for admin or manager",
+      };
     }
-
 
     const validStatuses = ["active", "inactive"];
     if (!isValidEnum(status, validStatuses)) {
       return { status: 400, message: "Invalid user status" };
     }
-
 
     const validKycStatuses = ["yes", "no"];
     if (!isValidEnum(kycApproved, validKycStatuses)) {
@@ -554,11 +581,9 @@ async function saveUser(userData) {
       return { status: 400, message: "Invalid contact verification status" };
     }
 
-
     if (email && !isValidEmail(email)) {
       return { status: 400, message: "Invalid email address" };
     }
-
 
     const userObj = {
       addressProof,
@@ -580,7 +605,8 @@ async function saveUser(userData) {
       gender,
     };
     if (password) {
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
+      const passwordRegex =
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
       if (!passwordRegex.test(password)) {
         return { status: 400, message: "Password validation not match" };
       }
@@ -594,58 +620,73 @@ async function saveUser(userData) {
       }
       if (deleteRec) {
         await User.findByIdAndDelete(_id);
-        return { status: 200, message: "User deleted successfully.", data: { _id } };
+        return {
+          status: 200,
+          message: "User deleted successfully.",
+          data: { _id },
+        };
       }
       //console.log(userObj.altContact)
       //console.log(userType)
-      if (userType !== "admin" ) {
+      if (userType !== "admin") {
         if (!userObj.altContact || userObj.altContact === "") {
           return { status: 400, message: "AltContact is required." };
         }
-      
+
         if (userObj.dateofbirth && !isAtLeast18(userObj.dateofbirth)) {
           return { status: 400, message: "User should be 18 or older." };
         }
-        if(userObj.altContact==existingUser.contact){
-          return { status: 400, message: "Alternate contact should not be the same as primary contact." };
-
+        if (userObj.altContact == existingUser.contact) {
+          return {
+            status: 400,
+            message:
+              "Alternate contact should not be the same as primary contact.",
+          };
         }
       }
-      if(userType !== "admin" && userType !== "manager"){
+      if (userType !== "admin" && userType !== "manager") {
         if (userObj.dateofbirth && !isAtLeast18(userObj.dateofbirth)) {
           return { status: 400, message: "User should be 18 or older." };
         }
       }
-
 
       Object.keys(userObj).forEach((key) => {
-        if (userObj[key] === undefined || userObj[key] === null || userObj[key] === "") {
+        if (
+          userObj[key] === undefined ||
+          userObj[key] === null ||
+          userObj[key] === ""
+        ) {
           delete userObj[key];
         }
       });
 
-      const data = await User.findByIdAndUpdate(_id, { $set: userObj }, { new: true });
+      const data = await User.findByIdAndUpdate(
+        _id,
+        { $set: userObj },
+        { new: true }
+      );
       return { status: 200, message: "User updated successfully", data: data };
     } else {
       if (!firstName || !lastName || !contact || !email) {
         return { status: 400, message: "Missing required fields for new user" };
       }
 
-
       //const name = firstName + lastName;
       const newUser = new User(userObj);
       await newUser.save();
-      whatsappMessage(contact, "welcome_customer", [firstName])
-      sendOtpByEmail(email, firstName, lastName)
-      return { status: 200, message: "User created successfully", data: newUser.toObject() };
+      whatsappMessage(contact, "welcome_customer", [firstName]);
+      sendOtpByEmail(email, firstName, lastName);
+      return {
+        status: 200,
+        message: "User created successfully",
+        data: newUser.toObject(),
+      };
     }
   } catch (error) {
     console.error("Error in saveUser:", error.message);
     return { status: 500, message: "Internal server error" };
   }
 }
-
-
 
 // async function saveUser(userData) {
 //   const {
@@ -674,7 +715,7 @@ async function saveUser(userData) {
 //   const response = { status: 200, message: "Data processed successfully", data: [] };
 
 //   function isAtLeast18(dob) {
-//     const dobDate = new Date(dob); 
+//     const dobDate = new Date(dob);
 //     const today = new Date();
 
 //     console.log("DOB Date: ", dobDate);
@@ -683,14 +724,14 @@ async function saveUser(userData) {
 //     let age = today.getFullYear() - dobDate.getFullYear();
 
 //     const hasHadBirthdayThisYear =
-//       today.getMonth() > dobDate.getMonth() || 
+//       today.getMonth() > dobDate.getMonth() ||
 //       (today.getMonth() === dobDate.getMonth() && today.getDate() >= dobDate.getDate());
 
 //     if (!hasHadBirthdayThisYear) {
-//       age -= 1; 
+//       age -= 1;
 //     }
 
-//     console.log("Calculated Age: ", age); 
+//     console.log("Calculated Age: ", age);
 
 //     return age >= 18;
 //   }
@@ -825,33 +866,34 @@ async function saveUser(userData) {
 //   }
 // }
 
-
-
-
-
-
-
-
-
 async function updateImage(req) {
   const obj = { status: 200, message: "image updated successfully", data: "" };
-  console.log(req.file)
-  const url = req.protocol + '://' + req.get('host')
-  obj.data = url + '/public/' + req.file.filename
-  return obj
+  console.log(req.file);
+  const url = req.protocol + "://" + req.get("host");
+  obj.data = url + "/public/" + req.file.filename;
+  return obj;
 }
-
 
 async function getUserProfile(userId) {
   const obj = { status: 200, message: "data fetched successfully", data: [] };
   try {
-    const result = await User.findOne({ _id: ObjectId(userId) },
-      { name: 1, contact: 1, profileImage: 1, userName: 1, status: 1, gender: 1, dob: 1 });
+    const result = await User.findOne(
+      { _id: ObjectId(userId) },
+      {
+        name: 1,
+        contact: 1,
+        profileImage: 1,
+        userName: 1,
+        status: 1,
+        gender: 1,
+        dob: 1,
+      }
+    );
     if (result) {
-      obj.data = result
+      obj.data = result;
     } else {
-      obj.status = 401
-      obj.message = "data not found"
+      obj.status = 401;
+      obj.message = "data not found";
     }
     return obj;
   } catch (error) {
@@ -861,29 +903,31 @@ async function getUserProfile(userId) {
 
 async function getUserByContact(body) {
   const obj = { status: 200, message: "data fetched successfully", data: [] };
-  const { contact, userType } = body
-  const o = { contact }
-  o.userType = 'USER'
+  const { contact, userType } = body;
+  const o = { contact };
+  o.userType = "USER";
   if (userType) {
-    o.userType = userType
+    o.userType = userType;
   }
   try {
     const result = await User.findOne({ ...o });
     if (result) {
       const findBookings = await Booking.find({ contact });
-      obj.data = result._doc
+      obj.data = result._doc;
       if (findBookings && findBookings.length) {
-        let arr = []
+        let arr = [];
         for (let i = 0; i < findBookings.length; i++) {
-          const o = findBookings[i]
-          const vehicleData = await Vehicle.findOne({ _id: ObjectId(o.vehicleId) });
-          arr.push({ bookingData: o, vehicleData: vehicleData })
+          const o = findBookings[i];
+          const vehicleData = await Vehicle.findOne({
+            _id: ObjectId(o.vehicleId),
+          });
+          arr.push({ bookingData: o, vehicleData: vehicleData });
         }
-        obj.data = { ...obj.data, bookings: arr }
+        obj.data = { ...obj.data, bookings: arr };
       }
     } else {
-      obj.status = 401
-      obj.message = "data not found"
+      obj.status = 401;
+      obj.message = "data not found";
     }
     return obj;
   } catch (error) {
@@ -962,10 +1006,6 @@ async function getUserByContact(body) {
 //   }
 // }
 
-
-
-
-
 // async function verify({ type, otp, contact }) {
 //   const obj = { status: 200, message: "data fetched successfully", data: [] };
 //   if (type && otp && contact) {
@@ -1009,35 +1049,28 @@ async function getUserByContact(body) {
 //   return obj;
 // }
 
-
-
-
-
-
 async function login(emailId) {
   try {
     const res = await Auth(emailId, "Infoaxon");
-    console.log(res)
+    console.log(res);
   } catch (error) {
     throw new Error(error);
   }
-
-
 }
-
-
 
 async function searchUser(data) {
   let obj = { status: 200, message: "data fetched successfully", data: [] };
   try {
-    const { email, Contact } = data
-    let colName = "Contact"
-    let val = Contact
+    const { email, Contact } = data;
+    let colName = "Contact";
+    let val = Contact;
     if (email) {
-      colName = "email"
-      val = email
+      colName = "email";
+      val = email;
     }
-    const result = await User.find({ [colName]: { $regex: '.*' + val + '.*' } })
+    const result = await User.find({
+      [colName]: { $regex: ".*" + val + ".*" },
+    });
     if (result) {
       obj.data = result;
     } else {
@@ -1050,8 +1083,6 @@ async function searchUser(data) {
   }
 }
 
-
-
 module.exports = {
   //sendOtps,
   getAllDataCount,
@@ -1062,5 +1093,5 @@ module.exports = {
   getUserProfile,
   searchUser,
   updateImage,
-  getUserByContact
+  getUserByContact,
 };
