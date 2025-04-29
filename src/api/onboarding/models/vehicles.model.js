@@ -4755,8 +4755,8 @@ const getVehicleTblData = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                  {
-                    $ne: ["$$booking.rideStatus", ["canceled"]],
+                   {
+                    $ne: ["$$booking.rideStatus", "canceled"],
                   },
                   {
                     $not: [
