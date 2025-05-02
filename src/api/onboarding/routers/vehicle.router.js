@@ -44,9 +44,11 @@ const { sendInvoiceByEmail } = require("../../../utils/emailSend");
 const { kycApprovalFunction } = require("../models/kycapproval.model");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const {
-  maintenanceVehicleFunction,
-  getMaintenanceVehicle,
-} = require("../models/maintenanceVehicle.model");
+  createAndUpdateGeneral,
+  getGeneral,
+  manageExtraAddOn,
+  getExtraAddOns,
+} = require("../models/general.model");
 const {
   timelineFunction,
   timelineFunctionForGet,
@@ -82,8 +84,16 @@ router.post("/updateGeneral", Authentication, async (req, res) => {
   createAndUpdateGeneral(req, res);
 });
 
+router.post("/manageAddOn", Authentication, async (req, res) => {
+  manageExtraAddOn(req, res);
+});
+
 router.get("/general", async (req, res) => {
   getGeneral(req, res);
+});
+
+router.get("/addOn", async (req, res) => {
+  getExtraAddOns(req, res);
 });
 
 router.post("/createBookingDuration", async (req, res) => {
