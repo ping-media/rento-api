@@ -13,7 +13,6 @@ const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { fileUpload } = require("../models/locationUpload.model");
 const { VehicalfileUpload } = require("../models/createVehicleMasterUpload");
-const { cancelPendingPayments } = require("../../../utils/cron");
 // const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
@@ -44,11 +43,9 @@ const { sendInvoiceByEmail } = require("../../../utils/emailSend");
 const { kycApprovalFunction } = require("../models/kycapproval.model");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const {
-  createAndUpdateGeneral,
-  getGeneral,
-  manageExtraAddOn,
-  getExtraAddOns,
-} = require("../models/general.model");
+  maintenanceVehicleFunction,
+  getMaintenanceVehicle,
+} = require("../models/maintenanceVehicle.model");
 const {
   timelineFunction,
   timelineFunctionForGet,
@@ -65,6 +62,8 @@ const {
 const {
   createAndUpdateGeneral,
   getGeneral,
+  manageExtraAddOn,
+  getExtraAddOns,
 } = require("../models/general.model");
 
 // create messages
