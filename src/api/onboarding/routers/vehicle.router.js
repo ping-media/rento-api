@@ -62,6 +62,8 @@ const {
 const {
   createAndUpdateGeneral,
   getGeneral,
+  manageExtraAddOn,
+  getExtraAddOns,
 } = require("../models/general.model");
 
 // create messages
@@ -77,8 +79,12 @@ router.post("/createVehicle", async (req, res) => {
   vehiclesService.createVehicle(req, res);
 });
 
-router.post("/updateMultipleVehicles", async (req, res) => {
+router.post("/updateMultipleVehicles", Authentication, async (req, res) => {
   updateMultipleVehicles(req, res);
+});
+
+router.post("/manageAddOn", Authentication, async (req, res) => {
+  manageExtraAddOn(req, res);
 });
 
 router.post("/updateGeneral", async (req, res) => {
@@ -87,6 +93,10 @@ router.post("/updateGeneral", async (req, res) => {
 
 router.get("/general", async (req, res) => {
   getGeneral(req, res);
+});
+
+router.get("/addOn", async (req, res) => {
+  getExtraAddOns(req, res);
 });
 
 router.post("/createBookingDuration", async (req, res) => {
