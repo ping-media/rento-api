@@ -15,6 +15,10 @@ const GeneralSchema = new Schema(
         PriceType: { type: String, enum: ["+", "-"], default: "+" },
       },
     ],
+    GST: {
+      percentage: { type: Number, default: 18 },
+      status: { type: String, enum: ["active", "inactive"], default: "active" },
+    },
     extraAddOn: [
       {
         _id: { type: Schema.Types.ObjectId, auto: true },
