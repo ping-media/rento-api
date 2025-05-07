@@ -6,6 +6,7 @@ const createAndUpdateGeneral = async (req, res) => {
     weakendPrice,
     weakendPriceType,
     specialDays,
+    gstStatus,
     clearSpecialDays = false,
   } = req.body;
 
@@ -19,8 +20,8 @@ const createAndUpdateGeneral = async (req, res) => {
     specialDays.length > 0 &&
     !specialDays.some((day) => !allowedTypes.includes(day.PriceType));
 
-  if (!hasWeakend && !hasSpecialDays && !clearSpecialDays) {
-    return res.status(400).json({
+  if (!hasWeakend && !hasSpecialDays && !clearSpecialDays && !gstStatus) {
+    return res.status(200).json({
       status: 400,
       message: "Provide at least valid weakend or specialDays data to proceed.",
     });
@@ -28,6 +29,34 @@ const createAndUpdateGeneral = async (req, res) => {
 
   try {
     const existingGeneral = await General.findOne();
+
+    if (gstStatus && existingGeneral) {
+      if (!["active", "inactive"].includes(gstStatus)) {
+        return res.status(200).json({
+          status: 400,
+          message: "Provide valid flag",
+        });
+      }
+
+      const updated = await General.findOneAndUpdate(
+        {},
+        { "GST.status": gstStatus },
+        { new: true }
+      );
+
+      if (!updated) {
+        return res.status(200).json({
+          status: 400,
+          message: "General settings document not found.",
+        });
+      }
+
+      return res.status(200).json({
+        status: 200,
+        success: true,
+        message: "status change successfully.",
+      });
+    }
 
     if (existingGeneral) {
       if (hasWeakend) {
@@ -230,9 +259,9 @@ const getExtraAddOns = async (req, res) => {
   const skip = (page - 1) * limit;
 
   try {
-    const general = await General.findOne({}, { extraAddOn: 1 });
+    const general = await General.findOne({}, { GST: 1, extraAddOn: 1 });
 
-    if (!general || !general.extraAddOn) {
+    if (!general || !general.extraAddOn || !general.GST) {
       return res.status(404).json({
         status: 404,
         message: "No extra add-ons found.",
@@ -242,11 +271,13 @@ const getExtraAddOns = async (req, res) => {
 
     const total = general.extraAddOn.length;
     const paginated = general.extraAddOn.slice(skip, skip + limit);
+    const GST = general.GST;
 
     return res.status(200).json({
       status: 200,
       message: "Extra add-ons fetched successfully.",
       data: paginated,
+      GST: GST,
       pagination: {
         total,
         page,
