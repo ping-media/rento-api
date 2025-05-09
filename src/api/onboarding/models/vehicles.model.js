@@ -1937,6 +1937,7 @@ async function createStation({
   latitude,
   longitude,
   _id,
+  status,
   deleteRec,
 }) {
   const response = { status: 200, message: "Operation successful", data: [] };
@@ -1958,8 +1959,10 @@ async function createStation({
 
     return hour24; // Return only the hour in 24-hour format
   }
-  openStartTime = convertTo24Hour(openStartTime);
-  openEndTime = convertTo24Hour(openEndTime);
+  if (openStartTime && openEndTime) {
+    openStartTime = convertTo24Hour(openStartTime);
+    openEndTime = convertTo24Hour(openEndTime);
+  }
   const stationData = {
     country: "India",
     stationId,
@@ -2012,6 +2015,28 @@ async function createStation({
         });
         response.message = "Station deleted successfully";
         logError("Station deleted successfully ", "createStation", userId);
+
+        return response;
+      }
+
+      if (status) {
+        await Station.updateOne(
+          { _id: ObjectId(_id) },
+          { $set: { status: status } }
+        );
+
+        await Log({
+          message: `Station with ID ${_id} status updated to inactive`,
+          functionName: "updateStationStatus",
+          userId,
+        });
+
+        response.message = "Station status updated successfully";
+        logError(
+          "Station status updated successfully",
+          "updateStationStatus",
+          userId
+        );
 
         return response;
       }
