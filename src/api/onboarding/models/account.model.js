@@ -604,11 +604,15 @@ async function saveUser(userData) {
       dateofbirth,
       gender,
     };
-    if (password) {
+if (password) {
       const passwordRegex =
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
       if (!passwordRegex.test(password)) {
-        return { status: 400, message: "Password validation not match" };
+        return {
+          status: 400,
+          message:
+            "Password must be 8–20 chars, with uppercase, lowercase, number & special.",
+        };
       }
       userObj.password = bcrypt.hashSync(password, 8);
     }
