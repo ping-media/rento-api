@@ -1937,6 +1937,7 @@ async function createStation({
   latitude,
   longitude,
   _id,
+  status,
   deleteRec,
 }) {
   const response = { status: 200, message: "Operation successful", data: [] };
@@ -1958,8 +1959,10 @@ async function createStation({
 
     return hour24; // Return only the hour in 24-hour format
   }
-  openStartTime = convertTo24Hour(openStartTime);
-  openEndTime = convertTo24Hour(openEndTime);
+  if (openStartTime && openEndTime) {
+    openStartTime = convertTo24Hour(openStartTime);
+    openEndTime = convertTo24Hour(openEndTime);
+  }
   const stationData = {
     country: "India",
     stationId,
@@ -2012,6 +2015,28 @@ async function createStation({
         });
         response.message = "Station deleted successfully";
         logError("Station deleted successfully ", "createStation", userId);
+
+        return response;
+      }
+
+      if (status) {
+        await Station.updateOne(
+          { _id: ObjectId(_id) },
+          { $set: { status: status } }
+        );
+
+        await Log({
+          message: `Station with ID ${_id} status updated to inactive`,
+          functionName: "updateStationStatus",
+          userId,
+        });
+
+        response.message = "Station status updated successfully";
+        logError(
+          "Station status updated successfully",
+          "updateStationStatus",
+          userId
+        );
 
         return response;
       }
@@ -3540,69 +3565,125 @@ const getVehicleTbl = async (query) => {
       if (pricingRules) {
         // Get original per day cost
         const originalPerDayCost = adjustedVehicle.perDayCost;
-        let finalPerDayCost = originalPerDayCost;
 
-        // Check date range from booking start to booking end
         const startDateObj = new Date(startDate);
         const endDateObj = new Date(endDate);
 
+        // Calculate total rental cost by applying different rates for each day
+        let totalRentalCost = 0;
+        const daysBreakdown = [];
+
+        // Calculate booking duration in days
+        const bookingDurationMs = endDateObj - startDateObj;
+        const bookingDurationDays = Math.ceil(
+          bookingDurationMs / (1000 * 60 * 60 * 24)
+        );
+
+        // Check if booking contains any weekend days
+        let hasWeekendDays = false;
+        let weekendPerDayCost = originalPerDayCost;
+
+        if (pricingRules.weakend) {
+          const weekendPrice = pricingRules.weakend.Price;
+          const weekendPriceType = pricingRules.weakend.PriceType;
+
+          if (weekendPriceType === "+") {
+            weekendPerDayCost =
+              Number(originalPerDayCost) +
+              (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
+          } else if (weekendPriceType === "-") {
+            weekendPerDayCost =
+              Number(originalPerDayCost) -
+              (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
+          }
+
+          weekendPerDayCost = Math.round(weekendPerDayCost);
+        }
+
         // Loop through each day in the booking period
         const currentDate = new Date(startDateObj);
-        while (currentDate <= endDateObj) {
+        const dayOfWeek = currentDate.getDay();
+        const isDateOnWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        while (currentDate < endDateObj) {
           const dayOfWeek = currentDate.getDay();
-          const dateString = currentDate.toISOString().split("T")[0];
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+          if (isWeekend) {
+            hasWeekendDays = true;
+          }
 
-          // Check if it's a weekend (Saturday = 6, Sunday = 0)
-          if (dayOfWeek === 6 || dayOfWeek === 0) {
-            // Weekend pricing rule
-            if (pricingRules.weakend) {
-              const weekendPrice = pricingRules.weakend.Price;
-              const weekendPriceType = pricingRules.weakend.PriceType;
+          let dailyRate = originalPerDayCost;
 
-              // Apply weekend pricing
-              if (weekendPriceType === "+") {
-                finalPerDayCost =
-                  Number(originalPerDayCost) +
-                  (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
-              } else if (weekendPriceType === "-") {
-                finalPerDayCost =
-                  Number(originalPerDayCost) -
-                  (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
-              }
+          // Apply weekend pricing if it's a weekend day
+          if (isWeekend && pricingRules.weakend) {
+            const weekendPrice = pricingRules.weakend.Price;
+            const weekendPriceType = pricingRules.weakend.PriceType;
+
+            if (weekendPriceType === "+") {
+              dailyRate =
+                Number(originalPerDayCost) +
+                (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
+            } else if (weekendPriceType === "-") {
+              dailyRate =
+                Number(originalPerDayCost) -
+                (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
             }
           }
 
-          // Check if it's a special day
+          // Check if the day falls within any special day range
           if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
-            pricingRules.specialDays.forEach((specialDay) => {
+            for (const specialDay of pricingRules.specialDays) {
               const fromDate = new Date(specialDay.From);
               const toDate = new Date(specialDay.Too);
 
-              // Check if current date falls within this special period
               if (currentDate >= fromDate && currentDate <= toDate) {
                 const specialPrice = specialDay.Price;
                 const specialPriceType = specialDay.PriceType;
 
                 if (specialPriceType === "+") {
-                  finalPerDayCost =
+                  dailyRate =
                     Number(originalPerDayCost) +
                     (Number(originalPerDayCost) * Number(specialPrice)) / 100;
                 } else if (specialPriceType === "-") {
-                  finalPerDayCost =
+                  dailyRate =
                     Number(originalPerDayCost) -
                     (Number(originalPerDayCost) * Number(specialPrice)) / 100;
                 }
+
+                break;
               }
-            });
+            }
           }
 
-          // Move to next day
+          // Add the daily rate to the total rental cost
+          totalRentalCost += dailyRate;
+
+          // Store information about this day for internal use
+          daysBreakdown.push({
+            date: new Date(currentDate),
+            isWeekend,
+            dailyRate: Math.round(dailyRate),
+          });
+
+          // Move to the next day
           currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        // Update vehicle with adjusted price
+        // Store the original per day cost
         adjustedVehicle.originalPerDayCost = originalPerDayCost;
-        adjustedVehicle.perDayCost = Math.round(finalPerDayCost);
+
+        // Display weekend per day cost if booking includes weekend days
+        // if (hasWeekendDays) {
+        if (isDateOnWeekend) {
+          adjustedVehicle.perDayCost = weekendPerDayCost;
+        } else {
+          adjustedVehicle.perDayCost = originalPerDayCost;
+        }
+
+        // Add total rental cost
+        adjustedVehicle.totalRentalCost = Math.round(totalRentalCost);
+
+        adjustedVehicle._daysBreakdown = daysBreakdown;
       }
 
       adjustedVehicles.push(adjustedVehicle);
@@ -4755,7 +4836,7 @@ const getVehicleTblData = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                   {
+                  {
                     $ne: ["$$booking.rideStatus", "canceled"],
                   },
                   {
@@ -5077,69 +5158,296 @@ const getVehicleTblData = async (query) => {
     // Apply pricing rules to available vehicles
     const pricingRules = await General.findOne({});
 
+    // if (pricingRules) {
+    //   paginatedAvailable = paginatedAvailable.map((groupedVehicle) => {
+    //     const adjustedVehicle = { ...groupedVehicle };
+    //     const originalPerDayCost = adjustedVehicle.perDayCost;
+    //     let finalPerDayCost = originalPerDayCost;
+
+    //     const startDateObj = new Date(startDate);
+    //     const endDateObj = new Date(endDate);
+
+    //     // Check if start date or end date is a weekend
+    //     const startDayOfWeek = startDateObj.getDay();
+    //     const endDayOfWeek = endDateObj.getDay();
+    //     const isWeekendBooking =
+    //       startDayOfWeek === 6 ||
+    //       startDayOfWeek === 0 ||
+    //       endDayOfWeek === 6 ||
+    //       endDayOfWeek === 0;
+
+    //     // Apply weekend pricing only if start date or end date is a weekend
+    //     if (isWeekendBooking && pricingRules.weakend) {
+    //       const weekendPrice = pricingRules.weakend.Price;
+    //       const weekendPriceType = pricingRules.weakend.PriceType;
+
+    //       if (weekendPriceType === "+") {
+    //         finalPerDayCost =
+    //           Number(originalPerDayCost) +
+    //           (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
+    //       } else if (weekendPriceType === "-") {
+    //         finalPerDayCost =
+    //           Number(originalPerDayCost) -
+    //           (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
+    //       }
+    //     }
+
+    //     // Check if start date or end date falls within any special day range
+    //     if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
+    //       pricingRules.specialDays.forEach((specialDay) => {
+    //         const fromDate = new Date(specialDay.From);
+    //         const toDate = new Date(specialDay.Too);
+
+    //         // Check if start date or end date is within special day range
+    //         if (
+    //           (startDateObj >= fromDate && startDateObj <= toDate) ||
+    //           (endDateObj >= fromDate && endDateObj <= toDate)
+    //         ) {
+    //           const specialPrice = specialDay.Price;
+    //           const specialPriceType = specialDay.PriceType;
+
+    //           if (specialPriceType === "+") {
+    //             finalPerDayCost =
+    //               Number(originalPerDayCost) +
+    //               (Number(originalPerDayCost) * Number(specialPrice)) / 100;
+    //           } else if (specialPriceType === "-") {
+    //             finalPerDayCost =
+    //               Number(originalPerDayCost) -
+    //               (Number(originalPerDayCost) * Number(specialPrice)) / 100;
+    //           }
+    //         }
+    //       });
+    //     }
+
+    //     adjustedVehicle.originalPerDayCost = originalPerDayCost;
+    //     adjustedVehicle.perDayCost = Math.round(finalPerDayCost);
+
+    //     return adjustedVehicle;
+    //   });
+    // }
+    // if (pricingRules) {
+    //   paginatedAvailable = paginatedAvailable.map((groupedVehicle) => {
+    //     const adjustedVehicle = { ...groupedVehicle };
+    //     const originalPerDayCost = adjustedVehicle.perDayCost;
+
+    //     const startDateObj = new Date(startDate);
+    //     const endDateObj = new Date(endDate);
+
+    //     adjustedVehicle.originalPerDayCost = originalPerDayCost;
+
+    //     let totalRentalCost = 0;
+
+    //     const daysInBooking = [];
+    //     const currentDate = new Date(startDateObj);
+
+    //     const weekendPrice = pricingRules.weakend
+    //       ? pricingRules.weakend.Price
+    //       : 0;
+    //     const weekendPriceType = pricingRules.weakend
+    //       ? pricingRules.weakend.PriceType
+    //       : "+";
+
+    //     // Loop through each day in the booking period
+    //     const dayOfWeek = currentDate.getDay();
+    //     const isDateOnWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    //     while (currentDate < endDateObj) {
+    //       const nextDate = new Date(currentDate);
+    //       nextDate.setDate(nextDate.getDate() + 1);
+
+    //       const dayOfWeek = currentDate.getDay();
+    //       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    //       let dailyRate = originalPerDayCost;
+
+    //       // Apply weekend pricing if it's a weekend day
+    //       if (isWeekend && pricingRules.weakend) {
+    //         if (weekendPriceType === "+") {
+    //           dailyRate =
+    //             Number(originalPerDayCost) +
+    //             (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
+    //         } else if (weekendPriceType === "-") {
+    //           dailyRate =
+    //             Number(originalPerDayCost) -
+    //             (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
+    //         }
+    //       }
+
+    //       // Check if the day falls within any special day range
+    //       if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
+    //         for (const specialDay of pricingRules.specialDays) {
+    //           const fromDate = new Date(specialDay.From);
+    //           const toDate = new Date(specialDay.Too);
+
+    //           if (currentDate >= fromDate && currentDate <= toDate) {
+    //             const specialPrice = specialDay.Price;
+    //             const specialPriceType = specialDay.PriceType;
+
+    //             if (specialPriceType === "+") {
+    //               dailyRate =
+    //                 Number(originalPerDayCost) +
+    //                 (Number(originalPerDayCost) * Number(specialPrice)) / 100;
+    //             } else if (specialPriceType === "-") {
+    //               dailyRate =
+    //                 Number(originalPerDayCost) -
+    //                 (Number(originalPerDayCost) * Number(specialPrice)) / 100;
+    //             }
+
+    //             break;
+    //           }
+    //         }
+    //       }
+
+    //       // Add the daily rate to the total rental cost
+    //       totalRentalCost += dailyRate;
+
+    //       // Store information about this day for debugging
+    //       daysInBooking.push({
+    //         date: new Date(currentDate),
+    //         isWeekend,
+    //         dailyRate: Math.round(dailyRate),
+    //       });
+
+    //       // Move to the next day
+    //       currentDate.setDate(currentDate.getDate() + 1);
+    //     }
+
+    //     // Store the calculated values
+    //     adjustedVehicle.daysBreakdown = daysInBooking;
+    //     adjustedVehicle.totalRentalCost = Math.round(totalRentalCost);
+
+    //     // For backward compatibility, keep perDayCost as the average
+    //     const bookingDurationDays = Math.ceil(
+    //       (endDateObj - startDateObj) / (1000 * 60 * 60 * 24)
+    //     );
+    //     if (isDateOnWeekend == true) {
+    //       adjustedVehicle.perDayCost = Math.round(
+    //         totalRentalCost / bookingDurationDays
+    //       );
+    //     }
+
+    //     return adjustedVehicle;
+    //   });
+    // }
     if (pricingRules) {
       paginatedAvailable = paginatedAvailable.map((groupedVehicle) => {
         const adjustedVehicle = { ...groupedVehicle };
         const originalPerDayCost = adjustedVehicle.perDayCost;
-        let finalPerDayCost = originalPerDayCost;
 
         const startDateObj = new Date(startDate);
         const endDateObj = new Date(endDate);
 
-        // Check if start date or end date is a weekend
-        const startDayOfWeek = startDateObj.getDay();
-        const endDayOfWeek = endDateObj.getDay();
-        const isWeekendBooking =
-          startDayOfWeek === 6 ||
-          startDayOfWeek === 0 ||
-          endDayOfWeek === 6 ||
-          endDayOfWeek === 0;
+        adjustedVehicle.originalPerDayCost = originalPerDayCost;
 
-        // Apply weekend pricing only if start date or end date is a weekend
-        if (isWeekendBooking && pricingRules.weakend) {
-          const weekendPrice = pricingRules.weakend.Price;
-          const weekendPriceType = pricingRules.weakend.PriceType;
+        let totalRentalCost = 0;
+
+        const daysInBooking = [];
+        const currentDate = new Date(startDateObj);
+        console.log(currentDate);
+
+        const weekendPrice = pricingRules.weakend
+          ? pricingRules.weakend.Price
+          : 0;
+        const weekendPriceType = pricingRules.weakend
+          ? pricingRules.weakend.PriceType
+          : "+";
+
+        // Check if start date is a weekend
+        const startDayOfWeek = currentDate.getDay();
+        const isStartDateWeekend = startDayOfWeek === 0 || startDayOfWeek === 6;
+        console.log(currentDate, startDayOfWeek, isStartDateWeekend);
+
+        // Loop through each day in the booking period
+        while (currentDate < endDateObj) {
+          const nextDate = new Date(currentDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+
+          const dayOfWeek = currentDate.getDay();
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+          let dailyRate = originalPerDayCost;
+
+          // Apply weekend pricing if it's a weekend day
+          if (isWeekend && pricingRules.weakend) {
+            if (weekendPriceType === "+") {
+              dailyRate =
+                Number(originalPerDayCost) +
+                (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
+            } else if (weekendPriceType === "-") {
+              dailyRate =
+                Number(originalPerDayCost) -
+                (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
+            }
+          }
+
+          // Check if the day falls within any special day range
+          if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
+            for (const specialDay of pricingRules.specialDays) {
+              const fromDate = new Date(specialDay.From);
+              const toDate = new Date(specialDay.Too);
+
+              if (currentDate >= fromDate && currentDate <= toDate) {
+                const specialPrice = specialDay.Price;
+                const specialPriceType = specialDay.PriceType;
+
+                if (specialPriceType === "+") {
+                  dailyRate =
+                    Number(originalPerDayCost) +
+                    (Number(originalPerDayCost) * Number(specialPrice)) / 100;
+                } else if (specialPriceType === "-") {
+                  dailyRate =
+                    Number(originalPerDayCost) -
+                    (Number(originalPerDayCost) * Number(specialPrice)) / 100;
+                }
+
+                break;
+              }
+            }
+          }
+
+          // Add the daily rate to the total rental cost
+          totalRentalCost += dailyRate;
+
+          // Store information about this day for debugging
+          daysInBooking.push({
+            date: new Date(currentDate),
+            isWeekend,
+            dailyRate: Math.round(dailyRate),
+          });
+
+          // Move to the next day
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // Store the calculated values
+        adjustedVehicle.daysBreakdown = daysInBooking;
+        adjustedVehicle.totalRentalCost = Math.round(totalRentalCost);
+
+        // Calculate booking duration
+        const bookingDurationDays = Math.ceil(
+          (endDateObj - startDateObj) / (1000 * 60 * 60 * 24)
+        );
+
+        // Update perDayCost for display purposes based on start date
+        if (isStartDateWeekend && pricingRules.weakend) {
+          // Calculate weekend price for display
+          let weekendDayRate = originalPerDayCost;
 
           if (weekendPriceType === "+") {
-            finalPerDayCost =
+            weekendDayRate =
               Number(originalPerDayCost) +
               (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
           } else if (weekendPriceType === "-") {
-            finalPerDayCost =
+            weekendDayRate =
               Number(originalPerDayCost) -
               (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
           }
+
+          adjustedVehicle.perDayCost = Math.round(weekendDayRate);
+        } else {
+          // Keep the original per day cost for weekdays
+          adjustedVehicle.perDayCost = originalPerDayCost;
         }
-
-        // Check if start date or end date falls within any special day range
-        if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
-          pricingRules.specialDays.forEach((specialDay) => {
-            const fromDate = new Date(specialDay.From);
-            const toDate = new Date(specialDay.Too);
-
-            // Check if start date or end date is within special day range
-            if (
-              (startDateObj >= fromDate && startDateObj <= toDate) ||
-              (endDateObj >= fromDate && endDateObj <= toDate)
-            ) {
-              const specialPrice = specialDay.Price;
-              const specialPriceType = specialDay.PriceType;
-
-              if (specialPriceType === "+") {
-                finalPerDayCost =
-                  Number(originalPerDayCost) +
-                  (Number(originalPerDayCost) * Number(specialPrice)) / 100;
-              } else if (specialPriceType === "-") {
-                finalPerDayCost =
-                  Number(originalPerDayCost) -
-                  (Number(originalPerDayCost) * Number(specialPrice)) / 100;
-              }
-            }
-          });
-        }
-
-        adjustedVehicle.originalPerDayCost = originalPerDayCost;
-        adjustedVehicle.perDayCost = Math.round(finalPerDayCost);
 
         return adjustedVehicle;
       });
