@@ -26,8 +26,8 @@ const startServer = async () => {
       parameterLimit: 50000,
     })
   );
-  
-   app.use(
+
+  app.use(
     cors({
       origin: "*",
       methods: ["GET", "POST", "PUT", "DELETE"],

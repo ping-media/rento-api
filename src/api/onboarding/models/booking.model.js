@@ -1,7 +1,6 @@
-const Booking = require('../../../db/schemas/onboarding/booking.schema');
-const User = require("../../../db/schemas/onboarding/user.schema");
-const Log = require("../../../api/onboarding/models/Logs.model")
-
+const Booking = require("../../../db/schemas/onboarding/booking.schema.js");
+const General = require("../../../db/schemas/onboarding/general.schema.js");
+const Log = require("../../../api/onboarding/models/Logs.model.js");
 
 // Get All Bookings with Filtering and Pagination
 const getBooking = async (query) => {
@@ -9,12 +8,12 @@ const getBooking = async (query) => {
 
   try {
     const {
-      _id,    
-      bookingId,         
-      bookingStatus,          
-      userId=null,   
-      paymentStatus, 
-      search,    
+      _id,
+      bookingId,
+      bookingStatus,
+      userId = null,
+      paymentStatus,
+      search,
       vehicleBrand,
       vehicleName,
       stationName,
@@ -22,11 +21,10 @@ const getBooking = async (query) => {
       paymentMethod,
       payInitFrom,
       stationId,
-      page = 1,        
-      limit = 10,      
+      page = 1,
+      limit = 10,
     } = query;
 
-    
     if (_id) {
       if (_id.length !== 24) {
         await Log({
@@ -46,7 +44,6 @@ const getBooking = async (query) => {
           message: "Booking not found for the provided ID",
           functionName: "booking",
           userId: userId || "Admin",
-
         });
         obj.status = 404;
         obj.message = "Booking not found";
@@ -56,7 +53,6 @@ const getBooking = async (query) => {
       obj.data = [booking];
       return obj;
     }
-
 
     const filters = {};
     if (_id) filters._id = _id;
@@ -71,45 +67,42 @@ const getBooking = async (query) => {
     if (paymentMethod) filters.paymentMethod = paymentMethod;
     if (payInitFrom) filters.payInitFrom = payInitFrom;
     if (stationId) filters.stationId = stationId;
-    
-    
 
     // Add search functionality
-if (search) {
-  const searchRegex = new RegExp(search, "i"); // Case-insensitive search
-  filters.$or = [
-    { bookingId: searchRegex },
-    { vehicleBrand: searchRegex },
-    { vehicleName: searchRegex },
-    { stationName: searchRegex },
-    { bookingStatus: searchRegex },
-    { paymentStatus: searchRegex },
-    { paymentMethod: searchRegex },
-    { rideStatus: searchRegex },
-    { payInitFrom: searchRegex },
-    {
-      BookingStartDateAndTime: {
-        $regex: searchRegex,
-      },
-    },
-    {
-      BookingEndDateAndTime: {
-        $regex: searchRegex,
-      },
-    },
-  ];
-}
+    if (search) {
+      const searchRegex = new RegExp(search, "i"); // Case-insensitive search
+      filters.$or = [
+        { bookingId: searchRegex },
+        { vehicleBrand: searchRegex },
+        { vehicleName: searchRegex },
+        { stationName: searchRegex },
+        { bookingStatus: searchRegex },
+        { paymentStatus: searchRegex },
+        { paymentMethod: searchRegex },
+        { rideStatus: searchRegex },
+        { payInitFrom: searchRegex },
+        {
+          BookingStartDateAndTime: {
+            $regex: searchRegex,
+          },
+        },
+        {
+          BookingEndDateAndTime: {
+            $regex: searchRegex,
+          },
+        },
+      ];
+    }
 
-   
     const skip = (page - 1) * limit;
 
     const bookings = await Booking.find(filters)
       .populate("userId", "firstName lastName contact createdAt updatedAt")
-      .sort({ createdAt: -1 }) 
+      .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit))
-      
-     // .select("bookingId vehicleName stationName bookingStartDateAndTime bookingEndDateAndTime bookingPrice bookingStatus rideStatus");
+      .limit(Number(limit));
+
+    // .select("bookingId vehicleName stationName bookingStartDateAndTime bookingEndDateAndTime bookingPrice bookingStatus rideStatus");
 
     // If no bookings found
     if (!bookings.length) {
@@ -117,10 +110,9 @@ if (search) {
         message: "No bookings found for the provided filters",
         functionName: "booking",
         userId: userId || "Admin",
-
       });
       obj.message = "No records found";
-      obj.status= 200;
+      obj.status = 200;
       return obj;
     }
 
@@ -130,8 +122,8 @@ if (search) {
     // Include pagination metadata
     const totalRecords = await Booking.count(filters);
     obj.pagination = {
-     // totalRecords,
-     totalPages: Math.ceil(totalRecords / limit),
+      // totalRecords,
+      totalPages: Math.ceil(totalRecords / limit),
       currentPage: Number(page),
       limit: Number(limit),
     };
@@ -140,8 +132,7 @@ if (search) {
     await Log({
       message: `Error fetching bookings: ${error.message}`,
       functionName: "booking",
-    //  userId: userId || "Admin",
-
+      //  userId: userId || "Admin",
     });
     obj.status = 500;
     obj.message = "Internal server error";
@@ -150,23 +141,102 @@ if (search) {
   return obj;
 };
 
-
-
 const getBookings = async (query) => {
-  const obj = { status: 200, message: "Data fetched successfully", data: [], isEmpty:false };
+  const obj = {
+    status: 200,
+    message: "Data fetched successfully",
+    data: [],
+    isEmpty: false,
+  };
 
   try {
-    const { _id, bookingId, bookingStatus, userId, paymentStatus, search } = query;
+    const { _id, bookingId, bookingStatus, userId, paymentStatus, search } =
+      query;
 
-    // Handle fetching by `_id` directly
     if (_id) {
-      
-
       const booking = await Booking.findById(_id)
-        .populate("userId", "firstName lastName contact altContact email kycApproved")
-        .populate("stationMasterUserId", "firstName lastName contact altContact email status")
-       // .populate("stationId","longitude latitude");
-      
+        .populate(
+          "userId",
+          "firstName lastName contact altContact email kycApproved"
+        )
+        .populate("vehicleTableId", "vehiclePlan perDayCost")
+        .populate(
+          "stationMasterUserId",
+          "firstName lastName contact altContact email status"
+        );
+
+      const pricingRules = await General.findOne({});
+
+      if (booking && booking.vehicleTableId && pricingRules) {
+        const originalPerDayCost = booking.vehicleTableId.perDayCost;
+        let finalPerDayCost = originalPerDayCost;
+
+        const startDateObj = new Date(booking.BookingStartDateAndTime);
+        const endDateObj =
+          booking.extendBooking?.originalEndDate ||
+          booking.BookingEndDateAndTime
+            ? new Date(
+                booking.extendBooking?.originalEndDate ||
+                  booking.BookingEndDateAndTime
+              )
+            : null;
+
+        // Check if start or end is weekend
+        const startDayOfWeek = startDateObj.getDay();
+        const endDayOfWeek = endDateObj?.getDay();
+        const isWeekendBooking =
+          startDayOfWeek === 6 ||
+          startDayOfWeek === 0 ||
+          endDayOfWeek === 6 ||
+          endDayOfWeek === 0;
+
+        if (isWeekendBooking && pricingRules.weakend) {
+          const weekendPrice = pricingRules.weakend.Price;
+          const weekendPriceType = pricingRules.weakend.PriceType;
+
+          if (weekendPriceType === "+") {
+            finalPerDayCost =
+              Number(originalPerDayCost) +
+              (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
+          } else if (weekendPriceType === "-") {
+            finalPerDayCost =
+              Number(originalPerDayCost) -
+              (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
+          }
+        }
+
+        // Apply special day pricing
+        if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
+          pricingRules.specialDays.forEach((specialDay) => {
+            const fromDate = new Date(specialDay.From);
+            const toDate = new Date(specialDay.Too);
+
+            if (
+              (startDateObj >= fromDate && startDateObj <= toDate) ||
+              (endDateObj >= fromDate && endDateObj <= toDate)
+            ) {
+              const specialPrice = specialDay.Price;
+              const specialPriceType = specialDay.PriceType;
+
+              if (specialPriceType === "+") {
+                finalPerDayCost =
+                  Number(originalPerDayCost) +
+                  (Number(originalPerDayCost) * Number(specialPrice)) / 100;
+              } else if (specialPriceType === "-") {
+                finalPerDayCost =
+                  Number(originalPerDayCost) -
+                  (Number(originalPerDayCost) * Number(specialPrice)) / 100;
+              }
+            }
+          });
+        }
+        const bookingObj = booking.toObject();
+        bookingObj.vehicleTableId.originalPerDayCost = originalPerDayCost;
+        bookingObj.vehicleTableId.perDayCost = Math.round(finalPerDayCost);
+        obj.data = [bookingObj];
+        return obj;
+      }
+
       if (!booking) {
         await Log({
           message: "Booking not found for the provided ID",
@@ -175,7 +245,7 @@ const getBookings = async (query) => {
         });
         obj.status = 404;
         obj.message = "Booking not found";
-        obj.isEmpty=true
+        obj.isEmpty = true;
         return obj;
       }
 
@@ -222,14 +292,12 @@ const getBookings = async (query) => {
 
     // Add bookings to the response
     obj.data = bookings;
-
-    
   } catch (error) {
     console.error("Error fetching bookings:", error);
     await Log({
       message: `Error fetching bookings: ${error.message}`,
       functionName: "booking",
-     // userId: userId || null,
+      // userId: userId || null,
     });
     obj.status = 500;
     obj.message = "Internal server error";
@@ -237,6 +305,5 @@ const getBookings = async (query) => {
 
   return obj;
 };
-
 
 module.exports = { getBookings, getBooking };

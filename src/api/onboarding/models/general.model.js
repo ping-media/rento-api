@@ -1,3 +1,4 @@
+const { mongoose } = require("mongoose");
 const General = require("../../../db/schemas/onboarding/general.schema");
 
 const createAndUpdateGeneral = async (req, res) => {
@@ -5,6 +6,7 @@ const createAndUpdateGeneral = async (req, res) => {
     weakendPrice,
     weakendPriceType,
     specialDays,
+    gstStatus,
     clearSpecialDays = false,
   } = req.body;
 
@@ -18,8 +20,8 @@ const createAndUpdateGeneral = async (req, res) => {
     specialDays.length > 0 &&
     !specialDays.some((day) => !allowedTypes.includes(day.PriceType));
 
-  if (!hasWeakend && !hasSpecialDays && !clearSpecialDays) {
-    return res.status(400).json({
+  if (!hasWeakend && !hasSpecialDays && !clearSpecialDays && !gstStatus) {
+    return res.status(200).json({
       status: 400,
       message: "Provide at least valid weakend or specialDays data to proceed.",
     });
@@ -27,6 +29,34 @@ const createAndUpdateGeneral = async (req, res) => {
 
   try {
     const existingGeneral = await General.findOne();
+
+    if (gstStatus && existingGeneral) {
+      if (!["active", "inactive"].includes(gstStatus)) {
+        return res.status(200).json({
+          status: 400,
+          message: "Provide valid flag",
+        });
+      }
+
+      const updated = await General.findOneAndUpdate(
+        {},
+        { "GST.status": gstStatus },
+        { new: true }
+      );
+
+      if (!updated) {
+        return res.status(200).json({
+          status: 400,
+          message: "General settings document not found.",
+        });
+      }
+
+      return res.status(200).json({
+        status: 200,
+        success: true,
+        message: "status change successfully.",
+      });
+    }
 
     if (existingGeneral) {
       if (hasWeakend) {
@@ -81,24 +111,136 @@ const createAndUpdateGeneral = async (req, res) => {
   }
 };
 
+const manageExtraAddOn = async (req, res) => {
+  const { id, name, amount, maxAmount, status, delete: deleteFlag } = req.body;
+
+  const isCreate =
+    !id &&
+    name &&
+    typeof amount === "number" &&
+    typeof maxAmount === "number" &&
+    ["active", "inactive"].includes(status);
+
+  const isUpdate =
+    id &&
+    (name ||
+      typeof amount === "number" ||
+      typeof maxAmount === "number" ||
+      ["active", "inactive"].includes(status));
+
+  const isDelete = id && deleteFlag === true;
+
+  if (!isCreate && !isUpdate && !isDelete) {
+    return res.status(400).json({
+      status: 400,
+      message: "Invalid request. No Data Found.",
+    });
+  }
+
+  try {
+    const general = await General.findOne();
+    if (!general) {
+      return res.status(404).json({
+        status: 404,
+        message: "General settings document not found.",
+      });
+    }
+
+    if (isDelete) {
+      const index = general.extraAddOn.findIndex(
+        (item) => item._id.toString() === id
+      );
+      if (index === -1) {
+        return res
+          .status(404)
+          .json({ status: 404, message: "Add-on not found." });
+      }
+
+      general.extraAddOn.splice(index, 1);
+      await general.save();
+
+      return res.status(200).json({
+        status: 200,
+        message: `Add-on deleted successfully.`,
+      });
+    }
+
+    if (isUpdate) {
+      const addOn = general.extraAddOn.find(
+        (item) => item._id.toString() === id
+      );
+      if (!addOn) {
+        return res
+          .status(404)
+          .json({ status: 404, message: "Add-on not found." });
+      }
+
+      if (name) addOn.name = name;
+      if (typeof amount === "number") addOn.amount = amount;
+      if (typeof maxAmount === "number") addOn.maxAmount = maxAmount;
+      if (["active", "inactive"].includes(status)) addOn.status = status;
+
+      await general.save();
+
+      return res.status(200).json({
+        status: 200,
+        message: `Add-on updated successfully.`,
+      });
+    }
+
+    if (isCreate) {
+      const alreadyExists = general.extraAddOn.some(
+        (item) => item.name === name
+      );
+      if (alreadyExists) {
+        return res.json({
+          status: 400,
+          message: `Add-on with name '${name}' already exists.`,
+        });
+      }
+
+      general.extraAddOn.push({
+        _id: new mongoose.Types.ObjectId(),
+        name,
+        amount,
+        maxAmount,
+        status,
+      });
+
+      const saved = await general.save();
+      const newAddOn = saved.extraAddOn[saved.extraAddOn.length - 1];
+
+      return res.status(200).json({
+        status: 200,
+        message: `Add-on '${name}' created successfully.`,
+        data: newAddOn,
+      });
+    }
+  } catch (err) {
+    return res.json({
+      status: 500,
+      message: "Server error: " + err.message,
+    });
+  }
+};
+
 const getGeneral = async (req, res) => {
   try {
     const generalSettings = await General.findOne();
     if (!generalSettings) {
-      return res
-        .status(200)
-        .json({
-          status: 404,
-          success: false,
-          message: "General settings not found.",
-        });
+      return res.status(200).json({
+        status: 404,
+        success: false,
+        message: "General settings not found.",
+      });
     }
+    const { extraAddOn, __v, ...rest } = generalSettings.toObject();
 
     res.status(200).json({
       status: 200,
       success: true,
       message: "General settings fetched successfully.",
-      data: generalSettings,
+      data: rest,
     });
   } catch (error) {
     console.error("Error fetching general settings:", error);
@@ -111,4 +253,49 @@ const getGeneral = async (req, res) => {
   }
 };
 
-module.exports = { createAndUpdateGeneral, getGeneral };
+const getExtraAddOns = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  try {
+    const general = await General.findOne({}, { GST: 1, extraAddOn: 1 });
+
+    if (!general || !general.extraAddOn || !general.GST) {
+      return res.status(404).json({
+        status: 404,
+        message: "No extra add-ons found.",
+        data: [],
+      });
+    }
+
+    const total = general.extraAddOn.length;
+    const paginated = general.extraAddOn.slice(skip, skip + limit);
+    const GST = general.GST;
+
+    return res.status(200).json({
+      status: 200,
+      message: "Extra add-ons fetched successfully.",
+      data: paginated,
+      GST: GST,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: 500,
+      message: "Server error: " + err.message,
+    });
+  }
+};
+
+module.exports = {
+  createAndUpdateGeneral,
+  manageExtraAddOn,
+  getExtraAddOns,
+  getGeneral,
+};

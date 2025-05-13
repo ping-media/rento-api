@@ -1,120 +1,180 @@
-const Coupon = require('../../../db/schemas/onboarding/coupons.schema')
+const Coupon = require("../../../db/schemas/onboarding/coupons.schema");
 
 const mongoose = require("mongoose"); // Ensure mongoose is imported
-const Log = require("../models/Logs.model")
+const Log = require("../models/Logs.model");
 
-// const getCouponsUser = async()=>{
+// const getCoupons = async (query) => {
 //   const obj = { status: 200, message: "Data fetched successfully", data: [], pagination: {} };
-// try {
-//   if (_id) {
-//     if (!mongoose.Types.ObjectId.isValid(_id)) {
-//         obj.status = 400;
-//         obj.message = "Invalid _id format";
-//         return obj;
-//     }
 
-//     const coupon = await Coupon.findById(_id); 
-//     if (!coupon) {
-//         obj.message = "No Records Found";
-//         return obj;
-//     }
+//   try {
+//       const { _id, page = 1, limit = 10 } = query;
 
-//     if (coupon.couponCount==0) {
-//         obj.message = "Coupon usage limit exceeded";
-//         return obj;
-//     }
-//   }
+//       // Fetch by ID if provided
+//       if (_id) {
+//           if (!mongoose.Types.ObjectId.isValid(_id)) {
+//               obj.status = 400;
+//               obj.message = "Invalid _id format";
+//               return obj;
+//           }
 
-// } catch (error) {
-//   console.error("Error fetching coupons:", error); 
+//           const coupon = await Coupon.findById(_id);
+//           if (!coupon) {
+//               obj.message = "No Records Found";
+//               return obj;
+//           }
+
+//           obj.data = [coupon];
+//           return obj;
+//       }
+
+//       const skip = (page - 1) * limit;
+
+//       const totalRecords = await Coupon.count();
+
+//       const coupons = await Coupon.find()
+//           //.select("couponName discount discountType ")
+//           .skip(skip)
+//           .limit(Number(limit))
+//           .sort({ createdAt: -1 });
+
+//       if (!coupons.length) {
+//           obj.message = "No Records Found";
+//           return obj;
+//       }
+
+//       obj.data = coupons;
+//       obj.pagination = {
+//           totalPages: Math.ceil(totalRecords / limit),
+//           currentPage: Number(page),
+//           limit: Number(limit),
+//       };
+//   } catch (error) {
+//       console.error("Error fetching coupons:", error);
 //       obj.status = 500;
 //       obj.message = "Internal Server Error";
-// } 
-// return obj;
-// }
+//   }
+
+//   return obj;
+// };
 
 const getCoupons = async (query) => {
-  const obj = { status: 200, message: "Data fetched successfully", data: [], pagination: {} };
+  const obj = {
+    status: 200,
+    message: "Data fetched successfully",
+    data: [],
+    pagination: {},
+  };
 
   try {
-      const { _id, page = 1, limit = 10 } = query;
+    const { _id, page = 1, limit = 10, search } = query;
 
-      // Fetch by ID if provided
-      if (_id) {
-          if (!mongoose.Types.ObjectId.isValid(_id)) {
-              obj.status = 400;
-              obj.message = "Invalid _id format";
-              return obj;
-          }
-
-          const coupon = await Coupon.findById(_id); 
-          if (!coupon) {
-              obj.message = "No Records Found";
-              return obj;
-          }
-
-         
-
-          obj.data = [coupon]; 
-          return obj;
+    if (_id) {
+      if (!mongoose.Types.ObjectId.isValid(_id)) {
+        obj.status = 400;
+        obj.message = "Invalid _id format";
+        return obj;
       }
 
-      const skip = (page - 1) * limit;
+      const coupon = await Coupon.findById(_id);
 
-    
-      const totalRecords = await Coupon.count();
-
-      
-      const coupons = await Coupon.find()
-          //.select("couponName discount discountType ")
-          .skip(skip)
-          .limit(Number(limit))
-          .sort({ createdAt: -1 });
-         
-      if (!coupons.length) {
-          obj.message = "No Records Found";
-          return obj;
+      if (!coupon) {
+        obj.message = "No Records Found";
+        return obj;
       }
 
-      obj.data = coupons;
-      obj.pagination = {
-          totalPages: Math.ceil(totalRecords / limit),
-          currentPage: Number(page),
-          limit: Number(limit),
+      obj.data = [coupon];
+      return obj;
+    }
+
+    let searchQuery = {};
+    if (search) {
+      searchQuery = {
+        $or: [
+          { couponName: { $regex: search, $options: "i" } },
+          { discountType: { $regex: search, $options: "i" } },
+          ...(isNaN(Number(search)) ? [] : [{ discount: Number(search) }]),
+        ],
       };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await Coupon.countDocuments(searchQuery);
+
+    const coupons = await Coupon.find(searchQuery)
+      //.select("couponName discount discountType ")
+      .skip(skip)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
+
+    if (!coupons.length) {
+      obj.message = "No Records Found";
+      return obj;
+    }
+
+    obj.data = coupons;
+    obj.pagination = {
+      totalPages: Math.ceil(totalRecords / limit),
+      currentPage: Number(page),
+      limit: Number(limit),
+    };
   } catch (error) {
-      console.error("Error fetching coupons:", error);
-      obj.status = 500;
-      obj.message = "Internal Server Error";
+    console.error("Error fetching coupons:", error);
+    obj.status = 500;
+    obj.message = "Internal Server Error";
   }
 
   return obj;
 };
 
-
-
 const createCoupon = async (body) => {
-  const resObj = { status: 200, message: "Coupon processed successfully", data: [] };
+  const resObj = {
+    status: 200,
+    message: "Coupon processed successfully",
+    data: [],
+  };
 
   try {
-    const {_id, deleteRec, couponName, discount, discountType, isCouponActive, allowedUsersCount, couponCount}= body
+    const {
+      _id,
+      deleteRec,
+      couponName,
+      discount,
+      discountType,
+      isCouponActive,
+      allowedUsersCount,
+      couponCount,
+    } = body;
 
     //console.log( couponName, discount, discountType, isCouponActive)
-    
+
     // Validate required fields
-    if(!_id){if (!(couponName && discount && discountType && isCouponActive && couponCount )) {
-      return { status: 400, message: "Invalid data: Required fields are missing." };
-    }}
-   //allowedUsersCount=couponCount
+    if (!_id) {
+      if (
+        !(
+          couponName &&
+          discount &&
+          discountType &&
+          isCouponActive &&
+          couponCount
+        )
+      ) {
+        return {
+          status: 400,
+          message: "Invalid data: Required fields are missing.",
+        };
+      }
+    }
+    //allowedUsersCount=couponCount
 
     // Construct data object
     const dataObj = {
       ...(couponName && { couponName }),
       ...(discount && { discount }),
       ...(discountType && { discountType }),
-      ...( isCouponActive && { isCouponActive }),
-      ...( couponCount && { couponCount }),
-      ...( allowedUsersCount && { allowedUsersCount }),
+      ...(isCouponActive && { isCouponActive }),
+      ...(couponCount && { couponCount }),
+      ...(allowedUsersCount && { allowedUsersCount }),
     };
 
     if (_id) {
@@ -128,16 +188,16 @@ const createCoupon = async (body) => {
         await Log({
           message: `Coupon with ID ${_id} deleted`,
           functionName: "deleteCoupon",
-           // Ensure userId is accessible in this scope
+          // Ensure userId is accessible in this scope
         });
         return { status: 200, message: "Coupon deleted successfully." };
       }
 
       await Coupon.updateOne({ _id }, { $set: dataObj });
-      return { 
-        status: 200, 
-        message: "Coupon updated successfully.", 
-        data: dataObj 
+      return {
+        status: 200,
+        message: "Coupon updated successfully.",
+        data: dataObj,
       };
     }
 
@@ -150,17 +210,18 @@ const createCoupon = async (body) => {
 
     const newCoupon = new Coupon(dataObj);
     await newCoupon.save();
-    return { 
-      status: 200, 
-      message: "New coupon created successfully.", 
-      data: newCoupon 
+    return {
+      status: 200,
+      message: "New coupon created successfully.",
+      data: newCoupon,
     };
-
   } catch (err) {
     // Handle duplicate key error
     if (err.code === 11000) {
       resObj.status = 400; // Conflict
-      resObj.message = `Duplicate key error: ${Object.keys(err.keyValue).join(", ")} already exists.`;
+      resObj.message = `Duplicate key error: ${Object.keys(err.keyValue).join(
+        ", "
+      )} already exists.`;
     } else {
       console.error("Error in createCoupon:", err.message);
       resObj.status = 500;
@@ -170,16 +231,13 @@ const createCoupon = async (body) => {
   }
 };
 
-
-  
-
 const updateCouponCount = async (query) => {
   const obj = { status: 200, message: "Data updated successfully", data: [] };
 
   try {
-    const {_id}=query;
+    const { _id } = query;
     // Fetch coupon by ID
-   // console.log(_id)
+    // console.log(_id)
     const coupon = await Coupon.findById(_id);
     if (!coupon) {
       obj.status = 400;
@@ -187,37 +245,33 @@ const updateCouponCount = async (query) => {
       return obj;
     }
 
-
-     const { allowedUsersCount, couponCount } = coupon;
+    const { allowedUsersCount, couponCount } = coupon;
     // let allowedUsersCount = couponCount - 1;
 
     // Ensure allowedUsersCount does not go below 0
 
-if(couponCount !== -1){
-    if (allowedUsersCount == 0 ) {
-      obj.status = 400;
-      obj.message = "Coupon usage limit exceeded";
-      return obj;
+    if (couponCount !== -1) {
+      if (allowedUsersCount == 0) {
+        obj.status = 400;
+        obj.message = "Coupon usage limit exceeded";
+        return obj;
+      }
+
+      // Update the coupon document
+      const updatedCoupon = await Coupon.findByIdAndUpdate(
+        _id,
+        { $inc: { allowedUsersCount: -1 } },
+        { new: true }
+      );
+
+      if (!updatedCoupon) {
+        obj.status = 400;
+        obj.message = "Failed to update coupon";
+        return obj;
+      }
+
+      obj.data = updatedCoupon;
     }
-
-     
-
-    // Update the coupon document
-    const updatedCoupon = await Coupon.findByIdAndUpdate(
-      _id, 
-      { $inc: { allowedUsersCount: -1 } }, 
-      { new: true } 
-        );
-    
-
-    if (!updatedCoupon) {
-      obj.status = 400;
-      obj.message = "Failed to update coupon";
-      return obj;
-    }
-
-    obj.data = updatedCoupon;
-  }
   } catch (error) {
     console.error("Error updating coupon:", error);
     obj.status = 500;
@@ -227,53 +281,45 @@ if(couponCount !== -1){
   return obj;
 };
 
-
 const applyCoupon = async (body) => {
-  const { couponName, totalAmount, isExtra} = body;
+  const { couponName, totalAmount, isExtra } = body;
 
-   const obj = { status: 200, message: "Coupon applied successfully", data: {} };
+  const obj = { status: 200, message: "Coupon applied successfully", data: {} };
 
   try {
-   
     if (!couponName && !totalAmount && !isExtra) {
-     
-        obj.status=400;
-       obj.message="Coupon name and total amount are required";
-        return obj;
-     
+      obj.status = 400;
+      obj.message = "Coupon name and total amount are required";
+      return obj;
     }
 
     // Fetch the coupon from the database
     const coupon = await Coupon.findOne({ couponName });
 
     // Validate the coupon
-    if (!coupon || coupon.isCouponActive=="inActive") {
-      
-        obj.status= 400;
-        obj.message= "Invalid or inactive coupon";
-        return obj;
-      
+    if (!coupon || coupon.isCouponActive == "inActive") {
+      obj.status = 400;
+      obj.message = "Invalid or inactive coupon";
+      return obj;
     }
 
     // Check if the coupon has expired
     // if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
-     
+
     //     obj.status= 400;
     //     obj.message= "Coupon has expired";
     //     return obj;
-   
+
     // }
 
     // Check coupon usage limits
-   if(coupon.couponCount !== -1){
-     if (coupon.allowedUsersCount == 0) {
-    
-        obj.status= 400;
-        obj.message= "Coupon usage limit reached";
+    if (coupon.couponCount !== -1) {
+      if (coupon.allowedUsersCount == 0) {
+        obj.status = 400;
+        obj.message = "Coupon usage limit reached";
         return obj;
-     
-    }}
-    
+      }
+    }
 
     // Calculate the discount
     let discount = 0;
@@ -283,26 +329,22 @@ const applyCoupon = async (body) => {
       discount = coupon.discount;
     }
 
-    
-    const finalAmount = Number(totalAmount)<Number(discount) ? 0 : Number(totalAmount) - Number(discount);
-    
+    const finalAmount =
+      Number(totalAmount) < Number(discount)
+        ? 0
+        : Number(totalAmount) - Number(discount);
 
-   const isDiscountZero= finalAmount===0 ? true :false
-    
-    obj.data = { discount, finalAmount, isExtra, coupon , isDiscountZero};
+    const isDiscountZero = finalAmount === 0 ? true : false;
 
-   
+    obj.data = { discount, finalAmount, isExtra, coupon, isDiscountZero };
   } catch (error) {
     console.error("Error applying coupon=", error);
-      obj.status= 500;
-      error= error.message;
-      obj.message= error;
-      return obj;
-   
+    obj.status = 500;
+    error = error.message;
+    obj.message = error;
+    return obj;
   }
   return obj;
 };
 
-  
-  
-  module.exports = {createCoupon, getCoupons, updateCouponCount, applyCoupon}
+module.exports = { createCoupon, getCoupons, updateCouponCount, applyCoupon };
