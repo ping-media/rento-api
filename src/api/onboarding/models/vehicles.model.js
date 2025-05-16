@@ -4585,51 +4585,6 @@ function groupVehiclesByName(vehicles) {
   return Array.from(vehicleMap.values());
 }
 
-// const getPlanData = async (query) => {
-//   const obj = { status: 200, message: "Plans retrieved successfully", data: [] };
-
-//   try {
-//     const { _id, stationId, locationId } = query;
-
-//     // Fetch by _id
-//     if (_id) {
-//       if (_id.length !== 24) {
-//         obj.status = 401;
-//         obj.message = "Invalid plan ID";
-//         return obj;
-//       }
-
-//     }
-
-//     const filter = {};
-//     if (stationId) filter.stationId = stationId;
-//     if (locationId) filter.locationId = locationId;
-//     if (_id) filter._id = _id;
-
-//     // Fetch plans based on the filter
-//     const find=await Station.find({stationId})
-//     console.log(find)
-//     const plans = await Plan.find(filter)
-//    // .populate("stationId") // Populate station data
-//     .populate("vehicleMasterId"); // Populate vehicle data
-
-//     if (!plans.length) {
-//       obj.message = "No records found";
-//       obj.status = 401;
-
-//       return obj;
-//     }
-
-//     obj.data = plans;
-//   } catch (error) {
-//     console.error("Error fetching plans:", error.message);
-//     obj.status = 500;
-//     obj.message = "Internal server error";
-//   }
-
-//   return obj;
-// };
-
 const getPlanData = async (query) => {
   const obj = {
     status: 200,
@@ -4737,85 +4692,6 @@ const getPlanData = async (query) => {
 
   return obj;
 };
-
-// Get locatin for Admin
-// async function getLocationData(query) {
-//   const obj = {
-//     status: 200,
-//     message: "Data fetched successfully",
-//     data: [],
-//     pagination: {}
-//   };
-
-//   const {
-//     _id,
-//     locationName,
-//     locationId,
-//     city,
-//     state,
-//     locationStatus,
-//    search,
-//     page = 1,
-//     limit = 10
-//   } = query;
-
-//   try {
-
-//     let filter = {};
-//     if (_id) filter._id = ObjectId(_id);
-//     if (locationName) filter.locationName = locationName;
-//     if (locationId) filter._id = ObjectId(locationId);
-//     if (city) filter.city = city;
-//     if (state) filter.state = state;
-//     //if(locationStatus) filter.locationStatus =  { locationStatus: { $ne: "inactive" } };
-
-//    // console.log(search)
-
-//     if (search) {
-//       filter.$or = [
-//         { locationName: { $regex: search, $options: "i" } },
-//         { locationStatus: { $regex: search, $options: "i" } },
-
-//       ];
-//     }
-
-//     const skip = (page - 1) * limit;
-
-//     // Fetch total record count for pagination
-//     const totalRecords = await Location.count(filter);
-
-//     // const totalStationCount= await Station.find(locationId);
-//     // console.log(totalStationCount)
-
-//     // Fetch paginated location data
-//     const result = await Location.find(filter)
-//       .skip(skip)
-//       .limit(Number(limit))
-//       .sort({ createdAt: -1 }); // Optional: Sort by creation date
-
-//     if (result.length) {
-//       obj.data = result;
-
-//       // Add pagination metadata
-//       obj.pagination = {
-//         totalRecords,
-//         totalPages: Math.ceil(totalRecords / limit),
-//         currentPage: Number(page),
-//         pageSize: Number(limit),
-//       };
-//     } else {
-//       obj.status = 404;
-//       obj.message = "No locations found";
-//     }
-//   } catch (error) {
-//     console.error("Error in getLocations:", error.message);
-//     obj.status = 500;
-//     obj.message = "Internal server error";
-//   }
-
-//   return obj;
-// }
-//9/
 
 async function getLocationData(query) {
   const obj = {
@@ -5145,70 +5021,6 @@ async function getMessages(chatId) {
   const result = await Message.find({ chatId: chatId });
   return result;
 }
-
-// async function sendBookingDetailesTosocial(booking) {
-//   const obj = { status: 200, message: "Data fetched successfully", data: [] };
-
-//   try {
-//     const {
-//       userId,
-//       stationMasterUserId,
-//       vehicleName,
-//       BookingStartDateAndTime,
-//       bookingId,
-//       stationName,
-//       bookingPrice,
-//       vehicleBasic,
-//     } = booking;
-// console.log(booking)
-//     // Validate mandatory fields
-//     if (
-//       !userId ||
-//       !stationMasterUserId ||
-//       !vehicleName ||
-//       !BookingStartDateAndTime ||
-//       !bookingId ||
-//       !stationName ||
-//       !bookingPrice ||
-//       !vehicleBasic
-//     ) {
-//       console.error("Missing required booking details.");
-//       obj.status = 404;
-//       obj.message = "Missing required booking details.";
-//       return obj;
-//     }
-
-//     // Calculate payable amount and user-paid amount
-//     const payableAmount = bookingPrice.userPaid
-//       ? Number(bookingPrice.totalPrice) - Number(bookingPrice.userPaid)
-//       : bookingPrice.totalPrice;
-//     const userPaid = bookingPrice.userPaid || 0;
-//     const refundableDeposit = vehicleBasic.refundableDeposit;
-
-//     // Call the function to send booking confirmation
-//     await sendBookingConfirmation(
-
-//       userId,
-//       stationMasterUserId,
-//       vehicleName,
-//       BookingStartDateAndTime,
-//       bookingId,
-//       stationName,
-//       userPaid,
-//       payableAmount,
-//       refundableDeposit
-//     );
-//     obj.status = 200;
-//     obj.message = "function sendBookingConfirmation called.";
-//     return obj;
-
-//   } catch (error) {
-
-//     obj.status = 500;
-//     obj.message = `Server error: ${err.message}`;
-//   }
-//   return obj;
-// }
 
 module.exports = {
   createBookingDuration,

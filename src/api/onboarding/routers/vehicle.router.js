@@ -244,7 +244,7 @@ router.get("/getVehicleBookrecode", async (req, res) => {
 // Configure Multer to use Memory Storage
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 2 * 1024 * 1024 },
 });
 
 router.post(
@@ -751,7 +751,7 @@ router.post("/createOrderId", async (req, res) => {
 
   // Prepare the order data to send
   const options = {
-    amount: amount * 100, // Razorpay expects the amount in paise (100 paise = 1 INR)
+    amount: amount * 100,
     currency: "INR",
     receipt: "receipt#" + booking_id,
     payment_capture: 1,
