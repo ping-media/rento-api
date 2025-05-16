@@ -66,8 +66,13 @@ const stationSchema = new Schema(
     longitude: {
       type: String,
     },
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
+    },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+  { timestamps: true }
 );
 
 const station = mongoose.model("station", stationSchema);
