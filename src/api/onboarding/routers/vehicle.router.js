@@ -82,6 +82,9 @@ const {
   getGeneral,
   manageExtraAddOn,
   getExtraAddOns,
+  updateGeneralInfo,
+  addAndDeleteTestimonial,
+  addAndDeleteSlides,
 } = require("../models/general.model");
 
 // create messages
@@ -105,8 +108,16 @@ router.post("/manageAddOn", Authentication, async (req, res) => {
   manageExtraAddOn(req, res);
 });
 
-router.post("/updateGeneral", async (req, res) => {
+router.post("/updateGeneral", Authentication, async (req, res) => {
   createAndUpdateGeneral(req, res);
+});
+
+router.post("/updateGeneralBasic", Authentication, async (req, res) => {
+  updateGeneralInfo(req, res);
+});
+
+router.post("/updateGeneralTestimonial", Authentication, async (req, res) => {
+  addAndDeleteTestimonial(req, res);
 });
 
 router.get("/general", async (req, res) => {
@@ -259,6 +270,26 @@ router.post(
     }
     fileUpload(req, res);
     // vehiclesService.createLocation(req, res);
+  }
+);
+
+router.post(
+  "/addSlides",
+  Authentication,
+  upload.single("image"),
+  async (req, res) => {
+    const { action } = req.body;
+
+    if (action === "delete") {
+      return addAndDeleteSlides(req, res);
+    }
+
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ message: "File upload failed. No file provided." });
+    }
+    addAndDeleteSlides(req, res);
   }
 );
 

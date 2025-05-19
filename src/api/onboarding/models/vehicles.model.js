@@ -36,6 +36,8 @@ const {
 } = require("../../../utils/emailSend");
 const General = require("../../../db/schemas/onboarding/general.schema");
 
+const mode = process.env.ENVIRONMENT;
+
 const logError = async (message, functionName, userId) => {
   await Log({ message, functionName, userId });
 };
@@ -584,7 +586,9 @@ async function booking({
 
         if (paymentStatus === "paid") {
           messageData.push(totalPrice, vehicleBasic.refundableDeposit);
-          whatsappMessage(user.contact, "booking_confirm_paid", messageData);
+          if (mode === "production") {
+            whatsappMessage(user.contact, "booking_confirm_paid", messageData);
+          }
         } else if (paymentStatus === "partially_paid") {
           const remainingAmount =
             Number(totalPrice) - Number(bookingPrice.userPaid);
@@ -594,12 +598,13 @@ async function booking({
             remainingAmount,
             vehicleBasic.refundableDeposit
           );
-
-          whatsappMessage(
-            user.contact,
-            "booking_confirmed_partial_paid",
-            messageData
-          );
+          if (mode === "production") {
+            whatsappMessage(
+              user.contact,
+              "booking_confirmed_partial_paid",
+              messageData
+            );
+          }
         }
         sendEmailForBookingToStationMaster(
           userId,
