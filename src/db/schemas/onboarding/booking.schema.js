@@ -116,6 +116,11 @@ const bookingSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "invoice-tbl",
     },
+    bookedFrom: {
+      type: String,
+      enum: ["web", "app"],
+      default: "web",
+    },
     bookingStatus: {
       enum: ["pending", "done", "canceled", "extended"],
       type: String,

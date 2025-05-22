@@ -255,7 +255,7 @@ router.get("/getVehicleBookrecode", async (req, res) => {
 // Configure Multer to use Memory Storage
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 2 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
 });
 
 router.post(
@@ -583,11 +583,12 @@ router.post("/validedToken", async (req, res) => {
 router.post("/uploadDocument", (req, res) => {
   upload.array("images", 5)(req, res, function (err) {
     if (err instanceof multer.MulterError) {
-      if (err.code === "LIMIT_FILE_SIZE") {
-        return res
-          .status(400)
-          .json({ message: "File too large. Max size is 5MB per file." });
-      } else if (err.code === "LIMIT_UNEXPECTED_FILE") {
+      // if (err.code === "LIMIT_FILE_SIZE") {
+      //   return res
+      //     .status(400)
+      //     .json({ message: "File too large. Max size is 2MB per file." });
+      // } else
+      if (err.code === "LIMIT_UNEXPECTED_FILE") {
         return res
           .status(400)
           .json({ message: "Too many files uploaded. Max is 5." });
@@ -748,10 +749,20 @@ router.post("/emailverify", async (req, res) => {
 });
 
 router.post("/pickupImage", upload.array("images", 7), async (req, res) => {
-  // if (!req.files || req.files.length === 0) {
-  //   return res.send({ message: 'File upload failed. No files provided.' });
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).send({ message: "No files uploaded." });
+  }
+
+  // Calculate total size of uploaded files
+  // const totalSize = req.files.reduce((acc, file) => acc + file.size, 0);
+  // const MAX_TOTAL_SIZE = 14 * 1024 * 1024;
+
+  // // Check if total size exceeds limit
+  // if (totalSize > MAX_TOTAL_SIZE) {
+  //   return res.status(400).send({ message: "Total upload size exceeds 14MB." });
   // }
-  //console.log(req.files)
+
+  // Proceed with your image upload function
   pickupImageUp(req, res);
 });
 
