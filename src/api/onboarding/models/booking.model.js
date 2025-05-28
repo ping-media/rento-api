@@ -21,6 +21,8 @@ const getBooking = async (query) => {
       paymentMethod,
       payInitFrom,
       stationId,
+      sortBy,
+      sortOrder,
       page = 1,
       limit = 10,
     } = query;
@@ -54,6 +56,9 @@ const getBooking = async (query) => {
       return obj;
     }
 
+    const sortby = sortBy || "createdAt";
+    const sortorder = sortOrder === "asc" ? 1 : -1;
+
     const filters = {};
     if (_id) filters._id = _id;
     if (bookingId) filters.bookingId = bookingId;
@@ -70,7 +75,7 @@ const getBooking = async (query) => {
 
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, "i"); // Case-insensitive search
+      const searchRegex = new RegExp(search, "i");
       filters.$or = [
         { bookingId: searchRegex },
         { vehicleBrand: searchRegex },
@@ -98,11 +103,9 @@ const getBooking = async (query) => {
 
     const bookings = await Booking.find(filters)
       .populate("userId", "firstName lastName contact createdAt updatedAt")
-      .sort({ createdAt: -1 })
+      .sort({ [sortby]: sortorder })
       .skip(skip)
       .limit(Number(limit));
-
-    // .select("bookingId vehicleName stationName bookingStartDateAndTime bookingEndDateAndTime bookingPrice bookingStatus rideStatus");
 
     // If no bookings found
     if (!bookings.length) {

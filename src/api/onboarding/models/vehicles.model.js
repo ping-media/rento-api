@@ -315,6 +315,7 @@ async function booking({
   discountCuopon,
   bookingId,
   notes,
+  Note,
   isCancelled,
   deleteRec,
   _id,
@@ -481,6 +482,11 @@ async function booking({
         });
 
         return obj;
+      }
+
+      // if there is note
+      if (Note) {
+        o.notes = [...(find.notes || []), Note];
       }
 
       if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
