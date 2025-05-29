@@ -608,6 +608,10 @@ async function booking({
             "booking_confirmed_partial_paid",
             messageData
           );
+        } else if (paymentStatus === "cash") {
+          messageData.push(totalPrice, vehicleBasic.refundableDeposit);
+
+          whatsappMessage(user.contact, "booking_confirm_cash", messageData);
         }
         sendEmailForBookingToStationMaster(
           userId,

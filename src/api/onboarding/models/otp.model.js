@@ -55,7 +55,7 @@ async function otpGenerat(req, res) {
         contact,
         otp,
         createdAt: new Date(),
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000), 
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
       },
       { upsert: true }
     );
@@ -74,7 +74,10 @@ async function otpGenerat(req, res) {
     const message = `Error in optGernet: ${error.message}`;
     console.error(message);
     await createLog(message, "optGernet", null, 500);
-    return res.status(500).json({ status: 500, message: "An error occurred while processing the request" });
+    return res.status(500).json({
+      status: 500,
+      message: "An error occurred while processing the request",
+    });
   }
 }
 
@@ -115,7 +118,10 @@ async function verify(req, res) {
       return res.json({ status: 400, message });
     }
 
-    if ((contact === "9389046740" || contact === "8433408211") && otp === "123456") {
+    if (
+      (contact === "9389046740" || contact === "8433408211") &&
+      otp === "123456"
+    ) {
       const user = await User.findOne({ contact });
       const message = "OTP verified successfully (Hardcoded logic)";
       await createLog(message, "verify", user._id, 200);
@@ -129,9 +135,8 @@ async function verify(req, res) {
       return res.json({ status: 404, message });
     }
 
-
-     // Check if OTP has expired
-     if (new Date() > otpRecord.expiresAt) {
+    // Check if OTP has expired
+    if (new Date() > otpRecord.expiresAt) {
       const message = "OTP has expired";
       await createLog(message, "verify", null, 400);
       await Otp.deleteOne({ contact }); // Clean up expired OTP
@@ -151,20 +156,39 @@ async function verify(req, res) {
       return res.json({ status: 404, message });
     }
 
+    const userDocument = await Document.findOne({ userId: user?._id });
+    let profileImage = "";
+    if (userDocument) {
+      const file = userDocument.files?.filter((file) =>
+        file?.fileName?.includes("Selfie")
+      );
+      if (file) {
+        profileImage = file[0]?.imageUrl || "";
+      }
+    }
+
     if (user.isContactVerified === "no") {
-      await User.findByIdAndUpdate(user._id, { isContactVerified: "yes" }, { new: true });
+      await User.findByIdAndUpdate(
+        user._id,
+        { isContactVerified: "yes" },
+        { new: true }
+      );
     }
 
     await Otp.deleteOne({ contact });
 
     const message = "OTP verified successfully";
     await createLog(message, "verify", user._id, 200);
-    return res.status(200).json({ status: 200, message, data: user });
+    const newData = { ...user?._doc, profileImage };
+    return res.status(200).json({ status: 200, message, data: newData });
   } catch (error) {
     const message = `Error in verify function: ${error.message}`;
     console.error(message);
     await createLog(message, "verify", null, 500);
-    return res.status(500).json({ status: 500, message: "An error occurred while processing the request" });
+    return res.status(500).json({
+      status: 500,
+      message: "An error occurred while processing the request",
+    });
   }
 }
 

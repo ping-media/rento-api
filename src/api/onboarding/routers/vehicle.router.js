@@ -563,12 +563,25 @@ router.post("/validedToken", async (req, res) => {
     }
 
     const user = await User.findOne({ _id: userId });
+    const userDocument = await Document.findOne({ userId: userId });
+
     if (!user) {
       return res.json({ isUserValid: false });
     }
 
     if (user.status === "active" && flag === true) {
-      return res.json({ data: user, isUserValid: true });
+      let profileImage = "";
+      if (userDocument) {
+        const file = userDocument.files?.filter((file) =>
+          file?.fileName?.includes("Selfie")
+        );
+        if (file) {
+          profileImage = file[0]?.imageUrl || "";
+        }
+      }
+
+      const newData = { ...user?._doc, profileImage };
+      return res.json({ data: newData, isUserValid: true });
     } else if (user.status === "active" && flag === false) {
       return res.json({ isUserValid: true });
     }

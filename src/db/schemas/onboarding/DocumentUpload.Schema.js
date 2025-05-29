@@ -1,25 +1,25 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const documentSchema = new Schema(
   {
     userId: {
-      type:  Schema.Types.ObjectId,
-      ref: 'User',
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
     files: [
       {
-        fileName: { type: String, required: true }, // Name of the file
-        imageUrl: { type: String, required: true }, // URL of the file in S3
+        fileName: { type: String, required: true },
+        imageUrl: { type: String, required: true },
       },
     ],
   },
   {
-    timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' },
+    timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" },
   }
 );
 
-const Document = mongoose.model('Document', documentSchema);
+const Document = mongoose.model("Document", documentSchema);
 
 module.exports = Document;
