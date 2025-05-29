@@ -1,5 +1,6 @@
 const unirest = require("unirest");
 const User = require("../../../db/schemas/onboarding/user.schema");
+const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 const Otp = require("../../../db/schemas/onboarding/logOtp");
 const Log = require("../../../db/schemas/onboarding/log"); // Assuming this is your log schema
 
