@@ -1537,6 +1537,7 @@ async function createStation({
   openEndTime,
   latitude,
   longitude,
+  mapLink,
   _id,
   status,
   deleteRec,
@@ -1577,6 +1578,7 @@ async function createStation({
     latitude,
     longitude,
     userId,
+    mapLink,
     stationName,
   };
 

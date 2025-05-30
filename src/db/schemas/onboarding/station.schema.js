@@ -66,6 +66,9 @@ const stationSchema = new Schema(
     longitude: {
       type: String,
     },
+    mapLink: {
+      type: String,
+    },
     status: {
       type: String,
       enum: ["active", "inactive"],

@@ -1,6 +1,7 @@
 const Booking = require("../../../db/schemas/onboarding/booking.schema.js");
 const General = require("../../../db/schemas/onboarding/general.schema.js");
 const Log = require("../../../api/onboarding/models/Logs.model.js");
+const station = require("../../../db/schemas/onboarding/station.schema.js");
 
 // Get All Bookings with Filtering and Pagination
 const getBooking = async (query) => {
@@ -168,6 +169,22 @@ const getBookings = async (query) => {
           "firstName lastName contact altContact email status"
         );
 
+      if (!booking) {
+        await Log({
+          message: "Booking not found for the provided ID",
+          functionName: "booking",
+          userId: userId || null,
+        });
+        obj.status = 404;
+        obj.message = "Booking not found";
+        obj.isEmpty = true;
+        return obj;
+      }
+
+      const stationData = await station.findOne({
+        stationId: booking?.stationId,
+      });
+
       const pricingRules = await General.findOne({});
 
       if (booking && booking.vehicleTableId && pricingRules) {
@@ -233,22 +250,10 @@ const getBookings = async (query) => {
             }
           });
         }
-        const bookingObj = booking.toObject();
+        const bookingObj = { ...booking.toObject(), stationData };
         bookingObj.vehicleTableId.originalPerDayCost = originalPerDayCost;
         bookingObj.vehicleTableId.perDayCost = Math.round(finalPerDayCost);
         obj.data = [bookingObj];
-        return obj;
-      }
-
-      if (!booking) {
-        await Log({
-          message: "Booking not found for the provided ID",
-          functionName: "booking",
-          userId: userId || null,
-        });
-        obj.status = 404;
-        obj.message = "Booking not found";
-        obj.isEmpty = true;
         return obj;
       }
 
