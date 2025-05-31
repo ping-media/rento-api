@@ -120,13 +120,24 @@ async function verify(req, res) {
     }
 
     if (
-      (contact === "9389046740" || contact === "8433408211") &&
+      (contact === "9027408729" || contact === "8433408211") &&
       otp === "123456"
     ) {
       const user = await User.findOne({ contact });
+      const userDocument = await Document.findOne({ userId: user?._id });
+      let profileImage = "";
+      if (userDocument) {
+        const file = userDocument.files?.filter((file) =>
+          file?.fileName?.includes("Selfie")
+        );
+        if (file) {
+          profileImage = file[0]?.imageUrl || "";
+        }
+      }
       const message = "OTP verified successfully (Hardcoded logic)";
       await createLog(message, "verify", user._id, 200);
-      return res.status(200).json({ status: 200, message, data: user });
+      const newData = { ...user?._doc, profileImage };
+      return res.status(200).json({ status: 200, message, data: newData });
     }
 
     const otpRecord = await Otp.findOne({ contact });
