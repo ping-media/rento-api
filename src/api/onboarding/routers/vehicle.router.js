@@ -762,20 +762,10 @@ router.post("/emailverify", async (req, res) => {
 });
 
 router.post("/pickupImage", upload.array("images", 7), async (req, res) => {
+  console.log(req.files);
   if (!req.files || req.files.length === 0) {
     return res.status(400).send({ message: "No files uploaded." });
   }
-
-  // Calculate total size of uploaded files
-  // const totalSize = req.files.reduce((acc, file) => acc + file.size, 0);
-  // const MAX_TOTAL_SIZE = 14 * 1024 * 1024;
-
-  // // Check if total size exceeds limit
-  // if (totalSize > MAX_TOTAL_SIZE) {
-  //   return res.status(400).send({ message: "Total upload size exceeds 14MB." });
-  // }
-
-  // Proceed with your image upload function
   pickupImageUp(req, res);
 });
 

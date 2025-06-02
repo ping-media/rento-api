@@ -2,6 +2,7 @@ const Booking = require("../../../db/schemas/onboarding/booking.schema.js");
 const General = require("../../../db/schemas/onboarding/general.schema.js");
 const Log = require("../../../api/onboarding/models/Logs.model.js");
 const station = require("../../../db/schemas/onboarding/station.schema.js");
+const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload.js");
 
 // Get All Bookings with Filtering and Pagination
 const getBooking = async (query) => {
@@ -181,6 +182,12 @@ const getBookings = async (query) => {
         return obj;
       }
 
+      const pickupImageData = await pickupImage
+        .findOne({
+          bookingId: booking?.bookingId,
+        })
+        .select("-bookingId -__v");
+
       const stationData = await station.findOne({
         stationId: booking?.stationId,
       });
@@ -250,7 +257,11 @@ const getBookings = async (query) => {
             }
           });
         }
-        const bookingObj = { ...booking.toObject(), stationData };
+        const bookingObj = {
+          ...booking.toObject(),
+          stationData,
+          pickupImage: pickupImageData,
+        };
         bookingObj.vehicleTableId.originalPerDayCost = originalPerDayCost;
         bookingObj.vehicleTableId.perDayCost = Math.round(finalPerDayCost);
         obj.data = [bookingObj];
