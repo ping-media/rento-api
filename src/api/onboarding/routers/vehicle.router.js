@@ -762,7 +762,7 @@ router.post("/emailverify", async (req, res) => {
 });
 
 router.post("/pickupImage", upload.array("images", 7), async (req, res) => {
-  console.log(req.files);
+  // console.log(req.files);
   if (!req.files || req.files.length === 0) {
     return res.status(400).send({ message: "No files uploaded." });
   }

@@ -36,12 +36,6 @@ const s3 = new S3Client({
   },
 });
 
-// Configure Multer for Memory Storage
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // Limit to 10 MB
-});
-
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
@@ -200,8 +194,6 @@ const pickupImageUp = async (req, res) => {
             rideStatus: "ongoing",
             "vehicleBasic.endRide": OTP,
             "bookingPrice.AmountLeftAfterUserPaid": updatedAmountLeft,
-            // "bookingPrice.AmountLeftAfterUserPaid.status": "paid",
-            // "bookingPrice.AmountLeftAfterUserPaid.paymentMethod": PaymentMode,
             paymentStatus: "paid",
           },
         },
