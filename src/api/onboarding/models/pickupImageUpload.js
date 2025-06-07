@@ -1,11 +1,8 @@
-const path = require("path");
-const multer = require("multer");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 require("dotenv").config();
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const { resizeImg } = require("../../../utils/resizeImage");
-const { timelineFunction } = require("../models/timeline.model");
 
 // Validate required environment variables
 const {
@@ -50,6 +47,7 @@ const pickupImageUp = async (req, res) => {
       PaymentMode,
       paymentStatus,
       isVehicleUpdate,
+      diffAmountId,
       vehicleNumber,
       oldVehicleEndMeterReading,
     } = req.body;
@@ -113,7 +111,7 @@ const pickupImageUp = async (req, res) => {
       };
     });
 
-    if (isVehicleUpdate) {
+    if (isVehicleUpdate && diffAmountId) {
       const pickupData = await pickupImage.findOne({ bookingId });
 
       const updatedData = [
@@ -136,6 +134,20 @@ const pickupImageUp = async (req, res) => {
           },
         },
         { new: true }
+      );
+
+      // updating diff amount flag
+      await Booking.findByIdAndUpdate(
+        _id,
+        {
+          $set: {
+            "bookingPrice.diffAmount.$[elem].rideStatus": true,
+          },
+        },
+        {
+          arrayFilters: [{ "elem.id": diffAmountId }],
+          new: true,
+        }
       );
 
       if (newDocument) {
