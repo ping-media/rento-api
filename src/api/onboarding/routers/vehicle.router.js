@@ -1,3 +1,4 @@
+const express = require("express");
 const router = require("express").Router();
 const vehiclesService = require("../services/vehicles.service");
 const auth = require("../../../middlewares/auth/index");
@@ -5,26 +6,14 @@ const User = require("../../../db/schemas/onboarding/user.schema");
 const multer = require("multer");
 const storage = multer.memoryStorage(); // Store the file in memory
 const upload1 = multer({ storage: storage });
-// const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
-// const path = require("path");
 require("dotenv").config();
 const axios = require("axios");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { fileUpload } = require("../models/locationUpload.model");
 const { VehicalfileUpload } = require("../models/createVehicleMasterUpload");
-// const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
-// const { getAllVehiclesData, updateMultipleVehicles } = require("../models/getAllVehicleDataAdmin")
-// const { documentUpload, getDocument } = require("../models/DocumentUpload")
-// const { getAllDocument } = require("../models/getAllDocumentAdmin")
-// const { emailOtp, verify } = require("../models/otpSendByEmail")
-// const { getPickupImage, pickupImageUp, getAllPickupImage } = require("../models/pickupImageUpload")
-// const { getAllLogs } = require("../models/getlogs.model")
-// const { cancelPendingPayments } = require("../../../utils/cron");
-// const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
-// const Log = require("../models/Logs.model")
 const {
   getAllVehiclesData,
   updateMultipleVehicles,
@@ -38,22 +27,18 @@ const {
   getAllPickupImage,
 } = require("../models/pickupImageUpload");
 const { getAllLogs } = require("../models/getlogs.model");
-// const { handler } = require("../../../utils/cron");
-// const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const Log = require("../models/Logs.model");
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 const { paymentRec } = require("../models/payment.modol");
 const Authentication = require("../../../middlewares/Authentication");
 const { deleteS3Bucket } = require("../models/deleteS3Bucket");
 const { getBookingGraphData } = require("../models/graphData");
+const { razorpayWebhook } = require("../models/razorpay.model");
 const jwt = require("jsonwebtoken");
 const Station = require("../../../db/schemas/onboarding/station.schema");
 const { sendInvoiceByEmail } = require("../../../utils/emailSend");
 const { kycApprovalFunction } = require("../models/kycapproval.model");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
-// const { maintenanceVehicleFunction, getMaintenanceVehicle } = require("../models/maintenanceVehicle.model");
-// const { timelineFunction, timelineFunctionForGet } = require("../models/timeline.model");
-// const TimeLine = require("../../../db/schemas/onboarding/timeline.schema");
 const {
   maintenanceVehicleFunction,
   getMaintenanceVehicle,
@@ -66,12 +51,6 @@ const { vehicleChangeInBooking } = require("../models/vehicleChange.model");
 const { extentBooking } = require("../models/extentBooking.model");
 const { forgetPasswordFunction } = require("../models/forgetPassword");
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
-// const {whatsappMessage}=require("../../../utils/whatsappMessage");
-// const {sendReminderEmail,sendCancelEmail}=require("../../../utils/emailSend");
-// const {
-//   createAndUpdateGeneral,
-//   getGeneral,
-// } = require("../models/general.model");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
 const {
   sendReminderEmail,
@@ -86,15 +65,12 @@ const {
   addAndDeleteTestimonial,
   addAndDeleteSlides,
 } = require("../models/general.model");
+const { initiateBooking } = require("../models/booking.model");
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
   vehiclesService.sendBookingDetailesTosocial(req, res);
 });
-
-// router.post("/createVehicle", Authentication, async (req, res) => {
-//   vehiclesService.createVehicle(req, res);
-// });
 
 router.post("/createVehicle", async (req, res) => {
   vehiclesService.createVehicle(req, res);
@@ -139,10 +115,6 @@ router.post("/createPlan", Authentication, async (req, res) => {
 router.post("/createInvoice", Authentication, async (req, res) => {
   vehiclesService.createInvoice(req, res);
 });
-
-// router.post("/discountCoupons",Authentication, async (req, res) => {
-//   vehiclesService.discountCoupons(req, res);
-// })
 
 router.post("/createCoupon", Authentication, async (req, res) => {
   vehiclesService.createCoupon(req, res);
@@ -219,6 +191,26 @@ router.get("/getVehicleMasterData", async (req, res) => {
 
 router.post("/createBooking", async (req, res) => {
   vehiclesService.booking(req, res);
+});
+
+router.post("/initiate-booking", async (req, res) => {
+  initiateBooking(req, res);
+});
+
+router.post("/updateBooking", express.json(), async (req, res) => {
+  razorpayWebhook(req, res);
+});
+
+router.get("/check-booking-status/:bookingId", async (req, res) => {
+  const { bookingId } = req.params;
+  const booking = await Booking.findOne({ bookingId });
+
+  if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+  res.json({
+    paymentStatus: booking.paymentStatus,
+    bookingStatus: booking.bookingStatus,
+  });
 });
 
 router.get("/getBookings", async (req, res) => {
@@ -814,15 +806,8 @@ router.post("/createOrderId", async (req, res) => {
       },
     });
 
-    // console.log("Order created:", response);
-
     return res.status(200).send(response.data);
   } catch (error) {
-    //     console.error(
-    //       "Error creating Razorpay order:",
-    //       error.response ? error.response.data : error.message
-    //     );
-
     return res.status(400).send(error.message);
   }
 });

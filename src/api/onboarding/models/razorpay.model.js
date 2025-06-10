@@ -1,21 +1,115 @@
-const razorpaywebhook = async (req, res) => {
-  const crypto = require("crypto");
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+const Booking = require("../../../db/schemas/onboarding/booking.schema");
+const crypto = require("crypto-js");
+
+const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+const razorpayWebhook = async (req, res) => {
+  const signature = req.headers["x-razorpay-signature"];
+  const body = JSON.stringify(req.body);
+
   const expectedSignature = crypto
-    .createHmac("sha256", secret)
-    .update(req.rawBody)
+    .createHmac("sha256", RAZORPAY_SECRET)
+    .update(body)
     .digest("hex");
 
-  const receivedSignature = req.headers["x-razorpay-signature"];
+  if (signature !== expectedSignature) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid signature" });
+  }
 
-  if (expectedSignature === receivedSignature) {
-    const payload = req.body;
-    console.log("Webhook verified:", payload);
+  const event = req.body;
 
-    res.status(200).json({ status: "ok" });
-  } else {
-    res.status(400).json({ status: "invalid signature" });
+  try {
+    if (event.event === "payment.captured") {
+      const payment = event.payload.payment.entity;
+      const bookingId = payment.notes?.booking_id;
+      const amountInPaise = payment.amount;
+      const amountPaid = amountInPaise / 100;
+      const razorpayPaymentId = payment.id;
+
+      await updateBookingAfterPayment(bookingId, razorpayPaymentId, amountPaid);
+    }
+
+    if (event.event === "payment.failed") {
+      const payment = event.payload.payment.entity;
+      const bookingId = payment.notes?.booking_id;
+      const amountInPaise = payment.amount;
+      const amountPaid = amountInPaise / 100;
+      const razorpayPaymentId = payment.id;
+
+      await markBookingAsFailed(bookingId, razorpayPaymentId, amountPaid);
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Webhook handling failed:", error);
+    return res.status(500).json({ success: false, error: "Internal error" });
   }
 };
 
-module.exports = { razorpaywebhook };
+const updateBookingAfterPayment = async (
+  bookingId,
+  razorpayPaymentId,
+  amountPaid
+) => {
+  if (!bookingId) throw new Error("Booking ID missing");
+
+  const booking = await Booking.findOne({ bookingId });
+  if (!booking) throw new Error("Booking not found");
+
+  booking.paymentStatus = "paid";
+  booking.bookingStatus = "done";
+  booking.paySuccessId = razorpayPaymentId;
+
+  await booking.save();
+
+  // Add to timeline
+  await timelineFunctionServer({
+    currentBooking_id: booking._id,
+    timeLine: [
+      {
+        title: "Payment Completed",
+        date: Date.now(),
+        paymentAmount: amountPaid,
+        paymentId: razorpayPaymentId,
+      },
+    ],
+  });
+};
+
+const markBookingAsFailed = async (
+  bookingId,
+  razorpayPaymentId,
+  amountPaid
+) => {
+  if (!bookingId) throw new Error("Booking ID missing");
+
+  const booking = await Booking.findOne({ bookingId });
+  if (!booking) throw new Error("Booking not found");
+
+  booking.paymentStatus = "failed";
+  booking.bookingStatus = "canceled";
+  booking.payFailedId = razorpayPaymentId;
+
+  await booking.save();
+
+  // Add to timeline
+  await timelineFunctionServer({
+    currentBooking_id: booking._id,
+    timeLine: [
+      {
+        title: "Payment Failed",
+        paymentAmount: amountPaid,
+        date: Date.now(),
+        paymentId: razorpayPaymentId,
+      },
+    ],
+  });
+};
+
+module.exports = {
+  razorpayWebhook,
+  updateBookingAfterPayment,
+  markBookingAsFailed,
+};
