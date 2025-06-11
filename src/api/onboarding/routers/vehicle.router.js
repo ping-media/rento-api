@@ -197,9 +197,13 @@ router.post("/initiate-booking", async (req, res) => {
   initiateBooking(req, res);
 });
 
-router.post("/updateBooking", express.json(), async (req, res) => {
-  razorpayWebhook(req, res);
-});
+router.post(
+  "/updateBooking",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    razorpayWebhook(req, res);
+  }
+);
 
 router.get("/check-booking-status/:bookingId", async (req, res) => {
   const { bookingId } = req.params;

@@ -1,11 +1,11 @@
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
-const crypto = require("crypto-js");
+const crypto = require("crypto");
 
 const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
 const razorpayWebhook = async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
-  const body = JSON.stringify(req.body);
+  const body = req.body.toString("utf8");
 
   const expectedSignature = crypto
     .createHmac("sha256", RAZORPAY_SECRET)
