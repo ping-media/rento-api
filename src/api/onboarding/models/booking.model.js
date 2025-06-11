@@ -418,7 +418,22 @@ const initiateBooking = async (req, res) => {
             ? bookingData?.bookingPrice?.discountTotalPrice
             : bookingData?.bookingPrice?.totalPrice;
 
-        const timeLineData = {
+        const timeLineData_1 = {
+          userId: response?.data?.userId,
+          bookingId: response?.data?.bookingId,
+          currentBooking_id: response?.data?._id,
+          isStart: true,
+          timeLine: [
+            {
+              title: "Booking Created",
+              date: Date.now(),
+            },
+          ],
+        };
+
+        await timelineFunctionServer(timeLineData_1);
+
+        const timeLineData_2 = {
           currentBooking_id: response?.data?._id,
           timeLine: [
             {
@@ -428,7 +443,7 @@ const initiateBooking = async (req, res) => {
             },
           ],
         };
-        await timelineFunctionServer(timeLineData);
+        await timelineFunctionServer(timeLineData_2);
         return res.json(response);
       }
     }
@@ -460,7 +475,7 @@ const initiateBooking = async (req, res) => {
     const response = await booking(bookingData);
 
     if (response?.status === 200) {
-      const timeLineData = {
+      const timeLineData_1 = {
         userId: response?.data?.userId,
         bookingId: response?.data?.bookingId,
         currentBooking_id: response?.data?._id,
@@ -473,7 +488,7 @@ const initiateBooking = async (req, res) => {
         ],
       };
 
-      await timelineFunctionServer(timeLineData);
+      await timelineFunctionServer(timeLineData_1);
 
       const payableAmount =
         (paymentMethod === "partiallyPay"

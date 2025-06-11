@@ -82,25 +82,34 @@ const pickupImageUp = async (req, res) => {
     const getMilliseconds = () => new Date().getTime();
 
     // Loop through files and upload to S3
-    for (let index = 0; index < req.files.length; index++) {
-      const file = req.files[index];
-      const resizedImageBuffer = await resizeImg(file);
-      // Generate a unique file name
-      const fileName = `${userId}_${getMilliseconds()}_${index}`;
+    if (process.env.NODE_ENV === "production") {
+      for (let index = 0; index < req.files.length; index++) {
+        const file = req.files[index];
+        const resizedImageBuffer = await resizeImg(file);
+        // Generate a unique file name
+        const fileName = `${userId}_${getMilliseconds()}_${index}`;
 
-      const params = {
-        Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
-        Key: fileName, // Unique File Name
-        Body: resizedImageBuffer, // File Content
-        ContentType: file.mimetype, // MIME Type
-      };
+        const params = {
+          Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
+          Key: fileName, // Unique File Name
+          Body: resizedImageBuffer, // File Content
+          ContentType: file.mimetype, // MIME Type
+        };
 
-      // Upload to S3
-      await s3.send(new PutObjectCommand(params));
+        // Upload to S3
+        await s3.send(new PutObjectCommand(params));
 
-      // Construct the S3 File URL
-      const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
-      uploadedFiles.push({ fileName, imageUrl });
+        // Construct the S3 File URL
+        const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+        uploadedFiles.push({ fileName, imageUrl });
+      }
+    } else {
+      for (let index = 0; index < req.files.length; index++) {
+        uploadedFiles.push({
+          fileName: `dev_file_${index}.jpg`,
+          imageUrl: `https://example.com/dev_placeholder_${index}.jpg`,
+        });
+      }
     }
 
     const tempObj = {};
@@ -137,15 +146,15 @@ const pickupImageUp = async (req, res) => {
       );
 
       // updating diff amount flag
-      await Booking.findByIdAndUpdate(
-        _id,
+      await Booking.updateOne(
+        { _id },
         {
           $set: {
             "bookingPrice.diffAmount.$[elem].rideStatus": true,
           },
         },
         {
-          arrayFilters: [{ "elem.id": diffAmountId }],
+          arrayFilters: [{ "elem.id": Number(diffAmountId) }],
           new: true,
         }
       );
