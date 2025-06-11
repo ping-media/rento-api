@@ -207,7 +207,7 @@ router.post(
 
 router.get("/check-booking-status/:bookingId", async (req, res) => {
   const { bookingId } = req.params;
-  const booking = await Booking.findOne({ bookingId });
+  const booking = await Booking.findById(bookingId);
 
   if (!booking) return res.status(404).json({ message: "Booking not found" });
 
