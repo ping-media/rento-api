@@ -329,7 +329,7 @@ const getBookings = async (query) => {
   return obj;
 };
 
-const createOrderId = async ({ amount, booking_id, _id }) => {
+const createOrderId = async ({ amount, booking_id, _id, type }) => {
   const key_id = process.env.VITE_RAZOR_KEY_ID;
   const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
 
@@ -342,7 +342,7 @@ const createOrderId = async ({ amount, booking_id, _id }) => {
     currency: "INR",
     receipt: "receipt#" + booking_id,
     payment_capture: 1,
-    notes: { booking_id: _id.toString() },
+    notes: { booking_id: _id.toString(), type: type || "" },
   };
 
   try {
@@ -555,4 +555,58 @@ const initiateBooking = async (req, res) => {
   }
 };
 
-module.exports = { getBookings, getBooking, initiateBooking, createOrderId };
+const initiateExtendBooking = async (req, res) => {
+  const { _id, bookingId, amount, data } = req.body;
+
+  if (!bookingId || !amount) {
+    return res.status(400).json({ message: "Missing fields" });
+  }
+
+  const booking = await Booking.findById(_id);
+  if (!booking) {
+    return res.status(404).json({ message: "Booking not found" });
+  }
+
+  const razorpayOrder = await createOrderId({
+    amount: amount,
+    booking_id: bookingId,
+    _id: _id,
+    type: "extension",
+  });
+
+  // Update properties individually
+  booking.BookingEndDateAndTime = data?.BookingEndDateAndTime;
+
+  if (!booking.bookingPrice.extendAmount) {
+    booking.bookingPrice.extendAmount = [];
+  }
+
+  booking.bookingPrice.extendAmount.push({
+    ...data.extendAmount,
+    orderId: razorpayOrder.id,
+  });
+
+  if (!booking.extendBooking) {
+    booking.extendBooking = {};
+  }
+
+  if (!booking.extendBooking.oldBooking) {
+    booking.extendBooking.oldBooking = [];
+  }
+
+  booking.extendBooking.oldBooking.push(data.oldBookings);
+
+  booking.bookingStatus = "extended";
+
+  await booking.save();
+
+  res.json({ id: razorpayOrder.id, status: razorpayOrder.status });
+};
+
+module.exports = {
+  getBookings,
+  getBooking,
+  initiateBooking,
+  createOrderId,
+  initiateExtendBooking,
+};

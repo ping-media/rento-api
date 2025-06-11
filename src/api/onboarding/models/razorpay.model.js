@@ -29,8 +29,19 @@ const razorpayWebhook = async (req, res) => {
       const amountInPaise = payment.amount;
       const amountPaid = amountInPaise / 100;
       const razorpayPaymentId = payment.id;
-
-      await updateBookingAfterPayment(bookingId, razorpayPaymentId, amountPaid);
+      if (type === "extension") {
+        await handleExtendBookingWebhook(
+          bookingId,
+          razorpayPaymentId,
+          amountPaid
+        );
+      } else {
+        await updateBookingAfterPayment(
+          bookingId,
+          razorpayPaymentId,
+          amountPaid
+        );
+      }
     }
 
     if (event.event === "payment.failed") {
@@ -75,6 +86,44 @@ const updateBookingAfterPayment = async (
         date: Date.now(),
         paymentAmount: amountPaid,
         paymentId: razorpayPaymentId,
+      },
+    ],
+  });
+};
+
+const handleExtendBookingWebhook = async (bookingId, paymentId, amountPaid) => {
+  const booking = await Booking.findById(bookingId);
+  if (!booking) throw new Error("Booking not found");
+
+  const extend =
+    booking.extendBooking?.extendAmount[
+      booking.extendBooking?.extendAmount?.length - 1
+    ];
+  if (!extend || extend.status === "paid") return;
+
+  extend.status = "paid";
+  extend.paymentMethod = "online";
+  extend.razorpayPaymentId = paymentId;
+  extend.paymentDate = new Date();
+
+  booking.bookingStatus = "extended";
+  booking.paymentStatus = "paid";
+
+  booking.extendBooking.transactionIds = [
+    ...(booking.extendBooking.transactionIds || []),
+    paymentId,
+  ];
+
+  await booking.save();
+
+  await timelineFunctionServer({
+    currentBooking_id: booking._id,
+    timeLine: [
+      {
+        title: "Payment Received",
+        date: Date.now(),
+        paymentAmount: amountPaid,
+        paymentId: paymentId,
       },
     ],
   });

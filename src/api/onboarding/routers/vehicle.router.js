@@ -65,7 +65,10 @@ const {
   addAndDeleteTestimonial,
   addAndDeleteSlides,
 } = require("../models/general.model");
-const { initiateBooking } = require("../models/booking.model");
+const {
+  initiateBooking,
+  initiateExtendBooking,
+} = require("../models/booking.model");
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
@@ -195,6 +198,10 @@ router.post("/createBooking", async (req, res) => {
 
 router.post("/initiate-booking", async (req, res) => {
   initiateBooking(req, res);
+});
+
+router.post("/initiate-extend-booking ", async (req, res) => {
+  initiateExtendBooking(req, res);
 });
 
 router.post(
