@@ -55,7 +55,7 @@ const updateBookingAfterPayment = async (
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
 
-  const booking = await Booking.findOne({ bookingId });
+  const booking = await Booking.findById(bookingId);
   if (!booking) throw new Error("Booking not found");
 
   booking.paymentStatus = "paid";
@@ -85,7 +85,7 @@ const markBookingAsFailed = async (
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
 
-  const booking = await Booking.findOne({ bookingId });
+  const booking = await Booking.findById(bookingId);
   if (!booking) throw new Error("Booking not found");
 
   booking.paymentStatus = "failed";
