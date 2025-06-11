@@ -199,7 +199,7 @@ router.post("/initiate-booking", async (req, res) => {
 
 router.post(
   "/updateBooking",
-  express.raw({ type: "application/json" }),
+  // express.raw({ type: "application/json" }),
   async (req, res) => {
     razorpayWebhook(req, res);
   }

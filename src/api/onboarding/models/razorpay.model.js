@@ -5,7 +5,8 @@ const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
 const razorpayWebhook = async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
-  const body = req.body.toString("utf8");
+  // const body = req.body.toString("utf8");
+  const body = JSON.stringify(req.body);
 
   const expectedSignature = crypto
     .createHmac("sha256", RAZORPAY_SECRET)
