@@ -26,6 +26,7 @@ const razorpayWebhook = async (req, res) => {
       const payment = event.payload.payment.entity;
       const bookingId = payment.notes?.booking_id;
       const type = payment.notes?.type || "";
+      const typeId = payment.notes?.typeId || "";
       const amountInPaise = payment.amount;
       const amountPaid = amountInPaise / 100;
       const razorpayPaymentId = payment.id;
@@ -33,7 +34,8 @@ const razorpayWebhook = async (req, res) => {
         await handleExtendBookingWebhook(
           bookingId,
           razorpayPaymentId,
-          amountPaid
+          amountPaid,
+          typeId
         );
       } else if (type === "") {
         await updateBookingAfterPayment(
@@ -91,15 +93,32 @@ const updateBookingAfterPayment = async (
   });
 };
 
-const handleExtendBookingWebhook = async (bookingId, paymentId, amountPaid) => {
+const handleExtendBookingWebhook = async (
+  bookingId,
+  paymentId,
+  amountPaid,
+  typeId
+) => {
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new Error("Booking not found");
 
-  const extend =
-    booking.extendBooking?.extendAmount[
-      booking.extendBooking?.extendAmount?.length - 1
-    ];
-  if (!extend || extend.status === "paid") return;
+  const extendAmountIndex = booking.bookingPrice?.extendAmount?.findIndex(
+    (item) => item.id === typeId
+  );
+
+  if (
+    extendAmountIndex === -1 ||
+    !booking.bookingPrice?.extendAmount?.[extendAmountIndex]
+  ) {
+    throw new Error(`Extend amount with ID ${typeId} not found`);
+  }
+
+  const extend = booking.bookingPrice.extendAmount[extendAmountIndex];
+
+  if (extend.status === "paid") {
+    console.log(`Payment for extend amount ID ${typeId} already processed`);
+    return;
+  }
 
   extend.status = "paid";
   extend.paymentMethod = "online";
@@ -109,13 +128,7 @@ const handleExtendBookingWebhook = async (bookingId, paymentId, amountPaid) => {
   booking.bookingStatus = "extended";
   booking.paymentStatus = "paid";
 
-  booking.extendBooking.transactionIds = [
-    ...(booking.extendBooking.transactionIds || []),
-    paymentId,
-  ];
-
   booking.markModified("bookingPrice");
-  booking.markModified("extendBooking");
 
   await booking.save();
 
@@ -127,6 +140,7 @@ const handleExtendBookingWebhook = async (bookingId, paymentId, amountPaid) => {
         date: Date.now(),
         paymentAmount: amountPaid,
         paymentId: paymentId,
+        extendDate: extend.bookingEndDateAndTime,
       },
     ],
   });

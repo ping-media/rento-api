@@ -329,7 +329,7 @@ const getBookings = async (query) => {
   return obj;
 };
 
-const createOrderId = async ({ amount, booking_id, _id, type }) => {
+const createOrderId = async ({ amount, booking_id, _id, type, typeId }) => {
   const key_id = process.env.VITE_RAZOR_KEY_ID;
   const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
 
@@ -342,7 +342,11 @@ const createOrderId = async ({ amount, booking_id, _id, type }) => {
     currency: "INR",
     receipt: "receipt#" + booking_id,
     payment_capture: 1,
-    notes: { booking_id: _id.toString(), type: type || "" },
+    notes: {
+      booking_id: _id.toString(),
+      type: type || "",
+      typeId: typeId || "",
+    },
   };
 
   try {
@@ -576,6 +580,7 @@ const initiateExtendBooking = async (req, res) => {
       booking_id: bookingId,
       _id: _id,
       type: "extension",
+      typeId: data.extendAmount.id,
     });
 
     // Update properties individually
@@ -622,7 +627,7 @@ const initiateExtendBooking = async (req, res) => {
             title: "Payment Initiated",
             date: Date.now(),
             paymentAmount: amount,
-            extendDate: data.extendAmount.BookingEndDateAndTime,
+            extendDate: data.extendAmount.bookingEndDateAndTime,
           },
         ],
       });
