@@ -35,7 +35,7 @@ const razorpayWebhook = async (req, res) => {
           razorpayPaymentId,
           amountPaid
         );
-      } else {
+      } else if (type === "") {
         await updateBookingAfterPayment(
           bookingId,
           razorpayPaymentId,
@@ -113,6 +113,9 @@ const handleExtendBookingWebhook = async (bookingId, paymentId, amountPaid) => {
     ...(booking.extendBooking.transactionIds || []),
     paymentId,
   ];
+
+  booking.markModified("bookingPrice");
+  booking.markModified("extendBooking");
 
   await booking.save();
 
