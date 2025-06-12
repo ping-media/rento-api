@@ -200,23 +200,37 @@ router.post("/initiate-booking", async (req, res) => {
   initiateBooking(req, res);
 });
 
-router.post("/initiate-extend-booking ", async (req, res) => {
+router.post("/initiate-extend-booking", async (req, res) => {
   initiateExtendBooking(req, res);
 });
 
-router.post(
-  "/updateBooking",
-  // express.raw({ type: "application/json" }),
-  async (req, res) => {
-    razorpayWebhook(req, res);
-  }
-);
+router.post("/updateBooking", async (req, res) => {
+  razorpayWebhook(req, res);
+});
 
-router.get("/check-booking-status/:bookingId", async (req, res) => {
-  const { bookingId } = req.params;
+router.get("/check-booking-status/:bookingId/:action", async (req, res) => {
+  const { bookingId, action } = req.params;
   const booking = await Booking.findById(bookingId);
 
   if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+  if (action === "extend") {
+    const extendBooking =
+      booking.bookingPrice.extendAmount[
+        booking.bookingPrice.extendAmount?.length - 1
+      ] || null;
+    if (extendBooking !== null) {
+      return res.json({
+        status: extendBooking.status,
+        success: true,
+      });
+    } else {
+      return res.json({
+        message: "extension not found",
+        success: false,
+      });
+    }
+  }
 
   res.json({
     paymentStatus: booking.paymentStatus,

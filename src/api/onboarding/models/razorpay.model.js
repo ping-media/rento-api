@@ -103,7 +103,7 @@ const handleExtendBookingWebhook = async (bookingId, paymentId, amountPaid) => {
 
   extend.status = "paid";
   extend.paymentMethod = "online";
-  extend.razorpayPaymentId = paymentId;
+  extend.transactionId = paymentId;
   extend.paymentDate = new Date();
 
   booking.bookingStatus = "extended";
