@@ -1,11 +1,8 @@
-const path = require("path");
-const multer = require("multer");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 require("dotenv").config();
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const { resizeImg } = require("../../../utils/resizeImage");
-const { timelineFunction } = require("../models/timeline.model");
 
 // Validate required environment variables
 const {
@@ -36,12 +33,6 @@ const s3 = new S3Client({
   },
 });
 
-// Configure Multer for Memory Storage
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // Limit to 10 MB
-});
-
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
@@ -56,6 +47,7 @@ const pickupImageUp = async (req, res) => {
       PaymentMode,
       paymentStatus,
       isVehicleUpdate,
+      diffAmountId,
       vehicleNumber,
       oldVehicleEndMeterReading,
     } = req.body;
@@ -90,25 +82,34 @@ const pickupImageUp = async (req, res) => {
     const getMilliseconds = () => new Date().getTime();
 
     // Loop through files and upload to S3
-    for (let index = 0; index < req.files.length; index++) {
-      const file = req.files[index];
-      const resizedImageBuffer = await resizeImg(file);
-      // Generate a unique file name
-      const fileName = `${userId}_${getMilliseconds()}_${index}`;
+    if (process.env.NODE_ENV === "production") {
+      for (let index = 0; index < req.files.length; index++) {
+        const file = req.files[index];
+        const resizedImageBuffer = await resizeImg(file);
+        // Generate a unique file name
+        const fileName = `${userId}_${getMilliseconds()}_${index}`;
 
-      const params = {
-        Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
-        Key: fileName, // Unique File Name
-        Body: resizedImageBuffer, // File Content
-        ContentType: file.mimetype, // MIME Type
-      };
+        const params = {
+          Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
+          Key: fileName, // Unique File Name
+          Body: resizedImageBuffer, // File Content
+          ContentType: file.mimetype, // MIME Type
+        };
 
-      // Upload to S3
-      await s3.send(new PutObjectCommand(params));
+        // Upload to S3
+        await s3.send(new PutObjectCommand(params));
 
-      // Construct the S3 File URL
-      const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
-      uploadedFiles.push({ fileName, imageUrl });
+        // Construct the S3 File URL
+        const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+        uploadedFiles.push({ fileName, imageUrl });
+      }
+    } else {
+      for (let index = 0; index < req.files.length; index++) {
+        uploadedFiles.push({
+          fileName: `dev_file_${index}.jpg`,
+          imageUrl: `https://example.com/dev_placeholder_${index}.jpg`,
+        });
+      }
     }
 
     const tempObj = {};
@@ -119,7 +120,7 @@ const pickupImageUp = async (req, res) => {
       };
     });
 
-    if (isVehicleUpdate) {
+    if (isVehicleUpdate && diffAmountId) {
       const pickupData = await pickupImage.findOne({ bookingId });
 
       const updatedData = [
@@ -142,6 +143,20 @@ const pickupImageUp = async (req, res) => {
           },
         },
         { new: true }
+      );
+
+      // updating diff amount flag
+      await Booking.updateOne(
+        { _id },
+        {
+          $set: {
+            "bookingPrice.diffAmount.$[elem].rideStatus": true,
+          },
+        },
+        {
+          arrayFilters: [{ "elem.id": Number(diffAmountId) }],
+          new: true,
+        }
       );
 
       if (newDocument) {
@@ -200,8 +215,6 @@ const pickupImageUp = async (req, res) => {
             rideStatus: "ongoing",
             "vehicleBasic.endRide": OTP,
             "bookingPrice.AmountLeftAfterUserPaid": updatedAmountLeft,
-            // "bookingPrice.AmountLeftAfterUserPaid.status": "paid",
-            // "bookingPrice.AmountLeftAfterUserPaid.paymentMethod": PaymentMode,
             paymentStatus: "paid",
           },
         },

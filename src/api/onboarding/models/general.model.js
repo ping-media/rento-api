@@ -1,5 +1,29 @@
 const { mongoose } = require("mongoose");
 const General = require("../../../db/schemas/onboarding/general.schema");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+require("dotenv").config();
+
+/**
+ * Update general info safely — skips empty/null/undefined fields.
+ * @param {Object} updates - An object containing fields to update inside `info`.
+ * @returns {Promise<Object>} - The updated general document.
+ */
+
+const {
+  AWS_REGION,
+  AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY,
+  AWS_BUCKET_NAME,
+} = process.env;
+
+// Configure AWS S3 Client
+const s3 = new S3Client({
+  region: AWS_REGION,
+  credentials: {
+    accessKeyId: AWS_ACCESS_KEY_ID,
+    secretAccessKey: AWS_SECRET_ACCESS_KEY,
+  },
+});
 
 const createAndUpdateGeneral = async (req, res) => {
   const {
@@ -107,6 +131,218 @@ const createAndUpdateGeneral = async (req, res) => {
       status: 500,
       success: false,
       message: "Something went wrong: " + err.message,
+    });
+  }
+};
+
+const updateGeneralInfo = async (req, res) => {
+  const { updates } = req.body;
+
+  try {
+    const general = await General.findOne();
+    if (!general) {
+      return res.status(200).json({
+        status: 400,
+        message: "Settings Not found! try again",
+      });
+    }
+
+    const existingInfo = general.info || {};
+
+    general.info = {
+      ...existingInfo,
+      email: updates.email?.trim() || existingInfo.email,
+      contact: Number(updates.contact) || existingInfo.contact,
+      waContact: Number(updates.waContact) || existingInfo.waContact,
+      address: updates.address?.trim() || existingInfo.address,
+      socialmedia: {
+        facebook:
+          updates.facebook?.trim() || existingInfo.socialmedia?.facebook || "#",
+        instagram:
+          updates.instagram?.trim() ||
+          existingInfo.socialmedia?.instagram ||
+          "#",
+        twitter:
+          updates.twitter?.trim() || existingInfo.socialmedia?.twitter || "#",
+      },
+      appLink: {
+        IOS: updates.IOS?.trim() || existingInfo.appLink?.IOS || "#",
+        Android:
+          updates.Android?.trim() || existingInfo.appLink?.Android || "#",
+      },
+    };
+
+    general.markModified("info");
+    await general.save({ validateModifiedOnly: true });
+
+    return res.status(200).json({
+      status: 200,
+      success: true,
+      message: "Settings updated successfully.",
+    });
+  } catch (err) {
+    console.error("Error updating general info:", err.message);
+    res.status(500).json({
+      status: 500,
+      success: false,
+      message: "Server error while updating basic settings.",
+      error: err.message,
+    });
+  }
+};
+
+const addAndDeleteTestimonial = async (req, res) => {
+  const { action, data } = req.body;
+
+  try {
+    const general = await General.findOne();
+    if (!general) {
+      return res.status(404).json({
+        success: false,
+        message: "Settings not found.",
+      });
+    }
+
+    if (action === "add") {
+      if (!data.name || !data.message) {
+        return res.status(400).json({
+          success: false,
+          message: "Name and message are required for a testimonial.",
+        });
+      }
+
+      // Limit check
+      if (general.testimonial.length >= 10) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot add more than 10 testimonials.",
+        });
+      }
+
+      general.testimonial.push({
+        _id: new mongoose.Types.ObjectId(),
+        name: data.name.trim(),
+        message: data.message.trim(),
+        rating: data.rating || 5,
+      });
+    } else if (action === "delete") {
+      if (!data._id) {
+        return res.status(400).json({
+          success: false,
+          message: "_id is required to delete a testimonial.",
+        });
+      }
+
+      general.testimonial = general.testimonial.filter(
+        (item) => item._id.toString() !== data._id
+      );
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid action. Use 'add' or 'delete'.",
+      });
+    }
+
+    general.markModified("testimonial");
+    await general.save({ validateModifiedOnly: true });
+
+    return res.status(200).json({
+      success: true,
+      message: `Testimonial ${
+        action === "add" ? "added" : "deleted"
+      } successfully.`,
+      testimonial: general.testimonial,
+    });
+  } catch (error) {
+    console.error("Error updating testimonial:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while updating testimonial.",
+      error: error.message,
+    });
+  }
+};
+
+const addAndDeleteSlides = async (req, res) => {
+  const image = req.file;
+  const { action, _id } = req.body;
+  console.log(image);
+
+  try {
+    const general = await General.findOne();
+    if (!general) {
+      return res.status(404).json({
+        success: false,
+        message: "Settings not found.",
+      });
+    }
+
+    if (action === "add") {
+      if (!image) {
+        return res.status(404).json({
+          success: false,
+          message: "Banner not found.",
+        });
+      }
+
+      const getMilliseconds = () => new Date().getTime();
+      const fileName = `Banner_${getMilliseconds()}`;
+      const params = {
+        Bucket: AWS_BUCKET_NAME,
+        Key: fileName,
+        Body: image.buffer,
+        ContentType: image.mimetype,
+      };
+
+      // Upload to S3
+      await s3.send(new PutObjectCommand(params));
+
+      // Construct the S3 File URL
+      const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+      // Limit check
+      if (general.slides.length >= 10) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot add more than 10 Banners.",
+        });
+      }
+
+      general.slides.push({
+        _id: new mongoose.Types.ObjectId(),
+        link: imageUrl,
+      });
+    } else if (action === "delete") {
+      if (!_id) {
+        return res.status(400).json({
+          success: false,
+          message: "id is required to delete a Banner.",
+        });
+      }
+
+      general.slides = general.slides.filter(
+        (item) => item._id.toString() !== _id
+      );
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Unable to delete banner! try again",
+      });
+    }
+
+    general.markModified("slides");
+    await general.save({ validateModifiedOnly: true });
+
+    return res.status(200).json({
+      success: true,
+      message: `Banner ${action === "add" ? "added" : "deleted"} successfully.`,
+      data: general.slides,
+    });
+  } catch (error) {
+    console.error("Error updating banner:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while updating banner.",
+      error: error.message,
     });
   }
 };
@@ -255,11 +491,21 @@ const getGeneral = async (req, res) => {
 
 const getExtraAddOns = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
+  const limit = parseInt(req.query.limit) || 20;
   const skip = (page - 1) * limit;
 
   try {
-    const general = await General.findOne({}, { GST: 1, extraAddOn: 1 });
+    const general = await General.findOne(
+      {},
+      {
+        GST: 1,
+        extraAddOn: 1,
+        info: 1,
+        slides: 1,
+        testimonial: 1,
+        maintenance: 1,
+      }
+    );
 
     if (!general || !general.extraAddOn || !general.GST) {
       return res.status(404).json({
@@ -269,21 +515,29 @@ const getExtraAddOns = async (req, res) => {
       });
     }
 
-    const total = general.extraAddOn.length;
+    // const total = general.extraAddOn.length;
     const paginated = general.extraAddOn.slice(skip, skip + limit);
     const GST = general.GST;
+    const info = general.info || {};
+    const slides = general.slides || [];
+    const testimonial = general.testimonial || [];
+    const maintenance = general.maintenance || false;
 
     return res.status(200).json({
       status: 200,
-      message: "Extra add-ons fetched successfully.",
+      message: "General settings fetched successfully.",
       data: paginated,
       GST: GST,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+      info: info,
+      slides: slides,
+      testimonial: testimonial,
+      maintenance: maintenance,
+      // pagination: {
+      //   total,
+      //   page,
+      //   limit,
+      //   totalPages: Math.ceil(total / limit),
+      // },
     });
   } catch (err) {
     return res.status(500).json({
@@ -298,4 +552,7 @@ module.exports = {
   manageExtraAddOn,
   getExtraAddOns,
   getGeneral,
+  updateGeneralInfo,
+  addAndDeleteSlides,
+  addAndDeleteTestimonial,
 };

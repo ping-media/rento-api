@@ -1,6 +1,12 @@
 const Booking = require("../../../db/schemas/onboarding/booking.schema.js");
 const General = require("../../../db/schemas/onboarding/general.schema.js");
 const Log = require("../../../api/onboarding/models/Logs.model.js");
+const station = require("../../../db/schemas/onboarding/station.schema.js");
+const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload.js");
+const { booking } = require("./vehicles.model.js");
+const { timelineFunctionServer } = require("./timeline.model.js");
+const { default: axios } = require("axios");
+require("dotenv").config();
 
 // Get All Bookings with Filtering and Pagination
 const getBooking = async (query) => {
@@ -21,6 +27,8 @@ const getBooking = async (query) => {
       paymentMethod,
       payInitFrom,
       stationId,
+      sortBy,
+      sortOrder,
       page = 1,
       limit = 10,
     } = query;
@@ -54,6 +62,9 @@ const getBooking = async (query) => {
       return obj;
     }
 
+    const sortby = sortBy || "createdAt";
+    const sortorder = sortOrder === "asc" ? 1 : -1;
+
     const filters = {};
     if (_id) filters._id = _id;
     if (bookingId) filters.bookingId = bookingId;
@@ -70,7 +81,7 @@ const getBooking = async (query) => {
 
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, "i"); // Case-insensitive search
+      const searchRegex = new RegExp(search, "i");
       filters.$or = [
         { bookingId: searchRegex },
         { vehicleBrand: searchRegex },
@@ -98,11 +109,9 @@ const getBooking = async (query) => {
 
     const bookings = await Booking.find(filters)
       .populate("userId", "firstName lastName contact createdAt updatedAt")
-      .sort({ createdAt: -1 })
+      .sort({ [sortby]: sortorder })
       .skip(skip)
       .limit(Number(limit));
-
-    // .select("bookingId vehicleName stationName bookingStartDateAndTime bookingEndDateAndTime bookingPrice bookingStatus rideStatus");
 
     // If no bookings found
     if (!bookings.length) {
@@ -164,6 +173,28 @@ const getBookings = async (query) => {
           "stationMasterUserId",
           "firstName lastName contact altContact email status"
         );
+
+      if (!booking) {
+        await Log({
+          message: "Booking not found for the provided ID",
+          functionName: "booking",
+          userId: userId || null,
+        });
+        obj.status = 404;
+        obj.message = "Booking not found";
+        obj.isEmpty = true;
+        return obj;
+      }
+
+      const pickupImageData = await pickupImage
+        .findOne({
+          bookingId: booking?.bookingId,
+        })
+        .select("-bookingId -__v");
+
+      const stationData = await station.findOne({
+        stationId: booking?.stationId,
+      });
 
       const pricingRules = await General.findOne({});
 
@@ -230,22 +261,14 @@ const getBookings = async (query) => {
             }
           });
         }
-        const bookingObj = booking.toObject();
+        const bookingObj = {
+          ...booking.toObject(),
+          stationData,
+          pickupImage: pickupImageData,
+        };
         bookingObj.vehicleTableId.originalPerDayCost = originalPerDayCost;
         bookingObj.vehicleTableId.perDayCost = Math.round(finalPerDayCost);
         obj.data = [bookingObj];
-        return obj;
-      }
-
-      if (!booking) {
-        await Log({
-          message: "Booking not found for the provided ID",
-          functionName: "booking",
-          userId: userId || null,
-        });
-        obj.status = 404;
-        obj.message = "Booking not found";
-        obj.isEmpty = true;
         return obj;
       }
 
@@ -306,4 +329,284 @@ const getBookings = async (query) => {
   return obj;
 };
 
-module.exports = { getBookings, getBooking };
+const createOrderId = async ({ amount, booking_id, _id, type }) => {
+  const key_id = process.env.VITE_RAZOR_KEY_ID;
+  const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
+
+  // API endpoint for Razorpay order creation
+  const url = "https://api.razorpay.com/v1/orders";
+
+  // Prepare the order data to send
+  const options = {
+    amount: amount * 100,
+    currency: "INR",
+    receipt: "receipt#" + booking_id,
+    payment_capture: 1,
+    notes: { booking_id: _id.toString(), type: type || "" },
+  };
+
+  try {
+    // Make the API request to Razorpay using axios
+    const response = await axios.post(url, options, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      auth: {
+        username: key_id,
+        password: key_secret,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    return error.message;
+  }
+};
+
+const initiateBooking = async (req, res) => {
+  try {
+    let { bookingData, paymentMethod } = req.body;
+
+    if (!bookingData.vehicleTableId || !bookingData.userId || !paymentMethod) {
+      return res.json({ message: "Required fields missing", status: 400 });
+    }
+
+    // is amount goes to zero after discount
+    if (bookingData?.bookingPrice?.isDiscountZero) {
+      bookingData = {
+        ...bookingData,
+        paymentMethod: "online",
+        bookingStatus: "done",
+        paymentStatus: "paid",
+      };
+
+      const response = await booking(bookingData);
+
+      if (response?.status === 200) {
+        const timeLineData = {
+          userId: response?.data?.userId,
+          bookingId: response?.data?.bookingId,
+          currentBooking_id: response?.data?._id,
+          isStart: true,
+          timeLine: [
+            {
+              title: "Booking Created",
+              date: Date.now(),
+            },
+          ],
+        };
+        await timelineFunctionServer(timeLineData);
+      }
+
+      return res.json(response);
+    }
+
+    // for cash payment mode
+    if (paymentMethod === "cash") {
+      bookingData = {
+        ...bookingData,
+        payInitFrom: "Cash",
+        bookingStatus: "done",
+        paymentMethod: paymentMethod,
+      };
+
+      const response = await booking(bookingData);
+
+      if (response?.status === 200) {
+        const paymentAmount =
+          bookingData?.bookingPrice?.discountTotalPrice > 0
+            ? bookingData?.bookingPrice?.discountTotalPrice
+            : bookingData?.bookingPrice?.totalPrice;
+
+        const timeLineData_1 = {
+          userId: response?.data?.userId,
+          bookingId: response?.data?.bookingId,
+          currentBooking_id: response?.data?._id,
+          isStart: true,
+          timeLine: [
+            {
+              title: "Booking Created",
+              date: Date.now(),
+            },
+          ],
+        };
+
+        await timelineFunctionServer(timeLineData_1);
+
+        const timeLineData_2 = {
+          currentBooking_id: response?.data?._id,
+          timeLine: [
+            {
+              title: "Pay Later",
+              date: Date.now(),
+              paymentAmount: paymentAmount || 0,
+            },
+          ],
+        };
+        await timelineFunctionServer(timeLineData_2);
+        return res.json(response);
+      }
+    }
+
+    // for other payment modes
+    if (paymentMethod === "partiallyPay") {
+      const userPaid = Math.round(
+        (bookingData?.bookingPrice?.discountTotalPrice ||
+          bookingData?.bookingPrice?.totalPrice) * 0.2
+      );
+      const AmountLeftAfterUserPaid =
+        (bookingData?.bookingPrice?.discountTotalPrice ||
+          bookingData?.bookingPrice?.totalPrice) - userPaid;
+      bookingData = {
+        ...bookingData,
+        bookingPrice: {
+          ...bookingData.bookingPrice,
+          userPaid,
+          AmountLeftAfterUserPaid: {
+            amount: Math.round(AmountLeftAfterUserPaid),
+            status: "unpaid",
+          },
+        },
+      };
+    }
+
+    bookingData = { ...bookingData, paymentMethod: paymentMethod };
+
+    const response = await booking(bookingData);
+
+    if (response?.status === 200) {
+      const timeLineData_1 = {
+        userId: response?.data?.userId,
+        bookingId: response?.data?.bookingId,
+        currentBooking_id: response?.data?._id,
+        isStart: true,
+        timeLine: [
+          {
+            title: "Booking Created",
+            date: Date.now(),
+          },
+        ],
+      };
+
+      await timelineFunctionServer(timeLineData_1);
+
+      const payableAmount =
+        (paymentMethod === "partiallyPay"
+          ? bookingData?.bookingPrice?.userPaid
+          : bookingData?.bookingPrice?.discountTotalPrice &&
+            bookingData?.bookingPrice?.discountTotalPrice > 0
+          ? bookingData?.bookingPrice?.discountTotalPrice
+          : bookingData?.bookingPrice?.totalPrice) || 100;
+
+      const razorData = await createOrderId({
+        amount: payableAmount,
+        booking_id: response?.data?.bookingId,
+        _id: response?.data?._id,
+      });
+
+      if (razorData?.status === "created") {
+        await Booking.findByIdAndUpdate(response?.data?._id, {
+          $set: {
+            payInitFrom: "Razorpay",
+            paymentInitiatedDate: razorData?.created_at,
+            paymentgatewayOrderId: razorData?.id,
+            paymentgatewayReceiptId: razorData?.receipt,
+          },
+        });
+
+        const timeLineData = {
+          currentBooking_id: response.data?._id,
+          timeLine: [
+            {
+              title: "Payment Initiated",
+              date: Date.now(),
+            },
+          ],
+        };
+
+        await timelineFunctionServer(timeLineData);
+      } else {
+        return res.json({ status: 500, message: "Failed to initiate payment" });
+      }
+
+      return res.json({
+        status: 200,
+        message: response?.message,
+        data: {
+          orderId: razorData?.id,
+          booking_id: response?.data?._id,
+          bookingId: response?.data?.bookingId,
+          payableAmount,
+        },
+      });
+    }
+
+    return res.json({
+      status: 500,
+      message: response?.message,
+    });
+  } catch (error) {
+    console.error("Booking error:", error);
+    return res.json({
+      status: 500,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+const initiateExtendBooking = async (req, res) => {
+  const { _id, bookingId, amount, data } = req.body;
+
+  if (!bookingId || !amount) {
+    return res.status(400).json({ message: "Missing fields" });
+  }
+
+  const booking = await Booking.findById(_id);
+  if (!booking) {
+    return res.status(404).json({ message: "Booking not found" });
+  }
+
+  const razorpayOrder = await createOrderId({
+    amount: amount,
+    booking_id: bookingId,
+    _id: _id,
+    type: "extension",
+  });
+
+  // Update properties individually
+  booking.BookingEndDateAndTime = data?.BookingEndDateAndTime;
+
+  if (!booking.bookingPrice.extendAmount) {
+    booking.bookingPrice.extendAmount = [];
+  }
+
+  booking.bookingPrice.extendAmount.push({
+    ...data.extendAmount,
+    orderId: razorpayOrder.id,
+  });
+
+  if (!booking.extendBooking) {
+    booking.extendBooking = {};
+  }
+
+  if (!booking.extendBooking.oldBooking) {
+    booking.extendBooking.oldBooking = [];
+  }
+
+  booking.extendBooking.oldBooking.push(data.oldBookings);
+
+  booking.bookingStatus = "extended";
+
+  await booking.save();
+
+  res.json({ id: razorpayOrder.id, status: razorpayOrder.status });
+};
+
+module.exports = {
+  getBookings,
+  getBooking,
+  initiateBooking,
+  createOrderId,
+  initiateExtendBooking,
+};

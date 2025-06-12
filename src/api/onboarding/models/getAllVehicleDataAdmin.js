@@ -28,7 +28,6 @@ const updateManyVehicles = async (filter, updateData) => {
   }
 };
 
-// this is new update code with pagination fixed
 const getAllVehiclesData = async (req, res) => {
   const response = {
     status: 200,

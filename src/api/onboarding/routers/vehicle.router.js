@@ -1,3 +1,4 @@
+const express = require("express");
 const router = require("express").Router();
 const vehiclesService = require("../services/vehicles.service");
 const auth = require("../../../middlewares/auth/index");
@@ -5,15 +6,12 @@ const User = require("../../../db/schemas/onboarding/user.schema");
 const multer = require("multer");
 const storage = multer.memoryStorage(); // Store the file in memory
 const upload1 = multer({ storage: storage });
-// const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
-// const path = require("path");
 require("dotenv").config();
 const axios = require("axios");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { fileUpload } = require("../models/locationUpload.model");
 const { VehicalfileUpload } = require("../models/createVehicleMasterUpload");
-// const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const {
@@ -29,14 +27,13 @@ const {
   getAllPickupImage,
 } = require("../models/pickupImageUpload");
 const { getAllLogs } = require("../models/getlogs.model");
-// const { handler } = require("../../../utils/cron");
-// const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const Log = require("../models/Logs.model");
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 const { paymentRec } = require("../models/payment.modol");
 const Authentication = require("../../../middlewares/Authentication");
 const { deleteS3Bucket } = require("../models/deleteS3Bucket");
 const { getBookingGraphData } = require("../models/graphData");
+const { razorpayWebhook } = require("../models/razorpay.model");
 const jwt = require("jsonwebtoken");
 const Station = require("../../../db/schemas/onboarding/station.schema");
 const { sendInvoiceByEmail } = require("../../../utils/emailSend");
@@ -64,16 +61,19 @@ const {
   getGeneral,
   manageExtraAddOn,
   getExtraAddOns,
+  updateGeneralInfo,
+  addAndDeleteTestimonial,
+  addAndDeleteSlides,
 } = require("../models/general.model");
+const {
+  initiateBooking,
+  initiateExtendBooking,
+} = require("../models/booking.model");
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
   vehiclesService.sendBookingDetailesTosocial(req, res);
 });
-
-// router.post("/createVehicle", Authentication, async (req, res) => {
-//   vehiclesService.createVehicle(req, res);
-// });
 
 router.post("/createVehicle", async (req, res) => {
   vehiclesService.createVehicle(req, res);
@@ -87,8 +87,16 @@ router.post("/manageAddOn", Authentication, async (req, res) => {
   manageExtraAddOn(req, res);
 });
 
-router.post("/updateGeneral", async (req, res) => {
+router.post("/updateGeneral", Authentication, async (req, res) => {
   createAndUpdateGeneral(req, res);
+});
+
+router.post("/updateGeneralBasic", Authentication, async (req, res) => {
+  updateGeneralInfo(req, res);
+});
+
+router.post("/updateGeneralTestimonial", Authentication, async (req, res) => {
+  addAndDeleteTestimonial(req, res);
 });
 
 router.get("/general", async (req, res) => {
@@ -110,10 +118,6 @@ router.post("/createPlan", Authentication, async (req, res) => {
 router.post("/createInvoice", Authentication, async (req, res) => {
   vehiclesService.createInvoice(req, res);
 });
-
-// router.post("/discountCoupons",Authentication, async (req, res) => {
-//   vehiclesService.discountCoupons(req, res);
-// })
 
 router.post("/createCoupon", Authentication, async (req, res) => {
   vehiclesService.createCoupon(req, res);
@@ -192,6 +196,49 @@ router.post("/createBooking", async (req, res) => {
   vehiclesService.booking(req, res);
 });
 
+router.post("/initiate-booking", async (req, res) => {
+  initiateBooking(req, res);
+});
+
+router.post("/initiate-extend-booking", async (req, res) => {
+  initiateExtendBooking(req, res);
+});
+
+router.post("/updateBooking", async (req, res) => {
+  razorpayWebhook(req, res);
+});
+
+router.get("/check-booking-status/:bookingId/:action", async (req, res) => {
+  const { bookingId, action } = req.params;
+  const booking = await Booking.findById(bookingId);
+
+  if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+  if (action === "extend") {
+    const extendBooking =
+      booking.bookingPrice.extendAmount[
+        booking.bookingPrice.extendAmount?.length - 1
+      ] || null;
+
+    if (extendBooking !== null) {
+      return res.json({
+        status: extendBooking.status,
+        success: true,
+      });
+    } else {
+      return res.json({
+        message: "extension not found",
+        success: false,
+      });
+    }
+  }
+
+  res.json({
+    paymentStatus: booking.paymentStatus,
+    bookingStatus: booking.bookingStatus,
+  });
+});
+
 router.get("/getBookings", async (req, res) => {
   vehiclesService.getBookings(req, res);
 });
@@ -226,7 +273,7 @@ router.get("/getVehicleBookrecode", async (req, res) => {
 // Configure Multer to use Memory Storage
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  // limits: { fileSize: 20 * 1024 * 1024 },
 });
 
 router.post(
@@ -241,6 +288,26 @@ router.post(
     }
     fileUpload(req, res);
     // vehiclesService.createLocation(req, res);
+  }
+);
+
+router.post(
+  "/addSlides",
+  Authentication,
+  upload.single("image"),
+  async (req, res) => {
+    const { action } = req.body;
+
+    if (action === "delete") {
+      return addAndDeleteSlides(req, res);
+    }
+
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ message: "File upload failed. No file provided." });
+    }
+    addAndDeleteSlides(req, res);
   }
 );
 
@@ -514,12 +581,25 @@ router.post("/validedToken", async (req, res) => {
     }
 
     const user = await User.findOne({ _id: userId });
+    const userDocument = await Document.findOne({ userId: userId });
+
     if (!user) {
       return res.json({ isUserValid: false });
     }
 
     if (user.status === "active" && flag === true) {
-      return res.json({ data: user, isUserValid: true });
+      let profileImage = "";
+      if (userDocument) {
+        const file = userDocument.files?.filter((file) =>
+          file?.fileName?.includes("Selfie")
+        );
+        if (file) {
+          profileImage = file[0]?.imageUrl || "";
+        }
+      }
+
+      const newData = { ...user?._doc, profileImage };
+      return res.json({ data: newData, isUserValid: true });
     } else if (user.status === "active" && flag === false) {
       return res.json({ isUserValid: true });
     }
@@ -534,11 +614,12 @@ router.post("/validedToken", async (req, res) => {
 router.post("/uploadDocument", (req, res) => {
   upload.array("images", 5)(req, res, function (err) {
     if (err instanceof multer.MulterError) {
-      if (err.code === "LIMIT_FILE_SIZE") {
-        return res
-          .status(400)
-          .json({ message: "File too large. Max size is 5MB per file." });
-      } else if (err.code === "LIMIT_UNEXPECTED_FILE") {
+      // if (err.code === "LIMIT_FILE_SIZE") {
+      //   return res
+      //     .status(400)
+      //     .json({ message: "File too large. Max size is 2MB per file." });
+      // } else
+      if (err.code === "LIMIT_UNEXPECTED_FILE") {
         return res
           .status(400)
           .json({ message: "Too many files uploaded. Max is 5." });
@@ -699,10 +780,10 @@ router.post("/emailverify", async (req, res) => {
 });
 
 router.post("/pickupImage", upload.array("images", 7), async (req, res) => {
-  // if (!req.files || req.files.length === 0) {
-  //   return res.send({ message: 'File upload failed. No files provided.' });
-  // }
-  //console.log(req.files)
+  // console.log(req.files);
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).send({ message: "No files uploaded." });
+  }
   pickupImageUp(req, res);
 });
 
@@ -733,7 +814,7 @@ router.post("/createOrderId", async (req, res) => {
 
   // Prepare the order data to send
   const options = {
-    amount: amount * 100, // Razorpay expects the amount in paise (100 paise = 1 INR)
+    amount: amount * 100,
     currency: "INR",
     receipt: "receipt#" + booking_id,
     payment_capture: 1,
@@ -751,15 +832,8 @@ router.post("/createOrderId", async (req, res) => {
       },
     });
 
-    // console.log("Order created:", response);
-
     return res.status(200).send(response.data);
   } catch (error) {
-    //     console.error(
-    //       "Error creating Razorpay order:",
-    //       error.response ? error.response.data : error.message
-    //     );
-
     return res.status(400).send(error.message);
   }
 });
@@ -959,6 +1033,14 @@ router.get("/maintenanceVehicle", Authentication, async (req, res) => {
   getMaintenanceVehicle(req, res);
 });
 
+router.get("/maintenanceVehicle", Authentication, async (req, res) => {
+  getMaintenanceVehicle(req, res);
+});
+
+router.post("/createTimeline", async (req, res) => {
+  timelineFunction(req, res);
+});
+
 router.post("/createTimeline", async (req, res) => {
   timelineFunction(req, res);
 });
@@ -967,11 +1049,12 @@ router.get("/getTimelineData", Authentication, async (req, res) => {
   timelineFunctionForGet(req, res);
 });
 
-// router.get("/api/cron", async (req, res) => {
-//   console.log("Cron job is working (FROM ROUTE)");
-//   //res.send("Cron job is working");
-//   handler(req,res)
-// });
+router.get("/cron", async (req, res) => {
+  console.log("Cron job is working (FROM ROUTE)");
+  //res.send("Cron job is working");
+  cancelPendingPayments(req, res);
+  res.json({ message: "Cron job executed !" });
+});
 
 router.post("/extendBooking", async (req, res) => {
   extentBooking(req, res);
