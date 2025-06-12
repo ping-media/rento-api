@@ -69,6 +69,7 @@ const {
   initiateBooking,
   initiateExtendBooking,
 } = require("../models/booking.model");
+// const { cancelPendingPayments } = require("../utils/cron.js");
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
@@ -804,7 +805,7 @@ router.get("/getGraphData", Authentication, async (req, res) => {
 });
 
 router.post("/createOrderId", async (req, res) => {
-  const { amount, booking_id } = req.body;
+  const { amount, booking_id, type } = req.body;
 
   const key_id = process.env.VITE_RAZOR_KEY_ID;
   const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
@@ -818,6 +819,7 @@ router.post("/createOrderId", async (req, res) => {
     currency: "INR",
     receipt: "receipt#" + booking_id,
     payment_capture: 1,
+    type: type || "",
   };
 
   try {
@@ -1050,7 +1052,7 @@ router.get("/getTimelineData", Authentication, async (req, res) => {
 });
 
 router.get("/cron", async (req, res) => {
-  console.log("Cron job is working (FROM ROUTE)");
+  console.log("Cron job is working");
   //res.send("Cron job is working");
   cancelPendingPayments(req, res);
   res.json({ message: "Cron job executed !" });

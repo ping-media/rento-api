@@ -33,16 +33,4 @@ router.get("/transactions", async (req, res) => {
   }
 });
 
-router.post(
-  "/razorpay/webhook",
-  express.json({
-    verify: (req, res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-  async (req, res) => {
-    razorpaywebhook(req, res);
-  }
-);
-
 module.exports = router;

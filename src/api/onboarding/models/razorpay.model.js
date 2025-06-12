@@ -37,11 +37,12 @@ const razorpayWebhook = async (req, res) => {
           amountPaid,
           typeId
         );
-      } else if (type === "") {
+      } else if (type === "" || type === "partiallyPay") {
         await updateBookingAfterPayment(
           bookingId,
           razorpayPaymentId,
-          amountPaid
+          amountPaid,
+          type
         );
       }
     }
@@ -49,11 +50,22 @@ const razorpayWebhook = async (req, res) => {
     if (event.event === "payment.failed") {
       const payment = event.payload.payment.entity;
       const bookingId = payment.notes?.booking_id;
+      const type = payment.notes?.type || "";
+      const typeId = payment.notes?.typeId || "";
       const amountInPaise = payment.amount;
       const amountPaid = amountInPaise / 100;
       const razorpayPaymentId = payment.id;
 
-      await markBookingAsFailed(bookingId, razorpayPaymentId, amountPaid);
+      if (type === "extension") {
+        await markExtendBookingAsFailed(
+          bookingId,
+          razorpayPaymentId,
+          amountPaid,
+          typeId
+        );
+      } else {
+        await markBookingAsFailed(bookingId, razorpayPaymentId, amountPaid);
+      }
     }
 
     return res.status(200).json({ success: true });
@@ -67,15 +79,22 @@ const updateBookingAfterPayment = async (
   bookingId,
   razorpayPaymentId,
   amountPaid
+  // type
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
 
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new Error("Booking not found");
 
+  // if (type === "partiallyPay") {
+  //   const partiallyPaid = booking.bookingPrice;
+  //   partiallyPaid.AmountLeftAfterUserPaid.status = "paid";
+  //   booking.markModified("bookingPrice");
+  // } else {
   booking.paymentStatus = "paid";
   booking.bookingStatus = "done";
   booking.paySuccessId = razorpayPaymentId;
+  // }
 
   await booking.save();
 
@@ -156,6 +175,46 @@ const handleExtendBookingWebhook = async (
   });
 };
 
+const markExtendBookingAsFailed = async (
+  bookingId,
+  razorpayPaymentId,
+  amountPaid,
+  extendAmountId
+) => {
+  if (!bookingId) throw new Error("Booking ID missing");
+
+  const booking = await Booking.findById(bookingId);
+  if (!booking) throw new Error("Booking not found");
+
+  if (extendAmountId && booking.bookingPrice?.extendAmount?.length > 0) {
+    const extendAmountIndex = booking.bookingPrice.extendAmount.findIndex(
+      (item) => item.id === extendAmountId
+    );
+
+    if (extendAmountIndex !== -1) {
+      booking.bookingPrice.extendAmount.splice(extendAmountIndex, 1);
+      booking.markModified("bookingPrice");
+    } else {
+      console.warn(`ExtendAmount with ID ${extendAmountId} not found`);
+    }
+  }
+
+  await booking.save();
+
+  // Add to timeline
+  await timelineFunctionServer({
+    currentBooking_id: booking._id,
+    timeLine: [
+      {
+        title: "Payment Failed",
+        paymentAmount: amountPaid,
+        date: Date.now(),
+        paymentId: razorpayPaymentId,
+      },
+    ],
+  });
+};
+
 const markBookingAsFailed = async (
   bookingId,
   razorpayPaymentId,
@@ -189,5 +248,6 @@ const markBookingAsFailed = async (
 module.exports = {
   razorpayWebhook,
   updateBookingAfterPayment,
+  markExtendBookingAsFailed,
   markBookingAsFailed,
 };
