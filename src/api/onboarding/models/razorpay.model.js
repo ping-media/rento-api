@@ -140,6 +140,16 @@ const handleExtendBookingWebhook = async (
         date: Date.now(),
         paymentAmount: amountPaid,
         paymentId: paymentId,
+      },
+    ],
+  });
+
+  await timelineFunctionServer({
+    currentBooking_id: booking._id,
+    timeLine: [
+      {
+        title: "Booking extended",
+        date: Date.now(),
         extendDate: extend.bookingEndDateAndTime,
       },
     ],
