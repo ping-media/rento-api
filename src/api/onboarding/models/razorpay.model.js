@@ -6,7 +6,6 @@ const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
 const razorpayWebhook = async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
-  // const body = req.body.toString("utf8");
   const body = JSON.stringify(req.body);
 
   const expectedSignature = crypto
@@ -26,6 +25,7 @@ const razorpayWebhook = async (req, res) => {
     if (event.event === "payment.captured") {
       const payment = event.payload.payment.entity;
       const bookingId = payment.notes?.booking_id;
+      const type = payment.notes?.type || "";
       const amountInPaise = payment.amount;
       const amountPaid = amountInPaise / 100;
       const razorpayPaymentId = payment.id;

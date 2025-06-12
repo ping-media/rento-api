@@ -219,6 +219,7 @@ router.get("/check-booking-status/:bookingId/:action", async (req, res) => {
       booking.bookingPrice.extendAmount[
         booking.bookingPrice.extendAmount?.length - 1
       ] || null;
+
     if (extendBooking !== null) {
       return res.json({
         status: extendBooking.status,
