@@ -13,6 +13,15 @@ const razorpay = new Razorpay({
   key_secret: process.env.VITE_RAZOR_KEY_SECRET,
 });
 
+const verifyRazorpaySignature = (body, signature) => {
+  const expectedSignature = crypto
+    .createHmac("sha256", RAZORPAY_SECRET)
+    .update(body)
+    .digest("hex");
+
+  return expectedSignature === signature;
+};
+
 const createPaymentLink = async (req, res) => {
   const { bookingId, amount, orderId, type } = req.body;
 
@@ -76,15 +85,10 @@ const createPaymentLink = async (req, res) => {
 
 // webhooks code
 
-// router.post("/razorpay/webhook",
 const razorpayWebhookAdmin = async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
 
-  const isValid = verifyRazorpaySignature(
-    JSON.stringify(req.body),
-    signature,
-    RAZORPAY_SECRET
-  );
+  const isValid = verifyRazorpaySignature(JSON.stringify(req.body), signature);
   if (!isValid) return res.status(400).send("Invalid signature");
 
   const event = req.body.event;
