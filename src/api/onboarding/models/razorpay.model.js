@@ -129,7 +129,7 @@ const razorpayWebhookAdmin = async (req, res) => {
   if (!isValid) return res.status(400).send("Invalid signature");
 
   const event = req.body.event;
-  const entity = req.body.payload?.payment_link?.entity;
+  const entity = JSON.stringify(req.body.payload?.payment_link?.entity);
 
   console.log(JSON.stringify(entity));
 
