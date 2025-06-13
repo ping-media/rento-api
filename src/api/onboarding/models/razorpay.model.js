@@ -20,33 +20,59 @@ const createPaymentLink = async (req, res) => {
     return res.status(400).json({ message: "Missing fields" });
   }
 
-  const booking = await Booking.findById(bookingId);
-  if (!booking) return res.status(404).json({ message: "Booking not found" });
-  const user = await User.findById(booking.userId);
+  try {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    const user = await User.findById(booking.userId);
 
-  // 1. Create the payment link
-  const response = await razorpay.paymentLink.create({
-    amount: amount * 100,
-    currency: "INR",
-    accept_partial: false,
-    description: "Payment for your booking",
-    reference_id: orderId,
-    callback_url: "https://rentobikes.com",
-    callback_method: "get",
-    customer: {
-      name: user.firstName + " " + user.lastName || "User",
-      email: user.email || "no-email@example.com",
-    },
-    notify: {
-      sms: false,
-      email: true,
-    },
-    notes: {
-      type: type || "",
-    },
-  });
+    // 1. Create the payment link
+    const response = await razorpay.paymentLink.create({
+      amount: amount * 100,
+      currency: "INR",
+      accept_partial: false,
+      description: `Payment for your booking Id: ${booking._id}`,
+      reference_id: orderId,
+      callback_url: "https://rentobikes.com/payment-success",
+      callback_method: "get",
+      customer: {
+        name: user.firstName + " " + user.lastName || "--",
+        email: user.email || "--",
+      },
+      notify: {
+        sms: false,
+        email: true,
+      },
+      notes: {
+        type: type || "",
+      },
+    });
 
-  res.json({ paymentLink: response.short_url, paymentLinkId: response.id });
+    await timelineFunctionServer({
+      currentBooking_id: booking._id,
+      timeLine: [
+        {
+          title: "Payment Link Created",
+          date: Date.now(),
+          paymentAmount: amount,
+          PaymentLink: response.short_url,
+          paymentLinkId: response.id,
+          paymentId: razorpayPaymentId,
+        },
+      ],
+    });
+
+    res.json({
+      paymentLink: response.short_url,
+      paymentLinkId: response.id,
+      linkCreated: true,
+    });
+  } catch (error) {
+    console.warn("Error while creating payment link", error?.message);
+    res.json({
+      linkCreated: false,
+      message: "Error while creating payment link",
+    });
+  }
 };
 
 // webhooks code

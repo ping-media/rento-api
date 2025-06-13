@@ -82,6 +82,7 @@ const GeneralSchema = new Schema(
       },
     },
     maintenance: { type: Boolean, default: false },
+    testMode: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
