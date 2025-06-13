@@ -36,6 +36,7 @@ const { getBookingGraphData } = require("../models/graphData");
 const {
   razorpayWebhook,
   createPaymentLink,
+  razorpayWebhookAdmin,
 } = require("../models/razorpay.model");
 const jwt = require("jsonwebtoken");
 const Station = require("../../../db/schemas/onboarding/station.schema");
@@ -214,6 +215,10 @@ router.post("/create-payment-link", async (req, res) => {
 
 router.post("/updateBooking", async (req, res) => {
   razorpayWebhook(req, res);
+});
+
+router.post("/updateAdminBooking", async (req, res) => {
+  razorpayWebhookAdmin(req, res);
 });
 
 router.get("/check-booking-status/:bookingId", async (req, res) => {

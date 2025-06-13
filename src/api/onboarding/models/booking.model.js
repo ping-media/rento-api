@@ -461,6 +461,7 @@ const initiateBooking = async (req, res) => {
       const AmountLeftAfterUserPaid =
         (bookingData?.bookingPrice?.discountTotalPrice ||
           bookingData?.bookingPrice?.totalPrice) - userPaid;
+
       bookingData = {
         ...bookingData,
         bookingPrice: {

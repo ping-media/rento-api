@@ -98,8 +98,8 @@ const razorpayWebhookAdmin = async (req, res) => {
     const paymentLinkId = entity.id;
     const type = notes?.type?.toLowerCase() || "";
 
-    if (type === "") {
-      updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid);
+    if (type === "" || type === "partiallyPay") {
+      updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid, type);
     }
   }
 
@@ -213,7 +213,7 @@ const updateBookingAfterPayment = async (
   });
 };
 
-const updateBookingAfterPaymentAdmin = async (bookingId, amountPaid) => {
+const updateBookingAfterPaymentAdmin = async (bookingId, amountPaid, type) => {
   if (!bookingId) throw new Error("Booking ID missing");
 
   const booking = await Booking.findOne({
@@ -229,7 +229,11 @@ const updateBookingAfterPaymentAdmin = async (bookingId, amountPaid) => {
   //   extend.paid = true;
   //   extend.paymentId = entity.payment_id;
   // }
-  booking.paymentStatus = "paid";
+  if (type === "partiallyPay") {
+    booking.paymentStatus = "partially_paid";
+  } else {
+    booking.paymentStatus = "paid";
+  }
   booking.bookingStatus = "done";
   booking.paySuccessId = entity.payment_id;
 
