@@ -131,7 +131,7 @@ const razorpayWebhookAdmin = async (req, res) => {
   const event = req.body.event;
   const entity = JSON.stringify(req.body.payload?.payment_link?.entity);
 
-  console.log(entity, entity.id);
+  console.log(entity, entity?.id, entity["id"]);
 
   if (!entity) {
     console.error("Missing payment_link.entity in webhook payload");
@@ -141,7 +141,7 @@ const razorpayWebhookAdmin = async (req, res) => {
   const notes = entity.notes || {};
   const amountPaid = (entity.amount || 0) / 100;
   const type = notes?.type?.toLowerCase() || "";
-  const paymentLinkId = entity.id;
+  const paymentLinkId = entity?.id || entity["id"];
 
   if (type === "" || type === "partiallypay") {
     try {
