@@ -58,28 +58,36 @@ const createPaymentLink = async (req, res) => {
         email: true,
       },
       notes: {
+        bookingId: booking._id,
         type: type || "",
       },
     });
 
-    await timelineFunctionServer({
-      currentBooking_id: booking._id,
-      timeLine: [
-        {
-          title: "Payment Link Created",
-          date: Date.now(),
-          paymentAmount: amount,
-          PaymentLink: response.short_url,
-          paymentLinkId: response.id,
-        },
-      ],
-    });
+    if (response.id) {
+      await timelineFunctionServer({
+        currentBooking_id: booking._id,
+        timeLine: [
+          {
+            title: "Payment Link Created",
+            date: Date.now(),
+            paymentAmount: amount,
+            PaymentLink: response.short_url,
+            paymentLinkId: response.id,
+          },
+        ],
+      });
 
-    res.json({
-      paymentLink: response.short_url,
-      paymentLinkId: response.id,
-      linkCreated: true,
-    });
+      res.json({
+        paymentLink: response.short_url,
+        paymentLinkId: response.id,
+        linkCreated: true,
+      });
+    } else {
+      res.json({
+        linkCreated: false,
+        message: "Unable to make payment link",
+      });
+    }
   } catch (error) {
     console.warn("Error while creating payment link", error?.message);
     res.json({
@@ -131,8 +139,6 @@ const razorpayWebhookAdmin = async (req, res) => {
   const event = req.body.event;
   const entity = JSON.stringify(req.body.payload?.payment_link?.entity);
 
-  console.log(entity, entity?.id, entity["id"]);
-
   if (!entity) {
     console.error("Missing payment_link.entity in webhook payload");
     return res.status(400).send("Malformed payload");
@@ -141,7 +147,8 @@ const razorpayWebhookAdmin = async (req, res) => {
   const notes = entity.notes || {};
   const amountPaid = (entity.amount || 0) / 100;
   const type = notes?.type?.toLowerCase() || "";
-  const paymentLinkId = entity?.id || entity["id"];
+  const paymentLinkId = notes?.bookingId;
+  // const paymentLinkId = entity?.id || entity["id"];
 
   if (type === "" || type === "partiallypay") {
     try {
@@ -265,9 +272,10 @@ const updateBookingAfterPayment = async (
 const updateBookingAfterPaymentAdmin = async (bookingId, amountPaid, type) => {
   if (!bookingId) throw new Error("Booking ID missing");
 
-  const booking = await Booking.findOne({
-    "bookingPrice.paymentLinkId": paymentLinkId,
-  });
+  // const booking = await Booking.findOne({
+  //   "bookingPrice.paymentLinkId": paymentLinkId,
+  // });
+  const booking = await Booking.findById(bookingId);
 
   if (!booking) return res.status(404).send("Booking not found");
 
