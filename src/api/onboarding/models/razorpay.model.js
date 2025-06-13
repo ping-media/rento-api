@@ -1,8 +1,84 @@
+require("dotenv").config();
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const crypto = require("crypto");
+const Razorpay = require("razorpay");
 const { timelineFunctionServer } = require("./timeline.model");
+const { sendMessageAfterBooking } = require("../../../utils");
+const User = require("../../../db/schemas/onboarding/user.schema");
 
 const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+const razorpay = new Razorpay({
+  key_id: process.env.VITE_RAZOR_KEY_ID,
+  key_secret: process.env.VITE_RAZOR_KEY_SECRET,
+});
+
+const createPaymentLink = async (req, res) => {
+  const { bookingId, amount, orderId, type } = req.body;
+
+  if (!bookingId || !amount) {
+    return res.status(400).json({ message: "Missing fields" });
+  }
+
+  const booking = await Booking.findById(bookingId);
+  if (!booking) return res.status(404).json({ message: "Booking not found" });
+  const user = await User.findById(booking.userId);
+
+  // 1. Create the payment link
+  const response = await razorpay.paymentLink.create({
+    amount: amount * 100,
+    currency: "INR",
+    accept_partial: false,
+    description: "Payment for your booking",
+    reference_id: orderId,
+    callback_url: "https://rentobikes.com",
+    callback_method: "get",
+    customer: {
+      name: user.firstName + " " + user.lastName || "User",
+      email: user.email || "no-email@example.com",
+    },
+    notify: {
+      sms: false,
+      email: true,
+    },
+    notes: {
+      type: type || "",
+    },
+  });
+
+  res.json({ paymentLink: response.short_url, paymentLinkId: response.id });
+};
+
+// webhooks code
+
+// router.post("/razorpay/webhook",
+const razorpayWebhookAdmin = async (req, res) => {
+  const signature = req.headers["x-razorpay-signature"];
+
+  const isValid = verifyRazorpaySignature(
+    JSON.stringify(req.body),
+    signature,
+    RAZORPAY_SECRET
+  );
+  if (!isValid) return res.status(400).send("Invalid signature");
+
+  const event = req.body.event;
+  const entity = req.body.payload.payment_link.entity;
+  const notes = entity.notes;
+  const amountInPaise = entity.amount;
+  const amountPaid = amountInPaise / 100;
+
+  if (event === "payment_link.paid") {
+    const paymentLinkId = entity.id;
+    const type = notes?.type?.toLowerCase() || "";
+
+    if (type === "") {
+      updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid);
+    }
+  }
+
+  res.status(200).send("Event received");
+};
 
 const razorpayWebhook = async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
@@ -44,6 +120,7 @@ const razorpayWebhook = async (req, res) => {
           amountPaid,
           type
         );
+        await sendMessageAfterBooking(bookingId);
       }
     }
 
@@ -107,6 +184,42 @@ const updateBookingAfterPayment = async (
         date: Date.now(),
         paymentAmount: amountPaid,
         paymentId: razorpayPaymentId,
+      },
+    ],
+  });
+};
+
+const updateBookingAfterPaymentAdmin = async (bookingId, amountPaid) => {
+  if (!bookingId) throw new Error("Booking ID missing");
+
+  const booking = await Booking.findOne({
+    "bookingPrice.paymentLinkId": paymentLinkId,
+  });
+
+  if (!booking) return res.status(404).send("Booking not found");
+
+  // const extend = booking.bookingPrice.extendAmount.find(
+  //   (e) => e.paymentLinkId === paymentLinkId
+  // );
+  // if (extend) {
+  //   extend.paid = true;
+  //   extend.paymentId = entity.payment_id;
+  // }
+  booking.paymentStatus = "paid";
+  booking.bookingStatus = "done";
+  booking.paySuccessId = entity.payment_id;
+
+  await booking.save();
+
+  // Add to timeline
+  await timelineFunctionServer({
+    currentBooking_id: booking._id,
+    timeLine: [
+      {
+        title: "Payment Completed",
+        date: Date.now(),
+        paymentAmount: amountPaid,
+        paymentId: entity.payment_id,
       },
     ],
   });
@@ -246,7 +359,10 @@ const markBookingAsFailed = async (
 };
 
 module.exports = {
+  createPaymentLink,
+  razorpayWebhookAdmin,
   razorpayWebhook,
+  updateBookingAfterPaymentAdmin,
   updateBookingAfterPayment,
   markExtendBookingAsFailed,
   markBookingAsFailed,

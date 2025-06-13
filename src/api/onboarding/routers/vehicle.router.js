@@ -33,7 +33,10 @@ const { paymentRec } = require("../models/payment.modol");
 const Authentication = require("../../../middlewares/Authentication");
 const { deleteS3Bucket } = require("../models/deleteS3Bucket");
 const { getBookingGraphData } = require("../models/graphData");
-const { razorpayWebhook } = require("../models/razorpay.model");
+const {
+  razorpayWebhook,
+  createPaymentLink,
+} = require("../models/razorpay.model");
 const jwt = require("jsonwebtoken");
 const Station = require("../../../db/schemas/onboarding/station.schema");
 const { sendInvoiceByEmail } = require("../../../utils/emailSend");
@@ -203,6 +206,10 @@ router.post("/initiate-booking", async (req, res) => {
 
 router.post("/initiate-extend-booking", async (req, res) => {
   initiateExtendBooking(req, res);
+});
+
+router.post("/create-payment-link", async (req, res) => {
+  createPaymentLink(req, res);
 });
 
 router.post("/updateBooking", async (req, res) => {
