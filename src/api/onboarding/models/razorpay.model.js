@@ -128,14 +128,9 @@ const razorpayWebhookAdmin = async (req, res) => {
   const isValid = verifyRazorpaySignature(JSON.stringify(req.body), signature);
   if (!isValid) return res.status(400).send("Invalid signature");
 
-  console.log("Razorpay Webhook Payload:", JSON.stringify(req.body, null, 2));
-
   const event = req.body.event;
-  if (event !== "payment_link.paid") {
-    return res.status(200).send("Event ignored");
-  }
-
   const entity = req.body.payload?.payment_link?.entity;
+
   if (!entity) {
     console.error("Missing payment_link.entity in webhook payload");
     return res.status(400).send("Malformed payload");
@@ -143,12 +138,16 @@ const razorpayWebhookAdmin = async (req, res) => {
 
   const notes = entity.notes || {};
   const amountPaid = (entity.amount || 0) / 100;
-
-  const paymentLinkId = entity.id;
   const type = notes?.type?.toLowerCase() || "";
+  const paymentLinkId = entity.id;
 
   if (type === "" || type === "partiallypay") {
-    await updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid, type);
+    try {
+      await updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid, type);
+    } catch (err) {
+      console.error("Error updating booking:", err);
+      return res.status(500).send("Booking update failed");
+    }
   }
 
   res.status(200).send("Payment received");
