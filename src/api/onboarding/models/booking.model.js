@@ -506,6 +506,7 @@ const initiateBooking = async (req, res) => {
         amount: payableAmount,
         booking_id: response?.data?.bookingId,
         _id: response?.data?._id,
+        type: paymentMethod === "partiallyPay" ? "partiallyPay" : "",
       });
 
       if (razorData?.status === "created") {

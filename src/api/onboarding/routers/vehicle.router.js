@@ -216,6 +216,18 @@ router.post("/updateBooking", async (req, res) => {
   razorpayWebhook(req, res);
 });
 
+router.get("/check-booking-status/:bookingId", async (req, res) => {
+  const { bookingId } = req.params;
+  const booking = await Booking.findById(bookingId);
+
+  if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+  res.json({
+    paymentStatus: booking.paymentStatus,
+    bookingStatus: booking.bookingStatus,
+  });
+});
+
 router.get("/check-booking-status/:bookingId/:action", async (req, res) => {
   const { bookingId, action } = req.params;
   const booking = await Booking.findById(bookingId);

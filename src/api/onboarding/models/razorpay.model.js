@@ -155,23 +155,21 @@ const razorpayWebhook = async (req, res) => {
 const updateBookingAfterPayment = async (
   bookingId,
   razorpayPaymentId,
-  amountPaid
-  // type
+  amountPaid,
+  type
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
 
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new Error("Booking not found");
 
-  // if (type === "partiallyPay") {
-  //   const partiallyPaid = booking.bookingPrice;
-  //   partiallyPaid.AmountLeftAfterUserPaid.status = "paid";
-  //   booking.markModified("bookingPrice");
-  // } else {
-  booking.paymentStatus = "paid";
+  if (type === "partiallyPay") {
+    booking.paymentStatus = "partially_paid";
+  } else {
+    booking.paymentStatus = "paid";
+  }
   booking.bookingStatus = "done";
   booking.paySuccessId = razorpayPaymentId;
-  // }
 
   await booking.save();
 
@@ -180,7 +178,7 @@ const updateBookingAfterPayment = async (
     currentBooking_id: booking._id,
     timeLine: [
       {
-        title: "Payment Completed",
+        title: "Payment Received",
         date: Date.now(),
         paymentAmount: amountPaid,
         paymentId: razorpayPaymentId,
