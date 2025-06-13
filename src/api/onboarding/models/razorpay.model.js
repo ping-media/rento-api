@@ -56,7 +56,6 @@ const createPaymentLink = async (req, res) => {
           paymentAmount: amount,
           PaymentLink: response.short_url,
           paymentLinkId: response.id,
-          paymentId: razorpayPaymentId,
         },
       ],
     });
