@@ -32,14 +32,19 @@ const createPaymentLink = async (req, res) => {
   try {
     const booking = await Booking.findById(bookingId);
     if (!booking) return res.status(404).json({ message: "Booking not found" });
-    const user = await User.findById(booking.userId);
+    const user = await User.findById(booking.userId.toString());
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found for this booking",
+      });
+    }
 
-    // 1. Create the payment link
     const response = await razorpay.paymentLink.create({
       amount: amount * 100,
       currency: "INR",
       accept_partial: false,
-      description: `Payment for your booking Id: ${booking._id}`,
+      description: `Payment for your booking Id: ${booking.bookingId}`,
       reference_id: orderId,
       callback_url: "https://rentobikes.com/payment-success",
       callback_method: "get",
@@ -92,21 +97,29 @@ const razorpayWebhookAdmin = async (req, res) => {
   if (!isValid) return res.status(400).send("Invalid signature");
 
   const event = req.body.event;
-  const entity = req.body.payload.payment_link.entity;
-  const notes = entity.notes;
-  const amountInPaise = entity.amount;
+
+  const paymentLinkPayload = req.body.payload?.payment_link?.entity;
+
+  if (!paymentLinkPayload) {
+    console.error("Missing payment_link.entity in webhook payload");
+    return res.status(400).send("Malformed payload");
+  }
+
+  const entity = paymentLinkPayload;
+  const notes = entity.notes || {};
+  const amountInPaise = entity.amount || 0;
   const amountPaid = amountInPaise / 100;
 
   if (event === "payment_link.paid") {
     const paymentLinkId = entity.id;
     const type = notes?.type?.toLowerCase() || "";
 
-    if (type === "" || type === "partiallyPay") {
-      updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid, type);
+    if (type === "" || type === "partiallypay") {
+      await updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid, type);
     }
   }
 
-  res.status(200).send("Event received");
+  res.status(200).send("Payment received");
 };
 
 const razorpayWebhook = async (req, res) => {
