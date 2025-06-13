@@ -131,6 +131,8 @@ const razorpayWebhookAdmin = async (req, res) => {
   const event = req.body.event;
   const entity = req.body.payload?.payment_link?.entity;
 
+  console.log(JSON.stringify(entity));
+
   if (!entity) {
     console.error("Missing payment_link.entity in webhook payload");
     return res.status(400).send("Malformed payload");
