@@ -44,13 +44,14 @@ const createPaymentLink = async (req, res) => {
       amount: amount * 100,
       currency: "INR",
       accept_partial: false,
-      description: `Payment for your booking Id: ${booking.bookingId}`,
+      description: `Payment for your booking Id: #${booking.bookingId}`,
       reference_id: orderId,
       callback_url: "https://rentobikes.com/payment-success",
       callback_method: "get",
       customer: {
         name: user.firstName + " " + user.lastName || "--",
         email: user.email || "--",
+        contact: user.contact || "",
       },
       notify: {
         sms: false,
@@ -90,33 +91,64 @@ const createPaymentLink = async (req, res) => {
 
 // webhooks code
 
+// const razorpayWebhookAdmin = async (req, res) => {
+//   const signature = req.headers["x-razorpay-signature"];
+
+//   const isValid = verifyRazorpaySignature(JSON.stringify(req.body), signature);
+//   if (!isValid) return res.status(400).send("Invalid signature");
+
+//   const event = req.body.event;
+
+//   const paymentLinkPayload = req.body.payload?.payment_link?.entity;
+
+//   if (!paymentLinkPayload) {
+//     console.error("Missing payment_link.entity in webhook payload");
+//     return res.status(400).send("Malformed payload");
+//   }
+
+//   const entity = paymentLinkPayload;
+//   const notes = entity.notes || {};
+//   const amountInPaise = entity.amount || 0;
+//   const amountPaid = amountInPaise / 100;
+
+//   if (event === "payment_link.paid") {
+//     const paymentLinkId = entity.id;
+//     const type = notes?.type?.toLowerCase() || "";
+
+//     if (type === "" || type === "partiallypay") {
+//       await updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid, type);
+//     }
+//   }
+
+//   res.status(200).send("Payment received");
+// };
 const razorpayWebhookAdmin = async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
 
   const isValid = verifyRazorpaySignature(JSON.stringify(req.body), signature);
   if (!isValid) return res.status(400).send("Invalid signature");
 
+  console.log("Razorpay Webhook Payload:", JSON.stringify(req.body, null, 2));
+
   const event = req.body.event;
+  if (event !== "payment_link.paid") {
+    return res.status(200).send("Event ignored");
+  }
 
-  const paymentLinkPayload = req.body.payload?.payment_link?.entity;
-
-  if (!paymentLinkPayload) {
+  const entity = req.body.payload?.payment_link?.entity;
+  if (!entity) {
     console.error("Missing payment_link.entity in webhook payload");
     return res.status(400).send("Malformed payload");
   }
 
-  const entity = paymentLinkPayload;
   const notes = entity.notes || {};
-  const amountInPaise = entity.amount || 0;
-  const amountPaid = amountInPaise / 100;
+  const amountPaid = (entity.amount || 0) / 100;
 
-  if (event === "payment_link.paid") {
-    const paymentLinkId = entity.id;
-    const type = notes?.type?.toLowerCase() || "";
+  const paymentLinkId = entity.id;
+  const type = notes?.type?.toLowerCase() || "";
 
-    if (type === "" || type === "partiallypay") {
-      await updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid, type);
-    }
+  if (type === "" || type === "partiallypay") {
+    await updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid, type);
   }
 
   res.status(200).send("Payment received");
