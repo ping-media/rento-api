@@ -504,6 +504,7 @@ const getExtraAddOns = async (req, res) => {
         slides: 1,
         testimonial: 1,
         maintenance: 1,
+        testMode: 1,
       }
     );
 
@@ -522,6 +523,7 @@ const getExtraAddOns = async (req, res) => {
     const slides = general.slides || [];
     const testimonial = general.testimonial || [];
     const maintenance = general.maintenance || false;
+    const testMode = general.testMode || false;
 
     return res.status(200).json({
       status: 200,
@@ -532,6 +534,7 @@ const getExtraAddOns = async (req, res) => {
       slides: slides,
       testimonial: testimonial,
       maintenance: maintenance,
+      testMode: testMode,
       // pagination: {
       //   total,
       //   page,
