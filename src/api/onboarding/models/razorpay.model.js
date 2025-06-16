@@ -26,15 +26,15 @@ const createPaymentLink = async (req, res) => {
   const { bookingId, amount, orderId, type, typeId } = req.body;
 
   if (!bookingId || !amount) {
-    return res.status(400).json({ message: "Missing fields" });
+    return res.status(200).json({ message: "Missing fields" });
   }
 
   try {
     const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    if (!booking) return res.status(200).json({ message: "Booking not found" });
     const user = await User.findById(booking.userId.toString());
     if (!user) {
-      return res.status(404).json({
+      return res.status(200).json({
         success: false,
         message: "User not found for this booking",
       });
@@ -79,21 +79,21 @@ const createPaymentLink = async (req, res) => {
     if (response.id) {
       await timelineFunctionServer(timeLineData);
 
-      res.json({
+      res.status(200).json({
         paymentLink: response.short_url,
         paymentLinkId: response.id,
         data: timeLineData,
         linkCreated: true,
       });
     } else {
-      res.json({
+      res.status(200).json({
         linkCreated: false,
         message: "Unable to make payment link",
       });
     }
   } catch (error) {
     console.warn("Error while creating payment link", error?.message);
-    res.json({
+    res.status(200).json({
       linkCreated: false,
       message: "Error while creating payment link",
     });
@@ -105,13 +105,13 @@ const razorpayWebhookAdmin = async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
   const isValid = verifyRazorpaySignature(JSON.stringify(req.body), signature);
 
-  if (!isValid) return res.status(400).send("Invalid signature");
+  if (!isValid) return res.status(200).send("Invalid signature");
 
   const entity = req.body.payload?.payment_link?.entity;
 
   if (!entity) {
     console.error("Missing payment_link.entity in webhook payload");
-    return res.status(400).send("Malformed payload");
+    return res.status(200).send("Malformed payload");
   }
 
   const notes = entity.notes || {};
@@ -123,7 +123,7 @@ const razorpayWebhookAdmin = async (req, res) => {
   // Validate required fields
   if (!bookingId) {
     console.error("Missing bookingId in notes");
-    return res.status(400).send("Missing booking ID");
+    return res.status(200).send("Missing booking ID");
   }
 
   let paymentId = "";
@@ -148,7 +148,7 @@ const razorpayWebhookAdmin = async (req, res) => {
       );
     } catch (err) {
       console.error("Error updating booking:", err);
-      return res.status(500).send("Booking update failed");
+      return res.status(200).send("Booking update failed");
     }
   } else if (type === "extension") {
     try {
@@ -160,7 +160,7 @@ const razorpayWebhookAdmin = async (req, res) => {
       );
     } catch (err) {
       console.error("Error updating booking:", err);
-      return res.status(500).send("Booking update failed");
+      return res.status(200).send("Booking update failed");
     }
   }
 
@@ -178,7 +178,7 @@ const razorpayWebhook = async (req, res) => {
 
   if (signature !== expectedSignature) {
     return res
-      .status(400)
+      .status(200)
       .json({ success: false, message: "Invalid signature" });
   }
 
@@ -235,7 +235,7 @@ const razorpayWebhook = async (req, res) => {
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error("Webhook handling failed:", error);
-    return res.status(500).json({ success: false, error: "Internal error" });
+    return res.status(200).json({ success: false, error: "Internal error" });
   }
 };
 
@@ -283,7 +283,7 @@ const updateBookingAfterPaymentAdmin = async (
   if (!bookingId) throw new Error("Booking ID missing");
   const booking = await Booking.findById(bookingId);
 
-  if (!booking) return res.status(404).send("Booking not found");
+  if (!booking) return res.status(200).send("Booking not found");
 
   if (type === "partiallyPay") {
     booking.paymentStatus = "partially_paid";
@@ -319,7 +319,7 @@ const updateBookingAdminExtension = async (
   const booking = await Booking.findById(bookingId);
 
   if (!booking || !typeId)
-    return res.status(404).send("Booking or extension not found");
+    return res.status(200).send("Booking or extension not found");
 
   const extend = booking.bookingPrice.extendAmount.find(
     (e) => e.id?.toString() === typeId?.toString()
