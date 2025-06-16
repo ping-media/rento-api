@@ -324,8 +324,12 @@ const updateBookingAdminExtension = async (
   const extend = booking.bookingPrice.extendAmount.find((e) => e.id === typeId);
   if (extend) {
     extend.status = "paid";
-    extend.paymentId = paymentId;
+    extend.paymentMethod = "online";
+    extend.paymentDate = new Date();
+    extend.transactionId = paymentId;
   }
+  booking.bookingStatus = "extended";
+
   booking.markModified("bookingPrice");
   await booking.save();
 
