@@ -6,7 +6,6 @@ const ObjectId = mongoose.Types.ObjectId;
 const Vehicle = require("../../../db/schemas/onboarding/vehicle.schema");
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const Station = require("../../../db/schemas/onboarding/station.schema");
-//const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 // const cron = require("node-cron");
 const BookingDuration = require("../../../db/schemas/onboarding/bookingDuration.schema");
@@ -18,25 +17,14 @@ const Coupon = require("../../../db/schemas/onboarding/coupons.schema");
 const InvoiceTbl = require("../../../db/schemas/onboarding/invoice-tbl.schema");
 const VehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
-// const plan = require("../../../db/schemas/onboarding/plan.schema");
-// const location = require("../../../db/schemas/onboarding/location.schema");
 const station = require("../../../db/schemas/onboarding/station.schema");
-// const order = require("../../../db/schemas/onboarding/order.schema");
-// const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const { emailValidation, contactValidation } = require("../../../constant");
-// const { query } = require("express");
-//const {generateRandomId } = require('../../../utils/help-scripts/help-functions');
-// const Invoice = require("../../../db/schemas/onboarding/invoice-tbl.schema");
-// const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Log = require("../models/Logs.model");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
 const {
-  // sendOtpByEmailForBooking,
   sendEmailForBookingToStationMaster,
 } = require("../../../utils/emailSend");
 const General = require("../../../db/schemas/onboarding/general.schema");
-
-const mode = process.env.ENVIRONMENT;
 
 const logError = async (message, functionName, userId) => {
   await Log({ message, functionName, userId });

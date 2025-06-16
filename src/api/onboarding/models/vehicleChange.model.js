@@ -58,9 +58,9 @@ const vehicleChangeInBooking = async (req, res) => {
     });
 
     const updatedData = await Booking.findOneAndUpdate(
-      { _id: _id }, // Filter condition
-      { $set: o }, // Update data
-      { new: true } // Return the updated document
+      { _id: _id },
+      { $set: o },
+      { new: true }
     );
 
     await Log({

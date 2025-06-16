@@ -23,7 +23,7 @@ const verifyRazorpaySignature = (body, signature) => {
 };
 
 const createPaymentLink = async (req, res) => {
-  const { bookingId, amount, orderId, type } = req.body;
+  const { bookingId, amount, orderId, type, typeId } = req.body;
 
   if (!bookingId || !amount) {
     return res.status(400).json({ message: "Missing fields" });
@@ -60,26 +60,29 @@ const createPaymentLink = async (req, res) => {
       notes: {
         bookingId: booking._id,
         type: type || "",
+        typeId: typeId || "",
       },
     });
 
+    const timeLineData = {
+      currentBooking_id: booking._id,
+      timeLine: [
+        {
+          title: "Payment Link Created",
+          date: Date.now(),
+          paymentAmount: amount,
+          PaymentLink: response.short_url,
+          paymentLinkId: response.id,
+        },
+      ],
+    };
     if (response.id) {
-      await timelineFunctionServer({
-        currentBooking_id: booking._id,
-        timeLine: [
-          {
-            title: "Payment Link Created",
-            date: Date.now(),
-            paymentAmount: amount,
-            PaymentLink: response.short_url,
-            paymentLinkId: response.id,
-          },
-        ],
-      });
+      await timelineFunctionServer(timeLineData);
 
       res.json({
         paymentLink: response.short_url,
         paymentLinkId: response.id,
+        data: timeLineData,
         linkCreated: true,
       });
     } else {
@@ -98,38 +101,6 @@ const createPaymentLink = async (req, res) => {
 };
 
 // webhooks code
-
-// const razorpayWebhookAdmin = async (req, res) => {
-//   const signature = req.headers["x-razorpay-signature"];
-
-//   const isValid = verifyRazorpaySignature(JSON.stringify(req.body), signature);
-//   if (!isValid) return res.status(400).send("Invalid signature");
-
-//   const event = req.body.event;
-
-//   const paymentLinkPayload = req.body.payload?.payment_link?.entity;
-
-//   if (!paymentLinkPayload) {
-//     console.error("Missing payment_link.entity in webhook payload");
-//     return res.status(400).send("Malformed payload");
-//   }
-
-//   const entity = paymentLinkPayload;
-//   const notes = entity.notes || {};
-//   const amountInPaise = entity.amount || 0;
-//   const amountPaid = amountInPaise / 100;
-
-//   if (event === "payment_link.paid") {
-//     const paymentLinkId = entity.id;
-//     const type = notes?.type?.toLowerCase() || "";
-
-//     if (type === "" || type === "partiallypay") {
-//       await updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid, type);
-//     }
-//   }
-
-//   res.status(200).send("Payment received");
-// };
 const razorpayWebhookAdmin = async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
   const isValid = verifyRazorpaySignature(JSON.stringify(req.body), signature);
@@ -146,6 +117,7 @@ const razorpayWebhookAdmin = async (req, res) => {
   const notes = entity.notes || {};
   const amountPaid = (entity.amount || 0) / 100;
   const type = notes?.type?.toLowerCase() || "";
+  const typeId = notes?.typeId || "";
   const bookingId = notes?.bookingId;
 
   // Validate required fields
@@ -154,13 +126,36 @@ const razorpayWebhookAdmin = async (req, res) => {
     return res.status(400).send("Missing booking ID");
   }
 
+  let paymentId = "";
+  const orderId = entity.order_id;
+  const payments = await razorpay.orders.fetchPayments(orderId);
+
+  // checking whether the payment is successfull or not and getting tran id
+  if (payments.items && payments.items.length > 0) {
+    const successfulPayment = payments.items.find(
+      (p) => p.status === "captured" || p.status === "authorized"
+    );
+    paymentId = successfulPayment ? successfulPayment.id : "";
+  }
+
   if (type === "" || type === "partiallypay") {
     try {
-      const paymentId = entity.payment_id || "";
       await updateBookingAfterPaymentAdmin(
         bookingId,
         amountPaid,
         type,
+        paymentId
+      );
+    } catch (err) {
+      console.error("Error updating booking:", err);
+      return res.status(500).send("Booking update failed");
+    }
+  } else if (type === "extension") {
+    try {
+      await updateBookingAdminExtension(
+        bookingId,
+        amountPaid,
+        typeId,
         paymentId
       );
     } catch (err) {
@@ -290,13 +285,6 @@ const updateBookingAfterPaymentAdmin = async (
 
   if (!booking) return res.status(404).send("Booking not found");
 
-  // const extend = booking.bookingPrice.extendAmount.find(
-  //   (e) => e.paymentLinkId === paymentLinkId
-  // );
-  // if (extend) {
-  //   extend.paid = true;
-  //   extend.paymentId = entity.payment_id;
-  // }
   if (type === "partiallyPay") {
     booking.paymentStatus = "partially_paid";
   } else {
@@ -312,7 +300,41 @@ const updateBookingAfterPaymentAdmin = async (
     currentBooking_id: booking._id,
     timeLine: [
       {
-        title: "Payment Completed",
+        title: "Payment Received",
+        date: Date.now(),
+        paymentAmount: amountPaid,
+        paymentId: paymentId || "",
+      },
+    ],
+  });
+};
+
+const updateBookingAdminExtension = async (
+  bookingId,
+  amountPaid,
+  typeId,
+  paymentId
+) => {
+  if (!bookingId) throw new Error("Booking ID missing");
+  const booking = await Booking.findById(bookingId);
+
+  if (!booking || !typeId)
+    return res.status(404).send("Booking or extension not found");
+
+  const extend = booking.bookingPrice.extendAmount.find((e) => e.id === typeId);
+  if (extend) {
+    extend.status = "paid";
+    extend.paymentId = paymentId;
+  }
+  booking.markModified("bookingPrice");
+  await booking.save();
+
+  // Add to timeline
+  await timelineFunctionServer({
+    currentBooking_id: booking._id,
+    timeLine: [
+      {
+        title: "Payment Received",
         date: Date.now(),
         paymentAmount: amountPaid,
         paymentId: paymentId || "",
@@ -459,6 +481,7 @@ module.exports = {
   razorpayWebhookAdmin,
   razorpayWebhook,
   updateBookingAfterPaymentAdmin,
+  updateBookingAdminExtension,
   updateBookingAfterPayment,
   markExtendBookingAsFailed,
   markBookingAsFailed,
