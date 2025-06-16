@@ -132,27 +132,39 @@ const createPaymentLink = async (req, res) => {
 // };
 const razorpayWebhookAdmin = async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
-
   const isValid = verifyRazorpaySignature(JSON.stringify(req.body), signature);
+
   if (!isValid) return res.status(400).send("Invalid signature");
 
   const event = req.body.event;
-  const entity = JSON.stringify(req.body.payload?.payment_link?.entity);
+  const entity = req.body.payload?.payment_link?.entity;
 
   if (!entity) {
     console.error("Missing payment_link.entity in webhook payload");
     return res.status(400).send("Malformed payload");
   }
 
+  // Add some debugging logs
+  console.log("Entity object:", entity);
+  console.log("Entity notes:", entity.notes);
+  console.log("Entity amount:", entity.amount);
+
   const notes = entity.notes || {};
   const amountPaid = (entity.amount || 0) / 100;
   const type = notes?.type?.toLowerCase() || "";
-  const paymentLinkId = notes?.bookingId;
-  // const paymentLinkId = entity?.id || entity["id"];
+  const bookingId = notes?.bookingId;
+
+  console.log("Extracted values:", { amountPaid, type, bookingId });
+
+  // Validate required fields
+  if (!bookingId) {
+    console.error("Missing bookingId in notes");
+    return res.status(400).send("Missing booking ID");
+  }
 
   if (type === "" || type === "partiallypay") {
     try {
-      await updateBookingAfterPaymentAdmin(paymentLinkId, amountPaid, type);
+      await updateBookingAfterPaymentAdmin(bookingId, amountPaid, type);
     } catch (err) {
       console.error("Error updating booking:", err);
       return res.status(500).send("Booking update failed");
