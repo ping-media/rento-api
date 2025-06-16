@@ -136,7 +136,6 @@ const razorpayWebhookAdmin = async (req, res) => {
 
   if (!isValid) return res.status(400).send("Invalid signature");
 
-  const event = req.body.event;
   const entity = req.body.payload?.payment_link?.entity;
 
   if (!entity) {
@@ -144,17 +143,10 @@ const razorpayWebhookAdmin = async (req, res) => {
     return res.status(400).send("Malformed payload");
   }
 
-  // Add some debugging logs
-  console.log("Entity object:", entity);
-  console.log("Entity notes:", entity.notes);
-  console.log("Entity amount:", entity.amount);
-
   const notes = entity.notes || {};
   const amountPaid = (entity.amount || 0) / 100;
   const type = notes?.type?.toLowerCase() || "";
   const bookingId = notes?.bookingId;
-
-  console.log("Extracted values:", { amountPaid, type, bookingId });
 
   // Validate required fields
   if (!bookingId) {
@@ -311,7 +303,7 @@ const updateBookingAfterPaymentAdmin = async (
     booking.paymentStatus = "paid";
   }
   booking.bookingStatus = "done";
-  booking.paySuccessId = paySuccessId || "";
+  booking.paySuccessId = paymentId || "";
 
   await booking.save();
 
