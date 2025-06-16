@@ -164,7 +164,13 @@ const razorpayWebhookAdmin = async (req, res) => {
 
   if (type === "" || type === "partiallypay") {
     try {
-      await updateBookingAfterPaymentAdmin(bookingId, amountPaid, type);
+      const paymentId = entity.payment_id || "";
+      await updateBookingAfterPaymentAdmin(
+        bookingId,
+        amountPaid,
+        type,
+        paymentId
+      );
     } catch (err) {
       console.error("Error updating booking:", err);
       return res.status(500).send("Booking update failed");
@@ -281,12 +287,13 @@ const updateBookingAfterPayment = async (
   });
 };
 
-const updateBookingAfterPaymentAdmin = async (bookingId, amountPaid, type) => {
+const updateBookingAfterPaymentAdmin = async (
+  bookingId,
+  amountPaid,
+  type,
+  paymentId
+) => {
   if (!bookingId) throw new Error("Booking ID missing");
-
-  // const booking = await Booking.findOne({
-  //   "bookingPrice.paymentLinkId": paymentLinkId,
-  // });
   const booking = await Booking.findById(bookingId);
 
   if (!booking) return res.status(404).send("Booking not found");
@@ -304,7 +311,7 @@ const updateBookingAfterPaymentAdmin = async (bookingId, amountPaid, type) => {
     booking.paymentStatus = "paid";
   }
   booking.bookingStatus = "done";
-  booking.paySuccessId = entity.payment_id;
+  booking.paySuccessId = paySuccessId || "";
 
   await booking.save();
 
@@ -316,7 +323,7 @@ const updateBookingAfterPaymentAdmin = async (bookingId, amountPaid, type) => {
         title: "Payment Completed",
         date: Date.now(),
         paymentAmount: amountPaid,
-        paymentId: entity.payment_id,
+        paymentId: paymentId || "",
       },
     ],
   });
