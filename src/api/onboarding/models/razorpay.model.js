@@ -321,7 +321,9 @@ const updateBookingAdminExtension = async (
   if (!booking || !typeId)
     return res.status(404).send("Booking or extension not found");
 
-  const extend = booking.bookingPrice.extendAmount.find((e) => e.id === typeId);
+  const extend = booking.bookingPrice.extendAmount.find(
+    (e) => e.id?.toString() === typeId?.toString()
+  );
   if (extend) {
     extend.status = "paid";
     extend.paymentMethod = "online";
@@ -330,7 +332,8 @@ const updateBookingAdminExtension = async (
   }
   booking.bookingStatus = "extended";
 
-  booking.markModified("bookingPrice");
+  booking.markModified("bookingPrice.extendAmount");
+
   await booking.save();
 
   // Add to timeline
