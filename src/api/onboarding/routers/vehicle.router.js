@@ -72,6 +72,7 @@ const {
 const {
   initiateBooking,
   initiateExtendBooking,
+  updateBooking,
 } = require("../models/booking.model");
 // const { cancelPendingPayments } = require("../utils/cron.js");
 
@@ -203,6 +204,10 @@ router.post("/createBooking", async (req, res) => {
 
 router.post("/initiate-booking", async (req, res) => {
   initiateBooking(req, res);
+});
+
+router.post("/reschedule-booking", async (req, res) => {
+  updateBooking(req, res);
 });
 
 router.post("/initiate-extend-booking", async (req, res) => {

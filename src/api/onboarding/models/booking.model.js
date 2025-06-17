@@ -655,10 +655,72 @@ const initiateExtendBooking = async (req, res) => {
   }
 };
 
+const updateBooking = async (req, res) => {
+  const { BookingStartDateAndTime, BookingEndDateAndTime, _id } = req.body;
+
+  if (!_id) {
+    return res.status(400).json({
+      message: "Missing required fields! try again",
+    });
+  }
+
+  try {
+    const booking = await Booking.findById(_id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    let isStartUpdate = false;
+    let isEndUpdate = false;
+
+    if (BookingStartDateAndTime > booking.BookingStartDateAndTime) {
+      booking.BookingStartDateAndTime = BookingStartDateAndTime;
+      isStartUpdate = true;
+    }
+
+    if (BookingEndDateAndTime > booking.BookingEndDateAndTime) {
+      booking.BookingEndDateAndTime = BookingEndDateAndTime;
+      isEndUpdate = true;
+    }
+
+    const savedBooking = await booking.save();
+
+    if (savedBooking) {
+      await timelineFunctionServer({
+        currentBooking_id: booking._id,
+        timeLine: [
+          {
+            title: "Booking Rescheduled",
+            date: Date.now(),
+            newStartDate: isStartUpdate ? BookingStartDateAndTime : "",
+            newEndDate: isEndUpdate ? BookingEndDateAndTime : "",
+          },
+        ],
+      });
+
+      res.json({
+        success: true,
+        isStartUpdate,
+        isEndUpdate,
+      });
+    }
+  } catch (error) {
+    console.warn(
+      "Unable to update or rescheduled booking! try again",
+      error?.message
+    );
+    res.json({
+      success: false,
+      message: "Unable to update or rescheduled booking! try again.",
+    });
+  }
+};
+
 module.exports = {
   getBookings,
   getBooking,
   initiateBooking,
   createOrderId,
   initiateExtendBooking,
+  updateBooking,
 };
