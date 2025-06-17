@@ -25,6 +25,7 @@ const {
   sendEmailForBookingToStationMaster,
 } = require("../../../utils/emailSend");
 const General = require("../../../db/schemas/onboarding/general.schema");
+const { getDurationInDays } = require("../../../utils");
 
 const logError = async (message, functionName, userId) => {
   await Log({ message, functionName, userId });
@@ -2665,6 +2666,477 @@ const getVehicleTbl = async (query) => {
     const adjustedVehicles = [];
     const pricingRules = await General.findOne({});
 
+    for (const vehicle of vehicleData) {
+      const adjustedVehicle = { ...vehicle };
+
+      if (pricingRules) {
+        const originalPerDayCost = adjustedVehicle.perDayCost;
+
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+
+        const bookingDurationDays = Math.ceil(
+          (endDateObj - startDateObj) / (1000 * 60 * 60 * 24)
+        );
+
+        let totalRentalCost = 0;
+        const daysBreakdown = [];
+        const appliedPlans = [];
+
+        let remainingDays = bookingDurationDays;
+        let currentDate = new Date(startDateObj);
+
+        const weekendPrice = pricingRules.weakend?.Price || 0;
+        const weekendPriceType = pricingRules.weakend?.PriceType || "+";
+
+        if (
+          adjustedVehicle.vehiclePlan &&
+          adjustedVehicle.vehiclePlan.length > 0
+        ) {
+          const sortedPlans = [...adjustedVehicle.vehiclePlan].sort(
+            (a, b) => b.planDuration - a.planDuration
+          );
+
+          for (const plan of sortedPlans) {
+            if (remainingDays >= plan.planDuration) {
+              const times = Math.floor(remainingDays / plan.planDuration);
+              const planCost = times * plan.planPrice;
+
+              totalRentalCost += planCost;
+              appliedPlans.push({
+                days: plan.planDuration,
+                count: times,
+                planPrice: plan.planPrice,
+              });
+
+              remainingDays -= times * plan.planDuration;
+
+              currentDate.setDate(
+                currentDate.getDate() + times * plan.planDuration
+              );
+            }
+          }
+        }
+
+        // STEP 2: Charge Daily for Remaining Days with Weekend/Special Rules
+        for (let i = 0; i < remainingDays; i++) {
+          const dayOfWeek = currentDate.getDay();
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+          let dailyRate = originalPerDayCost;
+
+          // Apply weekend pricing
+          if (isWeekend && pricingRules.weakend) {
+            if (weekendPriceType === "+") {
+              dailyRate += (originalPerDayCost * weekendPrice) / 100;
+            } else if (weekendPriceType === "-") {
+              dailyRate -= (originalPerDayCost * weekendPrice) / 100;
+            }
+          }
+
+          // Apply special day pricing
+          if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
+            for (const specialDay of pricingRules.specialDays) {
+              const fromDate = new Date(specialDay.From);
+              const toDate = new Date(specialDay.Too);
+
+              if (currentDate >= fromDate && currentDate <= toDate) {
+                const specialPrice = specialDay.Price;
+                const specialPriceType = specialDay.PriceType;
+
+                if (specialPriceType === "+") {
+                  dailyRate += (originalPerDayCost * specialPrice) / 100;
+                } else if (specialPriceType === "-") {
+                  dailyRate -= (originalPerDayCost * specialPrice) / 100;
+                }
+
+                break;
+              }
+            }
+          }
+
+          totalRentalCost += dailyRate;
+
+          daysBreakdown.push({
+            date: new Date(currentDate),
+            isWeekend,
+            dailyRate: Math.round(dailyRate),
+          });
+
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // Final Adjustments
+        adjustedVehicle.originalPerDayCost = originalPerDayCost;
+        adjustedVehicle._daysBreakdown = daysBreakdown;
+        adjustedVehicle.totalRentalCost = Math.round(totalRentalCost);
+        adjustedVehicle.appliedPlans = appliedPlans;
+
+        const startDay = startDateObj.getDay();
+        const isStartWeekend = startDay === 0 || startDay === 6;
+
+        if (isStartWeekend && pricingRules.weakend) {
+          adjustedVehicle.perDayCost =
+            weekendPriceType === "+"
+              ? Math.round(
+                  originalPerDayCost + (originalPerDayCost * weekendPrice) / 100
+                )
+              : Math.round(
+                  originalPerDayCost - (originalPerDayCost * weekendPrice) / 100
+                );
+        } else {
+          adjustedVehicle.perDayCost = originalPerDayCost;
+        }
+      }
+
+      adjustedVehicles.push(adjustedVehicle);
+    }
+
+    // Extract total records and calculate total pages
+    const totalRecords = vehicles[0].totalCount[0]?.totalRecords || 0;
+    const totalPages = Math.ceil(totalRecords / parsedLimit);
+
+    // Set response with all vehicles
+    response.data = adjustedVehicles;
+    response.status = 200;
+    response.message = "Data fetched successfully";
+    response.pagination = {
+      totalRecords,
+      totalPages,
+      currentPage: parsedPage,
+      limit: parsedLimit,
+    };
+  } catch (error) {
+    console.error("Error in getVehicleTblData:", error.message);
+    response.status = 500;
+    response.message = `Internal server error: ${error.message}`;
+  }
+
+  return response;
+};
+
+const getVehicleTblOld = async (query) => {
+  const response = {
+    status: 200,
+    message: "Data fetched successfully",
+    data: [],
+  };
+
+  try {
+    const {
+      vehiclePlan,
+      vehicleModel,
+      condition,
+      BookingStartDateAndTime,
+      BookingEndDateAndTime,
+      _id,
+      vehicleBrand,
+      vehicleType,
+      stationId,
+      locationId,
+      page = 1,
+      limit = 20,
+      search,
+    } = query;
+    if (!locationId) {
+      if (!_id && !BookingStartDateAndTime && !BookingEndDateAndTime) {
+        return {
+          status: 400,
+          message: "Booking start and end dates are required.",
+          data: [],
+        };
+      }
+    }
+
+    function isValidISO8601(dateString) {
+      if (!dateString) return false;
+
+      // More flexible ISO date validation
+      try {
+        const date = new Date(dateString);
+        return !isNaN(date.getTime());
+      } catch (e) {
+        return false;
+      }
+    }
+
+    const startDateValidation = isValidISO8601(BookingStartDateAndTime);
+    const endDateValidation = isValidISO8601(BookingEndDateAndTime);
+
+    if (!startDateValidation || !endDateValidation) {
+      return {
+        status: 400,
+        message: "Invalid date format",
+        data: [],
+      };
+    }
+
+    const startDate = BookingStartDateAndTime;
+    const endDate = BookingEndDateAndTime;
+    const matchFilter = {};
+
+    if (_id) {
+      matchFilter._id = _id.length === 24 ? new ObjectId(_id) : _id;
+    } else {
+      if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
+      if (condition) matchFilter.condition = condition;
+      if (stationId) matchFilter.stationId = stationId;
+      if (locationId) matchFilter.locationId = new ObjectId(locationId);
+      if (Array.isArray(vehiclePlan)) {
+        matchFilter["vehiclePlan._id"] = {
+          $in: vehiclePlan.map((id) => new ObjectId(id)),
+        };
+      } else if (vehiclePlan) {
+        matchFilter["vehiclePlan._id"] = new ObjectId(vehiclePlan);
+      }
+    }
+
+    const parsedPage = Math.max(parseInt(page, 10), 1);
+    const parsedLimit = Math.max(parseInt(limit, 10), 1);
+
+    const pipeline = [
+      { $match: matchFilter },
+      ...(search
+        ? [
+            {
+              $lookup: {
+                from: "vehiclemasters",
+                localField: "vehicleMasterId",
+                foreignField: "_id",
+                as: "searchVehicleMaster",
+              },
+            },
+            {
+              $match: {
+                $or: [
+                  { vehicleNumber: { $regex: search, $options: "i" } },
+                  {
+                    "searchVehicleMaster.vehicleName": {
+                      $regex: search,
+                      $options: "i",
+                    },
+                  },
+                ],
+              },
+            },
+          ]
+        : []),
+      // Lookup bookings for the vehicle
+      {
+        $lookup: {
+          from: "bookings",
+          localField: "_id",
+          foreignField: "vehicleTableId",
+          as: "bookings",
+        },
+      },
+      // Lookup station data
+      {
+        $lookup: {
+          from: "stations",
+          localField: "stationId",
+          foreignField: "stationId",
+          as: "stationData",
+        },
+      },
+
+      // Lookup vehicle master data
+      {
+        $lookup: {
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
+        },
+      },
+
+      // Lookup maintenance records
+      {
+        $lookup: {
+          from: "maintenancevehicles",
+          localField: "_id",
+          foreignField: "vehicleTableId",
+          as: "maintenanceData",
+        },
+      },
+      // Filter conflicting bookings & maintenance
+      {
+        $addFields: {
+          conflictingBookings: {
+            $filter: {
+              input: "$bookings",
+              as: "booking",
+              cond: {
+                $and: [
+                  { $ne: ["$$booking.rideStatus", "canceled"] },
+                  {
+                    $or: [
+                      {
+                        $and: [
+                          {
+                            $gte: [
+                              "$$booking.BookingStartDateAndTime",
+                              startDate,
+                            ],
+                          },
+                          {
+                            $lte: [
+                              "$$booking.BookingStartDateAndTime",
+                              endDate,
+                            ],
+                          },
+                        ],
+                      },
+                      {
+                        $and: [
+                          {
+                            $gte: [
+                              "$$booking.BookingEndDateAndTime",
+                              startDate,
+                            ],
+                          },
+                          {
+                            $lte: ["$$booking.BookingEndDateAndTime", endDate],
+                          },
+                        ],
+                      },
+                      {
+                        $and: [
+                          {
+                            $lte: [
+                              "$$booking.BookingStartDateAndTime",
+                              startDate,
+                            ],
+                          },
+                          {
+                            $gte: ["$$booking.BookingEndDateAndTime", endDate],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+          conflictingMaintenance: {
+            $filter: {
+              input: "$maintenanceData",
+              as: "maintenance",
+              cond: {
+                $or: [
+                  {
+                    $and: [
+                      { $gte: ["$$maintenance.startDate", startDate] },
+                      { $lte: ["$$maintenance.startDate", endDate] },
+                    ],
+                  },
+                  {
+                    $and: [
+                      { $gte: ["$$maintenance.endDate", startDate] },
+                      { $lte: ["$$maintenance.endDate", endDate] },
+                    ],
+                  },
+                  {
+                    $and: [
+                      { $lte: ["$$maintenance.startDate", startDate] },
+                      { $gte: ["$$maintenance.endDate", endDate] },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+
+      // Match active vehicles and filter out those with conflicting bookings or maintenance
+      {
+        $match: {
+          vehicleStatus: "active",
+          "conflictingBookings.0": { $exists: false },
+          "conflictingMaintenance.0": { $exists: false },
+        },
+      },
+
+      // Flatten vehicle master and station data
+      {
+        $addFields: {
+          vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
+          stationData: { $arrayElemAt: ["$stationData", 0] },
+        },
+      },
+
+      // Apply additional filters
+      {
+        $match: {
+          ...(vehicleBrand
+            ? { "vehicleMasterData.vehicleBrand": vehicleBrand }
+            : {}),
+          ...(vehicleType
+            ? { "vehicleMasterData.vehicleType": vehicleType }
+            : {}),
+        },
+      },
+
+      // Project the required fields
+      {
+        $project: {
+          _id: 1,
+          vehicleImage: "$vehicleMasterData.vehicleImage",
+          vehicleBrand: "$vehicleMasterData.vehicleBrand",
+          vehicleName: "$vehicleMasterData.vehicleName",
+          vehicleType: "$vehicleMasterData.vehicleType",
+          stationName: "$stationData.stationName",
+          speedLimit: 1,
+          refundableDeposit: 1,
+          lateFee: 1,
+          vehicleStatus: 1,
+          freeKms: 1,
+          vehicleMasterId: 1,
+          extraKmsCharges: 1,
+          vehicleNumber: 1,
+          vehicleModel: 1,
+          vehiclePlan: 1,
+          perDayCost: 1,
+          lastServiceDate: 1,
+          kmsRun: 1,
+          condition: 1,
+          locationId: 1,
+          stationId: 1,
+        },
+      },
+
+      // Pagination using $facet
+      {
+        $facet: {
+          totalCount: [{ $count: "totalRecords" }],
+          data: [
+            { $skip: (parsedPage - 1) * parsedLimit },
+            { $limit: parsedLimit },
+          ],
+        },
+      },
+    ];
+
+    let vehicles = await vehicleTable.aggregate(pipeline);
+
+    if (!vehicles.length || !vehicles[0].totalCount.length) {
+      response.status = 404;
+      response.message = "No records found";
+      response.data = [];
+      response.pagination = {
+        totalPages: 0,
+        currentPage: parsedPage,
+        limit: parsedLimit,
+      };
+      return response;
+    }
+
+    const vehicleData = vehicles[0].data || [];
+    const adjustedVehicles = [];
+    const pricingRules = await General.findOne({});
+
     // Apply pricing rules to each vehicle
     for (const vehicle of vehicleData) {
       const adjustedVehicle = { ...vehicle };
@@ -2780,7 +3252,6 @@ const getVehicleTbl = async (query) => {
         adjustedVehicle.originalPerDayCost = originalPerDayCost;
 
         // Display weekend per day cost if booking includes weekend days
-        // if (hasWeekendDays) {
         if (isDateOnWeekend) {
           adjustedVehicle.perDayCost = weekendPerDayCost;
         } else {
@@ -3296,177 +3767,651 @@ const getVehicleTblData = async (query) => {
     // Apply pricing rules to available vehicles
     const pricingRules = await General.findOne({});
 
-    // if (pricingRules) {
-    //   paginatedAvailable = paginatedAvailable.map((groupedVehicle) => {
-    //     const adjustedVehicle = { ...groupedVehicle };
-    //     const originalPerDayCost = adjustedVehicle.perDayCost;
-    //     let finalPerDayCost = originalPerDayCost;
+    if (pricingRules) {
+      paginatedAvailable = paginatedAvailable.map((groupedVehicle) => {
+        const adjustedVehicle = { ...groupedVehicle };
+        const originalPerDayCost = adjustedVehicle.perDayCost;
 
-    //     const startDateObj = new Date(startDate);
-    //     const endDateObj = new Date(endDate);
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+        const bookingDurationDays = Math.ceil(
+          (endDateObj - startDateObj) / (1000 * 60 * 60 * 24)
+        );
 
-    //     // Check if start date or end date is a weekend
-    //     const startDayOfWeek = startDateObj.getDay();
-    //     const endDayOfWeek = endDateObj.getDay();
-    //     const isWeekendBooking =
-    //       startDayOfWeek === 6 ||
-    //       startDayOfWeek === 0 ||
-    //       endDayOfWeek === 6 ||
-    //       endDayOfWeek === 0;
+        adjustedVehicle.originalPerDayCost = originalPerDayCost;
 
-    //     // Apply weekend pricing only if start date or end date is a weekend
-    //     if (isWeekendBooking && pricingRules.weakend) {
-    //       const weekendPrice = pricingRules.weakend.Price;
-    //       const weekendPriceType = pricingRules.weakend.PriceType;
+        let totalRentalCost = 0;
+        const daysBreakdown = [];
+        const appliedPlans = [];
 
-    //       if (weekendPriceType === "+") {
-    //         finalPerDayCost =
-    //           Number(originalPerDayCost) +
-    //           (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
-    //       } else if (weekendPriceType === "-") {
-    //         finalPerDayCost =
-    //           Number(originalPerDayCost) -
-    //           (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
-    //       }
-    //     }
+        let remainingDays = bookingDurationDays;
+        let currentDate = new Date(startDateObj);
 
-    //     // Check if start date or end date falls within any special day range
-    //     if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
-    //       pricingRules.specialDays.forEach((specialDay) => {
-    //         const fromDate = new Date(specialDay.From);
-    //         const toDate = new Date(specialDay.Too);
+        const weekendPrice = pricingRules.weakend?.Price || 0;
+        const weekendPriceType = pricingRules.weakend?.PriceType || "+";
 
-    //         // Check if start date or end date is within special day range
-    //         if (
-    //           (startDateObj >= fromDate && startDateObj <= toDate) ||
-    //           (endDateObj >= fromDate && endDateObj <= toDate)
-    //         ) {
-    //           const specialPrice = specialDay.Price;
-    //           const specialPriceType = specialDay.PriceType;
+        // STEP 1: Apply Plan Pricing (e.g. 7-day, 15-day, etc.)
+        if (
+          adjustedVehicle.vehiclePlan &&
+          adjustedVehicle.vehiclePlan.length > 0
+        ) {
+          const sortedPlans = [...adjustedVehicle.vehiclePlan].sort(
+            (a, b) => b.planDuration - a.planDuration
+          );
 
-    //           if (specialPriceType === "+") {
-    //             finalPerDayCost =
-    //               Number(originalPerDayCost) +
-    //               (Number(originalPerDayCost) * Number(specialPrice)) / 100;
-    //           } else if (specialPriceType === "-") {
-    //             finalPerDayCost =
-    //               Number(originalPerDayCost) -
-    //               (Number(originalPerDayCost) * Number(specialPrice)) / 100;
-    //           }
-    //         }
-    //       });
-    //     }
+          for (const plan of sortedPlans) {
+            if (remainingDays >= plan.planDuration) {
+              const times = Math.floor(remainingDays / plan.planDuration);
+              const planCost = times * plan.planPrice;
 
-    //     adjustedVehicle.originalPerDayCost = originalPerDayCost;
-    //     adjustedVehicle.perDayCost = Math.round(finalPerDayCost);
+              totalRentalCost += planCost;
+              appliedPlans.push({
+                days: plan.planDuration,
+                count: times,
+                planPrice: plan.planPrice,
+              });
 
-    //     return adjustedVehicle;
-    //   });
-    // }
-    // if (pricingRules) {
-    //   paginatedAvailable = paginatedAvailable.map((groupedVehicle) => {
-    //     const adjustedVehicle = { ...groupedVehicle };
-    //     const originalPerDayCost = adjustedVehicle.perDayCost;
+              remainingDays -= times * plan.planDuration;
 
-    //     const startDateObj = new Date(startDate);
-    //     const endDateObj = new Date(endDate);
+              // Move currentDate forward for the plan days
+              currentDate.setDate(
+                currentDate.getDate() + times * plan.planDuration
+              );
+            }
+          }
+        }
 
-    //     adjustedVehicle.originalPerDayCost = originalPerDayCost;
+        // STEP 2: Charge Daily for Remaining Days with Weekend/Special Rules
+        for (let i = 0; i < remainingDays; i++) {
+          const dayOfWeek = currentDate.getDay();
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-    //     let totalRentalCost = 0;
+          let dailyRate = originalPerDayCost;
 
-    //     const daysInBooking = [];
-    //     const currentDate = new Date(startDateObj);
+          // Apply weekend pricing
+          if (isWeekend && pricingRules.weakend) {
+            if (weekendPriceType === "+") {
+              dailyRate += (originalPerDayCost * weekendPrice) / 100;
+            } else if (weekendPriceType === "-") {
+              dailyRate -= (originalPerDayCost * weekendPrice) / 100;
+            }
+          }
 
-    //     const weekendPrice = pricingRules.weakend
-    //       ? pricingRules.weakend.Price
-    //       : 0;
-    //     const weekendPriceType = pricingRules.weakend
-    //       ? pricingRules.weakend.PriceType
-    //       : "+";
+          // Apply special day pricing
+          if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
+            for (const specialDay of pricingRules.specialDays) {
+              const fromDate = new Date(specialDay.From);
+              const toDate = new Date(specialDay.Too);
 
-    //     // Loop through each day in the booking period
-    //     const dayOfWeek = currentDate.getDay();
-    //     const isDateOnWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+              if (currentDate >= fromDate && currentDate <= toDate) {
+                const specialPrice = specialDay.Price;
+                const specialPriceType = specialDay.PriceType;
 
-    //     while (currentDate < endDateObj) {
-    //       const nextDate = new Date(currentDate);
-    //       nextDate.setDate(nextDate.getDate() + 1);
+                if (specialPriceType === "+") {
+                  dailyRate += (originalPerDayCost * specialPrice) / 100;
+                } else if (specialPriceType === "-") {
+                  dailyRate -= (originalPerDayCost * specialPrice) / 100;
+                }
+                break;
+              }
+            }
+          }
 
-    //       const dayOfWeek = currentDate.getDay();
-    //       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+          totalRentalCost += dailyRate;
 
-    //       let dailyRate = originalPerDayCost;
+          daysBreakdown.push({
+            date: new Date(currentDate),
+            isWeekend,
+            dailyRate: Math.round(dailyRate),
+          });
 
-    //       // Apply weekend pricing if it's a weekend day
-    //       if (isWeekend && pricingRules.weakend) {
-    //         if (weekendPriceType === "+") {
-    //           dailyRate =
-    //             Number(originalPerDayCost) +
-    //             (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
-    //         } else if (weekendPriceType === "-") {
-    //           dailyRate =
-    //             Number(originalPerDayCost) -
-    //             (Number(originalPerDayCost) * Number(weekendPrice)) / 100;
-    //         }
-    //       }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
 
-    //       // Check if the day falls within any special day range
-    //       if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
-    //         for (const specialDay of pricingRules.specialDays) {
-    //           const fromDate = new Date(specialDay.From);
-    //           const toDate = new Date(specialDay.Too);
+        // Final Adjustments
+        adjustedVehicle.daysBreakdown = daysBreakdown;
+        adjustedVehicle.totalRentalCost = Math.round(totalRentalCost);
+        adjustedVehicle.appliedPlans = appliedPlans;
 
-    //           if (currentDate >= fromDate && currentDate <= toDate) {
-    //             const specialPrice = specialDay.Price;
-    //             const specialPriceType = specialDay.PriceType;
+        // Show updated perDayCost on UI based on booking's first day
+        const startDay = startDateObj.getDay();
+        const isStartWeekend = startDay === 0 || startDay === 6;
 
-    //             if (specialPriceType === "+") {
-    //               dailyRate =
-    //                 Number(originalPerDayCost) +
-    //                 (Number(originalPerDayCost) * Number(specialPrice)) / 100;
-    //             } else if (specialPriceType === "-") {
-    //               dailyRate =
-    //                 Number(originalPerDayCost) -
-    //                 (Number(originalPerDayCost) * Number(specialPrice)) / 100;
-    //             }
+        if (isStartWeekend && pricingRules.weakend) {
+          adjustedVehicle.perDayCost =
+            weekendPriceType === "+"
+              ? Math.round(
+                  originalPerDayCost + (originalPerDayCost * weekendPrice) / 100
+                )
+              : Math.round(
+                  originalPerDayCost - (originalPerDayCost * weekendPrice) / 100
+                );
+        } else {
+          adjustedVehicle.perDayCost = originalPerDayCost;
+        }
 
-    //             break;
-    //           }
-    //         }
-    //       }
+        return adjustedVehicle;
+      });
+    }
 
-    //       // Add the daily rate to the total rental cost
-    //       totalRentalCost += dailyRate;
+    // when there is no data return this response
+    if (paginatedAvailable?.length === 0 && paginatedExcluded?.length === 0) {
+      response.status = 404;
+      response.message = "No Vehicles Found";
+      response.data = [];
+      response.pagination = {
+        totalRecords: 0,
+        totalPages: 0,
+        currentPage: 1,
+        limit: 20,
+        bypassLimit,
+      };
+    } else {
+      response.status = 200;
+      response.message = "Data fetched successfully";
+      response.data = {
+        availableVehicles: paginatedAvailable,
+        excludedVehicles: paginatedExcluded,
+      };
+      response.pagination = {
+        totalRecords: totalGroupedRecords,
+        totalPages,
+        currentPage: parsedPage,
+        limit: parsedLimit,
+        bypassLimit,
+      };
+    }
+  } catch (error) {
+    console.error("Error in getVehicleTblData:", error.message);
+    response.status = 500;
+    response.message = `Internal server error: ${error.message}`;
+  }
 
-    //       // Store information about this day for debugging
-    //       daysInBooking.push({
-    //         date: new Date(currentDate),
-    //         isWeekend,
-    //         dailyRate: Math.round(dailyRate),
-    //       });
+  return response;
+};
 
-    //       // Move to the next day
-    //       currentDate.setDate(currentDate.getDate() + 1);
-    //     }
+const getVehicleTblDataOld = async (query) => {
+  const response = {
+    status: 200,
+    message: "Data fetched successfully",
+    data: [],
+  };
 
-    //     // Store the calculated values
-    //     adjustedVehicle.daysBreakdown = daysInBooking;
-    //     adjustedVehicle.totalRentalCost = Math.round(totalRentalCost);
+  try {
+    const {
+      vehiclePlan,
+      vehicleModel,
+      condition,
+      BookingStartDateAndTime,
+      BookingEndDateAndTime,
+      _id,
+      vehicleBrand,
+      vehicleType,
+      stationId,
+      locationId,
+      page = 1,
+      limit = 20,
+      bypassLimit = false,
+      search,
+    } = query;
 
-    //     // For backward compatibility, keep perDayCost as the average
-    //     const bookingDurationDays = Math.ceil(
-    //       (endDateObj - startDateObj) / (1000 * 60 * 60 * 24)
-    //     );
-    //     if (isDateOnWeekend == true) {
-    //       adjustedVehicle.perDayCost = Math.round(
-    //         totalRentalCost / bookingDurationDays
-    //       );
-    //     }
+    // All validation code remains the same
+    if (
+      !locationId &&
+      !_id &&
+      (!BookingStartDateAndTime || !BookingEndDateAndTime)
+    ) {
+      return {
+        status: 400,
+        message: "Booking start and end dates are required.",
+        data: [],
+      };
+    }
 
-    //     return adjustedVehicle;
-    //   });
-    // }
+    function isValidISO8601(dateString) {
+      const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+      return (
+        iso8601Regex.test(dateString) && !isNaN(new Date(dateString).getTime())
+      );
+    }
+
+    if (
+      !isValidISO8601(BookingStartDateAndTime) ||
+      !isValidISO8601(BookingEndDateAndTime)
+    ) {
+      return {
+        status: 400,
+        message: "Invalid date format",
+        data: [],
+      };
+    }
+
+    const startDate = BookingStartDateAndTime;
+    const endDate = BookingEndDateAndTime;
+
+    const bookingDuration = getDurationInDays(
+      BookingStartDateAndTime,
+      BookingEndDateAndTime
+    );
+
+    const matchFilter = {};
+
+    if (_id) {
+      matchFilter._id = ObjectId.isValid(_id) ? new ObjectId(_id) : _id;
+    } else {
+      if (vehicleModel) matchFilter.vehicleModel = vehicleModel;
+      if (condition) matchFilter.condition = condition;
+      if (stationId) matchFilter.stationId = stationId;
+      if (locationId && ObjectId.isValid(locationId)) {
+        matchFilter.locationId = new ObjectId(locationId);
+      }
+      if (Array.isArray(vehiclePlan)) {
+        matchFilter["vehiclePlan._id"] = {
+          $in: vehiclePlan.map((id) => new ObjectId(id)),
+        };
+      } else if (vehiclePlan) {
+        matchFilter["vehiclePlan._id"] = new ObjectId(vehiclePlan);
+      }
+    }
+
+    const pipeline = [
+      { $match: matchFilter },
+      ...(search
+        ? [
+            {
+              $lookup: {
+                from: "vehiclemasters",
+                localField: "vehicleMasterId",
+                foreignField: "_id",
+                as: "searchVehicleMaster",
+              },
+            },
+            {
+              $match: {
+                $or: [
+                  {
+                    "searchVehicleMaster.vehicleName": {
+                      $regex: search,
+                      $options: "i",
+                    },
+                  },
+                  {
+                    "searchVehicleMaster.vehicleBrand": {
+                      $regex: search,
+                      $options: "i",
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $unset: "searchVehicleMaster",
+            },
+          ]
+        : []),
+      {
+        $lookup: {
+          from: "bookings",
+          localField: "_id",
+          foreignField: "vehicleTableId",
+          as: "bookings",
+        },
+      },
+      {
+        $lookup: {
+          from: "stations",
+          localField: "stationId",
+          foreignField: "stationId",
+          as: "stationData",
+        },
+      },
+      {
+        $lookup: {
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
+        },
+      },
+      {
+        $lookup: {
+          from: "maintenancevehicles",
+          localField: "_id",
+          foreignField: "vehicleTableId",
+          as: "maintenanceData",
+        },
+      },
+
+      {
+        $addFields: {
+          conflictingBookings: {
+            $filter: {
+              input: "$bookings",
+              as: "booking",
+              cond: {
+                $and: [
+                  {
+                    $ne: ["$$booking.rideStatus", "canceled"],
+                  },
+                  {
+                    $not: [
+                      { $lt: ["$$booking.BookingEndDateAndTime", startDate] },
+                    ],
+                  },
+                  {
+                    $or: [
+                      {
+                        $and: [
+                          {
+                            $gte: [
+                              "$$booking.BookingStartDateAndTime",
+                              startDate,
+                            ],
+                          },
+                          {
+                            $lte: [
+                              "$$booking.BookingStartDateAndTime",
+                              endDate,
+                            ],
+                          },
+                        ],
+                      },
+                      {
+                        $and: [
+                          {
+                            $gte: [
+                              "$$booking.BookingEndDateAndTime",
+                              startDate,
+                            ],
+                          },
+                          {
+                            $lte: ["$$booking.BookingEndDateAndTime", endDate],
+                          },
+                        ],
+                      },
+                      {
+                        $and: [
+                          {
+                            $lte: [
+                              "$$booking.BookingStartDateAndTime",
+                              startDate,
+                            ],
+                          },
+                          {
+                            $gte: ["$$booking.BookingEndDateAndTime", endDate],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+          conflictingMaintenance: {
+            $filter: {
+              input: "$maintenanceData",
+              as: "maintenance",
+              cond: {
+                $or: [
+                  {
+                    $and: [
+                      { $gte: ["$$maintenance.startDate", startDate] },
+                      { $lte: ["$$maintenance.startDate", endDate] },
+                    ],
+                  },
+                  {
+                    $and: [
+                      { $gte: ["$$maintenance.endDate", startDate] },
+                      { $lte: ["$$maintenance.endDate", endDate] },
+                    ],
+                  },
+                  {
+                    $and: [
+                      { $lte: ["$$maintenance.startDate", startDate] },
+                      { $gte: ["$$maintenance.endDate", endDate] },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+
+      {
+        $addFields: {
+          vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
+          stationData: { $arrayElemAt: ["$stationData", 0] },
+        },
+      },
+
+      {
+        $match: {
+          vehicleStatus: "active",
+          ...(vehicleBrand
+            ? { "vehicleMasterData.vehicleBrand": vehicleBrand }
+            : {}),
+          ...(vehicleType
+            ? { "vehicleMasterData.vehicleType": vehicleType }
+            : {}),
+        },
+      },
+    ];
+
+    // Get total count for pagination
+    const countPipeline = [{ $match: matchFilter }, { $count: "totalRecords" }];
+    const cursor = vehicleTable.aggregate(countPipeline);
+    const totalRecords = cursor.length ? cursor[0]?.totalRecords || 0 : 0;
+
+    // Execute the pipeline to get all vehicles
+    const allVehicles = await vehicleTable.aggregate(pipeline);
+
+    // Now separate available and excluded vehicles
+    const availableVehicles = allVehicles.filter(
+      (vehicle) =>
+        vehicle.conflictingBookings.length === 0 &&
+        vehicle.conflictingMaintenance.length === 0
+    );
+
+    const excludedVehicles = allVehicles.filter(
+      (vehicle) =>
+        vehicle.conflictingBookings.length > 0 ||
+        vehicle.conflictingMaintenance.length > 0
+    );
+
+    const groupAvailableVehicles = {};
+    const groupExcludedVehicles = {};
+
+    // Group available vehicles
+    availableVehicles.forEach((vehicle) => {
+      const groupKey = `${vehicle.vehicleModel}-${
+        vehicle.vehicleMasterData?.vehicleBrand || ""
+      }-${vehicle.vehicleMasterData?.vehicleName || ""}-${vehicle.perDayCost}`;
+
+      if (!groupAvailableVehicles[groupKey]) {
+        groupAvailableVehicles[groupKey] = {
+          ...vehicle,
+          vehicleNumber: undefined,
+          lastServiceDate: undefined,
+          kmsRun: undefined,
+          lastMeterReading: undefined,
+          vehicleDetails: [
+            {
+              _id: vehicle._id,
+              vehicleNumber: vehicle.vehicleNumber,
+              lastServiceDate: vehicle.lastServiceDate,
+              kmsRun: vehicle.kmsRun,
+              lastMeterReading: vehicle.lastMeterReading || null,
+            },
+          ],
+        };
+      } else {
+        groupAvailableVehicles[groupKey].vehicleDetails.push({
+          _id: vehicle._id,
+          vehicleNumber: vehicle.vehicleNumber,
+          lastServiceDate: vehicle.lastServiceDate,
+          kmsRun: vehicle.kmsRun,
+          lastMeterReading: vehicle.lastMeterReading || null,
+        });
+      }
+    });
+
+    // Group excluded vehicles with the same approach
+    excludedVehicles.forEach((vehicle) => {
+      const groupKey = `${vehicle.vehicleModel}-${
+        vehicle.vehicleMasterData?.vehicleBrand || ""
+      }-${vehicle.vehicleMasterData?.vehicleName || ""}-${vehicle.perDayCost}`;
+
+      if (!groupExcludedVehicles[groupKey]) {
+        groupExcludedVehicles[groupKey] = {
+          ...vehicle,
+          vehicleNumber: undefined,
+          lastServiceDate: undefined,
+          kmsRun: undefined,
+          lastMeterReading: undefined,
+          vehicleDetails: [
+            {
+              _id: vehicle._id,
+              vehicleNumber: vehicle.vehicleNumber,
+              lastServiceDate: vehicle.lastServiceDate,
+              kmsRun: vehicle.kmsRun,
+              lastMeterReading: vehicle.lastMeterReading || null,
+              BookingStartDate:
+                vehicle.bookings.length > 0
+                  ? vehicle.bookings[vehicle.bookings.length - 1]
+                      .BookingStartDateAndTime
+                  : null,
+              BookingEndDate:
+                vehicle.bookings.length > 0
+                  ? vehicle.bookings[vehicle.bookings.length - 1]
+                      .BookingEndDateAndTime
+                  : null,
+              MaintenanceStartDate:
+                vehicle.maintenanceData.length > 0
+                  ? vehicle.maintenanceData[vehicle.maintenanceData.length - 1]
+                      .startDate
+                  : null,
+              MaintenanceEndDate:
+                vehicle.maintenanceData.length > 0
+                  ? vehicle.maintenanceData[vehicle.maintenanceData.length - 1]
+                      .endDate
+                  : null,
+            },
+          ],
+        };
+      } else {
+        groupExcludedVehicles[groupKey].vehicleDetails.push({
+          _id: vehicle._id,
+          vehicleNumber: vehicle.vehicleNumber,
+          lastServiceDate: vehicle.lastServiceDate,
+          kmsRun: vehicle.kmsRun,
+          lastMeterReading: vehicle.lastMeterReading || null,
+          BookingStartDate:
+            vehicle.bookings.length > 0
+              ? vehicle.bookings[vehicle.bookings.length - 1]
+                  .BookingStartDateAndTime
+              : null,
+          BookingEndDate:
+            vehicle.bookings.length > 0
+              ? vehicle.bookings[vehicle.bookings.length - 1]
+                  .BookingEndDateAndTime
+              : null,
+          MaintenanceStartDate:
+            vehicle.maintenanceData.length > 0
+              ? vehicle.maintenanceData[vehicle.maintenanceData.length - 1]
+                  .startDate
+              : null,
+          MaintenanceEndDate:
+            vehicle.maintenanceData.length > 0
+              ? vehicle.maintenanceData[vehicle.maintenanceData.length - 1]
+                  .endDate
+              : null,
+        });
+      }
+    });
+
+    // Convert the grouped objects to arrays
+    const groupedAvailableArray = Object.values(groupAvailableVehicles);
+    const groupedExcludedArray = Object.values(groupExcludedVehicles);
+
+    // Clean up unwanted data
+    const cleanGroupedAvailable = groupedAvailableArray.map((vehicle) => {
+      const {
+        conflictingBookings,
+        conflictingMaintenance,
+        bookings,
+        maintenanceData,
+        ...rest
+      } = vehicle;
+
+      return {
+        ...rest,
+        vehicleBrand: vehicle.vehicleMasterData?.vehicleBrand || "",
+        vehicleName: vehicle.vehicleMasterData?.vehicleName || "",
+        vehicleType: vehicle.vehicleMasterData?.vehicleType || "",
+        vehicleImage: vehicle.vehicleMasterData?.vehicleImage || "",
+        stationName: vehicle.stationData?.stationName || "",
+      };
+    });
+
+    const cleanGroupedExcluded = groupedExcludedArray.map((vehicle) => {
+      const {
+        conflictingBookings,
+        conflictingMaintenance,
+        bookings,
+        maintenanceData,
+        ...rest
+      } = vehicle;
+
+      return {
+        ...rest,
+        vehicleBrand: vehicle.vehicleMasterData?.vehicleBrand || "",
+        vehicleName: vehicle.vehicleMasterData?.vehicleName || "",
+        vehicleType: vehicle.vehicleMasterData?.vehicleType || "",
+        vehicleImage: vehicle.vehicleMasterData?.vehicleImage || "",
+        stationName: vehicle.stationData?.stationName || "",
+      };
+    });
+
+    // Apply pagination to grouped data
+    const totalGroupedRecords =
+      cleanGroupedAvailable.length + cleanGroupedExcluded.length;
+    const parsedPage = Math.max(parseInt(page, 10), 1);
+    const parsedLimit = bypassLimit ? 10000 : Math.max(parseInt(limit, 10), 1);
+    const totalPages = Math.ceil(totalGroupedRecords / parsedLimit);
+
+    // Calculate start and end indices for pagination
+    const startIndex = (parsedPage - 1) * parsedLimit;
+    const endIndex = startIndex + parsedLimit;
+
+    // Apply pagination
+    let paginatedAvailable = cleanGroupedAvailable;
+    let paginatedExcluded = cleanGroupedExcluded;
+
+    if (!bypassLimit) {
+      const allGroupedVehicles = [
+        ...cleanGroupedExcluded,
+        ...cleanGroupedAvailable,
+      ];
+      const paginatedGroups = allGroupedVehicles.slice(startIndex, endIndex);
+
+      // Separate back into available and excluded
+      paginatedAvailable = paginatedGroups.filter((v) =>
+        cleanGroupedAvailable.some(
+          (av) => av._id && v._id && av._id.toString() === v._id.toString()
+        )
+      );
+      paginatedExcluded = paginatedGroups.filter((v) =>
+        cleanGroupedExcluded.some(
+          (ex) => ex._id && v._id && ex._id.toString() === v._id.toString()
+        )
+      );
+    }
+
+    // Apply pricing rules to available vehicles
+    const pricingRules = await General.findOne({});
+
     if (pricingRules) {
       paginatedAvailable = paginatedAvailable.map((groupedVehicle) => {
         const adjustedVehicle = { ...groupedVehicle };

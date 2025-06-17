@@ -138,4 +138,27 @@ const sendMessageAfterBooking = async (id) => {
   }
 };
 
-module.exports = { convertDateString, sendMessageAfterBooking };
+const getDurationInDays = (date1Str, date2Str) => {
+  // Parse the input strings into Date objects
+  const date1 = new Date(date1Str);
+  const date2 = new Date(date2Str);
+
+  // Check if the dates are valid
+  if (isNaN(date1) || isNaN(date2)) {
+    return "Invalid date format";
+  }
+
+  // Get the difference between the two dates in milliseconds
+  const differenceInMs = Math.abs(date2 - date1);
+
+  // Convert milliseconds to days
+  const days = Math.floor(differenceInMs / (1000 * 60 * 60 * 24));
+
+  return Number(days);
+};
+
+module.exports = {
+  convertDateString,
+  sendMessageAfterBooking,
+  getDurationInDays,
+};
