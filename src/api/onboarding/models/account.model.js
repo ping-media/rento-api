@@ -1,33 +1,12 @@
-// import files
-// const { sendEmail } = require("../../../utils/email/index");
-
-// import packages
-// const JWT = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 require("dotenv").config();
 const { mongoose } = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { Auth } = require("two-step-auth");
-// const nodemailer = require("nodemailer");
-// import errors
-// const errorMessages = require("../errors/errors");
-// const { sendMessage } = require("../../../utils/Phone");
 const User = require("../../../db/schemas/onboarding/user.schema");
-// const Traffic = require("../../../db/schemas/onboarding/traffic.schema ");
-// const { booking } = require("../services/vehicles.service");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const Vehicle = require("../../../db/schemas/onboarding/vehicle.schema");
 const { contactValidation, emailValidation } = require("../../../constant");
-// const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
-// const station = require("../../../db/schemas/onboarding/station.schema");
-// const coupon = require("../../../db/schemas/onboarding/coupons.schema");
-// const invoiceTbl = require("../../../db/schemas/onboarding/invoice-tbl.schema");
-// const plan = require("../../../db/schemas/onboarding/plan.schema");
-// const order = require("../../../db/schemas/onboarding/order.schema");
-// const location = require("../../../db/schemas/onboarding/location.schema");
-// const Otp = require("../../../db/schemas/onboarding/logOtp");
-// const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
-// const { log } = require("winston");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
 const { sendOtpByEmail } = require("../../../utils/emailSend");
 

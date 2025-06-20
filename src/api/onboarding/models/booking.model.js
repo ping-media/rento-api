@@ -716,6 +716,30 @@ const updateBooking = async (req, res) => {
   }
 };
 
+const deleteBooking = async (req, res) => {
+  const { bookingId, userId } = req.body;
+
+  if (!bookingId && !userId) {
+    return res.status(400).json({ message: "Booking ID is required" });
+  }
+
+  try {
+    const deletedBooking = await Booking.findByIdAndDelete(bookingId);
+
+    if (!deletedBooking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.status(200).json({
+      message: "Booking deleted successfully",
+      success: true,
+    });
+  } catch (error) {
+    console.error("Error deleting booking:", error);
+    res.status(500).json({ message: "Server error while deleting booking" });
+  }
+};
+
 module.exports = {
   getBookings,
   getBooking,
@@ -723,4 +747,5 @@ module.exports = {
   createOrderId,
   initiateExtendBooking,
   updateBooking,
+  deleteBooking,
 };
