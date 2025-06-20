@@ -208,7 +208,6 @@ async function getAllDataCount(query) {
 
     // Fetch bookings and calculate totalAmount
     const bookings = await Booking.find({ ...stationFilter, ...dateFilter });
-    // const bookings = await Booking.find(stationFilter);
 
     const cancelBookings =
       bookings?.length > 0
@@ -219,20 +218,25 @@ async function getAllDataCount(query) {
       (acc, item) => {
         if (
           item.bookingStatus === "canceled" ||
-          item.bookingStatus === "pending"
+          item.bookingStatus === "pending" ||
+          item.bookingStatus === "refunded"
         )
           return acc;
 
-        const basePrice =
-          item.bookingPrice.isDiscountZero ||
+        const basePriceRaw =
+          item.bookingPrice.isDiscountZero === true ||
           (item.bookingPrice.discountTotalPrice &&
-            item.bookingPrice.discountTotalPrice !== 0)
+            item.bookingPrice.discountTotalPrice > 0)
             ? item.bookingPrice.discountTotalPrice
             : item.bookingPrice.totalPrice;
 
+        const basePrice = Number(basePriceRaw) || 0;
+
         const extendTotal = Array.isArray(item.bookingPrice.extendAmount)
           ? item.bookingPrice.extendAmount.reduce((sum, e) => {
-              return e.status === "paid" ? sum + (e.amount || 0) : sum;
+              return e.status === "paid"
+                ? Number(sum) + (Number(e.amount) || 0)
+                : Number(sum);
             }, 0)
           : 0;
 
@@ -244,7 +248,9 @@ async function getAllDataCount(query) {
 
         const diffTotal = Array.isArray(item.bookingPrice.diffAmount)
           ? item.bookingPrice.diffAmount.reduce((sum, d) => {
-              return d.status === "paid" ? sum + (d.amount || 0) : sum;
+              return d.status === "paid"
+                ? Number(sum) + (Number(d.amount) || 0)
+                : Number(sum);
             }, 0)
           : 0;
 
@@ -259,66 +265,23 @@ async function getAllDataCount(query) {
     let extendBookingCount = amount?.extendCount;
     let Amount = amount?.total;
 
-    // let usersCount = 0,
     let bookingsCount = 0,
       cancelBookingsCount = cancelBookings?.length;
-    // vehiclesCount = 0,
-    // locationCount = 0,
-    // stationsCount = 0,
-    // couponsCount = 0,
-    // invoicesCount = 0,
-    // plansCount = 0;
 
     if (stationId) {
       // Fetch only station-specific counts
-      [
-        bookingsCount,
-        //  vehiclesCount,
-        // invoicesCount
-      ] = await Promise.all([
+      [bookingsCount] = await Promise.all([
         Booking.countDocuments({ ...stationFilter, ...dateFilter }),
-        // Booking.countDocuments(stationFilter),
-        // vehicleTable.countDocuments(stationFilter),
-        // invoiceTbl.countDocuments(stationFilter),
       ]);
     } else {
-      // Fetch general counts without station filter
-      [
-        // usersCount,
-        bookingsCount,
-        // vehiclesCount,
-        // locationCount,
-        // stationsCount,
-        // couponsCount,
-        // invoicesCount,
-        // plansCount,
-      ] = await Promise.all([
+      [bookingsCount] = await Promise.all([
         Booking.countDocuments({ ...dateFilter }),
-        // User.countDocuments({}),
-        // Booking.countDocuments({}),
-        // vehicleMaster.countDocuments({}),
-        // location.countDocuments({}),
-        // station.countDocuments({}),
-        // coupon.countDocuments({}),
-        // invoiceTbl.countDocuments({}),
-        // plan.countDocuments({}),
       ]);
     }
 
     // Populate the data object
     obj.data = {
-      // ...(stationId
-      //   ? {}
-      //   : {
-      //       usersCount,
-      //       locationCount,
-      //       stationsCount,
-      //       couponsCount,
-      //       plansCount,
-      //       invoicesCount,
-      //     }),
       bookingsCount,
-      // vehiclesCount,
       cancelBookingsCount,
       extendBookingCount,
       Amount,
