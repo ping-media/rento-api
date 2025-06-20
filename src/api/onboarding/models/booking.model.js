@@ -6,6 +6,7 @@ const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload.js
 const { booking } = require("./vehicles.model.js");
 const { timelineFunctionServer } = require("./timeline.model.js");
 const { default: axios } = require("axios");
+const Timeline = require("../../../db/schemas/onboarding/timeline.schema.js");
 require("dotenv").config();
 
 // Get All Bookings with Filtering and Pagination
@@ -730,8 +731,10 @@ const deleteBooking = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    await Timeline.deleteMany({ currentBooking_id: bookingId });
+
     res.status(200).json({
-      message: "Booking deleted successfully",
+      message: "Booking and timeline deleted successfully",
       success: true,
     });
   } catch (error) {
