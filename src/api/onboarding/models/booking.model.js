@@ -725,7 +725,7 @@ const deleteBooking = async (req, res) => {
   }
 
   try {
-    if (type === "extend" && typeId !== 0) {
+    if (type === "extend" && typeId && Number(typeId) != 0) {
       const booking = await Booking.findById(bookingId);
 
       if (!booking) {
@@ -734,17 +734,19 @@ const deleteBooking = async (req, res) => {
           .json({ success: false, message: "Booking not found" });
       }
 
-      const extendArray = booking.bookingPrice.extendAmount;
+      const extendArray = booking.bookingPrice.extendAmount || [];
 
-      const index = extendArray.findIndex((item) => item.id === typeId);
+      const index = extendArray.findIndex((item) => item.id === Number(typeId));
 
       if (index === -1) {
-        return res.status(404).json({ message: "Extend item not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Extend item not found" });
       }
 
       const { bookingEndDateAndTime } = extendArray[index];
       extendArray.splice(index, 1);
-      booking.markModified("bookingPrice.extendAmount");
+      booking.markModified("bookingPrice");
 
       // Save updated booking
       await booking.save();
