@@ -718,13 +718,47 @@ const updateBooking = async (req, res) => {
 };
 
 const deleteBooking = async (req, res) => {
-  const { bookingId, userId } = req.body;
+  const { bookingId, userId, type, typeId } = req.body;
 
   if (!bookingId && !userId) {
     return res.status(400).json({ message: "Booking ID is required" });
   }
 
   try {
+    if (type === "extend" && typeId !== 0) {
+      const booking = await Booking.findById(bookingId);
+
+      if (!booking) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Booking not found" });
+      }
+
+      const extendArray = booking.bookingPrice.extendAmount;
+
+      const index = extendArray.findIndex((item) => item.id === typeId);
+
+      if (index === -1) {
+        return res.status(404).json({ message: "Extend item not found" });
+      }
+
+      const { bookingEndDateAndTime } = extendArray[index];
+      extendArray.splice(index, 1);
+      booking.markModified("bookingPrice.extendAmount");
+
+      // Save updated booking
+      await booking.save();
+
+      if (bookingEndDateAndTime) {
+        await Timeline.deleteMany({ extendDate: bookingEndDateAndTime });
+      }
+
+      return res.status(200).json({
+        message: "Extend entry and related timeline deleted",
+        success: true,
+      });
+    }
+
     const deletedBooking = await Booking.findByIdAndDelete(bookingId);
 
     if (!deletedBooking) {
