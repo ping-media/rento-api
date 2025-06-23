@@ -746,6 +746,8 @@ const deleteBooking = async (req, res) => {
 
       const { bookingEndDateAndTime } = extendArray[index];
       extendArray.splice(index, 1);
+      booking.bookingStatus == "paid";
+
       booking.markModified("bookingPrice");
 
       // Save updated booking
