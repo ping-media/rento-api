@@ -744,8 +744,11 @@ const deleteBooking = async (req, res) => {
           .json({ success: false, message: "Extend item not found" });
       }
 
-      const { bookingEndDateAndTime } = extendArray[index];
+      const { bookingEndDateAndTime, BookingStartDateAndTime } =
+        extendArray[index];
       extendArray.splice(index, 1);
+
+      booking.BookingEndDateAndTime = BookingStartDateAndTime;
       booking.bookingStatus == "paid";
 
       booking.markModified("bookingPrice");
@@ -768,8 +771,9 @@ const deleteBooking = async (req, res) => {
     if (!deletedBooking) {
       return res.status(404).json({ message: "Booking not found" });
     }
-
-    await Timeline.deleteMany({ currentBooking_id: bookingId });
+    if (bookingId) {
+      await Timeline.deleteMany({ currentBooking_id: bookingId });
+    }
 
     res.status(200).json({
       message: "Booking and timeline deleted successfully",

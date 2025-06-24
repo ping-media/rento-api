@@ -6,6 +6,7 @@ const { Auth } = require("two-step-auth");
 const User = require("../../../db/schemas/onboarding/user.schema");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const Vehicle = require("../../../db/schemas/onboarding/vehicle.schema");
+const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 const { contactValidation, emailValidation } = require("../../../constant");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
 const { sendOtpByEmail } = require("../../../utils/emailSend");
@@ -135,6 +136,29 @@ const getAllUsers = async (query) => {
       .sort(sort)
       .skip(skip)
       .limit(pageSize);
+
+    if (_id) {
+      const user = await User.findById(_id).select("-otp -password");
+      if (!user) {
+        obj.status = 404;
+        obj.message = "User not found";
+        return obj;
+      }
+
+      const documents = await Document.find({ userId: user._id });
+      const userWithDocs = {
+        ...user.toObject(),
+        documents: documents[0]?.files || [],
+      };
+
+      obj.data = [userWithDocs];
+      obj.pagination = {
+        totalPages: 1,
+        currentPage: 1,
+        limit: 1,
+      };
+      return obj;
+    }
 
     if (users.length === 0) {
       obj.status = 404;
