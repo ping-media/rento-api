@@ -630,6 +630,7 @@ const initiateExtendBooking = async (req, res) => {
             title: "Payment Initiated",
             date: Date.now(),
             paymentAmount: amount,
+            extendId: `extend_${booking.bookingId}_${data.id}`,
             extendDate: data.extendAmount.bookingEndDateAndTime,
           },
         ],
@@ -717,6 +718,30 @@ const updateBooking = async (req, res) => {
   }
 };
 
+const removeExtendByExtendId = async (extendId) => {
+  try {
+    const result = await Timeline.updateOne(
+      { "timeLine.extendId": extendId },
+      {
+        $pull: {
+          timeLine: { extendId },
+        },
+      }
+    );
+
+    if (result.modifiedCount > 0) {
+      console.log("Successfully removed extend entry from timeLine");
+      return { success: true };
+    } else {
+      console.log("No matching extendId found in any timeLine");
+      return { success: false };
+    }
+  } catch (error) {
+    console.error("Error removing extend entry:", error);
+    return { success: false, error };
+  }
+};
+
 const deleteBooking = async (req, res) => {
   const { bookingId, userId, type, typeId } = req.body;
 
@@ -744,20 +769,21 @@ const deleteBooking = async (req, res) => {
           .json({ success: false, message: "Extend item not found" });
       }
 
-      const { bookingEndDateAndTime, BookingStartDateAndTime } =
-        extendArray[index];
+      const { extendId, originalBookingEndDateAndTime } = extendArray[index];
       extendArray.splice(index, 1);
 
-      booking.BookingEndDateAndTime = BookingStartDateAndTime;
-      booking.bookingStatus == "paid";
+      if (originalBookingEndDateAndTime) {
+        booking.BookingEndDateAndTime = originalBookingEndDateAndTime;
+      }
+      booking.bookingStatus = "paid";
 
       booking.markModified("bookingPrice");
 
       // Save updated booking
       await booking.save();
 
-      if (bookingEndDateAndTime) {
-        await Timeline.deleteMany({ extendDate: bookingEndDateAndTime });
+      if (extendId) {
+        await removeExtendByExtendId(extendId);
       }
 
       return res.status(200).json({
