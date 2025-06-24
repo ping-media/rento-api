@@ -775,7 +775,13 @@ const deleteBooking = async (req, res) => {
       if (originalBookingEndDateAndTime) {
         booking.BookingEndDateAndTime = originalBookingEndDateAndTime;
       }
-      booking.bookingStatus = "paid";
+
+      if (
+        !booking.bookingPrice.extendAmount ||
+        booking.bookingPrice.extendAmount?.length === 0
+      ) {
+        booking.bookingStatus = "paid";
+      }
 
       booking.markModified("bookingPrice");
 
