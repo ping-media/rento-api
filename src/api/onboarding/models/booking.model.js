@@ -720,20 +720,23 @@ const updateBooking = async (req, res) => {
 
 const removeExtendByExtendId = async (extendId) => {
   try {
+    const doc = await Timeline.findOne({ "timeLine.extendId": extendId });
+
+    if (!doc) {
+      console.log("No timeline entry found with extendId:", extendId);
+      return { success: false, message: "No matching document" };
+    }
+
     const result = await Timeline.updateOne(
       { "timeLine.extendId": extendId },
-      {
-        $pull: {
-          timeLine: { extendId },
-        },
-      }
+      { $pull: { timeLine: { extendId: extendId } } }
     );
 
     if (result.modifiedCount > 0) {
       console.log("Successfully removed extend entry from timeLine");
       return { success: true };
     } else {
-      console.log("No matching extendId found in any timeLine");
+      console.log("Extend ID found, but entry was not removed");
       return { success: false };
     }
   } catch (error) {
