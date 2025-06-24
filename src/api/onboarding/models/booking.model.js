@@ -630,7 +630,7 @@ const initiateExtendBooking = async (req, res) => {
             title: "Payment Initiated",
             date: Date.now(),
             paymentAmount: amount,
-            extendId: `extend_${booking.bookingId}_${data.id}`,
+            extendId: `extend_${booking.bookingId}_${data.extendAmount.id}`,
             extendDate: data.extendAmount.bookingEndDateAndTime,
           },
         ],
