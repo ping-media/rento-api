@@ -780,7 +780,7 @@ const deleteBooking = async (req, res) => {
         !booking.bookingPrice.extendAmount ||
         booking.bookingPrice.extendAmount?.length === 0
       ) {
-        booking.bookingStatus = "paid";
+        booking.bookingStatus = "done";
       }
 
       booking.markModified("bookingPrice");
