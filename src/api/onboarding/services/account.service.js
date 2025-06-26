@@ -1,4 +1,24 @@
-const { getTokens,verify, getAllUsers, getAllDataCount, sendOtps, getUserPeersData, earlyAccess, pushNotification, updateUser, saveUser, getUserProfile, createConfig, getConfig, getPreferences, updatePreferences, createPlan, searchUser, updateImage, getUserByContact } = require("../models/account.model");
+const {
+  getTokens,
+  verify,
+  getAllUsers,
+  getAllDataCount,
+  sendOtps,
+  getUserPeersData,
+  earlyAccess,
+  pushNotification,
+  updateUser,
+  saveUser,
+  getUserProfile,
+  createConfig,
+  getConfig,
+  getPreferences,
+  updatePreferences,
+  createPlan,
+  searchUser,
+  updateImage,
+  getUserByContact,
+} = require("../models/account.model");
 
 exports.updateUser = async (req, res) => {
   try {
@@ -13,7 +33,7 @@ exports.updateUser = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.getAllUsers = async (req, res) => {
   try {
@@ -27,8 +47,7 @@ exports.getAllUsers = async (req, res) => {
       status: 400,
     });
   }
-}
-
+};
 
 exports.getAllDataCount = async (req, res) => {
   try {
@@ -42,9 +61,7 @@ exports.getAllDataCount = async (req, res) => {
       status: 400,
     });
   }
-}
-
-
+};
 
 exports.saveUser = async (req, res) => {
   try {
@@ -58,7 +75,7 @@ exports.saveUser = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.updateImage = async (req, res) => {
   try {
@@ -72,7 +89,7 @@ exports.updateImage = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.getUserByContact = async (req, res) => {
   try {
@@ -87,7 +104,7 @@ exports.getUserByContact = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 // exports.sendOtps = async (req, res) => {
 //   try {
@@ -98,7 +115,7 @@ exports.getUserByContact = async (req, res) => {
 //   } catch (err) {
 //     return res.status(400).json({
 //       message: err.message,
-      
+
 //       status: 400,
 //     });
 //   }
@@ -119,12 +136,6 @@ exports.getUserByContact = async (req, res) => {
 //   }
 // }
 
-
-
-
-
-
-
 exports.getUserProfile = async (req, res) => {
   try {
     const result = await getUserProfile(req.user.id);
@@ -137,7 +148,7 @@ exports.getUserProfile = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.createConfig = async (req, res) => {
   try {
@@ -151,7 +162,7 @@ exports.createConfig = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.getConfig = async (req, res) => {
   try {
@@ -165,12 +176,11 @@ exports.getConfig = async (req, res) => {
       status: 400,
     });
   }
-}
-
+};
 
 exports.getPreferences = async (req, res) => {
   try {
-    const result = await getPreferences(req.user.id);    
+    const result = await getPreferences(req.user.id);
     return res.status(result.status).json(result);
   } catch (err) {
     return res.status(400).json({
@@ -180,11 +190,11 @@ exports.getPreferences = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.updatePreferences = async (req, res) => {
   try {
-    req.body['userId'] = req.user.id
+    req.body["userId"] = req.user.id;
     const result = await updatePreferences(req.body);
     return res.status(result.status).json(result);
   } catch (err) {
@@ -195,7 +205,7 @@ exports.updatePreferences = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.searchUser = async (req, res) => {
   try {
@@ -210,9 +220,7 @@ exports.searchUser = async (req, res) => {
       status: 400,
     });
   }
-}
-
-
+};
 
 exports.createPlan = async (req, res) => {
   try {
@@ -226,7 +234,7 @@ exports.createPlan = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.pushNotification = async (req, res) => {
   try {
@@ -240,7 +248,7 @@ exports.pushNotification = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.getTokens = async (req, res) => {
   try {
@@ -254,7 +262,7 @@ exports.getTokens = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.earlyAccess = async (req, res) => {
   try {
@@ -268,7 +276,7 @@ exports.earlyAccess = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.getUserPeersData = async (req, res) => {
   try {
@@ -282,6 +290,4 @@ exports.getUserPeersData = async (req, res) => {
       status: 400,
     });
   }
-}
-
-
+};
