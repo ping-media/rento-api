@@ -104,6 +104,7 @@ const bookingSchema = new Schema(
         key: { type: String, required: true },
         value: { type: String, required: true },
         noteType: { type: String, required: true },
+        createdAt: { type: Date },
       },
     ],
 
