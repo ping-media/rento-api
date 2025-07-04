@@ -1,10 +1,9 @@
-const express = require("express");
 const router = require("express").Router();
 const vehiclesService = require("../services/vehicles.service");
 const auth = require("../../../middlewares/auth/index");
 const User = require("../../../db/schemas/onboarding/user.schema");
 const multer = require("multer");
-const storage = multer.memoryStorage(); // Store the file in memory
+const storage = multer.memoryStorage();
 const upload1 = multer({ storage: storage });
 require("dotenv").config();
 const axios = require("axios");
@@ -74,6 +73,7 @@ const {
   initiateExtendBooking,
   updateBooking,
   deleteBooking,
+  initiateExtendBookingAfterPayment,
 } = require("../models/booking.model");
 // const { cancelPendingPayments } = require("../utils/cron.js");
 
@@ -217,6 +217,10 @@ router.post("/reschedule-booking", async (req, res) => {
 
 router.post("/initiate-extend-booking", async (req, res) => {
   initiateExtendBooking(req, res);
+});
+
+router.post("/initiate-extend-admin-booking", async (req, res) => {
+  initiateExtendBookingAfterPayment(req, res);
 });
 
 router.post("/create-payment-link", async (req, res) => {
@@ -1071,10 +1075,6 @@ router.get("/maintenanceVehicle", Authentication, async (req, res) => {
 
 router.get("/maintenanceVehicle", Authentication, async (req, res) => {
   getMaintenanceVehicle(req, res);
-});
-
-router.post("/createTimeline", async (req, res) => {
-  timelineFunction(req, res);
 });
 
 router.post("/createTimeline", async (req, res) => {

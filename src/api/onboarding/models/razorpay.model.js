@@ -5,6 +5,7 @@ const Razorpay = require("razorpay");
 const { timelineFunctionServer } = require("./timeline.model");
 const { sendMessageAfterBooking } = require("../../../utils");
 const User = require("../../../db/schemas/onboarding/user.schema");
+const TempExtension = require("../../../db/schemas/onboarding/tempExtension.schema");
 
 const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -22,75 +23,175 @@ const verifyRazorpaySignature = (body, signature) => {
   return expectedSignature === signature;
 };
 
+const createPaymentLinkUtil = async ({
+  bookingId,
+  amount,
+  orderId,
+  type = "",
+  typeId = "",
+  endDate = "",
+  requestFrom = "",
+}) => {
+  if (!bookingId || !amount) {
+    throw new Error("Missing required fields: bookingId or amount");
+  }
+
+  const booking = await Booking.findById(bookingId);
+  if (!booking) throw new Error("Booking not found");
+
+  const user = await User.findById(booking.userId.toString());
+  if (!user) throw new Error("User not found for this booking");
+
+  const oneDayInSeconds = 24 * 60 * 60;
+  const expireBy = Math.floor(Date.now() / 1000) + oneDayInSeconds;
+
+  const response = await razorpay.paymentLink.create({
+    amount: amount * 100,
+    currency: "INR",
+    accept_partial: false,
+    description: `Payment for your booking Id: #${booking.bookingId}`,
+    reference_id: orderId,
+    callback_url: "https://rentobikes.com/payment-success",
+    callback_method: "get",
+    customer: {
+      name: user.firstName + " " + user.lastName || "--",
+      email: user.email || "--",
+      contact: user.contact || "",
+    },
+    notify: {
+      sms: false,
+      email: true,
+    },
+    notes: {
+      bookingId: booking._id,
+      type,
+      typeId,
+      razorPayOrderId: orderId || "",
+      requestFrom,
+    },
+    expire_by: expireBy,
+  });
+
+  if (!response.id) throw new Error("Failed to create Razorpay payment link");
+
+  const timeLineData = {
+    currentBooking_id: booking._id,
+    timeLine: [
+      {
+        title: "Payment Link Created",
+        date: Date.now(),
+        paymentAmount: amount,
+        PaymentLink: response.short_url,
+        paymentLinkId: response.id,
+        endDate,
+      },
+    ],
+  };
+
+  await timelineFunctionServer(timeLineData);
+
+  return {
+    paymentLink: response.short_url,
+    paymentLinkId: response.id,
+    response,
+    timeLineData,
+  };
+};
+
+// const createPaymentLink = async (req, res) => {
+//   const { bookingId, amount, orderId, type, typeId } = req.body;
+
+//   if (!bookingId || !amount) {
+//     return res.status(200).json({ message: "Missing fields" });
+//   }
+
+//   try {
+//     const booking = await Booking.findById(bookingId);
+//     if (!booking) return res.status(200).json({ message: "Booking not found" });
+//     const user = await User.findById(booking.userId.toString());
+//     if (!user) {
+//       return res.status(200).json({
+//         success: false,
+//         message: "User not found for this booking",
+//       });
+//     }
+
+//     const response = await razorpay.paymentLink.create({
+//       amount: amount * 100,
+//       currency: "INR",
+//       accept_partial: false,
+//       description: `Payment for your booking Id: #${booking.bookingId}`,
+//       reference_id: orderId,
+//       callback_url: "https://rentobikes.com/payment-success",
+//       callback_method: "get",
+//       customer: {
+//         name: user.firstName + " " + user.lastName || "--",
+//         email: user.email || "--",
+//         contact: user.contact || "",
+//       },
+//       notify: {
+//         sms: false,
+//         email: true,
+//       },
+//       notes: {
+//         bookingId: booking._id,
+//         type: type || "",
+//         typeId: typeId || "",
+//       },
+//     });
+
+//     const timeLineData = {
+//       currentBooking_id: booking._id,
+//       timeLine: [
+//         {
+//           title: "Payment Link Created",
+//           date: Date.now(),
+//           paymentAmount: amount,
+//           PaymentLink: response.short_url,
+//           paymentLinkId: response.id,
+//         },
+//       ],
+//     };
+//     if (response.id) {
+//       await timelineFunctionServer(timeLineData);
+
+//       res.status(200).json({
+//         paymentLink: response.short_url,
+//         paymentLinkId: response.id,
+//         data: timeLineData,
+//         linkCreated: true,
+//       });
+//     } else {
+//       res.status(200).json({
+//         linkCreated: false,
+//         message: "Unable to make payment link",
+//       });
+//     }
+//   } catch (error) {
+//     console.warn("Error while creating payment link", error?.message);
+//     res.status(200).json({
+//       linkCreated: false,
+//       message: "Error while creating payment link",
+//     });
+//   }
+// };
+
 const createPaymentLink = async (req, res) => {
   const { bookingId, amount, orderId, type, typeId } = req.body;
 
-  if (!bookingId || !amount) {
-    return res.status(200).json({ message: "Missing fields" });
-  }
-
   try {
-    const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(200).json({ message: "Booking not found" });
-    const user = await User.findById(booking.userId.toString());
-    if (!user) {
-      return res.status(200).json({
-        success: false,
-        message: "User not found for this booking",
-      });
-    }
-
-    const response = await razorpay.paymentLink.create({
-      amount: amount * 100,
-      currency: "INR",
-      accept_partial: false,
-      description: `Payment for your booking Id: #${booking.bookingId}`,
-      reference_id: orderId,
-      callback_url: "https://rentobikes.com/payment-success",
-      callback_method: "get",
-      customer: {
-        name: user.firstName + " " + user.lastName || "--",
-        email: user.email || "--",
-        contact: user.contact || "",
-      },
-      notify: {
-        sms: false,
-        email: true,
-      },
-      notes: {
-        bookingId: booking._id,
-        type: type || "",
-        typeId: typeId || "",
-      },
+    const result = await createPaymentLinkUtil({
+      bookingId,
+      amount,
+      orderId,
+      type,
+      typeId,
     });
 
-    const timeLineData = {
-      currentBooking_id: booking._id,
-      timeLine: [
-        {
-          title: "Payment Link Created",
-          date: Date.now(),
-          paymentAmount: amount,
-          PaymentLink: response.short_url,
-          paymentLinkId: response.id,
-        },
-      ],
-    };
-    if (response.id) {
-      await timelineFunctionServer(timeLineData);
-
-      res.status(200).json({
-        paymentLink: response.short_url,
-        paymentLinkId: response.id,
-        data: timeLineData,
-        linkCreated: true,
-      });
-    } else {
-      res.status(200).json({
-        linkCreated: false,
-        message: "Unable to make payment link",
-      });
-    }
+    res.status(200).json({
+      ...result,
+      linkCreated: true,
+    });
   } catch (error) {
     console.warn("Error while creating payment link", error?.message);
     res.status(200).json({
@@ -110,19 +211,21 @@ const razorpayWebhookAdmin = async (req, res) => {
   const entity = req.body.payload?.payment_link?.entity;
 
   if (!entity) {
-    console.error("Missing payment_link.entity in webhook payload");
+    console.log("Missing payment_link.entity in webhook payload");
     return res.status(200).send("Malformed payload");
   }
 
   const notes = entity.notes || {};
   const amountPaid = (entity.amount || 0) / 100;
   const type = notes?.type?.toLowerCase() || "";
+  const requestFrom = notes?.requestFrom?.toLowerCase() || "";
+  const noteOrderId = notes?.razorPayOrderId || "";
   const typeId = notes?.typeId || "";
   const bookingId = notes?.bookingId;
 
   // Validate required fields
   if (!bookingId) {
-    console.error("Missing bookingId in notes");
+    console.log("Missing bookingId in notes");
     return res.status(200).send("Missing booking ID");
   }
 
@@ -146,25 +249,38 @@ const razorpayWebhookAdmin = async (req, res) => {
         type,
         paymentId
       );
+      return res.status(200).send("Booking Payment received");
     } catch (err) {
       console.error("Error updating booking:", err);
       return res.status(200).send("Booking update failed");
     }
+  } else if (
+    type === "extension" &&
+    requestFrom === "admin" &&
+    noteOrderId !== ""
+  ) {
+    res.status(200).send(typeId, paymentId, noteOrderId);
+    try {
+      await updateBookingAdminExtension(typeId, paymentId, noteOrderId);
+      return res.status(200).send("Admin Extend Booking Payment received");
+    } catch (err) {
+      console.error("Error updating booking:", err);
+      return res.status(200).send("Booking extend failed");
+    }
   } else if (type === "extension") {
     try {
-      await updateBookingAdminExtension(
+      await updateBookingWithNewExtension(
         bookingId,
         amountPaid,
         typeId,
         paymentId
       );
+      return res.status(200).send("Extend Booking Payment received");
     } catch (err) {
       console.error("Error updating booking:", err);
-      return res.status(200).send("Booking update failed");
+      return res.status(200).send("Booking extend failed");
     }
   }
-
-  res.status(200).send("Payment received");
 };
 
 const razorpayWebhook = async (req, res) => {
@@ -309,7 +425,7 @@ const updateBookingAfterPaymentAdmin = async (
   });
 };
 
-const updateBookingAdminExtension = async (
+const updateBookingWithNewExtension = async (
   bookingId,
   amountPaid,
   typeId,
@@ -345,6 +461,59 @@ const updateBookingAdminExtension = async (
         date: Date.now(),
         paymentAmount: amountPaid,
         paymentId: paymentId || "",
+      },
+    ],
+  });
+};
+
+const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
+  if (!noteOrderId) throw new Error("Extend booking id not found.");
+  const temp = await TempExtension.findOne({ razorpayOrderId: noteOrderId });
+
+  if (!temp || temp.isCompleted) {
+    return res.status(200).json({ message: "Invalid or already processed" });
+  }
+
+  const booking = await Booking.findById(temp.bookingId);
+  if (!booking) {
+    return res.status(200).json({ message: "Booking not found" });
+  }
+
+  const data = temp.extendData;
+
+  booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
+  booking.bookingStatus = "extended";
+
+  booking.bookingPrice.extendAmount = booking.bookingPrice.extendAmount || [];
+  booking.bookingPrice.extendAmount.push({
+    ...data.extendAmount,
+    transactionId: paymentId || "",
+  });
+
+  booking.extendBooking = booking.extendBooking || {};
+  booking.extendBooking.oldBooking = booking.extendBooking.oldBooking || [];
+  booking.extendBooking.oldBooking.push(data.oldBookings);
+
+  booking.markModified("bookingPrice");
+  booking.markModified("extendBooking");
+
+  await booking.save();
+
+  if (typeId !== "") {
+    await TempExtension.deleteMany({ extendId: typeId });
+  }
+
+  // Add to timeline
+  await timelineFunctionServer({
+    currentBooking_id: booking._id,
+    timeLine: [
+      {
+        title: "Booking extended",
+        date: Date.now(),
+        paymentAmount: data.amount,
+        paymentId: paymentId || "",
+        endDate: data.BookingEndDateAndTime,
+        extended: true,
       },
     ],
   });
@@ -485,6 +654,7 @@ const markBookingAsFailed = async (
 
 module.exports = {
   createPaymentLink,
+  createPaymentLinkUtil,
   razorpayWebhookAdmin,
   razorpayWebhook,
   updateBookingAfterPaymentAdmin,

@@ -3,10 +3,12 @@ const General = require("../../../db/schemas/onboarding/general.schema.js");
 const Log = require("../../../api/onboarding/models/Logs.model.js");
 const station = require("../../../db/schemas/onboarding/station.schema.js");
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload.js");
+const TempExtension = require("../../../db/schemas/onboarding/tempExtension.schema.js");
 const { booking } = require("./vehicles.model.js");
 const { timelineFunctionServer } = require("./timeline.model.js");
 const { default: axios } = require("axios");
 const Timeline = require("../../../db/schemas/onboarding/timeline.schema.js");
+const { createPaymentLinkUtil } = require("./razorpay.model.js");
 require("dotenv").config();
 
 // Get All Bookings with Filtering and Pagination
@@ -657,6 +659,81 @@ const initiateExtendBooking = async (req, res) => {
   }
 };
 
+const initiateExtendBookingAfterPayment = async (req, res) => {
+  const { _id, bookingId, amount, data } = req.body;
+
+  console.log(_id);
+  if (!_id || !bookingId || !amount || !data) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  try {
+    const booking = await Booking.findById(_id);
+    if (!booking) {
+      return res.status(200).json({ message: "Booking not found" });
+    }
+
+    const extendId =
+      `extend_${booking.bookingId}_${data.extendAmount.id}` || "";
+
+    if (extendId === "") {
+      return res
+        .status(200)
+        .json({ message: "Unable to create extend id! try again" });
+    }
+
+    const razorpayOrder = await createOrderId({
+      amount: amount,
+      booking_id: bookingId,
+      _id: _id,
+      type: "extension",
+      typeId: extendId,
+      requestFrom: "admin",
+    });
+
+    await TempExtension.create({
+      extendId: extendId,
+      bookingId: booking._id || _id,
+      userId: booking.userId,
+      razorpayOrderId: razorpayOrder.id,
+      amount,
+      extendData: {
+        ...data,
+        extendAmount: { ...data.extendAmount, orderId: razorpayOrder.id },
+      },
+      isCompleted: false,
+    });
+
+    const paymentLink = await createPaymentLinkUtil({
+      bookingId: _id,
+      amount,
+      orderId: razorpayOrder.id,
+      type: "extension",
+      typeId: extendId,
+      endDate: data.extendAmount.bookingEndDateAndTime,
+      requestFrom: "admin",
+    });
+
+    if (paymentLink?.paymentLinkId) {
+      res.json({
+        success: true,
+        message: "extend request placed",
+        timeLine: paymentLink?.timeLineData || null,
+      });
+    } else {
+      res.status(200).json({
+        success: false,
+        message: "unable to complete extend request! try again",
+      });
+    }
+  } catch (error) {
+    console.error("initiateExtendBooking error:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
 const updateBooking = async (req, res) => {
   const { BookingStartDateAndTime, BookingEndDateAndTime, _id } = req.body;
 
@@ -826,6 +903,7 @@ module.exports = {
   initiateBooking,
   createOrderId,
   initiateExtendBooking,
+  initiateExtendBookingAfterPayment,
   updateBooking,
   deleteBooking,
 };

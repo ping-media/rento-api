@@ -182,40 +182,166 @@ const getAllUsers = async (query) => {
   return obj;
 };
 
+// async function getAllDataCount(query) {
+//   try {
+//     const obj = { status: 200, message: "Data fetched successfully", data: {} };
+//     const { stationId, month, year } = query;
+
+//     const now = new Date();
+
+//     const targetMonth =
+//       month && !isNaN(parseInt(month)) ? parseInt(month) - 1 : now.getMonth();
+//     const targetYear =
+//       year && !isNaN(parseInt(year)) ? parseInt(year) : now.getFullYear();
+
+//     const startDate = new Date(targetYear, targetMonth, 1);
+
+//     const isCurrentMonth =
+//       targetMonth === now.getMonth() && targetYear === now.getFullYear();
+
+//     const endDate = isCurrentMonth
+//       ? now
+//       : new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+
+//     const stationFilter = stationId ? { stationId } : {};
+//     const dateFilter =
+//       !isNaN(startDate) && !isNaN(endDate)
+//         ? { createdAt: { $gte: startDate, $lte: endDate } }
+//         : {};
+
+//     // Fetch bookings and calculate totalAmount
+//     const bookings = await Booking.find({ ...stationFilter, ...dateFilter });
+
+//     const cancelBookings =
+//       bookings?.length > 0
+//         ? bookings.filter((booking) => booking.bookingStatus === "canceled")
+//         : [];
+
+//     const amount = bookings.reduce(
+//       (acc, item) => {
+//         if (
+//           item.bookingStatus === "canceled" ||
+//           item.bookingStatus === "pending" ||
+//           item.bookingStatus === "refunded"
+//         )
+//           return acc;
+
+//         const basePriceRaw =
+//           item.bookingPrice.isDiscountZero === true ||
+//           (item.bookingPrice.discountTotalPrice &&
+//             item.bookingPrice.discountTotalPrice > 0)
+//             ? item.bookingPrice.discountTotalPrice
+//             : item.bookingPrice.totalPrice;
+
+//         const basePrice = Number(basePriceRaw) || 0;
+
+//         const extendTotal = Array.isArray(item.bookingPrice.extendAmount)
+//           ? item.bookingPrice.extendAmount.reduce((sum, e) => {
+//               return e.status === "paid"
+//                 ? Number(sum) + (Number(e.amount) || 0)
+//                 : Number(sum);
+//             }, 0)
+//           : 0;
+
+//         const extendCount = Array.isArray(item.bookingPrice.extendAmount)
+//           ? item.bookingPrice.extendAmount.reduce((count, e) => {
+//               return e.status === "paid" ? count + 1 : count;
+//             }, 0)
+//           : 0;
+
+//         const diffTotal = Array.isArray(item.bookingPrice.diffAmount)
+//           ? item.bookingPrice.diffAmount.reduce((sum, d) => {
+//               return d.status === "paid"
+//                 ? Number(sum) + (Number(d.amount) || 0)
+//                 : Number(sum);
+//             }, 0)
+//           : 0;
+
+//         return {
+//           total: acc.total + basePrice + extendTotal + diffTotal,
+//           extendCount: acc.extendCount + extendCount,
+//         };
+//       },
+//       { total: 0, extendCount: 0 }
+//     );
+
+//     let extendBookingCount = amount?.extendCount;
+//     let Amount = amount?.total;
+
+//     let bookingsCount = 0,
+//       cancelBookingsCount = cancelBookings?.length;
+
+//     if (stationId) {
+//       // Fetch only station-specific counts
+//       [bookingsCount] = await Promise.all([
+//         Booking.countDocuments({ ...stationFilter, ...dateFilter }),
+//       ]);
+//     } else {
+//       [bookingsCount] = await Promise.all([
+//         Booking.countDocuments({ ...dateFilter }),
+//       ]);
+//     }
+
+//     // Populate the data object
+//     obj.data = {
+//       bookingsCount,
+//       cancelBookingsCount,
+//       extendBookingCount,
+//       Amount,
+//     };
+
+//     return obj;
+//   } catch (error) {
+//     return { status: 500, message: "An error occurred", error: error.message };
+//   }
+// }
 async function getAllDataCount(query) {
   try {
     const obj = { status: 200, message: "Data fetched successfully", data: {} };
     const { stationId, month, year } = query;
 
-    const now = new Date();
+    const matchFilter = {};
 
-    const targetMonth =
-      month && !isNaN(parseInt(month)) ? parseInt(month) - 1 : now.getMonth();
-    const targetYear =
-      year && !isNaN(parseInt(year)) ? parseInt(year) : now.getFullYear();
+    // Apply stationId if present
+    if (stationId) matchFilter.stationId = stationId;
 
-    const startDate = new Date(targetYear, targetMonth, 1);
+    // Parse month name to number
+    if (month && year) {
+      const monthMap = {
+        january: 1,
+        february: 2,
+        march: 3,
+        april: 4,
+        may: 5,
+        june: 6,
+        july: 7,
+        august: 8,
+        september: 9,
+        october: 10,
+        november: 11,
+        december: 12,
+      };
 
-    const isCurrentMonth =
-      targetMonth === now.getMonth() && targetYear === now.getFullYear();
+      const monthNum = monthMap[month.toLowerCase()];
+      const yearNum = parseInt(year);
 
-    const endDate = isCurrentMonth
-      ? now
-      : new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+      if (monthNum && !isNaN(yearNum)) {
+        matchFilter.$expr = {
+          $and: [
+            { $eq: [{ $month: "$createdAt" }, monthNum] },
+            { $eq: [{ $year: "$createdAt" }, yearNum] },
+          ],
+        };
+      }
+    }
 
-    const stationFilter = stationId ? { stationId } : {};
-    const dateFilter =
-      !isNaN(startDate) && !isNaN(endDate)
-        ? { createdAt: { $gte: startDate, $lte: endDate } }
-        : {};
+    const bookings = await Booking.find({
+      ...matchFilter,
+    });
 
-    // Fetch bookings and calculate totalAmount
-    const bookings = await Booking.find({ ...stationFilter, ...dateFilter });
-
-    const cancelBookings =
-      bookings?.length > 0
-        ? bookings.filter((booking) => booking.bookingStatus === "canceled")
-        : [];
+    const cancelBookings = bookings.filter(
+      (booking) => booking.bookingStatus === "canceled"
+    );
 
     const amount = bookings.reduce(
       (acc, item) => {
@@ -237,9 +363,7 @@ async function getAllDataCount(query) {
 
         const extendTotal = Array.isArray(item.bookingPrice.extendAmount)
           ? item.bookingPrice.extendAmount.reduce((sum, e) => {
-              return e.status === "paid"
-                ? Number(sum) + (Number(e.amount) || 0)
-                : Number(sum);
+              return e.status === "paid" ? sum + (Number(e.amount) || 0) : sum;
             }, 0)
           : 0;
 
@@ -251,9 +375,7 @@ async function getAllDataCount(query) {
 
         const diffTotal = Array.isArray(item.bookingPrice.diffAmount)
           ? item.bookingPrice.diffAmount.reduce((sum, d) => {
-              return d.status === "paid"
-                ? Number(sum) + (Number(d.amount) || 0)
-                : Number(sum);
+              return d.status === "paid" ? sum + (Number(d.amount) || 0) : sum;
             }, 0)
           : 0;
 
@@ -265,24 +387,14 @@ async function getAllDataCount(query) {
       { total: 0, extendCount: 0 }
     );
 
-    let extendBookingCount = amount?.extendCount;
-    let Amount = amount?.total;
+    const extendBookingCount = amount.extendCount;
+    const Amount = amount.total;
+    const cancelBookingsCount = cancelBookings.length;
 
-    let bookingsCount = 0,
-      cancelBookingsCount = cancelBookings?.length;
+    const bookingsCount = await Booking.countDocuments({
+      ...matchFilter,
+    });
 
-    if (stationId) {
-      // Fetch only station-specific counts
-      [bookingsCount] = await Promise.all([
-        Booking.countDocuments({ ...stationFilter, ...dateFilter }),
-      ]);
-    } else {
-      [bookingsCount] = await Promise.all([
-        Booking.countDocuments({ ...dateFilter }),
-      ]);
-    }
-
-    // Populate the data object
     obj.data = {
       bookingsCount,
       cancelBookingsCount,
@@ -292,7 +404,11 @@ async function getAllDataCount(query) {
 
     return obj;
   } catch (error) {
-    return { status: 500, message: "An error occurred", error: error.message };
+    return {
+      status: 500,
+      message: "An error occurred",
+      error: error.message,
+    };
   }
 }
 
