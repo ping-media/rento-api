@@ -511,21 +511,19 @@ const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
   }
 
   // Add to timeline
-  const timeLine = await timelineFunctionServer({
+  await timelineFunctionServer({
     currentBooking_id: booking._id,
     timeLine: [
       {
-        title: "Booking extended",
+        title: "Booking Extended",
         date: Date.now(),
-        paymentAmount: data.amount,
+        paymentAmount: data.extendAmount?.amount || 0,
         paymentId: paymentId || "",
         endDate: data.BookingEndDateAndTime,
         extended: true,
       },
     ],
   });
-
-  console.log(paymentId, timeLine);
 };
 
 const handleExtendBookingWebhook = async (
