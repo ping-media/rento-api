@@ -231,14 +231,20 @@ const razorpayWebhookAdmin = async (req, res) => {
 
   let paymentId = "";
   const orderId = entity.order_id;
-  const payments = await razorpay.orders.fetchPayments(orderId);
 
-  // checking whether the payment is successfull or not and getting tran id
-  if (payments.items && payments.items.length > 0) {
-    const successfulPayment = payments.items.find(
-      (p) => p.status === "captured" || p.status === "authorized"
-    );
-    paymentId = successfulPayment ? successfulPayment.id : "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const payments = await razorpay.orders.fetchPayments(orderId);
+    // checking whether the payment is successfull or not and getting tran id
+    if (payments.items && payments.items.length > 0) {
+      const successfulPayment = payments.items.find(
+        (p) => p.status === "captured" || p.status === "authorized"
+      );
+      if (successfulPayment) {
+        paymentId = successfulPayment.id;
+        break;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
   if (type === "" || type === "partiallypay") {
@@ -259,7 +265,6 @@ const razorpayWebhookAdmin = async (req, res) => {
     requestFrom === "admin" &&
     noteOrderId !== ""
   ) {
-    res.status(200).send(typeId, paymentId, noteOrderId);
     try {
       await updateBookingAdminExtension(typeId, paymentId, noteOrderId);
       return res.status(200).send("Admin Extend Booking Payment received");
@@ -488,6 +493,8 @@ const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
   booking.bookingPrice.extendAmount.push({
     ...data.extendAmount,
     transactionId: paymentId || "",
+    paymentMethod: "online",
+    status: "paid",
   });
 
   booking.extendBooking = booking.extendBooking || {};
@@ -504,7 +511,7 @@ const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
   }
 
   // Add to timeline
-  await timelineFunctionServer({
+  const timeLine = await timelineFunctionServer({
     currentBooking_id: booking._id,
     timeLine: [
       {
@@ -517,6 +524,8 @@ const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
       },
     ],
   });
+
+  console.log(paymentId, timeLine);
 };
 
 const handleExtendBookingWebhook = async (
