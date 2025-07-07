@@ -24,6 +24,7 @@ const {
   getPickupImage,
   pickupImageUp,
   getAllPickupImage,
+  savePickupImageLinks,
 } = require("../models/pickupImageUpload");
 const { getAllLogs } = require("../models/getlogs.model");
 const Log = require("../models/Logs.model");
@@ -75,6 +76,10 @@ const {
   deleteBooking,
   initiateExtendBookingAfterPayment,
 } = require("../models/booking.model");
+const {
+  uploadImageToBucketForPickupImage,
+  deleteImageFromBucket,
+} = require("../models/uploadAndDeleteImage.modal");
 // const { cancelPendingPayments } = require("../utils/cron.js");
 
 // create messages
@@ -819,11 +824,29 @@ router.post("/emailverify", async (req, res) => {
 });
 
 router.post("/pickupImage", upload.array("images", 7), async (req, res) => {
-  // console.log(req.files);
   if (!req.files || req.files.length === 0) {
     return res.status(400).send({ message: "No files uploaded." });
   }
   pickupImageUp(req, res);
+});
+
+router.post(
+  "/upload-pickup-image",
+  upload.single("image"),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).send({ message: "No files uploaded." });
+    }
+    uploadImageToBucketForPickupImage(req, res);
+  }
+);
+
+router.post("/start-ride", async (req, res) => {
+  savePickupImageLinks(req, res);
+});
+
+router.post("/delete-image", async (req, res) => {
+  deleteImageFromBucket(req, res);
 });
 
 router.get("/getPickupImage", async (req, res) => {
