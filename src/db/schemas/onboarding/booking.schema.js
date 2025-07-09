@@ -119,7 +119,7 @@ const bookingSchema = new Schema(
     },
     bookedFrom: {
       type: String,
-      enum: ["web", "app"],
+      enum: ["web", "app", "admin"],
       default: "web",
     },
     bookingStatus: {

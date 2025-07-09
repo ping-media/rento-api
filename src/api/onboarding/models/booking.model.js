@@ -737,7 +737,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
 const updateBooking = async (req, res) => {
   const { BookingStartDateAndTime, BookingEndDateAndTime, _id } = req.body;
 
-  if (!_id) {
+  if (!_id || !BookingStartDateAndTime || !BookingEndDateAndTime) {
     return res.status(400).json({
       message: "Missing required fields! try again",
     });
@@ -749,40 +749,60 @@ const updateBooking = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    let isStartUpdate = false;
-    let isEndUpdate = false;
+    const oldStart = booking.BookingStartDateAndTime;
+    const oldEnd = booking.BookingEndDateAndTime;
+    const newStart = BookingStartDateAndTime;
+    const newEnd = BookingEndDateAndTime;
 
-    if (BookingStartDateAndTime > booking.BookingStartDateAndTime) {
-      booking.BookingStartDateAndTime = BookingStartDateAndTime;
-      isStartUpdate = true;
-    }
+    const isStartUpdate = newStart !== oldStart;
+    const isEndUpdate = newEnd !== oldEnd;
 
-    if (BookingEndDateAndTime > booking.BookingEndDateAndTime) {
-      booking.BookingEndDateAndTime = BookingEndDateAndTime;
-      isEndUpdate = true;
-    }
+    const shouldCheckConflicts =
+      (isStartUpdate && newStart < oldStart) ||
+      (isEndUpdate && newEnd > oldEnd);
 
-    const savedBooking = await booking.save();
-
-    if (savedBooking) {
-      await timelineFunctionServer({
-        currentBooking_id: booking._id,
-        timeLine: [
+    if (shouldCheckConflicts) {
+      const conflict = await Booking.findOne({
+        vehicleTableId: booking.vehicleTableId,
+        _id: { $ne: booking._id },
+        $or: [
           {
-            title: "Booking Rescheduled",
-            date: Date.now(),
-            newStartDate: isStartUpdate ? BookingStartDateAndTime : "",
-            newEndDate: isEndUpdate ? BookingEndDateAndTime : "",
+            BookingStartDateAndTime: { $lt: newEnd },
+            BookingEndDateAndTime: { $gt: newStart },
           },
         ],
       });
 
-      res.json({
-        success: true,
-        isStartUpdate,
-        isEndUpdate,
-      });
+      if (conflict) {
+        return res.status(409).json({
+          success: false,
+          message: "The vehicle is already booked during the selected time.",
+        });
+      }
     }
+
+    // Perform update
+    booking.BookingStartDateAndTime = newStart;
+    booking.BookingEndDateAndTime = newEnd;
+    await booking.save();
+
+    await timelineFunctionServer({
+      currentBooking_id: booking._id,
+      timeLine: [
+        {
+          title: "Booking Rescheduled",
+          date: Date.now(),
+          newStartDate: isStartUpdate ? newStart : "",
+          newEndDate: isEndUpdate ? newEnd : "",
+        },
+      ],
+    });
+
+    res.json({
+      success: true,
+      isStartUpdate,
+      isEndUpdate,
+    });
   } catch (error) {
     console.warn(
       "Unable to update or rescheduled booking! try again",
