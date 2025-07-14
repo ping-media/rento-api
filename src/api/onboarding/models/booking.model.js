@@ -815,6 +815,73 @@ const updateBooking = async (req, res) => {
   }
 };
 
+const editBooking = async (req, res) => {
+  const { addOn, totalAddOnPrice, _id } = req.body;
+
+  if (!_id || !addOn) {
+    return res.status(400).json({
+      message: "Missing required fields! try again",
+    });
+  }
+
+  try {
+    const booking = await Booking.findById(_id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    const bookingPrice = booking.bookingPrice;
+    addOn.forEach((item) => {
+      const exists = bookingPrice.extraAddonDetails.some(
+        (existing) => existing._id === item._id
+      );
+
+      if (!exists) {
+        bookingPrice.extraAddonDetails.push(item);
+      }
+    });
+    bookingPrice.extraAddonPrice += totalAddOnPrice;
+
+    let amount = 0;
+    if (!bookingPrice?.isDiscountZero && bookingPrice.discountTotalPrice > 0) {
+      bookingPrice.discountTotalPrice += totalAddOnPrice;
+      amount = bookingPrice.discountTotalPrice;
+    } else {
+      bookingPrice.totalPrice += totalAddOnPrice;
+      amount = bookingPrice?.totalPrice;
+    }
+
+    booking.markModified("bookingPrice");
+    await booking.save();
+
+    const timeLineData = {
+      currentBooking_id: booking._id,
+      timeLine: [
+        {
+          title: "Booking Updated",
+          paymentAmount: amount,
+          date: Date.now(),
+        },
+      ],
+    };
+
+    await timelineFunctionServer(timeLineData);
+
+    res.json({
+      success: true,
+      message: "Booking updated successfully",
+      data: bookingPrice,
+      timeLineData,
+    });
+  } catch (error) {
+    console.warn("Unable to update booking! try again", error?.message);
+    res.json({
+      success: false,
+      message: "Unable to update booking! try again.",
+    });
+  }
+};
+
 const removeExtendByExtendId = async (extendId) => {
   try {
     const doc = await Timeline.findOne({ "timeLine.extendId": extendId });
@@ -924,6 +991,7 @@ module.exports = {
   createOrderId,
   initiateExtendBooking,
   initiateExtendBookingAfterPayment,
+  editBooking,
   updateBooking,
   deleteBooking,
 };

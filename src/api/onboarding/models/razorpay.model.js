@@ -31,6 +31,7 @@ const createPaymentLinkUtil = async ({
   typeId = "",
   endDate = "",
   requestFrom = "",
+  isTimeLine = true,
 }) => {
   if (!bookingId || !amount) {
     throw new Error("Missing required fields: bookingId or amount");
@@ -74,27 +75,35 @@ const createPaymentLinkUtil = async ({
 
   if (!response.id) throw new Error("Failed to create Razorpay payment link");
 
-  const timeLineData = {
-    currentBooking_id: booking._id,
-    timeLine: [
-      {
-        title: "Payment Link Created",
-        date: Date.now(),
-        paymentAmount: amount,
-        PaymentLink: response.short_url,
-        paymentLinkId: response.id,
-        endDate,
-      },
-    ],
-  };
+  if (isTimeLine) {
+    const timeLineData = {
+      currentBooking_id: booking._id,
+      timeLine: [
+        {
+          title: "Payment Link Created",
+          date: Date.now(),
+          paymentAmount: amount,
+          PaymentLink: response.short_url,
+          paymentLinkId: response.id,
+          endDate,
+        },
+      ],
+    };
 
-  await timelineFunctionServer(timeLineData);
+    await timelineFunctionServer(timeLineData);
+
+    return {
+      paymentLink: response.short_url,
+      paymentLinkId: response.id,
+      response,
+      timeLineData,
+    };
+  }
 
   return {
     paymentLink: response.short_url,
     paymentLinkId: response.id,
     response,
-    timeLineData,
   };
 };
 
@@ -268,6 +277,19 @@ const razorpayWebhookAdmin = async (req, res) => {
     try {
       await updateBookingAdminExtension(typeId, paymentId, noteOrderId);
       return res.status(200).send("Admin Extend Booking Payment received");
+    } catch (err) {
+      console.error("Error updating booking:", err);
+      return res.status(200).send("Booking extend failed");
+    }
+  } else if (type === "ChangeVehicle") {
+    try {
+      await updateBookingForVehicleChange(
+        bookingId,
+        amountPaid,
+        typeId,
+        paymentId
+      );
+      return res.status(200).send("Extend Booking Payment received");
     } catch (err) {
       console.error("Error updating booking:", err);
       return res.status(200).send("Booking extend failed");
@@ -454,6 +476,46 @@ const updateBookingWithNewExtension = async (
   booking.bookingStatus = "extended";
 
   booking.markModified("bookingPrice.extendAmount");
+
+  await booking.save();
+
+  // Add to timeline
+  await timelineFunctionServer({
+    currentBooking_id: booking._id,
+    timeLine: [
+      {
+        title: "Payment Received",
+        date: Date.now(),
+        paymentAmount: amountPaid,
+        paymentId: paymentId || "",
+      },
+    ],
+  });
+};
+
+const updateBookingForVehicleChange = async (
+  bookingId,
+  amountPaid,
+  typeId,
+  paymentId
+) => {
+  if (!bookingId) throw new Error("Booking ID missing");
+  const booking = await Booking.findById(bookingId);
+
+  if (!booking || !typeId)
+    return res.status(200).send("Booking or extension not found");
+
+  const change = booking.bookingPrice.diffAmount.find(
+    (e) => e.id?.toString() === typeId?.toString()
+  );
+  if (change) {
+    change.status = "paid";
+    change.paymentMethod = "online";
+    change.paymentDate = new Date();
+    change.transactionId = paymentId;
+  }
+
+  booking.markModified("bookingPrice.diffAmount");
 
   await booking.save();
 

@@ -4,6 +4,9 @@ const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.sch
 const Station = require("../../../db/schemas/onboarding/station.schema");
 const Otp = require("../../../db/schemas/onboarding/logOtp");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
+const { createOrderId } = require("./booking.model");
+const { createPaymentLinkUtil } = require("./razorpay.model");
+const { timelineFunctionServer } = require("./timeline.model");
 
 const vehicleChangeInBooking = async (req, res) => {
   const {
@@ -20,6 +23,9 @@ const vehicleChangeInBooking = async (req, res) => {
     vehicleName,
     managerContact,
     firstName,
+    finalAmount,
+    ChangeId,
+    refundAmount,
   } = req.body;
   try {
     const bookingData = await Booking.findOne({ _id: _id });
@@ -98,8 +104,76 @@ const vehicleChangeInBooking = async (req, res) => {
       managerContact,
     ];
 
-    whatsappMessage(contact, "bike_change", messageData);
-    res.json({ status: 200, message: "vehicle Changed", data: updatedData });
+    if (finalAmount === 0) {
+      const timeLineData = {
+        currentBooking_id: bookingData._id,
+        timeLine: [
+          {
+            title: "Vehicle Changed",
+            changeToVehicle: `From (${changeVehicle?.vehicleNumber}) to (${vehicleBasic?.vehicleNumber})`,
+            date: Date.now(),
+            paymentAmount: finalAmount,
+            refundAmount: refundAmount,
+          },
+        ],
+      };
+
+      await timelineFunctionServer(timeLineData);
+      whatsappMessage(contact, "bike_change", messageData);
+      return res.status(200).json({
+        success: true,
+        message: "Vehicle Changed",
+        data: updatedData,
+        timeLine: timeLineData || null,
+      });
+    }
+
+    const razorpayOrder = await createOrderId({
+      amount: finalAmount,
+      booking_id: bookingData?.bookingId,
+      _id: _id,
+      type: "ChangeVehicle",
+      typeId: ChangeId,
+    });
+
+    const paymentData = await createPaymentLinkUtil({
+      bookingId: _id,
+      amount: finalAmount,
+      orderId: razorpayOrder.id,
+      type: "ChangeVehicle",
+      typeId: ChangeId,
+      isTimeLine: false,
+    });
+
+    if (paymentData?.paymentLinkId) {
+      const timeLineData = {
+        currentBooking_id: bookingData._id,
+        timeLine: [
+          {
+            title: "Vehicle Changed",
+            changeToVehicle: `From (${changeVehicle?.vehicleNumber}) to (${vehicleBasic?.vehicleNumber})`,
+            date: Date.now(),
+            paymentAmount: finalAmount,
+            refundAmount: refundAmount,
+            PaymentLink: paymentData?.paymentLink,
+          },
+        ],
+      };
+
+      await timelineFunctionServer(timeLineData);
+      whatsappMessage(contact, "bike_change", messageData);
+      res.status(200).json({
+        success: true,
+        message: "Vehicle Changed",
+        data: updatedData,
+        timeLine: timeLineData || null,
+      });
+    } else {
+      res.status(200).json({
+        success: false,
+        message: "unable to complete extend request! try again",
+      });
+    }
   } catch (error) {
     res.json({ status: 500, message: error.message });
   }
