@@ -76,6 +76,7 @@ const {
   deleteBooking,
   initiateExtendBookingAfterPayment,
   editBooking,
+  extendBooking,
 } = require("../models/booking.model");
 const {
   uploadImageToBucketForPickupImage,
@@ -227,6 +228,10 @@ router.post("/edit-booking", async (req, res) => {
 
 router.post("/initiate-extend-booking", async (req, res) => {
   initiateExtendBooking(req, res);
+});
+
+router.post("/extend-booking", async (req, res) => {
+  extendBooking(req, res);
 });
 
 router.post("/initiate-extend-admin-booking", async (req, res) => {
@@ -885,7 +890,9 @@ router.post("/createOrderId", async (req, res) => {
     currency: "INR",
     receipt: "receipt#" + booking_id,
     payment_capture: 1,
-    type: type || "",
+    notes: {
+      type: type || "",
+    },
   };
 
   try {

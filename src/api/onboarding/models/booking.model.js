@@ -659,8 +659,118 @@ const initiateExtendBooking = async (req, res) => {
   }
 };
 
-const initiateExtendBookingAfterPayment = async (req, res) => {
+const extendBooking = async (req, res) => {
   const { _id, bookingId, amount, data } = req.body;
+
+  // Validate required fields
+  if (!_id || !bookingId || !amount || !data?.extendAmount?.id) {
+    return res.status(400).json({
+      message: "Missing required fields! try again",
+    });
+  }
+
+  let paymentDetails;
+  try {
+    paymentDetails = await axios.get(
+      `https://api.razorpay.com/v1/payments/${data?.extendAmount?.transactionId}`,
+      {
+        auth: {
+          username: process.env.VITE_RAZOR_KEY_ID,
+          password: process.env.VITE_RAZOR_KEY_SECRET,
+        },
+      }
+    );
+  } catch (err) {
+    console.error("Razorpay API error:", err?.response?.data || err.message);
+    return res.status(400).json({
+      success: false,
+      message: "Unable to verify payment with Razorpay. Please try again.",
+    });
+  }
+
+  if (paymentDetails.data?.status !== "captured") {
+    return res.status(400).json({
+      success: false,
+      message: "Payment not captured! Contact Admin for support.",
+    });
+  }
+
+  try {
+    const booking = await Booking.findById(_id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Update properties individually
+    if (data.BookingEndDateAndTime) {
+      booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
+    }
+
+    if (!booking.bookingPrice.extendAmount) {
+      booking.bookingPrice.extendAmount = [];
+    }
+
+    const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
+    if (!existingIds.includes(data.extendAmount.id)) {
+      booking.bookingPrice.extendAmount.push(data.extendAmount);
+    }
+
+    if (!booking.extendBooking) {
+      booking.extendBooking = {};
+    }
+
+    if (!booking.extendBooking.oldBooking) {
+      booking.extendBooking.oldBooking = [];
+    }
+
+    if (data.oldBookings) {
+      booking.extendBooking.oldBooking.push(data.oldBookings);
+    }
+
+    booking.bookingStatus = "extended";
+
+    // Mark nested objects as modified
+    booking.markModified("bookingPrice");
+    booking.markModified("extendBooking");
+
+    const savedBooking = await booking.save();
+
+    if (savedBooking) {
+      await timelineFunctionServer({
+        currentBooking_id: booking._id,
+        timeLine: [
+          {
+            title: "Booking Extended",
+            date: Date.now(),
+            paymentAmount: amount || 0,
+            endDate: data.BookingEndDateAndTime,
+            extended: true,
+          },
+        ],
+      });
+
+      res.json({
+        success: true,
+        message: "Booking extended successfully",
+      });
+    } else {
+      res.json({
+        success: false,
+        message: "Unable to extend booking! try again",
+      });
+    }
+  } catch (error) {
+    console.error("Error in initiateExtendBooking:", error);
+    res.json({
+      message: "Internal server error",
+      error: error.message,
+      bookingUpdate: false,
+    });
+  }
+};
+
+const initiateExtendBookingAfterPayment = async (req, res) => {
+  const { _id, bookingId, amount, data, createPaymentLink = true } = req.body;
 
   console.log(_id);
   if (!_id || !bookingId || !amount || !data) {
@@ -715,7 +825,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
     });
 
     if (paymentLink?.paymentLinkId) {
-      res.json({
+      res.status(200).json({
         success: true,
         message: "extend request placed",
         timeLine: paymentLink?.timeLineData || null,
@@ -989,6 +1099,7 @@ module.exports = {
   getBooking,
   initiateBooking,
   createOrderId,
+  extendBooking,
   initiateExtendBooking,
   initiateExtendBookingAfterPayment,
   editBooking,

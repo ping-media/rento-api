@@ -2,9 +2,8 @@ require("dotenv").config();
 const nodemailer = require("nodemailer");
 const Station = require("../db/schemas/onboarding/station.schema");
 const User = require("../db/schemas/onboarding/user.schema");
-const fs = require('fs');
-const path = require('path');
-
+const fs = require("fs");
+const path = require("path");
 
 // const transporter = nodemailer.createTransport({
 //   port: 465,
@@ -16,10 +15,10 @@ const path = require('path');
 //   },
 // });
 
-require('dotenv').config();
+require("dotenv").config();
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
+  host: "smtp-relay.brevo.com",
   port: 587, // You can also try 465 for SSL
   secure: false, // Use true for port 465
   auth: {
@@ -28,12 +27,9 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-
-
 async function sendOtpByEmail(email, firstName, lastName) {
-
   const mailOptions = {
-    from: 'Rento Bikes <support@rentobikes.com>',
+    from: "Rento Bikes <support@rentobikes.com>",
     to: email,
     subject: "Welcome to RentoBikes!",
     html: `<!DOCTYPE html>
@@ -239,26 +235,38 @@ async function sendOtpByEmail(email, firstName, lastName) {
       </table>
 </body>
 </html>`,
-  }
+  };
 
   try {
     // Send email and wait for the result
     const info = await transporter.sendMail(mailOptions);
 
     // Log the response from the email sending
-    console.log('Email sent: ' + info.response);
+    console.log("Email sent: " + info.response);
     return { success: true };
   } catch (error) {
     // Log any errors that occur
-    console.log('Error occurred:', error);
+    console.log("Error occurred:", error);
     return { success: false, error: error.message };
   }
 }
 
 async function sendOtpByEmailForBooking(body) {
-  const { userId, stationId, stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic, } = body;
+  const {
+    userId,
+    stationId,
+    stationMasterUserId,
+    bookingId,
+    vehicleImage,
+    vehicleName,
+    stationName,
+    BookingStartDateAndTime,
+    BookingEndDateAndTime,
+    bookingPrice,
+    vehicleBasic,
+  } = body;
   try {
-   //  console.log(userId, stationId,stationMasterUserId,vehicleImage)
+    //  console.log(userId, stationId,stationMasterUserId,vehicleImage)
 
     function convertDateString(dateString) {
       if (!dateString) return "Invalid date";
@@ -267,31 +275,35 @@ async function sendOtpByEmailForBooking(body) {
       if (isNaN(date)) return "Invalid date";
 
       const options = {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
       };
 
-      return date.toLocaleString('en-US', options);
+      return date.toLocaleString("en-US", options);
     }
 
-    const { email, firstName, lastName, } = await User.findOne({ _id: userId });
-    const { address, latitude, longitude } = await Station.findOne({ name: stationId });
+    const { email, firstName, lastName } = await User.findOne({ _id: userId });
+    const { address, latitude, longitude } = await Station.findOne({
+      name: stationId,
+    });
 
     const station = await User.findOne({ _id: stationMasterUserId });
     // console.log(bookingPrice, vehicleBasic)
-    const mapLink = "https://www.google.com/maps/search/?api=1&query="
-      + latitude + "," + longitude;
-
+    const mapLink =
+      "https://www.google.com/maps/search/?api=1&query=" +
+      latitude +
+      "," +
+      longitude;
 
     const totalPrice = bookingPrice?.totalPrice || 0;
     const userPaid = bookingPrice?.userPaid || 0;
 
     const mailOptions = {
-      from: 'Rento Bikes <support@rentobikes.com>',
+      from: "Rento Bikes <support@rentobikes.com>",
       to: email,
       subject: ` Booking Confirmed - Your RentoBikes Booking ID ${bookingId} has been confirmed!`,
       html: `<!DOCTYPE html>
@@ -393,7 +405,9 @@ async function sendOtpByEmailForBooking(body) {
         <td>
           <span style="height:14px;display:inline-block;color:#777;font-size:12px;color:#aaa;font-weight:bold">PHONE
             NUMBER</span><br>
-          <span style="display:inline-block;padding-bottom:8px">${station.contact}</span>
+          <span style="display:inline-block;padding-bottom:8px">${
+            station.contact
+          }</span>
         </td>
       </tr>
       <tr>
@@ -419,7 +433,9 @@ async function sendOtpByEmailForBooking(body) {
           <table style="width:100%;color:#444;padding:20px;background-color:#fafafa;border:1px solid #eee;border-radius:4px;font-size:14px">
             <tbody><tr>
               <td style="color:#444">Bike Rental</td>
-              <td style="font-weight:bold;text-align:right;width:80px">₹ ${bookingPrice.rentAmount}</td>
+              <td style="font-weight:bold;text-align:right;width:80px">₹ ${
+                bookingPrice.rentAmount
+              }</td>
             </tr>
            
             <tr>
@@ -439,23 +455,31 @@ async function sendOtpByEmailForBooking(body) {
             <tr>
               <td style="color:#444;padding-top:10px">Total Amount</td>
               <td style="font-weight:bold;text-align:right;padding-top:10px">₹
-                ${bookingPrice.discountTotalPrice !== 0
-          ? bookingPrice.discountTotalPrice
-          : bookingPrice.totalPrice}
+                ${
+                  bookingPrice.discountTotalPrice !== 0
+                    ? bookingPrice.discountTotalPrice
+                    : bookingPrice.totalPrice
+                }
               </td>
             </tr>
             <tr>
               <td colspan="2" style="color:#999;font-size:12px">
                 <span>&nbsp;&nbsp;Paid online</span>
-                <span style="float:right"> ₹ ${bookingPrice.userPaid == undefined ? bookingPrice.discountTotalPrice !== 0
-          ? bookingPrice.discountTotalPrice
-          : bookingPrice.totalPrice : bookingPrice.userPaid}</span>
+                <span style="float:right"> ₹ ${
+                  bookingPrice.userPaid == undefined
+                    ? bookingPrice.discountTotalPrice !== 0
+                      ? bookingPrice.discountTotalPrice
+                      : bookingPrice.totalPrice
+                    : bookingPrice.userPaid
+                }</span>
               </td>
             </tr>
             <tr>
               <td colspan="2" style="color:#999;font-size:12px">
                 <span>&nbsp;&nbsp;Remaining amount to be paid at the time of pickup</span>
-                <span style="float:right"> ₹ ${bookingPrice.userPaid == undefined ? 0 : totalPrice - userPaid}</span>
+                <span style="float:right"> ₹ ${
+                  bookingPrice.userPaid == undefined ? 0 : totalPrice - userPaid
+                }</span>
               </td>
             </tr>
             <tr>
@@ -497,7 +521,9 @@ async function sendOtpByEmailForBooking(body) {
             </tr> -->
             <tr>
               <td style="color:#444">Distance Limit</td>
-              <td style="font-weight:bold;text-align:right">${vehicleBasic.freeLimit} Km/h</td>
+              <td style="font-weight:bold;text-align:right">${
+                vehicleBasic.freeLimit
+              } Km/h</td>
             </tr>
             <tr>
               <td colspan="2" style="color:#999;font-size:12px;padding-bottom:15px">
@@ -506,7 +532,9 @@ async function sendOtpByEmailForBooking(body) {
             </tr>
             <tr>
               <td style="color:#444">Excess Charge</td>
-              <td style="font-weight:bold;text-align:right">₹ ${vehicleBasic.extraKmCharge} / Km
+              <td style="font-weight:bold;text-align:right">₹ ${
+                vehicleBasic.extraKmCharge
+              } / Km
               </td>
             </tr>
             <tr>
@@ -516,7 +544,9 @@ async function sendOtpByEmailForBooking(body) {
             </tr>
             <tr>
               <td style="color:#444">Late Drop Fee</td>
-              <td style="font-weight:bold;text-align:right">₹ ${vehicleBasic.lateFee} / Hour
+              <td style="font-weight:bold;text-align:right">₹ ${
+                vehicleBasic.lateFee
+              } / Hour
               </td>
             </tr>
             <tr>
@@ -526,7 +556,9 @@ async function sendOtpByEmailForBooking(body) {
             </tr>
             <tr>
               <td style="color:#444">Speed Limit</td>
-              <td style="font-weight:bold;text-align:right">${vehicleBasic.speedLimit} Km/h
+              <td style="font-weight:bold;text-align:right">${
+                vehicleBasic.speedLimit
+              } Km/h
               </td>
             </tr>
             <tr>
@@ -658,7 +690,7 @@ async function sendOtpByEmailForBooking(body) {
   </table>
 </body>
 </html>`,
-    }
+    };
 
     const info = await transporter.sendMail(mailOptions);
 
@@ -670,11 +702,16 @@ async function sendOtpByEmailForBooking(body) {
   }
 }
 
-async function sendEmailForBookingToStationMaster(userId, stationMasterUserId, vehicleName, BookingStartDateAndTime, BookingEndDateAndTime, bookingId,) {
+async function sendEmailForBookingToStationMaster(
+  userId,
+  stationMasterUserId,
+  vehicleName,
+  BookingStartDateAndTime,
+  BookingEndDateAndTime,
+  bookingId
+) {
   // const {userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic,}=body;
   try {
-
-
     function convertDateString(dateString) {
       if (!dateString) return "Invalid date";
 
@@ -682,26 +719,27 @@ async function sendEmailForBookingToStationMaster(userId, stationMasterUserId, v
       if (isNaN(date)) return "Invalid date";
 
       const options = {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
       };
 
-      return date.toLocaleString('en-US', options);
+      return date.toLocaleString("en-US", options);
     }
 
     const user = await User.findOne({ _id: userId });
 
-
-    const { email, firstName, lastName, } = await User.findOne({ _id: stationMasterUserId });
+    const { email, firstName, lastName } = await User.findOne({
+      _id: stationMasterUserId,
+    });
 
     const mailOptions = {
-      from: 'Rento Bikes <support@rentobikes.com>',
+      from: "Rento Bikes <support@rentobikes.com>",
       to: email,
-      cc: 'support@rentobikes.com',
+      cc: "support@rentobikes.com",
       subject: ` Booking Received- You have received booking Id ${bookingId} from RentoBikes `,
       html: `<!DOCTYPE html>
 <html lang="en">
@@ -731,7 +769,15 @@ async function sendEmailForBookingToStationMaster(userId, stationMasterUserId, v
       <td colspan="2" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:30px 0;padding-top:10px;color:#767676">
         Hello Station master ${firstName} ${lastName},
         
-      <p>You have received a booking from RentoBikes. ${user.firstName} has booked ${vehicleName} with you. The ride has been scheduled from ${convertDateString(BookingStartDateAndTime)} to ${convertDateString(BookingEndDateAndTime)}. The Booking ID is ${bookingId} and the customer's contact number is ${user.contact}.
+      <p>You have received a booking from RentoBikes. ${
+        user.firstName
+      } has booked ${vehicleName} with you. The ride has been scheduled from ${convertDateString(
+        BookingStartDateAndTime
+      )} to ${convertDateString(
+        BookingEndDateAndTime
+      )}. The Booking ID is ${bookingId} and the customer's contact number is ${
+        user.contact
+      }.
 </p>
 <p>We request you to check the dealer's app for more details.</p>
 
@@ -856,7 +902,7 @@ async function sendEmailForBookingToStationMaster(userId, stationMasterUserId, v
 </table>
 </body>
 </html>`,
-    }
+    };
     const info = await transporter.sendMail(mailOptions);
 
     console.log("Email sent: %s", info.messageId);
@@ -867,19 +913,14 @@ async function sendEmailForBookingToStationMaster(userId, stationMasterUserId, v
   }
 }
 
-async function sendInvoiceByEmail({
-  email,
-  firstName,
-  lastName,
-  file
-}) {
+async function sendInvoiceByEmail({ email, firstName, lastName, file }) {
   //const {email, firstName, lastName, file}=body
-  console.log(file)
+  console.log(file);
   const mailOptions = {
-    from: 'Rento Bikes <support@rentobikes.com>',
+    from: "Rento Bikes <support@rentobikes.com>",
     to: email,
     subject: "Invoice for Your Recent RentoBikes Service!",
-    html:`<!DOCTYPE html>
+    html: `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1076,48 +1117,59 @@ async function sendInvoiceByEmail({
       {
         filename: file.originalname, // The name of the file (same as uploaded)
         content: file.buffer, // The file content as a buffer
-        encoding: 'base64' // Specify the encoding if needed
-      }
-    ]
-  }
-
+        encoding: "base64", // Specify the encoding if needed
+      },
+    ],
+  };
 
   try {
     // Send email and wait for the result
     const info = await transporter.sendMail(mailOptions);
 
     // Log the response from the email sending
-    console.log('Email sent: ' + info.response);
+    console.log("Email sent: " + info.response);
     return { success: true };
   } catch (error) {
     // Log any errors that occur
-    console.log('Error occurred:', error);
+    console.log("Error occurred:", error);
     return { success: false, error: error.message };
   }
 }
 
 async function sendReminderEmail(body) {
-
   function convertDateString(dateString) {
     if (!dateString) return "Invalid date";
 
     const date = new Date(dateString);
     if (isNaN(date)) return "Invalid date";
 
-    const options = { 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric', 
-      hour: 'numeric', 
-      minute: '2-digit', 
-      hour12: true 
+    const options = {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     };
 
-    return date.toLocaleString('en-US', options);
+    return date.toLocaleString("en-US", options);
   }
-  const {userEmail, firstName, vehicleName, BookingStartDateAndTime, bookingId, stationName, bookingPrice, vehicleBasic, managerContact, contact}=body;
+  const {
+    userEmail,
+    firstName,
+    vehicleName,
+    BookingStartDateAndTime,
+    bookingId,
+    stationName,
+    bookingPrice,
+    vehicleBasic,
+    managerContact,
+    contact,
+  } = body;
 
-  const station = await Station.findOne({ stationName }).select("latitude longitude");
+  const station = await Station.findOne({ stationName }).select(
+    "latitude longitude"
+  );
   if (!station) {
     console.error(`Station not found for stationName: ${stationName}`);
     return res.status(400).json({ status: 400, message: "Station not found" });
@@ -1127,20 +1179,30 @@ async function sendReminderEmail(body) {
   const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
 
   // Calculate total price
-  const totalPrice = bookingPrice.discountTotalPrice > 0 
-                      ? bookingPrice.discountTotalPrice 
-                      : bookingPrice.totalPrice;
+  const totalPrice =
+    bookingPrice.discountTotalPrice > 0
+      ? bookingPrice.discountTotalPrice
+      : bookingPrice.totalPrice;
   const refundableDeposit = vehicleBasic.refundableDeposit;
 
-  if (!userEmail || !firstName || !vehicleName || !BookingStartDateAndTime || !bookingId || !stationName || !mapLink || !managerContact || !totalPrice || !refundableDeposit) {
+  if (
+    !userEmail ||
+    !firstName ||
+    !vehicleName ||
+    !BookingStartDateAndTime ||
+    !bookingId ||
+    !stationName ||
+    !mapLink ||
+    !managerContact ||
+    !totalPrice ||
+    !refundableDeposit
+  ) {
     console.log("Error: Some required fields are missing.");
     return { success: false, error: "Missing required fields" };
   }
 
- 
- 
   const mailOptions = {
-    from: 'Rento Bikes <support@rentobikes.com>',
+    from: "Rento Bikes <support@rentobikes.com>",
     to: userEmail,
     subject: "Reminder: Your Bike Booking is Confirmed!",
     html: `<!DOCTYPE html>
@@ -1180,7 +1242,9 @@ async function sendReminderEmail(body) {
           <td colspan="2" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:10px 0;padding-top:10px;color:#767676;font-weight: bold;">
            
             <span style="font-size:16px">
-              Your ride is scheduled from ${convertDateString(BookingStartDateAndTime)}.<br/>
+              Your ride is scheduled from ${convertDateString(
+                BookingStartDateAndTime
+              )}.<br/>
               Booking ID: # ${bookingId}
               
             </span>
@@ -1388,56 +1452,58 @@ Happy Riding! 
     </table>
 </body>
 </html>`,
-   
-  }
-
+  };
 
   try {
     // Send email and wait for the result
     const info = await transporter.sendMail(mailOptions);
 
     // Log the response from the email sending
-    console.log('Email sent: ' + info.response);
+    console.log("Email sent: " + info.response);
     return { success: true };
   } catch (error) {
     // Log any errors that occur
-    console.log('Error occurred:', error);
+    console.log("Error occurred:", error);
     return { success: false, error: error.message };
   }
 }
 
-async function sendCancelEmail(email,firstName,vehicleName,bookingId,BookingStartDateAndTime,stationName,totalPrice,managerContact) {
-
+async function sendCancelEmail(
+  email,
+  firstName,
+  vehicleName,
+  bookingId,
+  BookingStartDateAndTime,
+  stationName,
+  totalPrice,
+  managerContact
+) {
   function convertDateString(dateString) {
     if (!dateString) return "Invalid date";
 
     const date = new Date(dateString);
     if (isNaN(date)) return "Invalid date";
 
-    const options = { 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric', 
-      hour: 'numeric', 
-      minute: '2-digit', 
-      hour12: true 
+    const options = {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     };
 
-    return date.toLocaleString('en-US', options);
+    return date.toLocaleString("en-US", options);
   }
- // const {userEmail, firstName, vehicleName, BookingStartDateAndTime, bookingId, stationName, bookingPrice, vehicleBasic, managerContact, contact}=body;
-
-
+  // const {userEmail, firstName, vehicleName, BookingStartDateAndTime, bookingId, stationName, bookingPrice, vehicleBasic, managerContact, contact}=body;
 
   // if (!userEmail || !firstName || !vehicleName || !BookingStartDateAndTime || !bookingId || !stationName || !mapLink || !managerContact || !totalPrice || !refundableDeposit) {
   //   console.log("Error: Some required fields are missing.");
   //   return { success: false, error: "Missing required fields" };
   // }
 
- 
- 
   const mailOptions = {
-    from: 'Rento Bikes <support@rentobikes.com>',
+    from: "Rento Bikes <support@rentobikes.com>",
     to: email,
     subject: "Cancelled: Your Bike Booking is Cancelled!",
     html: `<!DOCTYPE html>
@@ -1478,7 +1544,9 @@ async function sendCancelEmail(email,firstName,vehicleName,bookingId,BookingStar
           <td colspan="2" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;padding:10px 0;padding-top:10px;color:#767676;font-weight: bold;">
            
             <span style="font-size:16px">
-             Here are the details of your canceled booking: Bike Booked: ${vehicleName} Booking ID: #${bookingId} Scheduled Pickup Date & Time: ${convertDateString(BookingStartDateAndTime)} Pickup Location: Landmark: ${stationName} Booking Amount: ₹${totalPrice}
+             Here are the details of your canceled booking: Bike Booked: ${vehicleName} Booking ID: #${bookingId} Scheduled Pickup Date & Time: ${convertDateString(
+      BookingStartDateAndTime
+    )} Pickup Location: Landmark: ${stationName} Booking Amount: ₹${totalPrice}
 
               
             </span>
@@ -1680,32 +1748,33 @@ async function sendCancelEmail(email,firstName,vehicleName,bookingId,BookingStar
     </table>
 </body>
 </html>`,
-   
-  }
-
+  };
 
   try {
     // Send email and wait for the result
     const info = await transporter.sendMail(mailOptions);
 
     // Log the response from the email sending
-    console.log('Email sent: ' + info.response);
+    console.log("Email sent: " + info.response);
     return { success: true };
   } catch (error) {
     // Log any errors that occur
-    console.log('Error occurred:', error);
+    console.log("Error occurred:", error);
     return { success: false, error: error.message };
   }
 }
 
-async function sendEmailForExtendOrVehicleChange(email,firstName, flag, bookingId, amount, link, managerContact ) {
-
-
-
- 
- 
+async function sendEmailForExtendOrVehicleChange(
+  email,
+  firstName,
+  flag,
+  bookingId,
+  amount,
+  link,
+  managerContact
+) {
   const mailOptions = {
-    from: 'Rento Bikes <support@rentobikes.com>',
+    from: "Rento Bikes <support@rentobikes.com>",
     to: email,
     subject: `${flag}: Your Bike Booking is ${flag}!`,
     html: `<!DOCTYPE html>
@@ -1918,25 +1987,28 @@ async function sendEmailForExtendOrVehicleChange(email,firstName, flag, bookingI
     </table>
 </body>
 </html>`,
-   
-  }
-
+  };
 
   try {
     // Send email and wait for the result
     const info = await transporter.sendMail(mailOptions);
 
     // Log the response from the email sending
-    console.log('Email sent: ' + info.response);
+    console.log("Email sent: " + info.response);
     return { success: true };
   } catch (error) {
     // Log any errors that occur
-    console.log('Error occurred:', error);
+    console.log("Error occurred:", error);
     return { success: false, error: error.message };
   }
 }
 
-
-
-
-module.exports = { sendEmailForExtendOrVehicleChange,sendReminderEmail,sendOtpByEmail, sendCancelEmail,sendOtpByEmailForBooking, sendEmailForBookingToStationMaster, sendInvoiceByEmail };
+module.exports = {
+  sendEmailForExtendOrVehicleChange,
+  sendReminderEmail,
+  sendOtpByEmail,
+  sendCancelEmail,
+  sendOtpByEmailForBooking,
+  sendEmailForBookingToStationMaster,
+  sendInvoiceByEmail,
+};
