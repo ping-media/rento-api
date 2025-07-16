@@ -31,7 +31,7 @@ const sendMessageAfterBooking = async (id) => {
     });
   }
 
-  const booking = await Booking.findById(id);
+  const booking = await Booking.findOne({ bookingId: id });
   if (!booking) {
     throw new Error("Booking not found");
   }
@@ -46,6 +46,8 @@ const sendMessageAfterBooking = async (id) => {
     BookingStartDateAndTime,
     BookingEndDateAndTime,
     bookingId,
+    // bookingStatus,
+    paymentStatus,
   } = booking;
 
   if (userId && stationMasterUserId) {
@@ -104,6 +106,8 @@ const sendMessageAfterBooking = async (id) => {
       stationMasterUser.contact,
     ];
 
+    // if (bookingStatus === "extended") {
+    // }
     if (paymentStatus === "paid") {
       messageData.push(totalPrice, vehicleBasic.refundableDeposit);
 

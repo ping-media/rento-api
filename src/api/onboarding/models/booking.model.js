@@ -9,6 +9,7 @@ const { timelineFunctionServer } = require("./timeline.model.js");
 const { default: axios } = require("axios");
 const Timeline = require("../../../db/schemas/onboarding/timeline.schema.js");
 const { createPaymentLinkUtil } = require("./razorpay.model.js");
+const { sendMessageAfterBooking } = require("../../../utils/index.js");
 require("dotenv").config();
 
 // Get All Bookings with Filtering and Pagination
@@ -32,6 +33,7 @@ const getBooking = async (query) => {
       stationId,
       sortBy,
       sortOrder,
+      vehicleNumber,
       page = 1,
       limit = 10,
     } = query;
@@ -50,6 +52,7 @@ const getBooking = async (query) => {
 
       // Find booking by `_id`
       const booking = await Booking.findById(_id);
+
       if (!booking) {
         await Log({
           message: "Booking not found for the provided ID",
@@ -73,6 +76,12 @@ const getBooking = async (query) => {
     if (bookingId) filters.bookingId = bookingId;
     if (vehicleBrand) filters.vehicleBrand = vehicleBrand;
     if (vehicleName) filters.vehicleName = vehicleName;
+    if (vehicleNumber) {
+      filters["vehicleBasic.vehicleNumber"] = {
+        $regex: vehicleNumber,
+        $options: "i",
+      };
+    }
     if (stationName) filters.stationName = stationName;
     if (bookingStatus) filters.bookingStatus = bookingStatus;
     if (paymentStatus) filters.paymentStatus = paymentStatus;
@@ -85,10 +94,12 @@ const getBooking = async (query) => {
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, "i");
+
       filters.$or = [
         { bookingId: searchRegex },
         { vehicleBrand: searchRegex },
         { vehicleName: searchRegex },
+        { "vehicleBasic.vehicleNumber": searchRegex },
         { stationName: searchRegex },
         { bookingStatus: searchRegex },
         { paymentStatus: searchRegex },
@@ -748,6 +759,8 @@ const extendBooking = async (req, res) => {
           },
         ],
       });
+
+      // await sendMessageAfterBooking(booking.bookingId);
 
       res.json({
         success: true,
