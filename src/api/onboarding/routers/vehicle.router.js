@@ -10,7 +10,10 @@ const axios = require("axios");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { fileUpload } = require("../models/locationUpload.model");
-const { VehicalfileUpload } = require("../models/createVehicleMasterUpload");
+const {
+  VehicalfileUpload,
+  enableOrDisableVehicles,
+} = require("../models/createVehicleMasterUpload");
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const {
@@ -460,13 +463,13 @@ router.delete("/deleteLocation", async (req, res) => {
     // Success message after deletion
     obj.status = 200;
     obj.message = "Location deleted successfully";
-    return res.status(200).json(obj); // Return the response with status 200
+    return res.status(200).json(obj);
   } catch (error) {
     console.error("Error in deleteLocation:", error.message);
 
     obj.status = 500;
     obj.message = "An error occurred while deleting location";
-    return res.json(obj); // Return the response with status 500
+    return res.json(obj);
   }
 });
 
@@ -482,7 +485,14 @@ router.post(
       });
     }
     VehicalfileUpload(req, res);
-    // vehiclesService.createLocation(req, res);
+  }
+);
+
+router.put(
+  "/updateVehicleMasterwithVehicles",
+  Authentication,
+  async (req, res) => {
+    enableOrDisableVehicles(req, res);
   }
 );
 

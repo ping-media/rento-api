@@ -34,6 +34,8 @@ const getBooking = async (query) => {
       sortBy,
       sortOrder,
       vehicleNumber,
+      fullName,
+      contact,
       page = 1,
       limit = 10,
     } = query;
@@ -51,7 +53,10 @@ const getBooking = async (query) => {
       }
 
       // Find booking by `_id`
-      const booking = await Booking.findById(_id);
+      const booking = await Booking.findById(_id).populate(
+        "userId",
+        "firstName lastName contact createdAt updatedAt"
+      );
 
       if (!booking) {
         await Log({
@@ -71,31 +76,105 @@ const getBooking = async (query) => {
     const sortby = sortBy || "createdAt";
     const sortorder = sortOrder === "asc" ? 1 : -1;
 
-    const filters = {};
-    if (_id) filters._id = _id;
-    if (bookingId) filters.bookingId = bookingId;
-    if (vehicleBrand) filters.vehicleBrand = vehicleBrand;
-    if (vehicleName) filters.vehicleName = vehicleName;
+    const pipeline = [];
+
+    const matchFilters = {};
+    if (bookingId) {
+      matchFilters.bookingId = {
+        $regex: bookingId,
+        $options: "i",
+      };
+    }
+    if (vehicleBrand) matchFilters.vehicleBrand = vehicleBrand;
+    if (vehicleName) matchFilters.vehicleName = vehicleName;
     if (vehicleNumber) {
-      filters["vehicleBasic.vehicleNumber"] = {
+      matchFilters["vehicleBasic.vehicleNumber"] = {
         $regex: vehicleNumber,
         $options: "i",
       };
     }
-    if (stationName) filters.stationName = stationName;
-    if (bookingStatus) filters.bookingStatus = bookingStatus;
-    if (paymentStatus) filters.paymentStatus = paymentStatus;
-    if (userId) filters.userId = userId;
-    if (rideStatus) filters.rideStatus = rideStatus;
-    if (paymentMethod) filters.paymentMethod = paymentMethod;
-    if (payInitFrom) filters.payInitFrom = payInitFrom;
-    if (stationId) filters.stationId = stationId;
+    if (stationName) matchFilters.stationName = stationName;
+    if (bookingStatus) matchFilters.bookingStatus = bookingStatus;
+    if (paymentStatus) matchFilters.paymentStatus = paymentStatus;
+    if (userId) matchFilters.userId = userId;
+    if (rideStatus) matchFilters.rideStatus = rideStatus;
+    if (paymentMethod) matchFilters.paymentMethod = paymentMethod;
+    if (payInitFrom) matchFilters.payInitFrom = payInitFrom;
+    if (stationId) matchFilters.stationId = stationId;
+
+    if (Object.keys(matchFilters).length > 0) {
+      pipeline.push({ $match: matchFilters });
+    }
+
+    pipeline.push({
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "userId",
+        pipeline: [
+          {
+            $project: {
+              firstName: 1,
+              lastName: 1,
+              contact: 1,
+              createdAt: 1,
+              updatedAt: 1,
+            },
+          },
+        ],
+      },
+    });
+
+    pipeline.push({
+      $unwind: {
+        path: "$userId",
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+
+    pipeline.push({
+      $addFields: {
+        "userId.fullName": {
+          $concat: [
+            { $ifNull: ["$userId.firstName", ""] },
+            {
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$userId.firstName", null] },
+                    { $ne: ["$userId.lastName", null] },
+                  ],
+                },
+                then: " ",
+                else: "",
+              },
+            },
+            { $ifNull: ["$userId.lastName", ""] },
+          ],
+        },
+      },
+    });
+
+    const populatedFilters = {};
+    if (fullName) {
+      populatedFilters["userId.fullName"] = {
+        $regex: fullName,
+        $options: "i",
+      };
+    }
+    if (contact) {
+      populatedFilters["userId.contact"] = {
+        $regex: contact,
+        $options: "i",
+      };
+    }
 
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, "i");
 
-      filters.$or = [
+      const searchConditions = [
         { bookingId: searchRegex },
         { vehicleBrand: searchRegex },
         { vehicleName: searchRegex },
@@ -106,28 +185,35 @@ const getBooking = async (query) => {
         { paymentMethod: searchRegex },
         { rideStatus: searchRegex },
         { payInitFrom: searchRegex },
-        {
-          BookingStartDateAndTime: {
-            $regex: searchRegex,
-          },
-        },
-        {
-          BookingEndDateAndTime: {
-            $regex: searchRegex,
-          },
-        },
+        { BookingStartDateAndTime: { $regex: searchRegex } },
+        { BookingEndDateAndTime: { $regex: searchRegex } },
+        { "userId.fullName": searchRegex },
+        { "userId.contact": searchRegex },
       ];
+
+      if (Object.keys(populatedFilters).length > 0) {
+        populatedFilters.$and = [{ $or: searchConditions }, populatedFilters];
+      } else {
+        populatedFilters.$or = searchConditions;
+      }
+    }
+
+    if (Object.keys(populatedFilters).length > 0) {
+      pipeline.push({ $match: populatedFilters });
     }
 
     const skip = (page - 1) * limit;
+    const countPipeline = [...pipeline, { $count: "total" }];
 
-    const bookings = await Booking.find(filters)
-      .populate("userId", "firstName lastName contact createdAt updatedAt")
-      .sort({ [sortby]: sortorder })
-      .skip(skip)
-      .limit(Number(limit));
+    pipeline.push({ $sort: { [sortby]: sortorder } });
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: Number(limit) });
 
-    // If no bookings found
+    const [bookings, countResult] = await Promise.all([
+      Booking.aggregate(pipeline),
+      Booking.aggregate(countPipeline),
+    ]);
+
     if (!bookings.length) {
       await Log({
         message: "No bookings found for the provided filters",
@@ -139,13 +225,10 @@ const getBooking = async (query) => {
       return obj;
     }
 
-    // Add bookings to the response
     obj.data = bookings;
 
-    // Include pagination metadata
-    const totalRecords = await Booking.count(filters);
+    const totalRecords = countResult.length > 0 ? countResult[0].total : 0;
     obj.pagination = {
-      // totalRecords,
       totalPages: Math.ceil(totalRecords / limit),
       currentPage: Number(page),
       limit: Number(limit),
@@ -155,7 +238,6 @@ const getBooking = async (query) => {
     await Log({
       message: `Error fetching bookings: ${error.message}`,
       functionName: "booking",
-      //  userId: userId || "Admin",
     });
     obj.status = 500;
     obj.message = "Internal server error";
