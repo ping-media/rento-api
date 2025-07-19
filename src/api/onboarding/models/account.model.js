@@ -47,6 +47,50 @@ async function updateUser({
   }
 }
 
+async function addOrUpdateMobileToken({ _id, token }) {
+  const o = {
+    status: 200,
+    success: true,
+    message: "data fetched successfully",
+    data: [],
+  };
+  try {
+    if (!token || !token.trim()) {
+      o.status = 400;
+      o.message = "Token is required";
+      return o;
+    }
+
+    const user = await User.findOne({ _id: ObjectId(_id) });
+
+    if (!user) {
+      o.status = 401;
+      o.success = false;
+      o.message = "Invalid user ID";
+      return o;
+    }
+
+    if (user.mobileToken === token) {
+      o.message = "Token already up-to-date";
+      return o;
+    }
+
+    await User.updateOne(
+      { _id: ObjectId(_id) },
+      {
+        $set: {
+          mobileToken: token,
+        },
+      }
+    );
+
+    o.message = "Token updated successfully";
+    return o;
+  } catch (error) {
+    throw new Error(error);
+  }
+}
+
 const getAllUsers = async (query) => {
   const obj = {
     status: 200,
@@ -343,6 +387,24 @@ async function getAllDataCount(query) {
       (booking) => booking.bookingStatus === "canceled"
     );
 
+    const nonCancelledBookings = bookings.filter(
+      (booking) => booking.bookingStatus !== "canceled"
+    );
+
+    const payOnPickupCount = nonCancelledBookings.filter(
+      (b) =>
+        b.bookingPrice?.payOnPickupMethod !== undefined &&
+        b.bookingPrice?.payOnPickupMethod !== null
+    ).length;
+
+    const amountLeftObjectCount = nonCancelledBookings.filter(
+      (b) =>
+        b.bookingPrice?.AmountLeftAfterUserPaid &&
+        typeof b.bookingPrice.AmountLeftAfterUserPaid === "object" &&
+        !Array.isArray(b.bookingPrice.AmountLeftAfterUserPaid) &&
+        b.bookingPrice.AmountLeftAfterUserPaid?.status === "paid"
+    ).length;
+
     const amount = bookings.reduce(
       (acc, item) => {
         if (
@@ -399,6 +461,7 @@ async function getAllDataCount(query) {
       bookingsCount,
       cancelBookingsCount,
       extendBookingCount,
+      CashPaymentReceivedCount: payOnPickupCount + amountLeftObjectCount,
       Amount,
     };
 
@@ -745,4 +808,5 @@ module.exports = {
   searchUser,
   updateImage,
   getUserByContact,
+  addOrUpdateMobileToken,
 };

@@ -10,6 +10,10 @@ router.post("/profile", async (req, res) => {
   accountService.updateUser(req, res);
 });
 
+router.post("/mobileToken", async (req, res) => {
+  accountService.addOrUpdateMobileToken(req, res);
+});
+
 router.get("/getAllUsers", async (req, res) => {
   accountService.getAllUsers(req, res);
 });

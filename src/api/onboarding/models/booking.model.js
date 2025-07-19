@@ -9,7 +9,6 @@ const { timelineFunctionServer } = require("./timeline.model.js");
 const { default: axios } = require("axios");
 const Timeline = require("../../../db/schemas/onboarding/timeline.schema.js");
 const { createPaymentLinkUtil } = require("./razorpay.model.js");
-const { sendMessageAfterBooking } = require("../../../utils/index.js");
 require("dotenv").config();
 
 // Get All Bookings with Filtering and Pagination
@@ -36,6 +35,7 @@ const getBooking = async (query) => {
       vehicleNumber,
       fullName,
       contact,
+      isCash = false,
       page = 1,
       limit = 10,
     } = query;
@@ -104,6 +104,30 @@ const getBooking = async (query) => {
 
     if (Object.keys(matchFilters).length > 0) {
       pipeline.push({ $match: matchFilters });
+    }
+
+    if (isCash) {
+      pipeline.push({
+        $match: {
+          $and: [
+            {
+              $or: [
+                {
+                  "bookingPrice.AmountLeftAfterUserPaid.status": "paid",
+                },
+                {
+                  "bookingPrice.payOnPickupMethod": {
+                    $exists: true,
+                  },
+                },
+              ],
+            },
+            {
+              bookingStatus: { $ne: "canceled" },
+            },
+          ],
+        },
+      });
     }
 
     pipeline.push({

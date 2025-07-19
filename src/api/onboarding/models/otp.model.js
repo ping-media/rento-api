@@ -2,7 +2,9 @@ const unirest = require("unirest");
 const User = require("../../../db/schemas/onboarding/user.schema");
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 const Otp = require("../../../db/schemas/onboarding/logOtp");
-const Log = require("../../../db/schemas/onboarding/log"); // Assuming this is your log schema
+const Log = require("../../../db/schemas/onboarding/log");
+const { mongoose } = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 
 // Function to create logs
 async function createLog(message, functionName, userId, status = 200) {
@@ -21,7 +23,7 @@ async function createLog(message, functionName, userId, status = 200) {
 
 async function otpGenerat(req, res) {
   try {
-    const { contact } = req.body;
+    const { contact, pushToken } = req.body;
 
     if (!contact) {
       const message = "Contact number is required";
@@ -46,6 +48,18 @@ async function otpGenerat(req, res) {
       const message = "Login allowed without OTP validation";
       await createLog(message, "optGernet", user._id, 200);
       return res.status(200).json({ status: 200, message });
+    }
+
+    // this is for mobile devices when every user login this token will be store in db
+    if (pushToken && pushToken !== "") {
+      await user.updateOne(
+        { _id: ObjectId(_id) },
+        {
+          $set: {
+            mobileToken: pushToken,
+          },
+        }
+      );
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000);

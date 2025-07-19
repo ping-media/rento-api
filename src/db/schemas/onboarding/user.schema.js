@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
     },
-
+    mobileToken: { type: String },
     firstName: {
       type: String,
       required: true,
@@ -21,17 +21,14 @@ const userSchema = new mongoose.Schema(
     },
     drivingLicence: {
       type: String,
-      // required: true,
       trim: true,
     },
     idProof: {
       type: String,
-      //required: true,
       trim: true,
     },
     addressProof: {
       type: String,
-      // required: true,
       trim: true,
     },
 
@@ -47,7 +44,6 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      // required: true,
     },
     dateofbirth: {
       type: String,
