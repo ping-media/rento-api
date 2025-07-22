@@ -7,7 +7,7 @@ async function sendPushNotificationUsingUserId(
   message = "You have a new booking to review",
   data = {}
 ) {
-  if (!userId && data == {}) {
+  if (!userId) {
     return null;
   }
 
@@ -24,7 +24,6 @@ async function sendPushNotificationUsingUserId(
   }
 
   await sendExpoNotification(tokenFromDB, title, message, data);
-  // { bookingId: "abc123" }
 }
 
 module.exports = { sendPushNotificationUsingUserId };

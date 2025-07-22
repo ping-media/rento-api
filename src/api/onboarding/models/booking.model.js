@@ -9,6 +9,9 @@ const { timelineFunctionServer } = require("./timeline.model.js");
 const { default: axios } = require("axios");
 const Timeline = require("../../../db/schemas/onboarding/timeline.schema.js");
 const { createPaymentLinkUtil } = require("./razorpay.model.js");
+const {
+  sendPushNotificationUsingUserId,
+} = require("../../../utils/pushNotification.js");
 require("dotenv").config();
 
 // Get All Bookings with Filtering and Pagination
@@ -568,6 +571,15 @@ const initiateBooking = async (req, res) => {
           ],
         };
         await timelineFunctionServer(timeLineData_2);
+
+        if (response?.data?.userId) {
+          sendPushNotificationUsingUserId(
+            response.data.userId,
+            "Ride Confirmed!",
+            "Your ride is successfully booked. Get ready to pick up your vehicle on time!"
+          );
+        }
+
         return res.json(response);
       }
     }
@@ -867,6 +879,13 @@ const extendBooking = async (req, res) => {
       });
 
       // await sendMessageAfterBooking(booking.bookingId);
+      if (booking.userId) {
+        sendPushNotificationUsingUserId(
+          booking.userId,
+          "Ride Extended!",
+          "Your ride is successfully extended."
+        );
+      }
 
       res.json({
         success: true,

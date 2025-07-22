@@ -6,6 +6,9 @@ const { timelineFunctionServer } = require("./timeline.model");
 const { sendMessageAfterBooking } = require("../../../utils");
 const User = require("../../../db/schemas/onboarding/user.schema");
 const TempExtension = require("../../../db/schemas/onboarding/tempExtension.schema");
+const {
+  sendPushNotificationUsingUserId,
+} = require("../../../utils/pushNotification");
 
 const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -417,6 +420,14 @@ const updateBookingAfterPayment = async (
       },
     ],
   });
+
+  if (booking.userId) {
+    sendPushNotificationUsingUserId(
+      booking.userId,
+      "Ride Confirmed!",
+      "Your ride is successfully booked. Get ready to pick up your vehicle on time!"
+    );
+  }
 };
 
 const updateBookingAfterPaymentAdmin = async (
@@ -452,6 +463,14 @@ const updateBookingAfterPaymentAdmin = async (
       },
     ],
   });
+
+  if (booking.userId) {
+    sendPushNotificationUsingUserId(
+      booking.userId,
+      "Ride Confirmed!",
+      "Your ride is successfully booked. Get ready to pick up your vehicle on time!"
+    );
+  }
 };
 
 const updateBookingWithNewExtension = async (
@@ -493,6 +512,14 @@ const updateBookingWithNewExtension = async (
       },
     ],
   });
+
+  if (booking.userId) {
+    sendPushNotificationUsingUserId(
+      booking.userId,
+      "Ride Extended!",
+      "Your ride is successfully extended."
+    );
+  }
 };
 
 const updateBookingForVehicleChange = async (
@@ -505,7 +532,7 @@ const updateBookingForVehicleChange = async (
   const booking = await Booking.findById(bookingId);
 
   if (!booking || !typeId)
-    return res.status(200).send("Booking or extension not found");
+    return res.status(200).send("Booking or diff not found");
 
   const change = booking.bookingPrice.diffAmount.find(
     (e) => e.id?.toString() === typeId?.toString()
@@ -533,6 +560,14 @@ const updateBookingForVehicleChange = async (
       },
     ],
   });
+
+  if (booking.userId) {
+    sendPushNotificationUsingUserId(
+      booking.userId,
+      "Vehicle Changed!",
+      "Your vehicle is successfully Changed."
+    );
+  }
 };
 
 const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
@@ -588,6 +623,14 @@ const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
       },
     ],
   });
+
+  if (booking.userId) {
+    sendPushNotificationUsingUserId(
+      booking.userId,
+      "Ride Extended!",
+      "Your ride is successfully extended."
+    );
+  }
 };
 
 const handleExtendBookingWebhook = async (
@@ -651,6 +694,14 @@ const handleExtendBookingWebhook = async (
       },
     ],
   });
+
+  if (booking.userId) {
+    sendPushNotificationUsingUserId(
+      booking.userId,
+      "Ride Extended!",
+      "Your ride is successfully extended."
+    );
+  }
 };
 
 const markExtendBookingAsFailed = async (
