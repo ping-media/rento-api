@@ -44,12 +44,6 @@ async function otpGenerat(req, res) {
       return res.json({ status: 400, message });
     }
 
-    if (contact === "9027408729" || contact === "8433408211") {
-      const message = "Login allowed without OTP validation";
-      await createLog(message, "optGernet", user._id, 200);
-      return res.status(200).json({ status: 200, message });
-    }
-
     // this is for mobile devices when every user login this token will be store in db
     let errorMessage = "";
 
@@ -65,6 +59,14 @@ async function otpGenerat(req, res) {
       if (updateResult.modifiedCount === 0) {
         errorMessage = "Push token update failed: no document modified";
       }
+    }
+
+    if (contact === "9027408729" || contact === "8433408211") {
+      const message = "Login allowed without OTP validation";
+      await createLog(message, "optGernet", user._id, 200);
+      return res
+        .status(200)
+        .json({ status: 200, message, error: errorMessage });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000);
