@@ -51,10 +51,20 @@ async function otpGenerat(req, res) {
     }
 
     // this is for mobile devices when every user login this token will be store in db
+    let errorMessage = "";
+
     if (pushToken && pushToken !== "") {
-      User.mobileToken = pushToken;
-      await User.save();
-      console.log("Updated pushToken for", user.contact, pushToken);
+      const updateResult = await User.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            mobileToken: pushToken,
+          },
+        }
+      );
+      if (updateResult.modifiedCount === 0) {
+        errorMessage = "Push token update failed: no document modified";
+      }
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000);
@@ -79,7 +89,7 @@ async function otpGenerat(req, res) {
 
     const message = "OTP sent successfully";
     await createLog(message, "optGernet", user._id, 200);
-    return res.status(200).json({ status: 200, message });
+    return res.status(200).json({ status: 200, message, error: errorMessage });
   } catch (error) {
     const message = `Error in optGernet: ${error.message}`;
     console.error(message);
