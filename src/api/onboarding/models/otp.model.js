@@ -52,9 +52,9 @@ async function otpGenerat(req, res) {
 
     // this is for mobile devices when every user login this token will be store in db
     if (pushToken && pushToken !== "") {
-      user.mobileToken = pushToken;
-      await user.save();
-      console.log("Updated pushToken for", contact, "=>", pushToken);
+      User.mobileToken = pushToken;
+      await User.save();
+      console.log("Updated pushToken for", user.contact, pushToken);
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000);
