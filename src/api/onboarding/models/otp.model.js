@@ -53,7 +53,7 @@ async function otpGenerat(req, res) {
     // this is for mobile devices when every user login this token will be store in db
     if (pushToken && pushToken !== "") {
       await user.updateOne(
-        { _id: ObjectId(_id) },
+        { _id: ObjectId(user._id) },
         {
           $set: {
             mobileToken: pushToken,

@@ -28,6 +28,7 @@
     "dayjs": "^1.11.13",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.8",
+    "expo-server-sdk": "^3.15.0",
     "express": "^4.21.1",
     "express-async-handler": "^1.2.0",
     "express-session": "^1.17.3",
