@@ -1034,7 +1034,7 @@ const updateBooking = async (req, res) => {
     booking.BookingEndDateAndTime = newEnd;
     await booking.save();
 
-    await timelineFunctionServer({
+    const timelineData = {
       currentBooking_id: booking._id,
       timeLine: [
         {
@@ -1044,12 +1044,15 @@ const updateBooking = async (req, res) => {
           newEndDate: isEndUpdate ? newEnd : "",
         },
       ],
-    });
+    };
+
+    await timelineFunctionServer(timelineData);
 
     res.json({
       success: true,
       isStartUpdate,
       isEndUpdate,
+      timeline: timelineData,
     });
   } catch (error) {
     console.warn(
