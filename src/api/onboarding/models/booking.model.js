@@ -15,6 +15,264 @@ const {
 require("dotenv").config();
 
 // Get All Bookings with Filtering and Pagination
+// const getBooking = async (query) => {
+//   const obj = { status: 200, message: "Data fetched successfully", data: [] };
+
+//   try {
+//     const {
+//       _id,
+//       bookingId,
+//       bookingStatus,
+//       userId = null,
+//       paymentStatus,
+//       search,
+//       vehicleBrand,
+//       vehicleName,
+//       stationName,
+//       rideStatus,
+//       paymentMethod,
+//       payInitFrom,
+//       stationId,
+//       sortBy,
+//       sortOrder,
+//       vehicleNumber,
+//       fullName,
+//       contact,
+//       isCash = false,
+//       page = 1,
+//       limit = 10,
+//     } = query;
+
+//     if (_id) {
+//       if (_id.length !== 24) {
+//         await Log({
+//           message: "Invalid booking ID",
+//           functionName: "booking",
+//           userId: userId || "Admin",
+//         });
+//         obj.status = 401;
+//         obj.message = "Invalid booking ID";
+//         return obj;
+//       }
+
+//       // Find booking by `_id`
+//       const booking = await Booking.findById(_id).populate(
+//         "userId",
+//         "firstName lastName contact createdAt updatedAt"
+//       );
+
+//       if (!booking) {
+//         await Log({
+//           message: "Booking not found for the provided ID",
+//           functionName: "booking",
+//           userId: userId || "Admin",
+//         });
+//         obj.status = 404;
+//         obj.message = "Booking not found";
+//         return obj;
+//       }
+
+//       obj.data = [booking];
+//       return obj;
+//     }
+
+//     const sortby = sortBy || "createdAt";
+//     const sortorder = sortOrder === "asc" ? 1 : -1;
+
+//     const pipeline = [];
+
+//     const matchFilters = {};
+//     if (bookingId) {
+//       matchFilters.bookingId = {
+//         $regex: bookingId,
+//         $options: "i",
+//       };
+//     }
+//     if (vehicleBrand) matchFilters.vehicleBrand = vehicleBrand;
+//     if (vehicleName) matchFilters.vehicleName = vehicleName;
+//     if (vehicleNumber) {
+//       matchFilters["vehicleBasic.vehicleNumber"] = {
+//         $regex: vehicleNumber,
+//         $options: "i",
+//       };
+//     }
+//     if (stationName) matchFilters.stationName = stationName;
+//     if (bookingStatus) matchFilters.bookingStatus = bookingStatus;
+//     if (paymentStatus) matchFilters.paymentStatus = paymentStatus;
+//     if (userId) matchFilters.userId = userId;
+//     if (rideStatus) matchFilters.rideStatus = rideStatus;
+//     if (paymentMethod) matchFilters.paymentMethod = paymentMethod;
+//     if (payInitFrom) matchFilters.payInitFrom = payInitFrom;
+//     if (stationId) matchFilters.stationId = stationId;
+
+//     if (Object.keys(matchFilters).length > 0) {
+//       pipeline.push({ $match: matchFilters });
+//     }
+
+//     if (isCash) {
+//       pipeline.push({
+//         $match: {
+//           $and: [
+//             {
+//               $or: [
+//                 {
+//                   "bookingPrice.AmountLeftAfterUserPaid.status": "paid",
+//                 },
+//                 {
+//                   "bookingPrice.payOnPickupMethod": {
+//                     $exists: true,
+//                   },
+//                 },
+//               ],
+//             },
+//             {
+//               bookingStatus: { $ne: "canceled" },
+//             },
+//           ],
+//         },
+//       });
+//     }
+
+//     pipeline.push({
+//       $lookup: {
+//         from: "users",
+//         localField: "userId",
+//         foreignField: "_id",
+//         as: "userId",
+//         pipeline: [
+//           {
+//             $project: {
+//               firstName: 1,
+//               lastName: 1,
+//               contact: 1,
+//               createdAt: 1,
+//               updatedAt: 1,
+//             },
+//           },
+//         ],
+//       },
+//     });
+
+//     pipeline.push({
+//       $unwind: {
+//         path: "$userId",
+//         preserveNullAndEmptyArrays: true,
+//       },
+//     });
+
+//     pipeline.push({
+//       $addFields: {
+//         "userId.fullName": {
+//           $concat: [
+//             { $ifNull: ["$userId.firstName", ""] },
+//             {
+//               $cond: {
+//                 if: {
+//                   $and: [
+//                     { $ne: ["$userId.firstName", null] },
+//                     { $ne: ["$userId.lastName", null] },
+//                   ],
+//                 },
+//                 then: " ",
+//                 else: "",
+//               },
+//             },
+//             { $ifNull: ["$userId.lastName", ""] },
+//           ],
+//         },
+//       },
+//     });
+
+//     const populatedFilters = {};
+//     if (fullName) {
+//       populatedFilters["userId.fullName"] = {
+//         $regex: fullName,
+//         $options: "i",
+//       };
+//     }
+//     if (contact) {
+//       populatedFilters["userId.contact"] = {
+//         $regex: contact,
+//         $options: "i",
+//       };
+//     }
+
+//     // Add search functionality
+//     if (search) {
+//       const searchRegex = new RegExp(search, "i");
+
+//       const searchConditions = [
+//         { bookingId: searchRegex },
+//         { vehicleBrand: searchRegex },
+//         { vehicleName: searchRegex },
+//         { "vehicleBasic.vehicleNumber": searchRegex },
+//         { stationName: searchRegex },
+//         { bookingStatus: searchRegex },
+//         { paymentStatus: searchRegex },
+//         { paymentMethod: searchRegex },
+//         { rideStatus: searchRegex },
+//         { payInitFrom: searchRegex },
+//         { BookingStartDateAndTime: { $regex: searchRegex } },
+//         { BookingEndDateAndTime: { $regex: searchRegex } },
+//         { "userId.fullName": searchRegex },
+//         { "userId.contact": searchRegex },
+//       ];
+
+//       if (Object.keys(populatedFilters).length > 0) {
+//         populatedFilters.$and = [{ $or: searchConditions }, populatedFilters];
+//       } else {
+//         populatedFilters.$or = searchConditions;
+//       }
+//     }
+
+//     if (Object.keys(populatedFilters).length > 0) {
+//       pipeline.push({ $match: populatedFilters });
+//     }
+
+//     const skip = (page - 1) * limit;
+//     const countPipeline = [...pipeline, { $count: "total" }];
+
+//     pipeline.push({ $sort: { [sortby]: sortorder } });
+//     pipeline.push({ $skip: skip });
+//     pipeline.push({ $limit: Number(limit) });
+
+//     const [bookings, countResult] = await Promise.all([
+//       Booking.aggregate(pipeline),
+//       Booking.aggregate(countPipeline),
+//     ]);
+
+//     if (!bookings.length) {
+//       await Log({
+//         message: "No bookings found for the provided filters",
+//         functionName: "booking",
+//         userId: userId || "Admin",
+//       });
+//       obj.message = "No records found";
+//       obj.status = 200;
+//       return obj;
+//     }
+
+//     obj.data = bookings;
+
+//     const totalRecords = countResult.length > 0 ? countResult[0].total : 0;
+//     obj.pagination = {
+//       totalPages: Math.ceil(totalRecords / limit),
+//       currentPage: Number(page),
+//       limit: Number(limit),
+//     };
+//   } catch (error) {
+//     console.error("Error fetching bookings:", error);
+//     await Log({
+//       message: `Error fetching bookings: ${error.message}`,
+//       functionName: "booking",
+//     });
+//     obj.status = 500;
+//     obj.message = "Internal server error";
+//   }
+
+//   return obj;
+// };
+
 const getBooking = async (query) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -39,6 +297,7 @@ const getBooking = async (query) => {
       fullName,
       contact,
       isCash = false,
+      dateCheck,
       page = 1,
       limit = 10,
     } = query;
@@ -212,11 +471,28 @@ const getBooking = async (query) => {
         { paymentMethod: searchRegex },
         { rideStatus: searchRegex },
         { payInitFrom: searchRegex },
-        { BookingStartDateAndTime: { $regex: searchRegex } },
-        { BookingEndDateAndTime: { $regex: searchRegex } },
         { "userId.fullName": searchRegex },
         { "userId.contact": searchRegex },
       ];
+
+      // Handle date search based on dateCheck flag
+      if (dateCheck === "pickup") {
+        searchConditions.push({
+          BookingStartDateAndTime: { $regex: searchRegex },
+        });
+      } else if (dateCheck === "dropoff") {
+        searchConditions.push({
+          BookingEndDateAndTime: { $regex: searchRegex },
+        });
+      } else {
+        // If dateCheck is not present, search in both date fields (original behavior)
+        searchConditions.push({
+          BookingStartDateAndTime: { $regex: searchRegex },
+        });
+        searchConditions.push({
+          BookingEndDateAndTime: { $regex: searchRegex },
+        });
+      }
 
       if (Object.keys(populatedFilters).length > 0) {
         populatedFilters.$and = [{ $or: searchConditions }, populatedFilters];
