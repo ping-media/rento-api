@@ -680,7 +680,7 @@ async function saveUser(userData) {
       //const name = firstName + lastName;
       const newUser = new User(userObj);
       await newUser.save();
-      whatsappMessage(contact, "welcome_customer", [firstName]);
+      whatsappMessage([contact], "welcome_customer", [firstName]);
       sendOtpByEmail(email, firstName, lastName);
       return {
         status: 200,

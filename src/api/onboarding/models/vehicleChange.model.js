@@ -119,7 +119,7 @@ const vehicleChangeInBooking = async (req, res) => {
       };
 
       await timelineFunctionServer(timeLineData);
-      whatsappMessage(contact, "bike_change", messageData);
+      whatsappMessage([contact], "bike_change", messageData);
       return res.status(200).json({
         success: true,
         message: "Vehicle Changed",
@@ -161,7 +161,7 @@ const vehicleChangeInBooking = async (req, res) => {
       };
 
       await timelineFunctionServer(timeLineData);
-      whatsappMessage(contact, "bike_change", messageData);
+      whatsappMessage([contact], "bike_change", messageData);
       res.status(200).json({
         success: true,
         message: "Vehicle Changed",

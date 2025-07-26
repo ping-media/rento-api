@@ -73,7 +73,7 @@ const timelineFunction = async (req, res) => {
           managerContact,
         ];
 
-        whatsappMessage(contact, "booking_payment_link", messageData);
+        whatsappMessage([contact], "booking_payment_link", messageData);
         sendEmailForExtendOrVehicleChange(
           email,
           firstName,

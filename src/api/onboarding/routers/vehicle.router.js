@@ -1209,7 +1209,7 @@ router.post("/sendReminder", Authentication, async (req, res) => {
     ];
 
     const whatsappResult = await whatsappMessage(
-      contact,
+      [contact],
       "booking_reminder",
       messageData
     );
@@ -1296,7 +1296,7 @@ router.post("/cancelledBooking", Authentication, async (req, res) => {
       managerContact,
     ];
 
-    whatsappMessage(contact, "booking_cancel", messageData);
+    whatsappMessage([contact], "booking_cancel", messageData);
 
     sendCancelEmail(
       email,

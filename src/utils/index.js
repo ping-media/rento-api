@@ -32,6 +32,7 @@ const sendMessageAfterBooking = async (id) => {
   }
 
   const booking = await Booking.findOne({ bookingId: id });
+
   if (!booking) {
     throw new Error("Booking not found");
   }
@@ -76,9 +77,11 @@ const sendMessageAfterBooking = async (id) => {
       return obj;
     }
 
+    const stationMasterEmail = stationMasterUser.email || "";
+
     const stationData = await station
       .findOne({ stationName })
-      .select("latitude longitude");
+      .select("latitude longitude userId");
     if (!stationData) {
       console.error(`Station not found for stationName: ${stationName}`);
       return;
@@ -86,7 +89,6 @@ const sendMessageAfterBooking = async (id) => {
 
     const { latitude, longitude } = stationData;
     const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
-    //  console.log(mapLink);
 
     const totalPrice =
       bookingPrice.discountTotalPrice > 0
@@ -106,12 +108,42 @@ const sendMessageAfterBooking = async (id) => {
       stationMasterUser.contact,
     ];
 
-    // if (bookingStatus === "extended") {
-    // }
+    if (bookingStatus === "extended") {
+      const extendRide =
+        booking?.bookingPrice?.extendAmount[
+          booking?.bookingPrice?.extendAmount?.length - 1
+        ];
+      const messageData = [
+        user.firstName,
+        booking.bookingId,
+        booking.bookingId,
+        convertDateString(extendRide?.BookingStartDateAndTime),
+        convertDateString(extendRide?.BookingEndDateAndTime),
+        (Number(extendRide?.amount) + Number(extendRide?.addOnAmount)).toFixed(
+          2
+        ),
+        extendRide?.status === "paid"
+          ? (
+              Number(extendRide?.amount) + Number(extendRide?.addOnAmount)
+            ).toFixed(2)
+          : 0,
+        stationMasterUser.contact,
+      ];
+
+      whatsappMessage(
+        [user.contact, "9916864268", stationMasterUser.contact],
+        "booking_extend",
+        messageData
+      );
+    }
     if (paymentStatus === "paid") {
       messageData.push(totalPrice, vehicleBasic.refundableDeposit);
 
-      whatsappMessage(user.contact, "booking_confirm_paid", messageData);
+      whatsappMessage(
+        [user.contact, "9916864268", stationMasterUser.contact],
+        "booking_confirm_paid",
+        messageData
+      );
     } else if (paymentStatus === "partially_paid") {
       const remainingAmount =
         Number(totalPrice) - Number(bookingPrice.userPaid);
@@ -129,7 +161,11 @@ const sendMessageAfterBooking = async (id) => {
     } else if (paymentStatus === "cash") {
       messageData.push(totalPrice, vehicleBasic.refundableDeposit);
 
-      whatsappMessage(user.contact, "booking_confirm_cash", messageData);
+      whatsappMessage(
+        [user.contact, "9916864268", stationMasterUser.contact],
+        "booking_confirm_cash",
+        messageData
+      );
     }
     sendEmailForBookingToStationMaster(
       userId,
@@ -137,7 +173,8 @@ const sendMessageAfterBooking = async (id) => {
       vehicleName,
       BookingStartDateAndTime,
       BookingEndDateAndTime,
-      bookingId
+      bookingId,
+      stationMasterEmail
     );
   }
 };

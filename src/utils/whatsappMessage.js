@@ -1,11 +1,10 @@
 const axios = require("axios");
 require("dotenv").config();
-const User = require("../db/schemas/onboarding/user.schema")
+const User = require("../db/schemas/onboarding/user.schema");
 const Station = require("../db/schemas/onboarding/station.schema");
-const Log= require("../db/schemas/onboarding/log");
+const Log = require("../db/schemas/onboarding/log");
 
 const url = "https://api.interakt.ai/v1/public/message/";
-
 
 // function extractInfo(data) {
 //   if(!data) return
@@ -21,22 +20,25 @@ const url = "https://api.interakt.ai/v1/public/message/";
 //   }
 // }
 
-async function whatsappMessage(contact, templateName, values) {
- 
-  
-   const obj = { status: 200, message: "Message sent successfully" };
-   await Log({
+async function whatsappMessage(contacts, templateName, values) {
+  const obj = { status: 200, message: "Message sent successfully" };
+  await Log({
     message: obj.message,
     functionName: "whatsapp message",
   });
 
- 
-  if (!contact || !templateName || !values || values.length === 0) {
-    console.error("Invalid input: contact, templateName, and values are required");
+  if (!Array.isArray(contacts)) {
+    contacts = [contacts];
+  }
+
+  if (!contacts.length || !templateName || !values || values.length === 0) {
+    console.error(
+      "Invalid input: contact, templateName, and values are required"
+    );
     await Log({
-          message: "Invalid input: contact, templateName, and values are required",
-          functionName: "whatsapp message",
-        });
+      message: "Invalid input: contact, templateName, and values are required",
+      functionName: "whatsapp message",
+    });
     return {
       status: 400,
       message: "Invalid input: contact, templateName, and values are required",
@@ -44,76 +46,75 @@ async function whatsappMessage(contact, templateName, values) {
   }
 
   // Prepare request data
-  const data = {
-    countryCode: "+91",
-    phoneNumber: contact,
-    type: "Template",
-    template: {
-      name: templateName,
-      languageCode: "en",
-      bodyValues: values,
-    },
-  };
+  for (const contact of contacts) {
+    const data = {
+      countryCode: "+91",
+      phoneNumber: contact,
+      type: "Template",
+      template: {
+        name: templateName,
+        languageCode: "en",
+        bodyValues: values,
+      },
+    };
 
-  const requestBody = JSON.stringify(data);
+    const requestBody = JSON.stringify(data);
 
-  const headers = {
-    "Content-Type": "application/json",
-    "Authorization": `Basic ${process.env.whatsappApiKey}` 
-};
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Basic ${process.env.whatsappApiKey}`,
+    };
 
-  console.log("Request Data:", data);
+    try {
+      const response = await fetch(
+        "https://api.interakt.ai/v1/public/message/",
+        {
+          method: "POST",
+          headers: headers,
+          body: requestBody,
+        }
+      );
 
-  try {
-    const response = await fetch("https://api.interakt.ai/v1/public/message/", {
-      method: "POST",
-      headers: headers,
-      body: requestBody,
-    });
-
-    if (!response.ok) {
-      const errorMessage = await response.text();
-      console.error("HTTP error:", response.status, response.statusText);
-      console.error("Error details:", errorMessage);
-      await Log({
-            message: `Error: ${response.statusText}`,
-            functionName: "whatsapp message",
-          });
-      return {
-        status: response.status,
-        message: `Error: ${response.statusText}`,
-        details: errorMessage,
-      };
-    }
-
-    // Parse the response JSON
-    const responseData = await response.json();
-  //  console.log("Response Data:", responseData);
-
-    obj.message = responseData.message;
-    obj.result = responseData.result;
-    await Log({
-          message: obj.message,
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        console.error("HTTP error:", response.status, response.statusText);
+        console.error("Error details:", errorMessage);
+        await Log({
+          message: `Error: ${response.statusText}`,
           functionName: "whatsapp message",
         });
+        return {
+          status: response.status,
+          message: `Error: ${response.statusText}`,
+          details: errorMessage,
+        };
+      }
 
-  } catch (error) {
-    console.error("Fetch Error:", error.message);
-    await Log({
-      message: `Error: ${error.message}`,
-      functionName: "whatsapp message",
-    });
-    return {
-      status: 500,
-      message: "Internal server error",
-      details: error.message,
-    };
+      // Parse the response JSON
+      const responseData = await response.json();
+
+      obj.message = responseData.message;
+      obj.result = responseData.result;
+      await Log({
+        message: obj.message,
+        functionName: "whatsapp message",
+      });
+    } catch (error) {
+      console.error("Fetch Error:", error.message);
+      await Log({
+        message: `Error: ${error.message}`,
+        functionName: "whatsapp message",
+      });
+      return {
+        status: 500,
+        message: "Internal server error",
+        details: error.message,
+      };
+    }
   }
 
   return obj;
 }
-
-
 
 // const sendBookingConfirmation = async (
 //   userId,stationMasterUserId,vehicleName,BookingStartDateAndTime,bookingId,stationName,mapLink,userPaid,payableAmount,refundableDeposit) => {
@@ -223,7 +224,7 @@ async function whatsappMessage(contact, templateName, values) {
 // };
 
 // const sendBookingConfirmation = async (
- 
+
 // ) => {
 //   const obj = { status: 200, message: "Message sent successfully" };
 
@@ -231,24 +232,22 @@ async function whatsappMessage(contact, templateName, values) {
 
 //     function convertDateString(dateString) {
 //       if (!dateString) return "Invalid date";
-    
+
 //       const date = new Date(dateString);
 //       if (isNaN(date)) return "Invalid date";
-    
-//       const options = { 
-//         day: 'numeric', 
-//         month: 'long', 
-//         year: 'numeric', 
-//         hour: 'numeric', 
-//         minute: '2-digit', 
-//         hour12: true 
+
+//       const options = {
+//         day: 'numeric',
+//         month: 'long',
+//         year: 'numeric',
+//         hour: 'numeric',
+//         minute: '2-digit',
+//         hour12: true
 //       };
-    
+
 //       return date.toLocaleString('en-US', options);
 //     }
 //     // Fetch user and station details
-
-    
 
 // const user = await User.findOne({ _id: userId }); // Replace 'userId' with the actual field name, e.g., '_id' or another field.
 // if (!user) {
@@ -262,7 +261,7 @@ async function whatsappMessage(contact, templateName, values) {
 //   return obj;
 // }
 
-// const station = await User.findOne({ _id: stationMasterUserId }); 
+// const station = await User.findOne({ _id: stationMasterUserId });
 // if (!station) {
 //   obj.status = 404;
 //   obj.message = `Station master not found for stationMasterUserId: ${stationMasterUserId}`;
@@ -274,8 +273,6 @@ async function whatsappMessage(contact, templateName, values) {
 //   return obj;
 // }
 
-
-
 //     // Extract required details
 //     const name = user.firstName || "Unknown Name";
 //     const contact = user.contact || "Unknown Contact";
@@ -283,7 +280,6 @@ async function whatsappMessage(contact, templateName, values) {
 //     const mapLink = "https://www.google.com/maps/search/?api=1&query="
 //     + station.latitude + "," + station.longitude;
 
-   
 //     if (
 //       !name ||
 //       !contact ||
@@ -302,7 +298,7 @@ async function whatsappMessage(contact, templateName, values) {
 //       await Log({
 //         message: obj.message,
 //         functionName: "whatsapp message",
-      
+
 //       });
 //       console.error(obj.message);
 //       return obj;
@@ -330,14 +326,13 @@ async function whatsappMessage(contact, templateName, values) {
 //         ],
 //       },
 //     };
-  
 
 //     const requestBody = JSON.stringify(data);
 //     const headers = {
 //       "Content-Type": "application/json",
 //       "Authorization": process.env.apiKey
 //   };
-  
+
 //     const response = await fetch(url, {
 //         method: "POST",
 //         headers: headers,
@@ -345,7 +340,7 @@ async function whatsappMessage(contact, templateName, values) {
 //     });
 
 //     if (!response.ok) {
-//      // const errorMessage = await response.text(); 
+//      // const errorMessage = await response.text();
 //       console.error("HTTP error:", response.status, response.statusText);
 //      // console.error("Error details:", errorMessage);
 //       return;
@@ -353,15 +348,13 @@ async function whatsappMessage(contact, templateName, values) {
 
 //     // Parse the response JSON
 //     const responseData = await response.json();
-    
+
 //     // Handle the response
 //     const message = responseData.message;
 //     const responseMsg = responseData.result;
 
 //     console.log("Message:", message);
 //     console.log("Result:", responseMsg);
-
-    
 
 // } catch (error) {
 //     console.error("Fetch Error:", error.message);

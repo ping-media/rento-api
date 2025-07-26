@@ -708,9 +708,9 @@ async function sendEmailForBookingToStationMaster(
   vehicleName,
   BookingStartDateAndTime,
   BookingEndDateAndTime,
-  bookingId
+  bookingId,
+  stationMasterEmail
 ) {
-  // const {userId, stationId,stationMasterUserId, bookingId, vehicleImage, vehicleName, stationName, BookingStartDateAndTime, BookingEndDateAndTime, bookingPrice, vehicleBasic,}=body;
   try {
     function convertDateString(dateString) {
       if (!dateString) return "Invalid date";
@@ -732,6 +732,11 @@ async function sendEmailForBookingToStationMaster(
 
     const user = await User.findOne({ _id: userId });
 
+    const ccList = ["support@rentobikes.com"];
+    if (stationMasterEmail && stationMasterEmail !== "") {
+      ccList.push(stationMasterEmail);
+    }
+
     const { email, firstName, lastName } = await User.findOne({
       _id: stationMasterUserId,
     });
@@ -739,7 +744,7 @@ async function sendEmailForBookingToStationMaster(
     const mailOptions = {
       from: "Rento Bikes <support@rentobikes.com>",
       to: email,
-      cc: "support@rentobikes.com",
+      cc: ccList,
       subject: ` Booking Received- You have received booking Id ${bookingId} from RentoBikes `,
       html: `<!DOCTYPE html>
 <html lang="en">

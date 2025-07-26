@@ -584,7 +584,7 @@ async function booking({
         if (paymentStatus === "paid") {
           messageData.push(totalPrice, vehicleBasic.refundableDeposit);
 
-          whatsappMessage(user.contact, "booking_confirm_paid", messageData);
+          whatsappMessage([user.contact], "booking_confirm_paid", messageData);
         } else if (paymentStatus === "partially_paid") {
           const remainingAmount =
             Number(totalPrice) - Number(bookingPrice.userPaid);
@@ -595,14 +595,14 @@ async function booking({
             vehicleBasic.refundableDeposit
           );
           whatsappMessage(
-            user.contact,
+            [user.contact],
             "booking_confirmed_partial_paid",
             messageData
           );
         } else if (paymentStatus === "cash") {
           messageData.push(totalPrice, vehicleBasic.refundableDeposit);
 
-          whatsappMessage(user.contact, "booking_confirm_cash", messageData);
+          whatsappMessage([user.contact], "booking_confirm_cash", messageData);
         }
         sendEmailForBookingToStationMaster(
           userId,
