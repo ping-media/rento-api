@@ -104,6 +104,7 @@ async function createVehicle({
   vehicleModel,
   locationId,
   perDayCost,
+  // perHourCost,
   lastServiceDate,
   kmsRun,
   condition,
@@ -134,6 +135,7 @@ async function createVehicle({
         extraKmsCharges &&
         vehicleModel &&
         perDayCost &&
+        // perHourCost &&
         lastServiceDate &&
         lastMeterReading &&
         kmsRun &&
@@ -168,17 +170,6 @@ async function createVehicle({
         }
       }
 
-      // if (vehicleNumber && vehicleNumber.length !== 10) {
-      //   response.status = 401;
-      //   response.message = "Invalid vehicle number";
-      //   await Log({
-      //     message: "Invalid vehicle number length",
-      //     functionName: "createVehicle",
-      //     userId: stationId,
-      //   });
-      //   return response;
-      // }
-
       const o = {
         locationId,
         vehicleBookingStatus,
@@ -190,6 +181,7 @@ async function createVehicle({
         extraKmsCharges,
         vehicleModel,
         perDayCost,
+        // perHourCost,
         lastServiceDate,
         kmsRun,
         condition,
@@ -1089,14 +1081,15 @@ async function createPlan({
   planName,
   planPrice,
   planDuration,
+  kmLimit,
   deleteRec,
   userId,
 }) {
   const obj = { status: 200, message: "Plan created successfully", data: [] };
 
   try {
-    if (_id || (planName && planPrice && planDuration)) {
-      let o = { planName, planPrice, planDuration };
+    if (_id || (planName && planPrice && planDuration && kmLimit)) {
+      let o = { planName, planPrice, planDuration, kmLimit };
 
       // Validate _id length when updating
       if (_id) {
@@ -2709,6 +2702,7 @@ const getVehicleTbl = async (query) => {
                 days: plan.planDuration,
                 count: times,
                 planPrice: plan.planPrice,
+                kmLimit: plan.kmLimit ?? 0,
               });
 
               remainingDays -= times * plan.planDuration;
@@ -5565,7 +5559,6 @@ const getPlanData = async (query) => {
         { planName: { $regex: search, $options: "i" } },
         { stationName: { $regex: search, $options: "i" } },
         { vehicleName: { $regex: search, $options: "i" } },
-        //  { locationId: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -5603,6 +5596,7 @@ const getPlanData = async (query) => {
           planName: 1,
           planDuration: 1,
           planPrice: 1,
+          kmLimit: 1,
           stationId: 1,
           vehicleMasterId: 1,
           locationId: 1,
@@ -5612,7 +5606,6 @@ const getPlanData = async (query) => {
         },
       },
       { $match: matchFilter },
-      // { $sort: { planName: 1 } }, // Sort by planName (ascending)
       { $skip: skip },
       { $limit: Number(limit) },
       { $sort: { createdAt: -1 } },
