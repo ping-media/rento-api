@@ -49,12 +49,12 @@ const kycApprovalFunction = async (req, res) => {
     }
 
     // const isLicenseValid = validateLicense(licenseNumber);
-    if (licenseNumber.length != 15) {
-      return res.json({
-        status: 400,
-        message: "Invalid license number",
-      });
-    }
+    // if (licenseNumber.length != 15) {
+    //   return res.json({
+    //     status: 400,
+    //     message: "Invalid license number",
+    //   });
+    // }
 
     const ObjDta = { userId, aadharNumber, licenseNumber };
 
