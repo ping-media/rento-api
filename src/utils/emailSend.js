@@ -4,6 +4,7 @@ const Station = require("../db/schemas/onboarding/station.schema");
 const User = require("../db/schemas/onboarding/user.schema");
 const fs = require("fs");
 const path = require("path");
+const Log = require("../api/onboarding/models/Logs.model");
 
 // const transporter = nodemailer.createTransport({
 //   port: 465,
@@ -909,10 +910,17 @@ async function sendEmailForBookingToStationMaster(
 </html>`,
     };
     const info = await transporter.sendMail(mailOptions);
-
+    await Log({
+      message: `Email Send successfully with message id ${info.messageId}`,
+      functionName: "sendEmailForBookingToStationMaster",
+    });
     console.log("Email sent: %s", info.messageId);
     return { success: true };
   } catch (error) {
+    await Log({
+      message: `Email failed with error: ${error?.message}`,
+      functionName: "sendEmailForBookingToStationMaster",
+    });
     console.error("Error sending OTP email:", error.message);
     return { success: false, error: error.message };
   }

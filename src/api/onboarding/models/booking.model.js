@@ -12,6 +12,7 @@ const { createPaymentLinkUtil } = require("./razorpay.model.js");
 const {
   sendPushNotificationUsingUserId,
 } = require("../../../utils/pushNotification.js");
+const { sendMessageAfterBooking } = require("../../../utils/index.js");
 require("dotenv").config();
 
 // Get All Bookings with Filtering and Pagination
@@ -849,11 +850,24 @@ const initiateBooking = async (req, res) => {
         await timelineFunctionServer(timeLineData_2);
 
         if (response?.data?.userId) {
-          sendPushNotificationUsingUserId(
+          await sendPushNotificationUsingUserId(
             response.data.userId,
             "Ride Confirmed!",
             "Your ride is successfully booked. Get ready to pick up your vehicle on time!"
           );
+        }
+
+        if (response?.data?.bookingId) {
+          const notificationSend = await sendMessageAfterBooking(
+            response?.data?.bookingId
+          );
+
+          if (!notificationSend.success) {
+            await Log({
+              message: notificationSend?.message,
+              functionName: "initiateBooking",
+            });
+          }
         }
 
         return res.json(response);
@@ -1069,6 +1083,7 @@ const extendBooking = async (req, res) => {
 
   // Validate required fields
   if (!_id || !bookingId || !amount || !data?.extendAmount?.id) {
+    // console.log("Missing required fields! try again");
     return res.status(400).json({
       message: "Missing required fields! try again",
     });

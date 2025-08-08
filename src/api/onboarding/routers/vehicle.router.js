@@ -85,6 +85,7 @@ const {
   uploadImageToBucketForPickupImage,
   deleteImageFromBucket,
 } = require("../models/uploadAndDeleteImage.modal");
+const { sendMessageAfterBooking } = require("../../../utils");
 // const { cancelPendingPayments } = require("../utils/cron.js");
 
 // create messages
@@ -1327,6 +1328,11 @@ router.post("/GeneratePaymentToken", async (req, res) => {
   } catch (error) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
+});
+
+router.post("/send-notification", async (req, res) => {
+  const { bookingId } = req.body;
+  return sendMessageAfterBooking(bookingId);
 });
 
 module.exports = router;

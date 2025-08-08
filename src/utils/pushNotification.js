@@ -1,5 +1,6 @@
 const { sendExpoNotification } = require("./expoPush");
 const User = require("../db/schemas/onboarding/user.schema");
+const Log = require("../api/onboarding/models/Logs.model");
 
 async function sendPushNotificationUsingUserId(
   userId,
@@ -8,11 +9,19 @@ async function sendPushNotificationUsingUserId(
   data = {}
 ) {
   if (!userId) {
+    await Log({
+      message: `User id not found`,
+      functionName: "sendPushNotificationUsingUserId",
+    });
     return null;
   }
 
-  const user = User.findById(userId);
+  const user = await User.findById(userId);
   if (!user) {
+    await Log({
+      message: `User not found with this id ${userId}`,
+      functionName: "sendPushNotificationUsingUserId",
+    });
     return null;
   }
 
@@ -20,6 +29,10 @@ async function sendPushNotificationUsingUserId(
     user?.mobileToken && user?.mobileToken !== "" ? user?.mobileToken : "";
 
   if (tokenFromDB === "") {
+    await Log({
+      message: `User mobile token not found with this id ${userId}`,
+      functionName: "sendPushNotificationUsingUserId",
+    });
     return null;
   }
 

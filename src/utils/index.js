@@ -24,158 +24,171 @@ const convertDateString = (dateString) => {
 };
 
 const sendMessageAfterBooking = async (id) => {
-  if (!id) {
-    await Log({
-      message: `Uable to get bookingId`,
-      functionName: "sendMessageAfterBooking",
-    });
-  }
-
-  const booking = await Booking.findOne({ bookingId: id });
-
-  if (!booking) {
-    throw new Error("Booking not found");
-  }
-
-  const {
-    userId,
-    stationMasterUserId,
-    stationName,
-    bookingPrice,
-    vehicleBasic,
-    vehicleName,
-    BookingStartDateAndTime,
-    BookingEndDateAndTime,
-    bookingId,
-    // bookingStatus,
-    paymentStatus,
-  } = booking;
-
-  if (userId && stationMasterUserId) {
-    var user = await User.findById(userId);
-    if (!user) {
-      obj.status = 404;
-      obj.message = "User not found";
-
+  try {
+    if (!id) {
       await Log({
-        message: `User not found with ID: ${userId}`,
-        functionName: "booking",
+        message: `Uable to get bookingId`,
+        functionName: "sendMessageAfterBooking",
       });
-      return obj;
-    }
-
-    var stationMasterUser = await User.findById(stationMasterUserId);
-    if (!stationMasterUser) {
-      obj.status = 404;
-      obj.message = "Station master user not found";
-
-      await Log({
-        message: `Station master user not found with ID: ${stationMasterUserId}`,
-        functionName: "booking",
-        userId,
-      });
-      return obj;
-    }
-
-    const stationMasterEmail = stationMasterUser.email || "";
-
-    const stationData = await station
-      .findOne({ stationName })
-      .select("latitude longitude userId");
-    if (!stationData) {
-      console.error(`Station not found for stationName: ${stationName}`);
       return;
     }
 
-    const { latitude, longitude } = stationData;
-    const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    const booking = await Booking.find({ bookingId: id }).lean();
 
-    const totalPrice =
-      bookingPrice.discountTotalPrice > 0
-        ? bookingPrice.discountTotalPrice
-        : bookingPrice.totalPrice;
-
-    // Prepare message data
-    const date = convertDateString(BookingStartDateAndTime);
-
-    const messageData = [
-      user.firstName,
-      vehicleName,
-      date,
-      bookingId,
-      stationName,
-      mapLink,
-      stationMasterUser.contact,
-    ];
-
-    if (bookingStatus === "extended") {
-      const extendRide =
-        booking?.bookingPrice?.extendAmount[
-          booking?.bookingPrice?.extendAmount?.length - 1
-        ];
-      const messageData = [
-        user.firstName,
-        booking.bookingId,
-        booking.bookingId,
-        convertDateString(extendRide?.BookingStartDateAndTime),
-        convertDateString(extendRide?.BookingEndDateAndTime),
-        (Number(extendRide?.amount) + Number(extendRide?.addOnAmount)).toFixed(
-          2
-        ),
-        extendRide?.status === "paid"
-          ? (
-              Number(extendRide?.amount) + Number(extendRide?.addOnAmount)
-            ).toFixed(2)
-          : 0,
-        stationMasterUser.contact,
-      ];
-
-      whatsappMessage(
-        [user.contact, "9916864268", stationMasterUser.contact],
-        "booking_extend",
-        messageData
-      );
+    if (!booking) {
+      console.log("Booking not found");
+      await Log({
+        message: `Booking not found ${id}`,
+        functionName: "sendMessageAfterBooking",
+      });
+      return;
     }
-    if (paymentStatus === "paid") {
-      messageData.push(totalPrice, vehicleBasic.refundableDeposit);
 
-      whatsappMessage(
-        [user.contact, "9916864268", stationMasterUser.contact],
-        "booking_confirm_paid",
-        messageData
-      );
-    } else if (paymentStatus === "partially_paid") {
-      const remainingAmount =
-        Number(totalPrice) - Number(bookingPrice.userPaid);
-
-      messageData.push(
-        bookingPrice.userPaid,
-        remainingAmount,
-        vehicleBasic.refundableDeposit
-      );
-      whatsappMessage(
-        user.contact,
-        "booking_confirmed_partial_paid",
-        messageData
-      );
-    } else if (paymentStatus === "cash") {
-      messageData.push(totalPrice, vehicleBasic.refundableDeposit);
-
-      whatsappMessage(
-        [user.contact, "9916864268", stationMasterUser.contact],
-        "booking_confirm_cash",
-        messageData
-      );
-    }
-    sendEmailForBookingToStationMaster(
+    const {
       userId,
       stationMasterUserId,
+      stationName,
+      bookingPrice,
+      vehicleBasic,
       vehicleName,
       BookingStartDateAndTime,
       BookingEndDateAndTime,
       bookingId,
-      stationMasterEmail
-    );
+      // bookingStatus,
+      paymentStatus,
+    } = booking;
+
+    if (userId && stationMasterUserId) {
+      var user = await User.findById(userId);
+      if (!user) {
+        obj.status = 404;
+        obj.message = "User not found";
+
+        await Log({
+          message: `User not found with ID: ${userId}`,
+          functionName: "booking",
+        });
+        return obj;
+      }
+
+      var stationMasterUser = await User.findById(stationMasterUserId);
+      if (!stationMasterUser) {
+        obj.status = 404;
+        obj.message = "Station master user not found";
+
+        await Log({
+          message: `Station master user not found with ID: ${stationMasterUserId}`,
+          functionName: "booking",
+          userId,
+        });
+        return obj;
+      }
+
+      const stationMasterEmail = stationMasterUser.email || "";
+
+      const stationData = await station
+        .findOne({ stationName })
+        .select("latitude longitude userId");
+      if (!stationData) {
+        console.error(`Station not found for stationName: ${stationName}`);
+        return;
+      }
+
+      const { latitude, longitude } = stationData;
+      const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+
+      const totalPrice =
+        bookingPrice.discountTotalPrice > 0
+          ? bookingPrice.discountTotalPrice
+          : bookingPrice.totalPrice;
+
+      // Prepare message data
+      const date = convertDateString(BookingStartDateAndTime);
+
+      const messageData = [
+        user.firstName,
+        vehicleName,
+        date,
+        bookingId,
+        stationName,
+        mapLink,
+        stationMasterUser.contact,
+      ];
+
+      if (bookingStatus === "extended") {
+        const extendRide =
+          booking?.bookingPrice?.extendAmount[
+            booking?.bookingPrice?.extendAmount?.length - 1
+          ];
+        const messageData = [
+          user.firstName,
+          booking.bookingId,
+          booking.bookingId,
+          convertDateString(extendRide?.BookingStartDateAndTime),
+          convertDateString(extendRide?.BookingEndDateAndTime),
+          (
+            Number(extendRide?.amount) + Number(extendRide?.addOnAmount)
+          ).toFixed(2),
+          extendRide?.status === "paid"
+            ? (
+                Number(extendRide?.amount) + Number(extendRide?.addOnAmount)
+              ).toFixed(2)
+            : 0,
+          stationMasterUser.contact,
+        ];
+
+        await whatsappMessage(
+          [user.contact, "9916864268", stationMasterUser.contact],
+          "booking_extend",
+          messageData
+        );
+      }
+      if (paymentStatus === "paid") {
+        messageData.push(totalPrice, vehicleBasic.refundableDeposit);
+
+        await whatsappMessage(
+          [user.contact, "9916864268", stationMasterUser.contact],
+          "booking_confirm_paid",
+          messageData
+        );
+      } else if (paymentStatus === "partially_paid") {
+        const remainingAmount =
+          Number(totalPrice) - Number(bookingPrice.userPaid);
+
+        messageData.push(
+          bookingPrice.userPaid,
+          remainingAmount,
+          vehicleBasic.refundableDeposit
+        );
+        await whatsappMessage(
+          user.contact,
+          "booking_confirmed_partial_paid",
+          messageData
+        );
+      } else if (paymentStatus === "cash") {
+        messageData.push(totalPrice, vehicleBasic.refundableDeposit);
+
+        await whatsappMessage(
+          [user.contact, "9916864268", stationMasterUser.contact],
+          "booking_confirm_cash",
+          messageData
+        );
+      }
+      await sendEmailForBookingToStationMaster(
+        userId,
+        stationMasterUserId,
+        vehicleName,
+        BookingStartDateAndTime,
+        BookingEndDateAndTime,
+        bookingId,
+        stationMasterEmail
+      );
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.log("Error while sending notification", error?.message);
+    return { success: false, message: error?.message };
   }
 };
 

@@ -353,6 +353,7 @@ const razorpayWebhook = async (req, res) => {
           amountPaid,
           type
         );
+
         if (bookingId) {
           await sendMessageAfterBooking(bookingId);
         }

@@ -22,10 +22,6 @@ const url = "https://api.interakt.ai/v1/public/message/";
 
 async function whatsappMessage(contacts, templateName, values) {
   const obj = { status: 200, message: "Message sent successfully" };
-  await Log({
-    message: obj.message,
-    functionName: "whatsapp message",
-  });
 
   if (!Array.isArray(contacts)) {
     contacts = [contacts];
