@@ -1,4 +1,5 @@
 const { Expo } = require("expo-server-sdk");
+const Log = require("../api/onboarding/models/Logs.model");
 
 const expo = new Expo();
 
@@ -11,8 +12,15 @@ const expo = new Expo();
  * @param data Optional payload
  */
 async function sendExpoNotification(token, title, body, data = {}) {
+  console.log(token);
   if (!Expo.isExpoPushToken(token)) {
-    throw new Error("Invalid Expo push token");
+    await Log({
+      message: `Invalid Expo push token`,
+      functionName: "sendPushNotificationUsingUserId",
+    });
+
+    console.log("Invalid Expo push token");
+    return;
   }
 
   const messages = [
@@ -34,8 +42,12 @@ async function sendExpoNotification(token, title, body, data = {}) {
       tickets.push(...ticketChunk);
     }
   } catch (error) {
-    console.error("Error sending notification:", error);
-    throw error;
+    console.error("Error sending notification:", error?.message);
+
+    await Log({
+      message: `Error sending notification: ${error?.message}`,
+      functionName: "sendPushNotificationUsingUserId",
+    });
   }
 
   return tickets;

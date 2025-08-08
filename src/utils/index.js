@@ -3,7 +3,11 @@ const Log = require("../api/onboarding/models/Logs.model.js");
 const station = require("../db/schemas/onboarding/station.schema.js");
 const User = require("../db/schemas/onboarding/user.schema.js");
 const { whatsappMessage } = require("./whatsappMessage.js");
-const { sendEmailForBookingToStationMaster } = require("./emailSend.js");
+const {
+  sendEmailForBookingToStationMaster,
+  sendCancelEmail,
+} = require("./emailSend.js");
+const Timeline = require("../db/schemas/onboarding/timeline.schema.js");
 
 const convertDateString = (dateString) => {
   if (!dateString) return "Invalid date";
@@ -33,7 +37,7 @@ const sendMessageAfterBooking = async (id) => {
       return;
     }
 
-    const booking = await Booking.find({ bookingId: id }).lean();
+    const booking = await Booking.findOne({ bookingId: id.toString() }).lean();
 
     if (!booking) {
       console.log("Booking not found");
@@ -45,6 +49,7 @@ const sendMessageAfterBooking = async (id) => {
     }
 
     const {
+      _id,
       userId,
       stationMasterUserId,
       stationName,
@@ -54,9 +59,12 @@ const sendMessageAfterBooking = async (id) => {
       BookingStartDateAndTime,
       BookingEndDateAndTime,
       bookingId,
-      // bookingStatus,
+      bookingStatus,
       paymentStatus,
+      paymentMethod,
     } = booking;
+
+    console.log(paymentStatus);
 
     if (userId && stationMasterUserId) {
       var user = await User.findById(userId);
@@ -165,7 +173,7 @@ const sendMessageAfterBooking = async (id) => {
           "booking_confirmed_partial_paid",
           messageData
         );
-      } else if (paymentStatus === "cash") {
+      } else if (paymentMethod === "cash" && paymentStatus === "pending") {
         messageData.push(totalPrice, vehicleBasic.refundableDeposit);
 
         await whatsappMessage(
@@ -174,15 +182,65 @@ const sendMessageAfterBooking = async (id) => {
           messageData
         );
       }
-      await sendEmailForBookingToStationMaster(
-        userId,
-        stationMasterUserId,
-        vehicleName,
-        BookingStartDateAndTime,
-        BookingEndDateAndTime,
-        bookingId,
-        stationMasterEmail
-      );
+      if (bookingStatus === "extended") {
+        const timelineData = await Timeline.findOne({ currentBooking_id: _id });
+
+        if (!timelineData) {
+          await Log({
+            message: `Timeline not found`,
+            functionName: "sendMessageAfterBooking",
+          });
+
+          return res.json({
+            success: false,
+            message: "Timeline not found",
+          });
+        }
+
+        const timeLine = timelineData?.timeLine;
+
+        const link = `https://${timeLine[timelineData.length - 1].PaymentLink}`;
+        const amount = timeLine[timeLine.length - 1].paymentAmount;
+        const flag =
+          timeLine[timeLine.length - 1].changeToVehicle == ""
+            ? "Extend vehicle"
+            : "Change vehicle";
+        const firstName = userId.firstName;
+        const email = userId.email;
+        const managerContact = stationMasterUserId.contact;
+        const bookingId = bookingId;
+
+        await sendEmailForExtendOrVehicleChange(
+          email,
+          firstName,
+          flag,
+          bookingId,
+          amount,
+          link,
+          managerContact
+        );
+      } else if (bookingStatus === "canceled") {
+        sendCancelEmail(
+          email,
+          userId.firstName,
+          vehicleName,
+          bookingId,
+          BookingStartDateAndTime,
+          stationName,
+          totalPrice,
+          managerContact
+        );
+      } else {
+        await sendEmailForBookingToStationMaster(
+          userId,
+          stationMasterUserId,
+          vehicleName,
+          BookingStartDateAndTime,
+          BookingEndDateAndTime,
+          bookingId,
+          stationMasterEmail
+        );
+      }
     }
 
     return { success: true };

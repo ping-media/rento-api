@@ -25,8 +25,7 @@ async function sendPushNotificationUsingUserId(
     return null;
   }
 
-  const tokenFromDB =
-    user?.mobileToken && user?.mobileToken !== "" ? user?.mobileToken : "";
+  const tokenFromDB = (user?.mobileToken && user?.mobileToken) || "";
 
   if (tokenFromDB === "") {
     await Log({
