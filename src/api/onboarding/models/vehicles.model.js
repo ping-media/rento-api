@@ -1522,6 +1522,7 @@ async function createStation({
   latitude,
   longitude,
   mapLink,
+  weekendPriceIncrease,
   _id,
   status,
   deleteRec,
@@ -1564,6 +1565,7 @@ async function createStation({
     userId,
     mapLink,
     stationName,
+    weekendPriceIncrease,
   };
 
   try {
@@ -2627,6 +2629,7 @@ const getVehicleTbl = async (query) => {
           kmsRun: 1,
           condition: 1,
           locationId: 1,
+          stationData: 1,
           stationId: 1,
         },
       },
@@ -2684,6 +2687,10 @@ const getVehicleTbl = async (query) => {
         const weekendPrice = pricingRules.weakend?.Price || 0;
         const weekendPriceType = pricingRules.weakend?.PriceType || "+";
 
+        // Check if this station has weekend price increase enabled
+        const stationWeekendEnabled =
+          adjustedVehicle.stationData?.weekendPriceIncrease === true;
+
         if (
           adjustedVehicle.vehiclePlan &&
           adjustedVehicle.vehiclePlan.length > 0
@@ -2722,7 +2729,7 @@ const getVehicleTbl = async (query) => {
           let dailyRate = originalPerDayCost;
 
           // Apply weekend pricing
-          if (isWeekend && pricingRules.weakend) {
+          if (isWeekend && stationWeekendEnabled && pricingRules.weakend) {
             if (weekendPriceType === "+") {
               dailyRate += (originalPerDayCost * weekendPrice) / 100;
             } else if (weekendPriceType === "-") {
@@ -2757,6 +2764,7 @@ const getVehicleTbl = async (query) => {
             date: new Date(currentDate),
             isWeekend,
             dailyRate: Math.round(dailyRate),
+            weekendPriceApplied: isWeekend && stationWeekendEnabled,
           });
 
           currentDate.setDate(currentDate.getDate() + 1);
@@ -2771,7 +2779,7 @@ const getVehicleTbl = async (query) => {
         const startDay = startDateObj.getDay();
         const isStartWeekend = startDay === 0 || startDay === 6;
 
-        if (isStartWeekend && pricingRules.weakend) {
+        if (isStartWeekend && stationWeekendEnabled && pricingRules.weakend) {
           adjustedVehicle.perDayCost =
             weekendPriceType === "+"
               ? Math.round(
@@ -3786,6 +3794,10 @@ const getVehicleTblData = async (query) => {
         const weekendPrice = pricingRules.weakend?.Price || 0;
         const weekendPriceType = pricingRules.weakend?.PriceType || "+";
 
+        // Check if this station has weekend price increase enabled
+        const stationWeekendEnabled =
+          adjustedVehicle.stationData?.weekendPriceIncrease === true;
+
         // STEP 1: Apply Plan Pricing (e.g. 7-day, 15-day, etc.)
         if (
           adjustedVehicle.vehiclePlan &&
@@ -3825,7 +3837,7 @@ const getVehicleTblData = async (query) => {
           let dailyRate = originalPerDayCost;
 
           // Apply weekend pricing
-          if (isWeekend && pricingRules.weakend) {
+          if (isWeekend && stationWeekendEnabled && pricingRules.weakend) {
             if (weekendPriceType === "+") {
               dailyRate += (originalPerDayCost * weekendPrice) / 100;
             } else if (weekendPriceType === "-") {
@@ -3859,6 +3871,7 @@ const getVehicleTblData = async (query) => {
             date: new Date(currentDate),
             isWeekend,
             dailyRate: Math.round(dailyRate),
+            weekendPriceApplied: isWeekend && stationWeekendEnabled,
           });
 
           currentDate.setDate(currentDate.getDate() + 1);
@@ -3873,7 +3886,7 @@ const getVehicleTblData = async (query) => {
         const startDay = startDateObj.getDay();
         const isStartWeekend = startDay === 0 || startDay === 6;
 
-        if (isStartWeekend && pricingRules.weakend) {
+        if (isStartWeekend && stationWeekendEnabled && pricingRules.weakend) {
           adjustedVehicle.perDayCost =
             weekendPriceType === "+"
               ? Math.round(

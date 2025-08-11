@@ -179,4 +179,229 @@ const vehicleChangeInBooking = async (req, res) => {
   }
 };
 
-module.exports = { vehicleChangeInBooking };
+const vehicleChange = async (req, res) => {
+  const { booking_id, newVehicleData, daysLeft, totalBookingDuration } =
+    req.body;
+
+  if (
+    !booking_id ||
+    !newVehicleData._id ||
+    daysLeft < 0 ||
+    totalBookingDuration <= 0
+  ) {
+    return res.json({
+      success: false,
+      message:
+        "Invalid request: Please provide a valid booking ID, vehicle details, a non-negative number of days left, and a total booking duration greater than zero.",
+    });
+  }
+
+  const booking = await Booking.findById(booking_id);
+
+  if (!booking) {
+    return res.json({
+      success: false,
+      message:
+        "Unable to fetch booking or there is no booking with this booking id! try again",
+    });
+  }
+
+  let timeLineData = null;
+
+  if (booking?.vehicleMasterId !== newVehicleData?.vehicleMasterId) {
+    let refundAmount = 0;
+
+    if (daysLeft > 0) {
+      const oldBookingPrice = booking.bookingPrice;
+      let oldTotalPrice = oldBookingPrice.totalPrice;
+
+      if (
+        oldBookingPrice.extendAmount &&
+        oldBookingPrice.extendAmount?.length > 0
+      ) {
+        const oldExtendBookingPrice = oldBookingPrice.extendAmount.reduce(
+          (sum, p) => {
+            return sum + (Number(p.amount) + Number(p.addOnAmount || 0));
+          },
+          0
+        );
+        if (oldExtendBookingPrice > 0) {
+          oldTotalPrice += oldExtendBookingPrice;
+        }
+      }
+
+      const balanceLeft = (oldTotalPrice / totalBookingDuration) * daysLeft;
+      const newBalance =
+        (newVehicleData.totalRentalCost / totalBookingDuration) * daysLeft;
+
+      refundAmount = newBalance - balanceLeft;
+    }
+    // storing old vehicle info
+    booking.changeVehicle = {
+      vehicleMasterId: booking?.vehicleMasterId,
+      vehicleTableId: booking?.vehicleTableId,
+      bookingPrice: booking?.bookingPrice,
+      vehicleName: booking?.vehicleName,
+      vehicleNumber: booking?.vehicleBasic?.vehicleNumber,
+    };
+    // now updating with new details
+    booking.vehicleTableId = newVehicleData._id;
+    booking.vehicleMasterId = newVehicleData.vehicleMasterId;
+    booking.vehicleImage = newVehicleData.vehicleImage;
+    booking.vehicleBrand = newVehicleData.vehicleBrand;
+    booking.vehicleName = newVehicleData.vehicleName;
+    booking.bookingPrice.bookingPrice = newVehicleData?.totalRentalCost;
+    booking.bookingPrice.vehiclePrice = newVehicleData?.totalRentalCost;
+    booking.bookingPrice.totalPrice =
+      newVehicleData?.totalRentalCost +
+      Number(booking.bookingPrice?.extraAddonPrice || 0);
+    booking.bookingPrice.appliedPlan = newVehicleData?.appliedPlans;
+    booking.bookingPrice.daysBreakdown = newVehicleData?._daysBreakdown;
+
+    booking.vehicleBasic.isChanged = true;
+
+    const isExtraPayment = refundAmount > 0;
+    const changedId = (booking.bookingPrice.diffAmount?.length || 0) + 1;
+    let newOrderId = "";
+
+    if (isExtraPayment) {
+      const razorpayOrder = await createOrderId({
+        amount: isExtraPayment ? refundAmount : 0,
+        booking_id: booking?.bookingId,
+        _id: booking?._id,
+        type: "ChangeVehicle",
+        typeId: changedId,
+      });
+
+      if (razorpayOrder?.id) {
+        newOrderId = razorpayOrder.id;
+      }
+    }
+
+    booking.bookingPrice.diffAmount = [
+      ...(booking.bookingPrice.diffAmount || []),
+      {
+        id: changedId,
+        title: "changedVehicle",
+        amount: isExtraPayment ? Number(refundAmount) : 0,
+        refundAmount: !isExtraPayment ? Math.abs(Number(refundAmount)) : 0,
+        paymentMethod: "",
+        orderId: newOrderId,
+        transactionId: "",
+        status: isExtraPayment ? "unpaid" : "paid",
+        rideStatus: false,
+      },
+    ];
+    booking.vehicleBasic.vehicleNumber = newVehicleData.vehicleNumber;
+
+    booking.markModified("bookingPrice");
+    booking.markModified("vehicleBasic");
+    booking.markModified("changeVehicle");
+
+    if (isExtraPayment) {
+      const paymentData = await createPaymentLinkUtil({
+        bookingId: booking?._id,
+        amount: isExtraPayment ? refundAmount : 0,
+        orderId: newOrderId,
+        type: "ChangeVehicle",
+        typeId: changedId,
+        isTimeLine: false,
+      });
+
+      if (paymentData?.paymentLinkId) {
+        timeLineData = {
+          currentBooking_id: booking._id,
+          timeLine: [
+            {
+              title: "Vehicle Changed",
+              changeToVehicle: `From (${booking?.changeVehicle?.vehicleNumber}) to (${booking?.vehicleBasic?.vehicleNumber})`,
+              date: Date.now(),
+              paymentAmount: isExtraPayment ? refundAmount : 0,
+              refundAmount: 0,
+              PaymentLink: paymentData?.paymentLink,
+            },
+          ],
+        };
+      }
+    } else {
+      timeLineData = {
+        currentBooking_id: booking._id,
+        timeLine: [
+          {
+            title: "Vehicle Changed",
+            changeToVehicle: `From (${booking?.changeVehicle?.vehicleNumber}) to (${booking?.vehicleBasic?.vehicleNumber})`,
+            date: Date.now(),
+            paymentAmount: 0,
+            refundAmount: !isExtraPayment ? Math.abs(Number(refundAmount)) : 0,
+          },
+        ],
+      };
+    }
+
+    if (timeLineData !== null) {
+      await timelineFunctionServer(timeLineData);
+    }
+  } else {
+    // storing old vehicle info
+    booking.changeVehicle = {
+      vehicleMasterId: booking?.vehicleMasterId,
+      vehicleTableId: booking?.vehicleTableId,
+      bookingPrice: booking?.bookingPrice,
+      vehicleName: booking?.vehicleName,
+      vehicleNumber: booking?.vehicleBasic?.vehicleNumber,
+    };
+    // now updating with new details
+    booking.vehicleTableId = newVehicleData._id;
+    booking.vehicleBasic.isChanged = true;
+    booking.bookingPrice.bookingPrice = newVehicleData?.totalRentalCost;
+    booking.bookingPrice.vehiclePrice = newVehicleData?.totalRentalCost;
+    booking.bookingPrice.totalPrice =
+      newVehicleData?.totalRentalCost +
+      Number(booking.bookingPrice?.extraAddonPrice || 0);
+    booking.bookingPrice.diffAmount = [
+      ...(booking.bookingPrice.diffAmount || []),
+      {
+        id: (booking.bookingPrice.diffAmount?.length || 0) + 1,
+        title: "changedVehicle",
+        amount: 0,
+        refundAmount: 0,
+        paymentMethod: "",
+        orderId: "",
+        transactionId: "",
+        status: "paid",
+        rideStatus: false,
+      },
+    ];
+    booking.vehicleBasic.vehicleNumber = newVehicleData.vehicleNumber;
+
+    booking.markModified("bookingPrice");
+    booking.markModified("vehicleBasic");
+    booking.markModified("changeVehicle");
+
+    const timeLineData = {
+      currentBooking_id: booking._id,
+      timeLine: [
+        {
+          title: "Vehicle Changed",
+          changeToVehicle: `From (${booking?.changeVehicle?.vehicleNumber}) to (${booking?.vehicleBasic?.vehicleNumber})`,
+          date: Date.now(),
+          paymentAmount: 0,
+          refundAmount: 0,
+        },
+      ],
+    };
+
+    await timelineFunctionServer(timeLineData);
+  }
+
+  await booking.save();
+
+  return res.status(200).json({
+    success: true,
+    message: "Vehicle updated successfully",
+    data: booking,
+    timeLine: timeLineData,
+  });
+};
+
+module.exports = { vehicleChangeInBooking, vehicleChange };

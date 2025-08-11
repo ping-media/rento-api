@@ -285,6 +285,7 @@ const savePickupImageLinks = async (req, res) => {
       vehicleNumber,
       oldVehicleEndMeterReading,
       imageLinks,
+      startDateAndTime,
     } = req.body;
 
     if (!userId || userId === "") {
@@ -427,6 +428,7 @@ const savePickupImageLinks = async (req, res) => {
             rideStatus: "ongoing",
             "vehicleBasic.endRide": OTP,
             "bookingPrice.AmountLeftAfterUserPaid": updatedAmountLeft,
+            "vehicleBasic.RideStart": startDateAndTime || "",
             paymentStatus: "paid",
           },
         },

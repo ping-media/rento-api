@@ -54,7 +54,10 @@ const {
   timelineFunction,
   timelineFunctionForGet,
 } = require("../models/timeline.model");
-const { vehicleChangeInBooking } = require("../models/vehicleChange.model");
+const {
+  vehicleChangeInBooking,
+  vehicleChange,
+} = require("../models/vehicleChange.model");
 const { extentBooking } = require("../models/extentBooking.model");
 const { forgetPasswordFunction } = require("../models/forgetPassword");
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
@@ -982,6 +985,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     closingDate,
     paymentMode,
     refundAmount,
+    endDateTime,
   } = req.body;
 
   const obj = { status: 200, message: "", data: {} };
@@ -1066,6 +1070,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
             bookingPrice: newBookingPrice,
             BookingEndDateAndTime: closingDate,
             "extendBooking.originalEndDate": BookingEndDateAndTime,
+            "vehicleBasic.RideEnd": endDateTime || "",
             paymentStatus: paymentStatus,
           },
         },
@@ -1108,7 +1113,8 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
 });
 
 router.post("/vehicleChange", Authentication, async (req, res) => {
-  vehicleChangeInBooking(req, res);
+  // vehicleChangeInBooking(req, res);
+  vehicleChange(req, res);
 });
 
 router.post("/maintenanceVehicle", Authentication, async (req, res) => {

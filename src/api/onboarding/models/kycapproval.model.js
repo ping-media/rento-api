@@ -13,26 +13,8 @@ const kycApprovalFunction = async (req, res) => {
   }
 
   try {
-    const doc = await kycApproval.findOne({ userId });
-
-    if (doc) {
-      return res.json({
-        status: 404,
-        message: "KYC already done",
-      });
-    }
-
-    const findDoc = await kycApproval.findOne({ aadharNumber });
-
-    if (findDoc) {
-      return res.json({
-        status: 404,
-        message: "aadhar and license number already exits",
-      });
-    }
-
     const user = await User.findById(userId);
-    // console.log(user)
+
     if (!user) {
       return res.json({
         status: 404,
@@ -40,21 +22,23 @@ const kycApprovalFunction = async (req, res) => {
       });
     }
 
-    // const isAadharValid = validateAadhar(aadharNumber);
+    const existingKyc = await kycApproval.findOne({
+      $or: [{ aadharNumber }, { licenseNumber }],
+    });
+
+    if (existingKyc && existingKyc.userId.toString() !== userId) {
+      return res.status(400).json({
+        status: 400,
+        message: "Aadhaar or License already assigned to another user",
+      });
+    }
+
     if (aadharNumber.length != 12) {
       return res.json({
         status: 400,
         message: "Invalid Aadhar number",
       });
     }
-
-    // const isLicenseValid = validateLicense(licenseNumber);
-    // if (licenseNumber.length != 15) {
-    //   return res.json({
-    //     status: 400,
-    //     message: "Invalid license number",
-    //   });
-    // }
 
     const ObjDta = { userId, aadharNumber, licenseNumber };
 
@@ -64,7 +48,11 @@ const kycApprovalFunction = async (req, res) => {
 
     await User.updateOne(
       { _id: userId },
-      { kycApproved: "yes", drivingLicence: licenseNumber }
+      {
+        kycApproved: "yes",
+        isDocumentVerified: "yes",
+        drivingLicence: licenseNumber,
+      }
     );
 
     return res.status(200).json({

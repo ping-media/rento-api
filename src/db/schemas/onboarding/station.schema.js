@@ -69,6 +69,11 @@ const stationSchema = new Schema(
     mapLink: {
       type: String,
     },
+    weekendPriceIncrease: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
+    },
     status: {
       type: String,
       enum: ["active", "inactive"],
