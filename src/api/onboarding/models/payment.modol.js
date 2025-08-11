@@ -4,8 +4,16 @@ const User = require("../../../db/schemas/onboarding/user.schema");
 
 const paymentRec = async (req, res) => {
   try {
-
-    const {bookingId, email, paymentStatus, paymentMethod, search,stationId, page = 1, limit = 10, }=req.query
+    const {
+      bookingId,
+      email,
+      paymentStatus,
+      paymentMethod,
+      search,
+      stationId,
+      page = 1,
+      limit = 10,
+    } = req.query;
 
     const filters = {};
     if (bookingId) filters.bookingId = bookingId;
@@ -15,52 +23,48 @@ const paymentRec = async (req, res) => {
     if (stationId) filters.stationId = stationId;
 
     if (search) {
-      const searchRegex = new RegExp(search, "i"); 
+      const searchRegex = new RegExp(search, "i");
       filters.$or = [
         { bookingId: searchRegex },
-        // { "userId.firstName": searchRegex }, // Populate field
-        // { "userId.lastName": searchRegex }, // Populate field
-        // { "userId.email": searchRegex }, // Populate field
         { paymentMethod: searchRegex },
         { paymentStatus: searchRegex },
         { payment_order_id: searchRegex },
+        { payInitFrom: searchRegex },
         { paySuccessId: searchRegex },
       ];
     }
 
-    
     const skip = (page - 1) * limit;
     // Fetch all bookings from the database
     const bookings = await Booking.find(filters, {
-        userId: 1,
-        bookingId: 1,
-        bookingPrice:1,
-        payInitFrom:1,
-        payment_order_id: 1,
-        paySuccessId: 1,
-        payment_type: 1,
-        paymentgatewayOrderId:1,
-        paymentStatus:1,
-        paymentMethod:1,
-        paymentInitiatedDate: 1,
-        createdAt:1,
-        updatedAt:1
-      }) .populate("userId", "firstName lastName contact email")
-      .sort({ createdAt: -1 }) 
+      userId: 1,
+      bookingId: 1,
+      bookingPrice: 1,
+      payInitFrom: 1,
+      payment_order_id: 1,
+      paySuccessId: 1,
+      payment_type: 1,
+      paymentgatewayOrderId: 1,
+      paymentStatus: 1,
+      paymentMethod: 1,
+      paymentInitiatedDate: 1,
+      createdAt: 1,
+      updatedAt: 1,
+    })
+      .populate("userId", "firstName lastName contact email")
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit));
 
-      
     // Check if bookings exist
     if (!bookings || bookings.length === 0) {
       return res.json({
         status: 404,
         message: "No bookings found.",
-        data:[]
+        data: [],
       });
     }
 
-    
     const totalRecords = await Booking.count(filters);
     const pagination = {
       // totalRecords,
@@ -73,7 +77,7 @@ const paymentRec = async (req, res) => {
       status: 200,
       message: "Bookings retrieved successfully.",
       data: bookings,
-      pagination:pagination
+      pagination: pagination,
     });
   } catch (error) {
     console.error("Error fetching bookings:", error);
