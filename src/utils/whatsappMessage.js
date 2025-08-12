@@ -2,9 +2,90 @@ const axios = require("axios");
 const Log = require("../db/schemas/onboarding/log");
 require("dotenv").config();
 
-// const url = "https://api.interakt.ai/v1/public/message/";
+async function whatsappMessage(contacts, templateName, values, bookingId) {
+  if (!Array.isArray(contacts)) contacts = [contacts];
 
-async function whatsappMessage(contacts, templateName, values) {
+  if (!contacts.length || !templateName || !values?.length) {
+    console.error(
+      "Invalid input: contact, templateName, and values are required"
+    );
+    await Log({
+      message: "Invalid input: contact, templateName, and values are required",
+      functionName: "whatsapp message",
+    });
+    return { status: 400, message: "Invalid input" };
+  }
+
+  const results = [];
+
+  try {
+    const requests = contacts.map(async (contact) => {
+      const bookingUrl = bookingId
+        ? `https://rentobikes.com/account/my-rides/summary/${bookingId}`
+        : "https://rentobikes.com";
+
+      const data = {
+        messaging_product: "whatsapp",
+        to: `91${contact}`,
+        type: "template",
+        template: {
+          language: {
+            policy: "deterministic",
+            code: "en",
+          },
+          name: templateName,
+          components: [
+            {
+              type: "body",
+              parameters: values.map((v) => ({
+                type: "text",
+                text: v,
+              })),
+            },
+            {
+              type: "button",
+              sub_type: "url",
+              index: "0",
+              parameters: [{ type: "text", text: bookingUrl }],
+            },
+          ],
+        },
+      };
+
+      return axios
+        .post("https://api.dovesoft.io/REST/directApi/message", data, {
+          headers: {
+            "Content-Type": "application/json",
+            wabaNumber: process.env.whatsappApiNumber,
+            key: process.env.whatsappApiKey,
+          },
+        })
+        .then((res) => {
+          results.push({ contact, status: "success", data: res.data });
+          return Log({
+            message: res.data.message,
+            functionName: "whatsapp message",
+          });
+        })
+        .catch((err) => {
+          results.push({ contact, status: "error", error: err.message });
+          return Log({
+            message: `Error: ${err.message}`,
+            functionName: "whatsapp message",
+          });
+        });
+    });
+
+    await Promise.all(requests);
+    console.log("Whatsapp api:", JSON.stringify(results));
+    return { status: 200, results };
+  } catch (error) {
+    console.error("Unexpected Error:", error.message);
+    return { status: 500, message: "Internal server error" };
+  }
+}
+
+async function oldWhatsappMessage(contacts, templateName, values) {
   const obj = { status: 200, message: "Message sent successfully" };
 
   if (!Array.isArray(contacts)) {

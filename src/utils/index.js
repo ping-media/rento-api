@@ -64,8 +64,6 @@ const sendMessageAfterBooking = async (id) => {
       paymentMethod,
     } = booking;
 
-    console.log(paymentStatus);
-
     if (userId && stationMasterUserId) {
       var user = await User.findById(userId);
       if (!user) {
@@ -157,7 +155,8 @@ const sendMessageAfterBooking = async (id) => {
         await whatsappMessage(
           [user.contact, "9916864268", stationMasterUser.contact],
           "booking_confirm_paid",
-          messageData
+          messageData,
+          _id
         );
       } else if (paymentStatus === "partially_paid") {
         const remainingAmount =
@@ -169,17 +168,19 @@ const sendMessageAfterBooking = async (id) => {
           vehicleBasic.refundableDeposit
         );
         await whatsappMessage(
-          user.contact,
+          [user.contact, "9916864268", stationMasterUser.contact],
           "booking_confirmed_partial_paid",
-          messageData
+          messageData,
+          _id
         );
-      } else if (paymentMethod === "cash" && paymentStatus === "pending") {
+      } else if (paymentMethod === "cash") {
         messageData.push(totalPrice, vehicleBasic.refundableDeposit);
 
         await whatsappMessage(
           [user.contact, "9916864268", stationMasterUser.contact],
           "booking_confirm_cash",
-          messageData
+          messageData,
+          _id
         );
       }
       if (bookingStatus === "extended") {

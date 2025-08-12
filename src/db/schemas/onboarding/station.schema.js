@@ -74,6 +74,10 @@ const stationSchema = new Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
+    weakend: {
+      Price: { type: Number, default: 0 },
+      PriceType: { type: String, enum: ["+", "-"], default: "+" },
+    },
     status: {
       type: String,
       enum: ["active", "inactive"],
