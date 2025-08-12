@@ -2589,7 +2589,12 @@ const getVehicleTbl = async (query) => {
       {
         $addFields: {
           vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
-          stationData: { $arrayElemAt: ["$stationData", 0] },
+          stationData: {
+            $mergeObjects: [
+              { weekendPriceIncrease: "active" },
+              { $arrayElemAt: ["$stationData", 0] },
+            ],
+          },
         },
       },
 
@@ -2689,7 +2694,7 @@ const getVehicleTbl = async (query) => {
 
         // Check if this station has weekend price increase enabled
         const stationWeekendEnabled =
-          adjustedVehicle.stationData?.weekendPriceIncrease === true;
+          adjustedVehicle.stationData?.weekendPriceIncrease === "active";
 
         if (
           adjustedVehicle.vehiclePlan &&
@@ -3107,6 +3112,7 @@ const getVehicleTblOld = async (query) => {
           kmsRun: 1,
           condition: 1,
           locationId: 1,
+          stationData: 1,
           stationId: 1,
         },
       },
@@ -3538,10 +3544,21 @@ const getVehicleTblData = async (query) => {
         },
       },
 
+      // {
+      //   $addFields: {
+      //     vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
+      //     stationData: { $arrayElemAt: ["$stationData", 0] },
+      //   },
+      // },
       {
         $addFields: {
           vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
-          stationData: { $arrayElemAt: ["$stationData", 0] },
+          stationData: {
+            $mergeObjects: [
+              { weekendPriceIncrease: "active" },
+              { $arrayElemAt: ["$stationData", 0] },
+            ],
+          },
         },
       },
 
@@ -3796,7 +3813,7 @@ const getVehicleTblData = async (query) => {
 
         // Check if this station has weekend price increase enabled
         const stationWeekendEnabled =
-          adjustedVehicle.stationData?.weekendPriceIncrease === true;
+          adjustedVehicle.stationData?.weekendPriceIncrease === "active";
 
         // STEP 1: Apply Plan Pricing (e.g. 7-day, 15-day, etc.)
         if (
