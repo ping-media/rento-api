@@ -517,7 +517,8 @@ router.put(
         await VehicalfileUpload(req, res);
       }
 
-      const { _id, vehicleName, vehicleType, vehicleBrand } = req.body;
+      const { _id, vehicleName, vehicleType, vehicleBrand, vehicleCategory } =
+        req.body;
 
       // Check if the `_id` is valid
       if (!_id) {
@@ -538,6 +539,7 @@ router.put(
       if (vehicleName) updateData.vehicleName = vehicleName;
       if (vehicleType) updateData.vehicleType = vehicleType;
       if (vehicleBrand) updateData.vehicleBrand = vehicleBrand;
+      if (vehicleCategory) updateData.vehicleCategory = vehicleCategory;
 
       // Only perform the update if there is something to update
       if (Object.keys(updateData).length > 0) {

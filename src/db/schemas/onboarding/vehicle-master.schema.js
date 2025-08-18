@@ -19,6 +19,11 @@ const vehicleMasterSchema = new Schema(
     imageFileName: {
       type: String,
     },
+    vehicleCategory: {
+      enum: ["two-wheeler", "four-wheeler"],
+      type: String,
+      default: "two-wheeler",
+    },
     vehicleType: {
       enum: ["gear", "non-gear"],
       type: String,

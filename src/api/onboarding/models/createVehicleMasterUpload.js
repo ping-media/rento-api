@@ -38,8 +38,15 @@ const s3 = new S3Client({
 // Route to upload the image
 const VehicalfileUpload = async (req, res) => {
   try {
-    const { _id, deleteRec, vehicleBrand, vehicleName, vehicleType, status } =
-      req.body;
+    const {
+      _id,
+      deleteRec,
+      vehicleBrand,
+      vehicleName,
+      vehicleType,
+      vehicleCategory,
+      status,
+    } = req.body;
 
     const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp"];
     if (!allowedMimeTypes.includes(req.file.mimetype)) {
@@ -72,6 +79,7 @@ const VehicalfileUpload = async (req, res) => {
 
     if (vehicleType) {
       let statusCheck = ["gear", "non-gear"].includes(vehicleType);
+
       if (!statusCheck) {
         return res.json({
           status: 400,
@@ -88,12 +96,14 @@ const VehicalfileUpload = async (req, res) => {
 
     if (_id) {
       const find = await VehicleMaster.findOne({ _id });
+
       if (!find) {
         return res.json({
           status: 400,
           message: "Invalid vehicle _id",
         });
       }
+
       if (deleteRec) {
         await VehicleMaster.deleteOne({ _id });
         await Log({
@@ -115,6 +125,7 @@ const VehicalfileUpload = async (req, res) => {
             vehicleImage,
             vehicleType,
             vehicleName,
+            vehicleCategory,
             imageFileName: safeFileName,
             status,
           },
@@ -127,7 +138,13 @@ const VehicalfileUpload = async (req, res) => {
         message: "vehicle master updated successfully",
       });
     } else {
-      if (vehicleName && vehicleType && vehicleBrand && vehicleImage) {
+      if (
+        vehicleName &&
+        vehicleType &&
+        vehicleBrand &&
+        vehicleImage &&
+        vehicleCategory
+      ) {
         const find = await VehicleMaster.findOne({ vehicleName });
         if (find) {
           return res.json({
@@ -139,6 +156,7 @@ const VehicalfileUpload = async (req, res) => {
           vehicleName,
           vehicleBrand,
           vehicleType,
+          vehicleCategory,
           vehicleImage,
           _id,
           imageFileName: safeFileName,
@@ -149,7 +167,14 @@ const VehicalfileUpload = async (req, res) => {
         return res.status(200).json({
           message: "vehicle master saved successfully",
           status: 200,
-          obj: { vehicleName, vehicleBrand, vehicleType, vehicleImage, _id },
+          obj: {
+            vehicleName,
+            vehicleBrand,
+            vehicleType,
+            vehicleCategory,
+            vehicleImage,
+            _id,
+          },
         });
       } else {
         return res.json({

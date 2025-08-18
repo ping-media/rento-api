@@ -74,9 +74,9 @@ const stationSchema = new Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
-    weakend: {
-      Price: { type: Number, default: 0 },
-      PriceType: { type: String, enum: ["+", "-"], default: "+" },
+    weekendPercentage: {
+      type: Number,
+      default: 0,
     },
     status: {
       type: String,

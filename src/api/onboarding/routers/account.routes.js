@@ -4,6 +4,7 @@ const auth = require("../../../middlewares/auth/index");
 const upload = require("../../../utils/file-upload/file-upload");
 const { otpGenerat, verify } = require("../models/otp.model");
 const { emailOtp } = require("../models/otpSendByEmail");
+const Authentication = require("../../../middlewares/Authentication");
 
 // Update User
 router.post("/profile", async (req, res) => {
@@ -16,6 +17,10 @@ router.post("/mobileToken", async (req, res) => {
 
 router.get("/getAllUsers", async (req, res) => {
   accountService.getAllUsers(req, res);
+});
+
+router.post("/manager-station", Authentication, async (req, res) => {
+  accountService.updateStationInfo(req, res);
 });
 
 router.post("/image-upload", upload.single("profileImg"), async (req, res) => {

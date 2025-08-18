@@ -7,7 +7,12 @@ const User = require("../../../db/schemas/onboarding/user.schema");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const Vehicle = require("../../../db/schemas/onboarding/vehicle.schema");
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
-const { contactValidation, emailValidation } = require("../../../constant");
+const Station = require("../../../db/schemas/onboarding/station.schema");
+const {
+  contactValidation,
+  emailValidation,
+  convertTo24Hour,
+} = require("../../../constant");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
 const { sendOtpByEmail } = require("../../../utils/emailSend");
 
@@ -190,10 +195,19 @@ const getAllUsers = async (query) => {
       }
 
       const documents = await Document.find({ userId: user._id });
-      const userWithDocs = {
+      let userWithDocs = {
         ...user.toObject(),
         documents: documents[0]?.files || [],
       };
+
+      if (user.userType === "manager") {
+        const station = await Station.find({ userId: user._id });
+
+        userWithDocs = {
+          ...userWithDocs,
+          station: station || null,
+        };
+      }
 
       obj.data = [userWithDocs];
       obj.pagination = {
@@ -224,6 +238,56 @@ const getAllUsers = async (query) => {
   }
 
   return obj;
+};
+
+const updateStationInfo = async (query) => {
+  try {
+    const {
+      _id,
+      openStartTime,
+      openEndTime,
+      weekendPriceIncrease,
+      weekendPercentage,
+    } = query;
+
+    if (!_id) {
+      console.log(_id);
+      return {
+        success: false,
+        message: "Station id not found!",
+      };
+    }
+
+    const updateFields = {};
+
+    if (openStartTime !== undefined)
+      updateFields.openStartTime = convertTo24Hour(openStartTime);
+    if (openEndTime !== undefined)
+      updateFields.openEndTime = convertTo24Hour(openEndTime);
+    if (weekendPriceIncrease !== undefined)
+      updateFields.weekendPriceIncrease = weekendPriceIncrease;
+    if (weekendPercentage !== undefined)
+      updateFields.weekendPercentage = Number(weekendPercentage);
+
+    const updatedStation = await Station.findOneAndUpdate(
+      { _id },
+      { $set: updateFields },
+      { new: true }
+    );
+
+    return {
+      success: true,
+      message: "Station info updated successfully",
+      data: updatedStation,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      message: "Error updating station info",
+      error: error.message,
+    };
+  }
 };
 
 // async function getAllDataCount(query) {
@@ -809,4 +873,5 @@ module.exports = {
   updateImage,
   getUserByContact,
   addOrUpdateMobileToken,
+  updateStationInfo,
 };
