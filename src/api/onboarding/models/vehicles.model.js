@@ -4059,6 +4059,7 @@ const getVehicleTblData = async (query) => {
               appliedPlans.push({
                 days: plan.planDuration,
                 count: times,
+                kmLimit: plan.kmLimit ?? 0,
                 planPrice: plan.planPrice,
               });
 
