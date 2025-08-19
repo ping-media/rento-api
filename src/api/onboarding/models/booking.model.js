@@ -568,7 +568,7 @@ const getBookings = async (query) => {
           "userId",
           "firstName lastName contact altContact email kycApproved"
         )
-        .populate("vehicleTableId", "vehiclePlan perDayCost")
+        .populate("vehicleTableId", "vehiclePlan freeKms perDayCost")
         .populate(
           "stationMasterUserId",
           "firstName lastName contact altContact email status"
