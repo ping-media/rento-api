@@ -1199,11 +1199,25 @@ const extendBooking = async (req, res) => {
 };
 
 const initiateExtendBookingAfterPayment = async (req, res) => {
-  const { _id, bookingId, amount, data, createPaymentLink = true } = req.body;
+  const {
+    _id,
+    bookingId,
+    amount,
+    data,
+    extensionMode,
+    extensionNote,
+    createPaymentLink = true,
+  } = req.body;
 
-  console.log(_id);
-  if (!_id || !bookingId || !amount || !data) {
+  if (!_id || !bookingId || !amount || !data || !extensionMode) {
     return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  const allowedModes = ["online", "cash"];
+  if (!allowedModes.includes(extensionMode?.toLowerCase())) {
+    return res
+      .status(400)
+      .json({ message: "Invalid extension mode. Allowed: online, cash." });
   }
 
   try {
@@ -1219,6 +1233,99 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
       return res
         .status(200)
         .json({ message: "Unable to create extend id! try again" });
+    }
+
+    if (extensionMode === "cash") {
+      data = {
+        ...data,
+        extendAmount: {
+          ...data?.extendAmount,
+          paymentMethod: "cash",
+          status: "paid",
+        },
+      };
+
+      if (data.BookingEndDateAndTime) {
+        booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
+      }
+
+      if (!booking.bookingPrice.extendAmount) {
+        booking.bookingPrice.extendAmount = [];
+      }
+
+      const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
+      if (!existingIds.includes(data.extendAmount.id)) {
+        booking.bookingPrice.extendAmount.push(data.extendAmount);
+      }
+
+      if (!booking.extendBooking) {
+        booking.extendBooking = {};
+      }
+
+      if (!booking.extendBooking.oldBooking) {
+        booking.extendBooking.oldBooking = [];
+      }
+
+      if (data.oldBookings) {
+        booking.extendBooking.oldBooking.push(data.oldBookings);
+      }
+
+      if (extensionNote !== null) {
+        booking.notes.push(extensionNote);
+      }
+
+      booking.bookingStatus = "extended";
+
+      // Mark nested objects as modified
+      booking.markModified("bookingPrice");
+      booking.markModified("extendBooking");
+
+      const savedBooking = await booking.save();
+
+      if (savedBooking) {
+        await timelineFunctionServer({
+          currentBooking_id: booking._id,
+          timeLine: [
+            {
+              title: "Booking Extended",
+              date: Date.now(),
+              paymentAmount: amount || 0,
+              endDate: data.BookingEndDateAndTime,
+              extended: true,
+            },
+          ],
+        });
+
+        if (booking.userId) {
+          sendPushNotificationUsingUserId(
+            booking.userId,
+            "Ride Extended!",
+            "Your ride is successfully extended."
+          );
+        }
+
+        res.json({
+          success: true,
+          message: "Ride extended successfully",
+          timelineData: {
+            currentBooking_id: booking._id,
+            timeLine: [
+              {
+                title: "Booking Extended",
+                date: Date.now(),
+                paymentAmount: amount || 0,
+                endDate: data.BookingEndDateAndTime,
+                extended: true,
+              },
+            ],
+          },
+        });
+      } else {
+        res.json({
+          success: false,
+          message: "unable to extend booking! try again",
+        });
+      }
     }
 
     const razorpayOrder = await createOrderId({
