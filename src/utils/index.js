@@ -94,7 +94,8 @@ const sendMessageAfterBooking = async (id) => {
 
       const stationData = await station
         .findOne({ stationName })
-        .select("latitude longitude userId");
+        .select("latitude longitude mapLink userId");
+
       if (!stationData) {
         console.error(`Station not found for stationName: ${stationName}`);
         return;
@@ -102,9 +103,8 @@ const sendMessageAfterBooking = async (id) => {
 
       const { latitude, longitude, mapLink } = stationData;
       const newMapLink =
-        mapLink && mapLink !== ""
-          ? mapLink
-          : `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+        mapLink ||
+        `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
 
       const totalPrice =
         bookingPrice.discountTotalPrice > 0
