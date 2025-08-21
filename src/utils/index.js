@@ -100,8 +100,11 @@ const sendMessageAfterBooking = async (id) => {
         return;
       }
 
-      const { latitude, longitude } = stationData;
-      const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+      const { latitude, longitude, mapLink } = stationData;
+      const newMapLink =
+        mapLink && mapLink !== ""
+          ? mapLink
+          : `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
 
       const totalPrice =
         bookingPrice.discountTotalPrice > 0
@@ -117,7 +120,7 @@ const sendMessageAfterBooking = async (id) => {
         date,
         bookingId,
         stationName,
-        mapLink,
+        newMapLink,
         stationMasterUser.contact,
       ];
 
