@@ -24,6 +24,11 @@ const vehicleMasterSchema = new Schema(
       type: String,
       default: "two-wheeler",
     },
+    gstPercentage: {
+      type: Number,
+      default: 0,
+      min: [0, "GST value cannot be negative"],
+    },
     vehicleType: {
       enum: ["gear", "non-gear"],
       type: String,

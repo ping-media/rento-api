@@ -253,9 +253,13 @@ const vehicleChange = async (req, res) => {
       booking.vehicleName = newVehicleData.vehicleName;
       booking.bookingPrice.bookingPrice = newVehicleData?.totalRentalCost;
       booking.bookingPrice.vehiclePrice = newVehicleData?.totalRentalCost;
+      booking.bookingPrice.tax = booking?.bookingPrice?.tax || 0;
+      booking.bookingPrice.addonTax = booking?.bookingPrice?.addonTax || 0;
       booking.bookingPrice.totalPrice =
         newVehicleData?.totalRentalCost +
-        Number(booking.bookingPrice?.extraAddonPrice || 0);
+        Number(booking?.bookingPrice?.extraAddonPrice || 0) +
+        (Number(booking?.bookingPrice?.tax) || 0) +
+        (Number(booking?.bookingPrice?.addonTax) || 0);
       booking.bookingPrice.appliedPlan = newVehicleData?.appliedPlans;
       booking.bookingPrice.daysBreakdown = newVehicleData?._daysBreakdown;
 
@@ -264,8 +268,6 @@ const vehicleChange = async (req, res) => {
       const isExtraPayment = refundAmount > 0;
       const changedId = (booking.bookingPrice.diffAmount?.length || 0) + 1;
       let newOrderId = "";
-
-      console.log(refundAmount);
 
       if (isExtraPayment) {
         const razorpayOrder = await createOrderId({

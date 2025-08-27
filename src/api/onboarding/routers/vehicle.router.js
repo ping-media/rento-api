@@ -55,7 +55,7 @@ const {
   timelineFunctionForGet,
 } = require("../models/timeline.model");
 const {
-  vehicleChangeInBooking,
+  // vehicleChangeInBooking,
   vehicleChange,
 } = require("../models/vehicleChange.model");
 const { extentBooking } = require("../models/extentBooking.model");
@@ -89,6 +89,7 @@ const {
   deleteImageFromBucket,
 } = require("../models/uploadAndDeleteImage.modal");
 const { sendMessageAfterBooking } = require("../../../utils");
+const { handleStationAddon } = require("../models/stationAddon.model");
 // const { cancelPendingPayments } = require("../utils/cron.js");
 
 // create messages
@@ -158,6 +159,10 @@ router.post("/VehicleBookrecode", async (req, res) => {
 
 router.post("/createStation", Authentication, async (req, res) => {
   vehiclesService.createStation(req, res);
+});
+
+router.post("/create-station-addon", Authentication, async (req, res) => {
+  handleStationAddon(req, res);
 });
 
 router.post("/searchVehicle", async (req, res) => {
@@ -517,12 +522,24 @@ router.put(
         await VehicalfileUpload(req, res);
       }
 
-      const { _id, vehicleName, vehicleType, vehicleBrand, vehicleCategory } =
-        req.body;
+      const {
+        _id,
+        vehicleName,
+        vehicleType,
+        vehicleBrand,
+        vehicleCategory,
+        gstPercentage,
+      } = req.body;
 
       // Check if the `_id` is valid
       if (!_id) {
         obj.message = "Vehicle ID (_id) is required";
+        obj.status = 400;
+        return res.json(obj);
+      }
+
+      if (isNaN(Number(gstPercentage))) {
+        obj.message = "gst percentage is not a valid number! try again";
         obj.status = 400;
         return res.json(obj);
       }
@@ -540,6 +557,7 @@ router.put(
       if (vehicleType) updateData.vehicleType = vehicleType;
       if (vehicleBrand) updateData.vehicleBrand = vehicleBrand;
       if (vehicleCategory) updateData.vehicleCategory = vehicleCategory;
+      if (gstPercentage) updateData.gstPercentage = Number(gstPercentage);
 
       // Only perform the update if there is something to update
       if (Object.keys(updateData).length > 0) {
@@ -999,6 +1017,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       BookingEndDateAndTime,
       BookingStartDateAndTime,
     } = booking;
+
     const rideStatusFromBooking = booking?.rideStatus;
     if (rideStatusFromBooking === "completed") {
       obj.status = 400;
@@ -1053,7 +1072,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     }
 
     // Update the booking document
-    const pickupImageData = await pickupImage.updateOne(
+    await pickupImage.updateOne(
       { bookingId },
       { $set: { endMeterReading, rideEndDate } },
       { new: true }
@@ -1064,7 +1083,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       if (refundAmount > 0) {
         paymentStatus = "refunded";
       }
-      const updatedBooking = await Booking.updateOne(
+      await Booking.updateOne(
         { _id: ObjectId(_id) },
         {
           $set: {
@@ -1072,7 +1091,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
             bookingPrice: newBookingPrice,
             BookingEndDateAndTime: closingDate,
             "extendBooking.originalEndDate": BookingEndDateAndTime,
-            "vehicleBasic.RideEnd": endDateTime || "",
+            "vehicleBasic.RideEnd": Number(endDateTime) || "",
             paymentStatus: paymentStatus,
           },
         },
@@ -1080,11 +1099,11 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       );
     }
 
-    const updatedBooking = await Booking.updateOne(
-      { _id: ObjectId(_id) },
-      { $set: { rideStatus, bookingPrice: newBookingPrice } },
-      { new: true }
-    );
+    // await Booking.updateOne(
+    //   { _id: ObjectId(_id) },
+    //   { $set: { rideStatus, bookingPrice: newBookingPrice } },
+    //   { new: true }
+    // );
 
     // Log the booking update
     await Log({

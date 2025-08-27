@@ -45,6 +45,7 @@ const VehicalfileUpload = async (req, res) => {
       vehicleName,
       vehicleType,
       vehicleCategory,
+      gstPercentage,
       status,
     } = req.body;
 
@@ -126,6 +127,7 @@ const VehicalfileUpload = async (req, res) => {
             vehicleType,
             vehicleName,
             vehicleCategory,
+            gstPercentage: Number(gstPercentage),
             imageFileName: safeFileName,
             status,
           },
@@ -143,7 +145,8 @@ const VehicalfileUpload = async (req, res) => {
         vehicleType &&
         vehicleBrand &&
         vehicleImage &&
-        vehicleCategory
+        vehicleCategory &&
+        gstPercentage
       ) {
         const find = await VehicleMaster.findOne({ vehicleName });
         if (find) {
@@ -152,11 +155,20 @@ const VehicalfileUpload = async (req, res) => {
             message: "vehicle master name already exists",
           });
         }
+
+        if (isNaN(Number(gstPercentage))) {
+          return res.json({
+            status: 400,
+            message: "Gst percentage is not valid! try again",
+          });
+        }
+
         const SaveUser = new VehicleMaster({
           vehicleName,
           vehicleBrand,
           vehicleType,
           vehicleCategory,
+          gstPercentage: Number(gstPercentage),
           vehicleImage,
           _id,
           imageFileName: safeFileName,

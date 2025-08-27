@@ -273,8 +273,22 @@ const getDurationInDays = (date1Str, date2Str) => {
   return Number(days);
 };
 
+const calculateTax = (amount, taxPercentage) => {
+  // Ensure the inputs are valid numbers
+  if (isNaN(amount) || isNaN(taxPercentage)) {
+    return "Invalid input";
+  }
+
+  // Calculate the tax based on the given percentage
+  const taxAmount = (taxPercentage / 100) * amount;
+
+  // Round the result to 2 decimal places and return it
+  return Math.round(taxAmount);
+};
+
 module.exports = {
   convertDateString,
   sendMessageAfterBooking,
   getDurationInDays,
+  calculateTax,
 };

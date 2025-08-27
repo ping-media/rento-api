@@ -25,7 +25,7 @@ const {
   sendEmailForBookingToStationMaster,
 } = require("../../../utils/emailSend");
 const General = require("../../../db/schemas/onboarding/general.schema");
-const { getDurationInDays } = require("../../../utils");
+const { getDurationInDays, calculateTax } = require("../../../utils");
 
 const logError = async (message, functionName, userId) => {
   await Log({ message, functionName, userId });
@@ -1532,6 +1532,7 @@ async function createStation({
   mapLink,
   weekendPriceIncrease,
   weekendPercentage,
+  isGstActive,
   _id,
   status,
   deleteRec,
@@ -1576,6 +1577,7 @@ async function createStation({
     stationName,
     weekendPriceIncrease,
     weekendPercentage,
+    isGstActive,
   };
 
   try {
@@ -2601,7 +2603,12 @@ const getVehicleTbl = async (query) => {
       // Flatten vehicle master and station data
       {
         $addFields: {
-          vehicleMasterData: { $arrayElemAt: ["$vehicleMasterData", 0] },
+          vehicleMasterData: {
+            $mergeObjects: [
+              { vehicleCategory: "two-wheeler", gstPercentage: 0 },
+              { $arrayElemAt: ["$vehicleMasterData", 0] },
+            ],
+          },
           stationData: {
             $mergeObjects: [
               { weekendPriceIncrease: "active", weekendPercentage: 0 },
@@ -2638,6 +2645,7 @@ const getVehicleTbl = async (query) => {
           vehicleStatus: 1,
           freeKms: 1,
           vehicleMasterId: 1,
+          vehicleMasterData: 1,
           extraKmsCharges: 1,
           vehicleNumber: 1,
           vehicleModel: 1,
@@ -2800,6 +2808,20 @@ const getVehicleTbl = async (query) => {
         adjustedVehicle._daysBreakdown = daysBreakdown;
         adjustedVehicle.totalRentalCost = Math.round(totalRentalCost);
         adjustedVehicle.appliedPlans = appliedPlans;
+
+        // adding tax if station is taking tax
+        const gstPercentage = adjustedVehicle?.vehicleMasterData?.gstPercentage;
+        const isGstActive =
+          adjustedVehicle?.stationData?.isGstActive === "active" ? true : false;
+
+        if (isGstActive) {
+          adjustedVehicle.tax =
+            gstPercentage > 0
+              ? calculateTax(Math.round(totalRentalCost), gstPercentage)
+              : 0;
+        } else {
+          adjustedVehicle.tax = 0;
+        }
 
         const startDay = startDateObj.getDay();
         const isStartWeekend = startDay === 0 || startDay === 6;
@@ -3771,7 +3793,7 @@ const getVehicleTblData = async (query) => {
         $addFields: {
           vehicleMasterData: {
             $mergeObjects: [
-              { vehicleCategory: "two-wheeler" },
+              { vehicleCategory: "two-wheeler", gstPercentage: 0 },
               { $arrayElemAt: ["$vehicleMasterData", 0] },
             ],
           },
@@ -4122,6 +4144,20 @@ const getVehicleTblData = async (query) => {
         adjustedVehicle.daysBreakdown = daysBreakdown;
         adjustedVehicle.totalRentalCost = Math.round(totalRentalCost);
         adjustedVehicle.appliedPlans = appliedPlans;
+
+        // adding tax if station is taking tax
+        const gstPercentage = adjustedVehicle?.vehicleMasterData?.gstPercentage;
+        const isGstActive =
+          adjustedVehicle?.stationData?.isGstActive === "active" ? true : false;
+
+        if (isGstActive) {
+          adjustedVehicle.tax =
+            gstPercentage > 0
+              ? calculateTax(Math.round(totalRentalCost), gstPercentage)
+              : 0;
+        } else {
+          adjustedVehicle.tax = 0;
+        }
 
         // Show updated perDayCost on UI based on booking's first day
         const startDay = startDateObj.getDay();

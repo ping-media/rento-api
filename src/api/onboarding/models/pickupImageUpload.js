@@ -428,7 +428,7 @@ const savePickupImageLinks = async (req, res) => {
             rideStatus: "ongoing",
             "vehicleBasic.endRide": OTP,
             "bookingPrice.AmountLeftAfterUserPaid": updatedAmountLeft,
-            "vehicleBasic.RideStart": startDateAndTime || "",
+            "vehicleBasic.RideStart": Number(startDateAndTime) || "",
             paymentStatus: "paid",
           },
         },

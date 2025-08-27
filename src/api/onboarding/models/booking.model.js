@@ -315,7 +315,6 @@ const getBooking = async (query) => {
         return obj;
       }
 
-      // Find booking by `_id`
       const booking = await Booking.findById(_id).populate(
         "userId",
         "firstName lastName contact createdAt updatedAt"
@@ -569,9 +568,10 @@ const getBookings = async (query) => {
           "firstName lastName contact altContact email kycApproved"
         )
         .populate("vehicleTableId", "vehiclePlan freeKms perDayCost")
+        .populate("vehicleMasterId", "gstPercentage")
         .populate(
           "stationMasterUserId",
-          "firstName lastName contact altContact email status"
+          "firstName lastName contact altContact email status isGstActive"
         );
 
       if (!booking) {
@@ -876,13 +876,13 @@ const initiateBooking = async (req, res) => {
 
     // for other payment modes
     if (paymentMethod === "partiallyPay") {
-      const userPaid = Math.round(
-        (bookingData?.bookingPrice?.discountTotalPrice ||
-          bookingData?.bookingPrice?.totalPrice) * 0.2
+      const totalAmount = Math.round(
+        bookingData?.bookingPrice?.discountTotalPrice ||
+          bookingData?.bookingPrice?.totalPrice
       );
-      const AmountLeftAfterUserPaid =
-        (bookingData?.bookingPrice?.discountTotalPrice ||
-          bookingData?.bookingPrice?.totalPrice) - userPaid;
+
+      const userPaid = Math.round(totalAmount * 0.2);
+      const AmountLeftAfterUserPaid = totalAmount - userPaid;
 
       bookingData = {
         ...bookingData,
