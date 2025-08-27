@@ -1199,7 +1199,7 @@ const extendBooking = async (req, res) => {
 };
 
 const initiateExtendBookingAfterPayment = async (req, res) => {
-  const {
+  let {
     _id,
     bookingId,
     amount,
@@ -1304,7 +1304,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
           );
         }
 
-        res.json({
+        return res.json({
           success: true,
           message: "Ride extended successfully",
           timelineData: {
@@ -1321,7 +1321,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
           },
         });
       } else {
-        res.json({
+        return res.json({
           success: false,
           message: "unable to extend booking! try again",
         });
