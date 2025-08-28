@@ -1307,7 +1307,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
         return res.json({
           success: true,
           message: "Ride extended successfully",
-          timelineData: {
+          timeLine: {
             currentBooking_id: booking._id,
             timeLine: [
               {
