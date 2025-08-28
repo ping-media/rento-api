@@ -1,7 +1,5 @@
-const express = require("express");
 const router = require("express").Router();
 const Razorpay = require("razorpay");
-const { razorpaywebhook } = require("../models/razorpay.model");
 
 const razorpay = new Razorpay({
   key_id: process.env.VITE_RAZOR_KEY_ID,
@@ -10,26 +8,22 @@ const razorpay = new Razorpay({
 
 router.get("/transactions", async (req, res) => {
   try {
-    const { from, to, count = 20, skip = 0 } = req.query;
+    const { from, to, count = 50, skip = 0 } = req.query;
 
     const options = {
-      from: from ? parseInt(new Date(from).getTime() / 1000) : undefined,
-      to: to ? parseInt(new Date(to).getTime() / 1000) : undefined,
       count: parseInt(count),
       skip: parseInt(skip),
     };
 
+    if (from) options.from = Math.floor(new Date(from).getTime() / 1000);
+    if (to) options.to = Math.floor(new Date(to).getTime() / 1000);
+
     const payments = await razorpay.payments.all(options);
 
-    res.json({
-      success: true,
-      data: payments,
-    });
+    res.json(payments);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch transactions" });
   }
 });
 
