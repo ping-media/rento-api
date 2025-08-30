@@ -30,7 +30,7 @@ const vehicleMasterSchema = new Schema(
       min: [0, "GST value cannot be negative"],
     },
     vehicleType: {
-      enum: ["gear", "non-gear"],
+      enum: ["gear", "non-gear", "electric"],
       type: String,
       required: true,
     },
