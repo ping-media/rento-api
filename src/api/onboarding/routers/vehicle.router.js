@@ -1011,12 +1011,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
   const obj = { status: 200, message: "", data: {} };
   try {
     const booking = await Booking.findOne({ _id });
-    let {
-      vehicleBasic,
-      bookingPrice,
-      BookingEndDateAndTime,
-      BookingStartDateAndTime,
-    } = booking;
+    let { vehicleBasic, bookingPrice, BookingEndDateAndTime } = booking;
 
     const rideStatusFromBooking = booking?.rideStatus;
     if (rideStatusFromBooking === "completed") {
@@ -1078,11 +1073,13 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       { new: true }
     );
 
+    let paymentStatus = booking?.paymentStatus;
+
+    if (refundAmount > 0) {
+      paymentStatus = "refunded";
+    }
+
     if (closingDate) {
-      let paymentStatus = booking?.paymentStatus;
-      if (refundAmount > 0) {
-        paymentStatus = "refunded";
-      }
       await Booking.updateOne(
         { _id: ObjectId(_id) },
         {
@@ -1097,13 +1094,20 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
         },
         { new: true }
       );
+    } else {
+      await Booking.updateOne(
+        { _id: ObjectId(_id) },
+        {
+          $set: {
+            rideStatus,
+            bookingPrice: newBookingPrice,
+            "vehicleBasic.RideEnd": Number(endDateTime) || "",
+            paymentStatus: paymentStatus,
+          },
+        },
+        { new: true }
+      );
     }
-
-    // await Booking.updateOne(
-    //   { _id: ObjectId(_id) },
-    //   { $set: { rideStatus, bookingPrice: newBookingPrice } },
-    //   { new: true }
-    // );
 
     // Log the booking update
     await Log({
@@ -1121,6 +1125,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
         ? "Start"
         : "Completed"
     } successful`;
+
     const response = { lateFeeBasedOnHour, lateFeeBasedOnKM, rideStatus };
     obj.data = response;
     return res.status(200).json(obj);
