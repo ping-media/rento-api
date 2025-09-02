@@ -2435,6 +2435,173 @@ const getVehicleTbl = async (query) => {
     const parsedPage = Math.max(parseInt(page, 10), 1);
     const parsedLimit = Math.max(parseInt(limit, 10), 1);
 
+    const unavailabilityCheckPipeline = [
+      { $match: matchFilter },
+      ...(search
+        ? [
+            {
+              $lookup: {
+                from: "vehiclemasters",
+                localField: "vehicleMasterId",
+                foreignField: "_id",
+                as: "searchVehicleMaster",
+              },
+            },
+            {
+              $match: {
+                $or: [
+                  { vehicleNumber: { $regex: search, $options: "i" } },
+                  {
+                    "searchVehicleMaster.vehicleName": {
+                      $regex: search,
+                      $options: "i",
+                    },
+                  },
+                ],
+              },
+            },
+          ]
+        : []),
+      {
+        $lookup: {
+          from: "bookings",
+          localField: "_id",
+          foreignField: "vehicleTableId",
+          as: "bookings",
+        },
+      },
+      {
+        $lookup: {
+          from: "maintenancevehicles",
+          localField: "_id",
+          foreignField: "vehicleTableId",
+          as: "maintenanceData",
+        },
+      },
+      {
+        $lookup: {
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
+        },
+      },
+      {
+        $addFields: {
+          vehicleMasterData: {
+            $mergeObjects: [
+              { vehicleCategory: "two-wheeler", gstPercentage: 0 },
+              { $arrayElemAt: ["$vehicleMasterData", 0] },
+            ],
+          },
+          conflictingBookings: {
+            $filter: {
+              input: "$bookings",
+              as: "booking",
+              cond: {
+                $and: [
+                  { $ne: ["$$booking.rideStatus", "canceled"] },
+                  {
+                    $or: [
+                      {
+                        $and: [
+                          {
+                            $gte: [
+                              "$$booking.BookingStartDateAndTime",
+                              startDate,
+                            ],
+                          },
+                          {
+                            $lte: [
+                              "$$booking.BookingStartDateAndTime",
+                              endDate,
+                            ],
+                          },
+                        ],
+                      },
+                      {
+                        $and: [
+                          {
+                            $gte: [
+                              "$$booking.BookingEndDateAndTime",
+                              startDate,
+                            ],
+                          },
+                          {
+                            $lte: ["$$booking.BookingEndDateAndTime", endDate],
+                          },
+                        ],
+                      },
+                      {
+                        $and: [
+                          {
+                            $lte: [
+                              "$$booking.BookingStartDateAndTime",
+                              startDate,
+                            ],
+                          },
+                          {
+                            $gte: ["$$booking.BookingEndDateAndTime", endDate],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+          conflictingMaintenance: {
+            $filter: {
+              input: "$maintenanceData",
+              as: "maintenance",
+              cond: {
+                $or: [
+                  {
+                    $and: [
+                      { $gte: ["$$maintenance.startDate", startDate] },
+                      { $lte: ["$$maintenance.startDate", endDate] },
+                    ],
+                  },
+                  {
+                    $and: [
+                      { $gte: ["$$maintenance.endDate", startDate] },
+                      { $lte: ["$$maintenance.endDate", endDate] },
+                    ],
+                  },
+                  {
+                    $and: [
+                      { $lte: ["$$maintenance.startDate", startDate] },
+                      { $gte: ["$$maintenance.endDate", endDate] },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+      {
+        $match: {
+          ...(vehicleBrand
+            ? { "vehicleMasterData.vehicleBrand": vehicleBrand }
+            : {}),
+          ...(vehicleType
+            ? { "vehicleMasterData.vehicleType": vehicleType }
+            : {}),
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          vehicleNumber: 1,
+          vehicleStatus: 1,
+          conflictingBookings: 1,
+          conflictingMaintenance: 1,
+        },
+      },
+    ];
+
     const pipeline = [
       { $match: matchFilter },
       ...(search
@@ -2672,12 +2839,54 @@ const getVehicleTbl = async (query) => {
       },
     ];
 
+    const allVehiclesForCheck = await vehicleTable.aggregate(
+      unavailabilityCheckPipeline
+    );
     let vehicles = await vehicleTable.aggregate(pipeline);
 
     if (!vehicles.length || !vehicles[0].totalCount.length) {
+      if (allVehiclesForCheck.length === 0) {
+        response.status = 404;
+        response.message = "No vehicles found matching the search criteria";
+        response.data = [];
+        response.pagination = {
+          totalPages: 0,
+          currentPage: parsedPage,
+          limit: parsedLimit,
+        };
+        return response;
+      }
+
+      // Check why vehicles are unavailable
+      const unavailabilityReasons = [];
+      allVehiclesForCheck.forEach((vehicle) => {
+        if (vehicle.vehicleStatus !== "active") {
+          unavailabilityReasons.push({
+            vehicleId: vehicle._id,
+            vehicleNumber: vehicle.vehicleNumber,
+            reason: "Vehicle is not active",
+          });
+        } else if (vehicle.conflictingBookings.length > 0) {
+          unavailabilityReasons.push({
+            vehicleId: vehicle._id,
+            vehicleNumber: vehicle.vehicleNumber,
+            reason: "Vehicle is already booked",
+            bookingId: vehicle.conflictingBookings[0].bookingId,
+          });
+        } else if (vehicle.conflictingMaintenance.length > 0) {
+          unavailabilityReasons.push({
+            vehicleId: vehicle._id,
+            vehicleNumber: vehicle.vehicleNumber,
+            reason: "Vehicle is under maintenance",
+            maintenanceId: vehicle.conflictingMaintenance[0]._id,
+          });
+        }
+      });
+
       response.status = 404;
-      response.message = "No records found";
+      response.message = `Found ${allVehiclesForCheck.length} vehicle(s) but none are available for the selected time period`;
       response.data = [];
+      response.unavailabilityReasons = unavailabilityReasons;
       response.pagination = {
         totalPages: 0,
         currentPage: parsedPage,
