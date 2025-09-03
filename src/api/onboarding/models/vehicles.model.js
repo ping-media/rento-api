@@ -2500,7 +2500,13 @@ const getVehicleTbl = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                  { $ne: ["$$booking.rideStatus", "canceled"] },
+                  // { $ne: ["$$booking.rideStatus", "canceled"] },
+                  {
+                    $not: {
+                      $in: ["$$booking.rideStatus", ["canceled", "completed"]],
+                      $in: ["$$booking.bookingStatus", ["canceled"]],
+                    },
+                  },
                   {
                     $or: [
                       {
@@ -2676,7 +2682,13 @@ const getVehicleTbl = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                  { $ne: ["$$booking.rideStatus", "canceled"] },
+                  // { $ne: ["$$booking.rideStatus", "canceled"] },
+                  {
+                    $not: {
+                      $in: ["$$booking.rideStatus", ["canceled", "completed"]],
+                      $in: ["$$booking.bookingStatus", ["canceled"]],
+                    },
+                  },
                   {
                     $or: [
                       {
@@ -3910,8 +3922,14 @@ const getVehicleTblData = async (query) => {
               as: "booking",
               cond: {
                 $and: [
+                  // {
+                  //   $ne: ["$$booking.rideStatus", "canceled"],
+                  // },
                   {
-                    $ne: ["$$booking.rideStatus", "canceled"],
+                    $not: {
+                      $in: ["$$booking.rideStatus", ["canceled", "completed"]],
+                      $in: ["$$booking.bookingStatus", ["canceled"]],
+                    },
                   },
                   {
                     $not: [

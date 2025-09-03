@@ -446,6 +446,7 @@ const savePickupImageLinks = async (req, res) => {
             rideStatus: "ongoing",
             "vehicleBasic.endRide": OTP,
             "bookingPrice.payOnPickupMethod": PaymentMode,
+            "vehicleBasic.RideStart": Number(startDateAndTime) || "",
             paymentStatus: "paid",
           },
         },
@@ -459,6 +460,7 @@ const savePickupImageLinks = async (req, res) => {
             "bookingPrice.isPickupImageAdded": true,
             rideStatus: "ongoing",
             "vehicleBasic.endRide": OTP,
+            "vehicleBasic.RideStart": Number(startDateAndTime) || "",
           },
         },
         { new: true }
