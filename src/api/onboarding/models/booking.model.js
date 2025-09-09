@@ -796,6 +796,7 @@ const initiateBooking = async (req, res) => {
             {
               title: "Booking Created",
               date: Date.now(),
+              bookingEndDateAndTime: bookingData?.BookingEndDateAndTime || "",
             },
           ],
         };
@@ -1287,7 +1288,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
           currentBooking_id: booking._id,
           timeLine: [
             {
-              title: "Booking Extended",
+              title: "Booking Extended(Admin)",
               date: Date.now(),
               paymentAmount: amount || 0,
               endDate: data.BookingEndDateAndTime,
