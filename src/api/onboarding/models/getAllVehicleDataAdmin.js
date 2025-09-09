@@ -771,7 +771,9 @@ const updateMultipleVehicles = async (req, res) => {
 
       // Update existing plans if matching
       updatedPlan = updatedPlan.map((plan) => {
-        const match = vehiclePlan.find((p) => p._id === String(plan._id));
+        const match = vehiclePlan.find(
+          (p) => String(p._id) === String(plan._id)
+        );
         if (match) {
           updated = true;
           return {
@@ -785,7 +787,9 @@ const updateMultipleVehicles = async (req, res) => {
 
       // Add new plans not already present
       for (const newPlan of vehiclePlan) {
-        const exists = updatedPlan.some((p) => String(p._id) === newPlan._id);
+        const exists =
+          !newPlan._id ||
+          updatedPlan.some((p) => String(p._id) === String(newPlan._id));
         if (!exists) {
           updatedPlan.push({
             _id: newPlan._id,

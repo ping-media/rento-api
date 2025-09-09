@@ -339,19 +339,24 @@ const razorpayWebhook = async (req, res) => {
       const amountInPaise = payment.amount;
       const amountPaid = amountInPaise / 100;
       const razorpayPaymentId = payment.id;
+
+      const paymentTime = new Date(payment.created_at * 1000);
+
       if (type === "extension") {
         await handleExtendBookingWebhook(
           bookingId,
           razorpayPaymentId,
           amountPaid,
-          typeId
+          typeId,
+          paymentTime
         );
       } else if (type === "" || type === "partiallyPay") {
         await updateBookingAfterPayment(
           bookingId,
           razorpayPaymentId,
           amountPaid,
-          type
+          type,
+          paymentTime
         );
 
         if (bookingId) {
@@ -392,7 +397,8 @@ const updateBookingAfterPayment = async (
   bookingId,
   razorpayPaymentId,
   amountPaid,
-  type
+  type,
+  paymentTime
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
 
@@ -638,7 +644,8 @@ const handleExtendBookingWebhook = async (
   bookingId,
   paymentId,
   amountPaid,
-  typeId
+  typeId,
+  paymentTime
 ) => {
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new Error("Booking not found");
@@ -665,6 +672,7 @@ const handleExtendBookingWebhook = async (
   extend.paymentMethod = "online";
   extend.transactionId = paymentId;
   extend.paymentDate = new Date();
+  extend.razorPayDate = paymentTime || "";
 
   booking.bookingStatus = "extended";
   booking.paymentStatus = "paid";

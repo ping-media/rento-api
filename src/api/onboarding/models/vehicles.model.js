@@ -1113,6 +1113,12 @@ async function createPlan({
           // Handle deletion
           if (deleteRec) {
             await Plan.deleteOne({ _id: ObjectId(_id) });
+
+            await vehicleTable.updateMany(
+              {},
+              { $pull: { vehiclePlan: { _id: ObjectId(_id) } } }
+            );
+
             await Log({
               message: `Plan with ID ${_id} deleted`,
               functionName: "deletePlan",
@@ -2494,21 +2500,90 @@ const getVehicleTbl = async (query) => {
               { $arrayElemAt: ["$vehicleMasterData", 0] },
             ],
           },
+          // conflictingBookings: {
+          //   $filter: {
+          //     input: "$bookings",
+          //     as: "booking",
+          //     cond: {
+          //       $and: [
+          //         // { $ne: ["$$booking.rideStatus", "canceled"] },
+          //         {
+          //           $not: {
+          //             $in: ["$$booking.rideStatus", ["canceled", "completed"]],
+          //             $in: ["$$booking.bookingStatus", ["canceled"]],
+          //           },
+          //         },
+          //         {
+          //           $or: [
+          //             {
+          //               $and: [
+          //                 {
+          //                   $gte: [
+          //                     "$$booking.BookingStartDateAndTime",
+          //                     startDate,
+          //                   ],
+          //                 },
+          //                 {
+          //                   $lte: [
+          //                     "$$booking.BookingStartDateAndTime",
+          //                     endDate,
+          //                   ],
+          //                 },
+          //               ],
+          //             },
+          //             {
+          //               $and: [
+          //                 {
+          //                   $gte: [
+          //                     "$$booking.BookingEndDateAndTime",
+          //                     startDate,
+          //                   ],
+          //                 },
+          //                 {
+          //                   $lte: ["$$booking.BookingEndDateAndTime", endDate],
+          //                 },
+          //               ],
+          //             },
+          //             {
+          //               $and: [
+          //                 {
+          //                   $lte: [
+          //                     "$$booking.BookingStartDateAndTime",
+          //                     startDate,
+          //                   ],
+          //                 },
+          //                 {
+          //                   $gte: ["$$booking.BookingEndDateAndTime", endDate],
+          //                 },
+          //               ],
+          //             },
+          //           ],
+          //         },
+          //       ],
+          //     },
+          //   },
+          // },
           conflictingBookings: {
             $filter: {
               input: "$bookings",
               as: "booking",
               cond: {
                 $and: [
-                  // { $ne: ["$$booking.rideStatus", "canceled"] },
                   {
-                    $not: {
-                      $in: ["$$booking.rideStatus", ["canceled", "completed"]],
-                      $in: ["$$booking.bookingStatus", ["canceled"]],
-                    },
+                    $and: [
+                      { $ne: ["$$booking.rideStatus", "pending"] },
+                      { $ne: ["$$booking.rideStatus", "canceled"] },
+                      { $ne: ["$$booking.rideStatus", "completed"] },
+                      { $ne: ["$$booking.bookingStatus", "canceled"] },
+                    ],
                   },
                   {
+                    $gte: ["$$booking.BookingEndDateAndTime", startDate],
+                  },
+                  // Check for time overlap (any of these conditions means conflict)
+                  {
                     $or: [
+                      // Booking starts during search period
                       {
                         $and: [
                           {
@@ -2518,26 +2593,22 @@ const getVehicleTbl = async (query) => {
                             ],
                           },
                           {
-                            $lte: [
-                              "$$booking.BookingStartDateAndTime",
-                              endDate,
-                            ],
+                            $lt: ["$$booking.BookingStartDateAndTime", endDate],
                           },
                         ],
                       },
+                      // Booking ends during search period
                       {
                         $and: [
                           {
-                            $gte: [
-                              "$$booking.BookingEndDateAndTime",
-                              startDate,
-                            ],
+                            $gt: ["$$booking.BookingEndDateAndTime", startDate],
                           },
                           {
                             $lte: ["$$booking.BookingEndDateAndTime", endDate],
                           },
                         ],
                       },
+                      // Booking completely encompasses search period
                       {
                         $and: [
                           {
@@ -2676,21 +2747,90 @@ const getVehicleTbl = async (query) => {
       // Filter conflicting bookings & maintenance
       {
         $addFields: {
+          // conflictingBookings: {
+          //   $filter: {
+          //     input: "$bookings",
+          //     as: "booking",
+          //     cond: {
+          //       $and: [
+          //         // { $ne: ["$$booking.rideStatus", "canceled"] },
+          //         {
+          //           $not: {
+          //             $in: ["$$booking.rideStatus", ["canceled", "completed"]],
+          //             $in: ["$$booking.bookingStatus", ["canceled"]],
+          //           },
+          //         },
+          //         {
+          //           $or: [
+          //             {
+          //               $and: [
+          //                 {
+          //                   $gte: [
+          //                     "$$booking.BookingStartDateAndTime",
+          //                     startDate,
+          //                   ],
+          //                 },
+          //                 {
+          //                   $lte: [
+          //                     "$$booking.BookingStartDateAndTime",
+          //                     endDate,
+          //                   ],
+          //                 },
+          //               ],
+          //             },
+          //             {
+          //               $and: [
+          //                 {
+          //                   $gte: [
+          //                     "$$booking.BookingEndDateAndTime",
+          //                     startDate,
+          //                   ],
+          //                 },
+          //                 {
+          //                   $lte: ["$$booking.BookingEndDateAndTime", endDate],
+          //                 },
+          //               ],
+          //             },
+          //             {
+          //               $and: [
+          //                 {
+          //                   $lte: [
+          //                     "$$booking.BookingStartDateAndTime",
+          //                     startDate,
+          //                   ],
+          //                 },
+          //                 {
+          //                   $gte: ["$$booking.BookingEndDateAndTime", endDate],
+          //                 },
+          //               ],
+          //             },
+          //           ],
+          //         },
+          //       ],
+          //     },
+          //   },
+          // },
           conflictingBookings: {
             $filter: {
               input: "$bookings",
               as: "booking",
               cond: {
                 $and: [
-                  // { $ne: ["$$booking.rideStatus", "canceled"] },
                   {
-                    $not: {
-                      $in: ["$$booking.rideStatus", ["canceled", "completed"]],
-                      $in: ["$$booking.bookingStatus", ["canceled"]],
-                    },
+                    $and: [
+                      { $ne: ["$$booking.rideStatus", "pending"] },
+                      { $ne: ["$$booking.rideStatus", "canceled"] },
+                      { $ne: ["$$booking.rideStatus", "completed"] },
+                      { $ne: ["$$booking.bookingStatus", "canceled"] },
+                    ],
                   },
                   {
+                    $gte: ["$$booking.BookingEndDateAndTime", startDate],
+                  },
+                  // Check for time overlap (any of these conditions means conflict)
+                  {
                     $or: [
+                      // Booking starts during search period
                       {
                         $and: [
                           {
@@ -2700,26 +2840,22 @@ const getVehicleTbl = async (query) => {
                             ],
                           },
                           {
-                            $lte: [
-                              "$$booking.BookingStartDateAndTime",
-                              endDate,
-                            ],
+                            $lt: ["$$booking.BookingStartDateAndTime", endDate],
                           },
                         ],
                       },
+                      // Booking ends during search period
                       {
                         $and: [
                           {
-                            $gte: [
-                              "$$booking.BookingEndDateAndTime",
-                              startDate,
-                            ],
+                            $gt: ["$$booking.BookingEndDateAndTime", startDate],
                           },
                           {
                             $lte: ["$$booking.BookingEndDateAndTime", endDate],
                           },
                         ],
                       },
+                      // Booking completely encompasses search period
                       {
                         $and: [
                           {
@@ -3915,6 +4051,110 @@ const getVehicleTblData = async (query) => {
       },
 
       {
+        // $addFields: {
+        //   conflictingBookings: {
+        //     $filter: {
+        //       input: "$bookings",
+        //       as: "booking",
+        //       cond: {
+        //         $and: [
+        //           // {
+        //           //   $ne: ["$$booking.rideStatus", "canceled"],
+        //           // },
+        //           {
+        //             $not: {
+        //               $in: [
+        //                 "$$booking.rideStatus",
+        //                 ["pending", "canceled", "completed"],
+        //               ],
+        //               $in: ["$$booking.bookingStatus", ["canceled"]],
+        //             },
+        //           },
+        //           {
+        //             $not: [
+        //               { $lt: ["$$booking.BookingEndDateAndTime", startDate] },
+        //             ],
+        //           },
+        //           {
+        //             $or: [
+        //               {
+        //                 $and: [
+        //                   {
+        //                     $gte: [
+        //                       "$$booking.BookingStartDateAndTime",
+        //                       startDate,
+        //                     ],
+        //                   },
+        //                   {
+        //                     $lte: [
+        //                       "$$booking.BookingStartDateAndTime",
+        //                       endDate,
+        //                     ],
+        //                   },
+        //                 ],
+        //               },
+        //               {
+        //                 $and: [
+        //                   {
+        //                     $gte: [
+        //                       "$$booking.BookingEndDateAndTime",
+        //                       startDate,
+        //                     ],
+        //                   },
+        //                   {
+        //                     $lte: ["$$booking.BookingEndDateAndTime", endDate],
+        //                   },
+        //                 ],
+        //               },
+        //               {
+        //                 $and: [
+        //                   {
+        //                     $lte: [
+        //                       "$$booking.BookingStartDateAndTime",
+        //                       startDate,
+        //                     ],
+        //                   },
+        //                   {
+        //                     $gte: ["$$booking.BookingEndDateAndTime", endDate],
+        //                   },
+        //                 ],
+        //               },
+        //             ],
+        //           },
+        //         ],
+        //       },
+        //     },
+        //   },
+        //   conflictingMaintenance: {
+        //     $filter: {
+        //       input: "$maintenanceData",
+        //       as: "maintenance",
+        //       cond: {
+        //         $or: [
+        //           {
+        //             $and: [
+        //               { $gte: ["$$maintenance.startDate", startDate] },
+        //               { $lte: ["$$maintenance.startDate", endDate] },
+        //             ],
+        //           },
+        //           {
+        //             $and: [
+        //               { $gte: ["$$maintenance.endDate", startDate] },
+        //               { $lte: ["$$maintenance.endDate", endDate] },
+        //             ],
+        //           },
+        //           {
+        //             $and: [
+        //               { $lte: ["$$maintenance.startDate", startDate] },
+        //               { $gte: ["$$maintenance.endDate", endDate] },
+        //             ],
+        //           },
+        //         ],
+        //       },
+        //     },
+        //   },
+        // },
+
         $addFields: {
           conflictingBookings: {
             $filter: {
@@ -3922,22 +4162,21 @@ const getVehicleTblData = async (query) => {
               as: "booking",
               cond: {
                 $and: [
-                  // {
-                  //   $ne: ["$$booking.rideStatus", "canceled"],
-                  // },
                   {
-                    $not: {
-                      $in: ["$$booking.rideStatus", ["canceled", "completed"]],
-                      $in: ["$$booking.bookingStatus", ["canceled"]],
-                    },
-                  },
-                  {
-                    $not: [
-                      { $lt: ["$$booking.BookingEndDateAndTime", startDate] },
+                    $and: [
+                      { $ne: ["$$booking.rideStatus", "pending"] },
+                      { $ne: ["$$booking.rideStatus", "canceled"] },
+                      { $ne: ["$$booking.rideStatus", "completed"] },
+                      { $ne: ["$$booking.bookingStatus", "canceled"] },
                     ],
                   },
                   {
+                    $gte: ["$$booking.BookingEndDateAndTime", startDate],
+                  },
+                  // Check for time overlap (any of these conditions means conflict)
+                  {
                     $or: [
+                      // Booking starts during search period
                       {
                         $and: [
                           {
@@ -3947,26 +4186,22 @@ const getVehicleTblData = async (query) => {
                             ],
                           },
                           {
-                            $lte: [
-                              "$$booking.BookingStartDateAndTime",
-                              endDate,
-                            ],
+                            $lt: ["$$booking.BookingStartDateAndTime", endDate],
                           },
                         ],
                       },
+                      // Booking ends during search period
                       {
                         $and: [
                           {
-                            $gte: [
-                              "$$booking.BookingEndDateAndTime",
-                              startDate,
-                            ],
+                            $gt: ["$$booking.BookingEndDateAndTime", startDate],
                           },
                           {
                             $lte: ["$$booking.BookingEndDateAndTime", endDate],
                           },
                         ],
                       },
+                      // Booking completely encompasses search period
                       {
                         $and: [
                           {
@@ -3986,6 +4221,7 @@ const getVehicleTblData = async (query) => {
               },
             },
           },
+
           conflictingMaintenance: {
             $filter: {
               input: "$maintenanceData",
