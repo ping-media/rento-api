@@ -832,6 +832,7 @@ const initiateBooking = async (req, res) => {
             {
               title: "Booking Created",
               date: Date.now(),
+              bookingEndDateAndTime: bookingData?.BookingEndDateAndTime || "",
             },
           ],
         };
@@ -912,6 +913,7 @@ const initiateBooking = async (req, res) => {
           {
             title: "Booking Created",
             date: Date.now(),
+            bookingEndDateAndTime: bookingData?.BookingEndDateAndTime || "",
           },
         ],
       };
