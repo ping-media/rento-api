@@ -778,8 +778,12 @@ const updateMultipleVehicles = async (req, res) => {
           updated = true;
           return {
             ...(plan.toObject?.() ?? plan),
-            planPrice: match.planPrice,
-            kmLimit: (match.kmLimit ?? plan.kmLimit) || 0,
+            planPrice: match.hasOwnProperty("planPrice")
+              ? match.planPrice
+              : plan.planPrice,
+            kmLimit: match.hasOwnProperty("kmLimit")
+              ? match.kmLimit
+              : plan.kmLimit,
           };
         }
         return plan;
