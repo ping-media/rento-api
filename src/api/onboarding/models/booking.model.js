@@ -14,6 +14,7 @@ const {
 } = require("../../../utils/pushNotification.js");
 const { sendMessageAfterBooking } = require("../../../utils/index.js");
 require("dotenv").config();
+const mongoose = require("mongoose");
 
 // Get All Bookings with Filtering and Pagination
 // const getBooking = async (query) => {
@@ -768,10 +769,15 @@ const createOrderId = async ({ amount, booking_id, _id, type, typeId }) => {
 };
 
 const initiateBooking = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     let { bookingData, paymentMethod } = req.body;
 
     if (!bookingData.vehicleTableId || !bookingData.userId || !paymentMethod) {
+      await session.abortTransaction();
+      session.endSession();
       return res.json({ message: "Required fields missing", status: 400 });
     }
 
@@ -784,7 +790,7 @@ const initiateBooking = async (req, res) => {
         paymentStatus: "paid",
       };
 
-      const response = await booking(bookingData);
+      const response = await booking(bookingData, { session });
 
       if (response?.status === 200) {
         const timeLineData = {
@@ -803,6 +809,9 @@ const initiateBooking = async (req, res) => {
         await timelineFunctionServer(timeLineData);
       }
 
+      await session.commitTransaction();
+      session.endSession();
+
       return res.json(response);
     }
 
@@ -815,7 +824,7 @@ const initiateBooking = async (req, res) => {
         paymentMethod: paymentMethod,
       };
 
-      const response = await booking(bookingData);
+      const response = await booking(bookingData, { session });
 
       if (response?.status === 200) {
         const paymentAmount =
@@ -872,6 +881,9 @@ const initiateBooking = async (req, res) => {
           }
         }
 
+        await session.commitTransaction();
+        session.endSession();
+
         return res.json(response);
       }
     }
@@ -901,7 +913,7 @@ const initiateBooking = async (req, res) => {
 
     bookingData = { ...bookingData, paymentMethod: paymentMethod };
 
-    const response = await booking(bookingData);
+    const response = await booking(bookingData, { session });
 
     if (response?.status === 200) {
       const timeLineData_1 = {
@@ -936,14 +948,18 @@ const initiateBooking = async (req, res) => {
       });
 
       if (razorData?.status === "created") {
-        await Booking.findByIdAndUpdate(response?.data?._id, {
-          $set: {
-            payInitFrom: "Razorpay",
-            paymentInitiatedDate: razorData?.created_at,
-            paymentgatewayOrderId: razorData?.id,
-            paymentgatewayReceiptId: razorData?.receipt,
+        await Booking.findByIdAndUpdate(
+          response?.data?._id,
+          {
+            $set: {
+              payInitFrom: "Razorpay",
+              paymentInitiatedDate: razorData?.created_at,
+              paymentgatewayOrderId: razorData?.id,
+              paymentgatewayReceiptId: razorData?.receipt,
+            },
           },
-        });
+          { session }
+        );
 
         const timeLineData = {
           currentBooking_id: response.data?._id,
@@ -957,8 +973,13 @@ const initiateBooking = async (req, res) => {
 
         await timelineFunctionServer(timeLineData);
       } else {
+        await session.abortTransaction();
+        session.endSession();
         return res.json({ status: 500, message: "Failed to initiate payment" });
       }
+
+      await session.commitTransaction();
+      session.endSession();
 
       return res.json({
         status: 200,
@@ -972,11 +993,15 @@ const initiateBooking = async (req, res) => {
       });
     }
 
+    await session.abortTransaction();
+    session.endSession();
     return res.json({
       status: 500,
       message: response?.message,
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("Booking error:", error);
     return res.json({
       status: 500,

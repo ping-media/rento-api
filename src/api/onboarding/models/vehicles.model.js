@@ -311,6 +311,7 @@ async function booking({
   paymentgatewayOrderId,
   userType = "",
   paymentgatewayReceiptId,
+  session = undefined,
 }) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -329,9 +330,11 @@ async function booking({
         return obj;
       }
       // Vehicle availability check
-      const vehicleRecord = await Booking.findOne({ vehicleTableId }).sort({
-        createdAt: -1,
-      });
+      const vehicleRecord = await Booking.findOne({ vehicleTableId })
+        .sort({
+          createdAt: -1,
+        })
+        .session(session);
 
       //   console.log(vehicleRecord)
       if (
@@ -353,12 +356,13 @@ async function booking({
       let sequence = 1;
       const lastBooking = await Booking.findOne({})
         .sort({ createdAt: -1 })
-        .select("bookingId");
+        .select("bookingId")
+        .session(session);
       if (lastBooking && lastBooking.bookingId) {
         sequence = parseInt(lastBooking.bookingId, 10) + 1;
       }
       var bookingId = sequence.toString().padStart(6, "0");
-      const find = await Station.find({ stationName });
+      const find = await Station.find({ stationName }).session(session);
 
       if (userType != "customer") {
         // console.log(find);
@@ -438,7 +442,9 @@ async function booking({
     });
 
     if (_id) {
-      const find = await Booking.findOne({ _id: ObjectId(_id) });
+      const find = await Booking.findOne({ _id: ObjectId(_id) }).session(
+        session
+      );
       if (!find) {
         obj.status = 401;
         obj.message = "Invalid booking id";
@@ -453,7 +459,7 @@ async function booking({
       }
 
       if (deleteRec) {
-        await Booking.deleteOne({ _id: ObjectId(_id) });
+        await Booking.deleteOne({ _id: ObjectId(_id) }).session(session);
 
         obj.message = "Booking deleted successfully";
         obj.status = 200;
@@ -485,7 +491,7 @@ async function booking({
       const UpdatedData = await Booking.findByIdAndUpdate(
         { _id: ObjectId(_id) },
         { $set: o },
-        { new: true }
+        { new: true, session }
       );
 
       await Log({
@@ -529,7 +535,9 @@ async function booking({
             return obj;
           }
 
-          var stationMasterUser = await User.findById(stationMasterUserId);
+          var stationMasterUser = await User.findById(
+            stationMasterUserId
+          ).session(session);
           if (!stationMasterUser) {
             obj.status = 404;
             obj.message = "Station master user not found";
@@ -543,9 +551,9 @@ async function booking({
           }
         }
 
-        const station = await Station.findOne({ stationName }).select(
-          "latitude longitude"
-        );
+        const station = await Station.findOne({ stationName })
+          .select("latitude longitude")
+          .session(session);
         if (!station) {
           console.error(`Station not found for stationName: ${stationName}`);
           return;
@@ -638,7 +646,7 @@ async function booking({
       ) {
         const SaveBooking = new Booking(o);
 
-        await SaveBooking.save();
+        await SaveBooking.save({ session });
 
         obj.message = "New booking saved successfully";
         obj.data = SaveBooking;
