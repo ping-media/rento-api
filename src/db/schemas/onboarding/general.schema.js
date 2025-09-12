@@ -84,7 +84,7 @@ const GeneralSchema = new Schema(
     appInfo: {
       android: {
         latestVersion: {
-          type: string,
+          type: String,
         },
         forceUpdate: {
           type: Boolean,
