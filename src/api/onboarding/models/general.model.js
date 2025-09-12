@@ -503,6 +503,7 @@ const getExtraAddOns = async (req, res) => {
         info: 1,
         slides: 1,
         testimonial: 1,
+        appInfo: 1,
         maintenance: 1,
         testMode: 1,
       }
