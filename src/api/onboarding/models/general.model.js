@@ -524,6 +524,7 @@ const getExtraAddOns = async (req, res) => {
     const slides = general.slides || [];
     const testimonial = general.testimonial || [];
     const maintenance = general.maintenance || false;
+    const appInfo = general.appInfo || {};
     const testMode = general.testMode || false;
 
     return res.status(200).json({
@@ -534,6 +535,7 @@ const getExtraAddOns = async (req, res) => {
       info: info,
       slides: slides,
       testimonial: testimonial,
+      appInfo,
       maintenance: maintenance,
       testMode: testMode,
       // pagination: {
