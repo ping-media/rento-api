@@ -81,6 +81,16 @@ const GeneralSchema = new Schema(
         message: "You can only have up to 10 testimonial.",
       },
     },
+    appInfo: {
+      android: {
+        latestVersion: {
+          type: string,
+        },
+        forceUpdate: {
+          type: Boolean,
+        },
+      },
+    },
     maintenance: { type: Boolean, default: false },
     testMode: { type: Boolean, default: true },
   },

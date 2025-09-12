@@ -1,7 +1,13 @@
 const Logs = require("../../../db/schemas/onboarding/log");
 const axios = require("axios");
 
-async function Log({ message, functionName, userId, platform = "website" }) {
+async function Log({
+  message,
+  functionName,
+  userId,
+  platform = "website",
+  otherInfo,
+}) {
   try {
     // Extract IP address
     let ipAdd = await axios.get("https://api.ipify.org/?format=json");
@@ -12,7 +18,14 @@ async function Log({ message, functionName, userId, platform = "website" }) {
     }
 
     // Create the log object
-    const logObj = { message, functionName, userId, ipAddress, platform };
+    const logObj = {
+      message,
+      functionName,
+      userId,
+      ipAddress,
+      platform,
+      otherInfo,
+    };
 
     // Save the log to the database
     const newLog = new Logs(logObj);
