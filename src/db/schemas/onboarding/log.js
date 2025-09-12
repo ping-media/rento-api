@@ -6,11 +6,14 @@ const logSchema = new Schema(
     message: {
       type: String,
       required: true,
-      
     },
     functionName: {
       type: String,
-      required: true,
+    },
+    platform: {
+      type: String,
+      enum: "website" | "app",
+      default: "website",
     },
     userId: {
       type: String,
@@ -20,23 +23,20 @@ const logSchema = new Schema(
       type: Object,
       //required: true,
     },
-    
   },
   { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
 );
 
-logSchema.pre('save', function (next) {
+logSchema.pre("save", function (next) {
   if (this.message) {
-    this.message = this.message.toLowerCase(); 
+    this.message = this.message.toLowerCase();
   }
   if (this.functionName) {
-    this.functionName = this.functionName.toLowerCase(); 
+    this.functionName = this.functionName.toLowerCase();
   }
-  
- 
+
   next();
 });
-
 
 const Logs = mongoose.model("Logs", logSchema);
 

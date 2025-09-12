@@ -1367,4 +1367,9 @@ router.post("/send-notification", async (req, res) => {
   return sendMessageAfterBooking(bookingId);
 });
 
+router.post("/log-error", async (req, res) => {
+  const { message, functionName, userId, platform } = req.body;
+  return Log(message, functionName, userId, platform);
+});
+
 module.exports = router;
