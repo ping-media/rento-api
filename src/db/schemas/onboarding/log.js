@@ -15,7 +15,7 @@ const logSchema = new Schema(
     },
     platform: {
       type: String,
-      enum: "website" | "app",
+      enum: ["website", "app"],
       default: "website",
     },
     userId: {
