@@ -1369,7 +1369,7 @@ router.post("/send-notification", async (req, res) => {
 
 router.post("/log-error", async (req, res) => {
   const { message, functionName, userId, platform, otherInfo } = req.body;
-  return Log(message, functionName, userId, platform, otherInfo);
+  return Log({ message, functionName, userId, platform, otherInfo });
 });
 
 module.exports = router;

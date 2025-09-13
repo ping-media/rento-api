@@ -33,6 +33,7 @@ async function Log({
 
     // Return success response
     console.log("Log Created:", newLog);
+
     return {
       status: 200,
       message: "Log created successfully",
