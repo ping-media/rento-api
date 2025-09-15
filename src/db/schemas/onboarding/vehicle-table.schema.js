@@ -17,6 +17,10 @@ const vehiclePlanSchema = new Schema({
     type: Number,
     min: [0, "Plan duration must be a positive value"],
   },
+  kmLimit: {
+    type: Number,
+    min: [0, "Km Limit must be a positive value"],
+  },
 });
 
 const vehicleTableSchema = new Schema(

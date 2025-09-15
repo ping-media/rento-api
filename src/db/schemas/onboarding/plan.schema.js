@@ -16,35 +16,21 @@ const planSchema = new Schema(
       type: Number,
       required: true,
     },
-    // stationId: {
-    //   type: String,
-    //   ref: "station", // Reference the 'Station' model
-    //   required: true,
-    // },
-  //   locationId: {
-  //     type: Schema.Types.ObjectId,
-  //     ref: "location", // Reference the 'Location' model
-  //     required: true,
-
-  //   },
-  //   vehicleMasterId: {
-  //     type: Schema.Types.ObjectId,
-  //     ref: 'vehicleMaster',
-  //     required: true
-  // },
+    kmLimit: {
+      type: Number,
+      require: true,
+    },
   },
   { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
 );
 
-planSchema.pre('save', function (next) {
+planSchema.pre("save", function (next) {
   if (this.planName) {
-    this.planName = this.planName.toLowerCase(); 
+    this.planName = this.planName.toLowerCase();
   }
-  
- 
+
   next();
 });
-
 
 const Plan = mongoose.model("Plan", planSchema);
 
