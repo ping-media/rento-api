@@ -331,17 +331,20 @@ const razorpayWebhook = async (req, res) => {
   const event = req.body;
 
   try {
-    if (event.event === "payment.captured") {
-      const payment = event.payload.payment.entity;
-      const bookingId = payment.notes?.booking_id;
-      const type = payment.notes?.type || "";
-      const typeId = payment.notes?.typeId || "";
-      const amountInPaise = payment.amount;
-      const amountPaid = amountInPaise / 100;
-      const razorpayPaymentId = payment.id;
+    // if (event.event === "payment.captured") {
+    const payment = event.payload.payment.entity;
+    const bookingId = payment.notes?.booking_id;
+    const type = payment.notes?.type || "";
+    const typeId = payment.notes?.typeId || "";
+    const amountInPaise = payment.amount;
+    const amountPaid = amountInPaise / 100;
+    const razorpayPaymentId = payment.id;
 
-      const paymentTime = new Date(payment.created_at * 1000);
+    const paymentTime = new Date(payment.created_at * 1000);
 
+    const verifiedPayment = await razorpay.payments.fetch(razorpayPaymentId);
+
+    if (verifiedPayment.status === "captured") {
       if (type === "extension") {
         await handleExtendBookingWebhook(
           bookingId,
@@ -365,15 +368,16 @@ const razorpayWebhook = async (req, res) => {
       }
     }
 
-    if (event.event === "payment.failed") {
-      const payment = event.payload.payment.entity;
-      const bookingId = payment.notes?.booking_id;
-      const type = payment.notes?.type || "";
-      const typeId = payment.notes?.typeId || "";
-      const amountInPaise = payment.amount;
-      const amountPaid = amountInPaise / 100;
-      const razorpayPaymentId = payment.id;
+    // if (event.event === "payment.failed") {
+    // const payment = event.payload.payment.entity;
+    // const bookingId = payment.notes?.booking_id;
+    // const type = payment.notes?.type || "";
+    // const typeId = payment.notes?.typeId || "";
+    // const amountInPaise = payment.amount;
+    // const amountPaid = amountInPaise / 100;
+    // const razorpayPaymentId = payment.id;
 
+    if (verifiedPayment.status === "failed") {
       if (type === "extension") {
         await markExtendBookingAsFailed(
           bookingId,
@@ -765,7 +769,8 @@ const markBookingAsFailed = async (
 
   booking.paymentStatus = "failed";
   booking.bookingStatus = "canceled";
-  booking.payFailedId = razorpayPaymentId;
+  booking.rideStatus = "canceled";
+  // booking.payFailedId = razorpayPaymentId;
 
   await booking.save();
 
@@ -774,7 +779,7 @@ const markBookingAsFailed = async (
     currentBooking_id: booking._id,
     timeLine: [
       {
-        title: "Payment Failed",
+        title: "Payment Failed(Main Booking)",
         paymentAmount: amountPaid,
         date: Date.now(),
         paymentId: razorpayPaymentId,
