@@ -1218,8 +1218,10 @@ router.post("/sendReminder", Authentication, async (req, res) => {
         .json({ status: 400, message: "Station not found" });
     }
 
-    const { latitude, longitude } = station;
-    const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    const { latitude, longitude, mapLink } = station;
+    const newMapLink =
+      mapLink ||
+      `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
 
     // Calculate total price
     const totalPrice =
@@ -1231,21 +1233,17 @@ router.post("/sendReminder", Authentication, async (req, res) => {
     // Prepare message data for WhatsApp
     const messageData = [
       firstName,
-      vehicleName,
+      bookingId,
       convertDateString(BookingStartDateAndTime),
       bookingId,
       stationName,
-      mapLink,
+      newMapLink,
       managerContact,
       totalPrice,
       refundableDeposit,
     ];
 
-    const whatsappResult = await whatsappMessage(
-      [contact],
-      "booking_reminder",
-      messageData
-    );
+    await whatsappMessage([contact], "reminder", messageData);
 
     const emailResult = await sendReminderEmail(req.body);
 

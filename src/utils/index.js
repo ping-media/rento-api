@@ -62,6 +62,7 @@ const sendMessageAfterBooking = async (id) => {
       bookingStatus,
       paymentStatus,
       paymentMethod,
+      vehicleBrand,
     } = booking;
 
     if (userId && stationMasterUserId) {
@@ -112,17 +113,40 @@ const sendMessageAfterBooking = async (id) => {
           : bookingPrice.totalPrice;
 
       // Prepare message data
-      const date = convertDateString(BookingStartDateAndTime);
+      // const date = convertDateString(BookingStartDateAndTime);
 
-      const messageData = [
-        user.firstName,
-        vehicleName,
-        date,
+      // const messageData = [
+      //   user.firstName,
+      //   vehicleName,
+      //   date,
+      //   bookingId,
+      //   stationName,
+      //   newMapLink,
+      //   stationMasterUser.contact,
+      // ];
+
+      const userMessageData = [
         bookingId,
         stationName,
         newMapLink,
         stationMasterUser.contact,
       ];
+
+      const stationMasterMessageData = [
+        bookingId,
+        `${user?.firstName || "--"} ${user?.lastName || ""}`,
+        user.contact,
+        `${vehicleBrand} ${vehicleName} (${
+          vehicleBasic?.vehicleNumber || "--"
+        })`,
+        stationName,
+        stationName,
+        stationName,
+      ];
+
+      if (["paid", "partially_paid", "cash"].includes(bookingStatus)) {
+        await whatsappMessage([user.contact], "confir_book", userMessageData);
+      }
 
       if (bookingStatus === "extended") {
         const extendRide =
@@ -146,46 +170,50 @@ const sendMessageAfterBooking = async (id) => {
           stationMasterUser.contact,
         ];
 
-        await whatsappMessage(
-          [user.contact, "9916864268", stationMasterUser.contact],
-          "booking_extend",
-          messageData
-        );
+        await whatsappMessage([user.contact], "extended", messageData);
       }
-      if (paymentStatus === "paid") {
-        messageData.push(totalPrice, vehicleBasic.refundableDeposit);
+      // for manager same template is used in every condition
+      await whatsappMessage(
+        ["9916864268", stationMasterUser.contact],
+        "0004_station_msg",
+        stationMasterMessageData
+      );
 
-        await whatsappMessage(
-          [user.contact, "9916864268", stationMasterUser.contact],
-          "booking_confirm_paid",
-          messageData,
-          _id
-        );
-      } else if (paymentStatus === "partially_paid") {
-        const remainingAmount =
-          Number(totalPrice) - Number(bookingPrice.userPaid);
+      // if (paymentStatus === "paid") {
+      //   messageData.push(totalPrice, vehicleBasic.refundableDeposit);
 
-        messageData.push(
-          bookingPrice.userPaid,
-          remainingAmount,
-          vehicleBasic.refundableDeposit
-        );
-        await whatsappMessage(
-          [user.contact, "9916864268", stationMasterUser.contact],
-          "booking_confirmed_partial_paid",
-          messageData,
-          _id
-        );
-      } else if (paymentMethod === "cash") {
-        messageData.push(totalPrice, vehicleBasic.refundableDeposit);
+      //   await whatsappMessage(
+      //     [user.contact, "9916864268", stationMasterUser.contact],
+      //     "booking_confirm_paid",
+      //     messageData,
+      //     _id
+      //   );
+      // } else if (paymentStatus === "partially_paid") {
+      //   const remainingAmount =
+      //     Number(totalPrice) - Number(bookingPrice.userPaid);
 
-        await whatsappMessage(
-          [user.contact, "9916864268", stationMasterUser.contact],
-          "booking_confirm_cash",
-          messageData,
-          _id
-        );
-      }
+      //   messageData.push(
+      //     bookingPrice.userPaid,
+      //     remainingAmount,
+      //     vehicleBasic.refundableDeposit
+      //   );
+      //   await whatsappMessage(
+      //     [user.contact, "9916864268", stationMasterUser.contact],
+      //     "booking_confirmed_partial_paid",
+      //     messageData,
+      //     _id
+      //   );
+      // } else if (paymentMethod === "cash") {
+      //   messageData.push(totalPrice, vehicleBasic.refundableDeposit);
+
+      //   await whatsappMessage(
+      //     [user.contact, "9916864268", stationMasterUser.contact],
+      //     "booking_confirm_cash",
+      //     messageData,
+      //     _id
+      //   );
+      // }
+
       if (bookingStatus === "extended") {
         const timelineData = await Timeline.findOne({ currentBooking_id: _id });
 
