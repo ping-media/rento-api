@@ -318,7 +318,7 @@ const getBooking = async (query) => {
 
       const booking = await Booking.findById(_id).populate(
         "userId",
-        "firstName lastName contact createdAt updatedAt"
+        "firstName lastName contact altContact email createdAt updatedAt"
       );
 
       if (!booking) {
@@ -405,6 +405,8 @@ const getBooking = async (query) => {
               firstName: 1,
               lastName: 1,
               contact: 1,
+              altContact: 1,
+              email: 1,
               createdAt: 1,
               updatedAt: 1,
             },

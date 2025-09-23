@@ -1548,6 +1548,7 @@ async function createStation({
   weekendPercentage,
   isGstActive,
   _id,
+  addonId,
   status,
   deleteRec,
 }) {
@@ -1618,6 +1619,31 @@ async function createStation({
           userId
         );
 
+        return response;
+      }
+
+      if (addonId) {
+        const addon = station.extraAddOn.find(
+          (a) => a._id.toString() === addonId.toString()
+        );
+
+        if (!addon) {
+          response.status = 404;
+          response.message = "Addon not found in this station";
+          return response;
+        }
+
+        addon.status = status; // update the field
+        await station.save();
+
+        logError(
+          "Station addon updated successfully ",
+          "createStation",
+          userId
+        );
+        response.status = 200;
+        response.message = "Addon status updated successfully";
+        response.data = station;
         return response;
       }
 
