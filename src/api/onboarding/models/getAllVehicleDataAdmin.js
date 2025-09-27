@@ -1,6 +1,7 @@
 const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const MaintenanceVehicle = require("../../../db/schemas/onboarding/maintenanceVehicleSchema");
 const mongoose = require("mongoose");
+const Plan = require("../../../db/schemas/onboarding/plan.schema");
 
 const updateManyVehicles = async (filter, updateData) => {
   try {
@@ -770,37 +771,57 @@ const updateMultipleVehicles = async (req, res) => {
       let updated = false;
 
       // Update existing plans if matching
-      updatedPlan = updatedPlan.map((plan) => {
-        const match = vehiclePlan.find(
-          (p) => String(p._id) === String(plan._id)
-        );
-        if (match) {
-          updated = true;
-          return {
-            ...(plan.toObject?.() ?? plan),
-            planPrice: match.hasOwnProperty("planPrice")
-              ? match.planPrice
-              : plan.planPrice,
-            kmLimit: match.hasOwnProperty("kmLimit")
-              ? match.kmLimit
-              : plan.kmLimit,
-          };
-        }
-        return plan;
-      });
+      updatedPlan = await Promise.all(
+        updatedPlan.map(async (plan) => {
+          const match = vehiclePlan.find(
+            (p) => String(p._id) === String(plan._id)
+          );
+          if (match) {
+            updated = true;
+
+            const parentPlan = await Plan.findById(plan._id);
+
+            return {
+              ...(plan.toObject?.() ?? plan),
+              planPrice: match.hasOwnProperty("planPrice")
+                ? match.planPrice
+                : plan.planPrice,
+              kmLimit: match.hasOwnProperty("kmLimit")
+                ? match.kmLimit
+                : plan.kmLimit,
+              ...(parentPlan && {
+                planName: parentPlan.planName,
+                planDuration: parentPlan.planDuration,
+              }),
+            };
+          }
+          return plan;
+        })
+      );
 
       // Add new plans not already present
       for (const newPlan of vehiclePlan) {
         const exists =
           !newPlan._id ||
           updatedPlan.some((p) => String(p._id) === String(newPlan._id));
+
+        const plan = Plan.findById(newPlan._id);
+
+        if (!plan) {
+          return res.json({
+            status: 404,
+            success: false,
+            message: `new plan data not found! try again`,
+          });
+        }
+
         if (!exists) {
           updatedPlan.push({
             _id: newPlan._id,
             planPrice: newPlan.planPrice,
-            planName: newPlan.planName || "",
-            planDuration: newPlan.planDuration || "",
-            kmLimit: newPlan.kmLimit ?? 0,
+            planName: newPlan.planName || plan.planName || "",
+            planDuration: newPlan.planDuration || plan.planDuration || 0,
+            kmLimit: newPlan.kmLimit ?? plan.kmLimit ?? 0,
           });
           updated = true;
         }
