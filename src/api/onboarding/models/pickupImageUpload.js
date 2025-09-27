@@ -318,7 +318,10 @@ const savePickupImageLinks = async (req, res) => {
       });
     }
 
-    const { vehicleBasic, paymentMethod } = booking;
+    const { vehicleBasic, paymentMethod, bookingStatus } = booking;
+
+    const newBookingStatus =
+      bookingStatus === "pending" ? "done" : bookingStatus;
 
     if (vehicleBasic.startRide !== Number(rideOtp)) {
       return res.json({ status: 400, message: "Invalid Otp" });
@@ -424,6 +427,7 @@ const savePickupImageLinks = async (req, res) => {
         { _id },
         {
           $set: {
+            bookingStatus: newBookingStatus,
             "bookingPrice.isPickupImageAdded": true,
             rideStatus: "ongoing",
             "vehicleBasic.endRide": OTP,
@@ -442,6 +446,7 @@ const savePickupImageLinks = async (req, res) => {
         { _id },
         {
           $set: {
+            bookingStatus: newBookingStatus,
             "bookingPrice.isPickupImageAdded": true,
             rideStatus: "ongoing",
             "vehicleBasic.endRide": OTP,
@@ -457,6 +462,7 @@ const savePickupImageLinks = async (req, res) => {
         { _id },
         {
           $set: {
+            bookingStatus: newBookingStatus,
             "bookingPrice.isPickupImageAdded": true,
             rideStatus: "ongoing",
             "vehicleBasic.endRide": OTP,
