@@ -1495,7 +1495,7 @@ const updateBooking = async (req, res) => {
 };
 
 const editBooking = async (req, res) => {
-  const { addOn, totalAddOnPrice, _id } = req.body;
+  const { addOn, totalAddOnPrice, addonTax, _id } = req.body;
 
   if (!_id || !addOn) {
     return res.status(400).json({
@@ -1519,7 +1519,9 @@ const editBooking = async (req, res) => {
         bookingPrice.extraAddonDetails.push(item);
       }
     });
+
     bookingPrice.extraAddonPrice += totalAddOnPrice;
+    bookingPrice.addonTax += Number(addonTax) || 0;
 
     let amount = 0;
     if (!bookingPrice?.isDiscountZero && bookingPrice.discountTotalPrice > 0) {
