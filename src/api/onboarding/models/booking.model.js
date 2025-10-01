@@ -574,7 +574,7 @@ const getBookings = async (query) => {
         .populate("vehicleMasterId", "gstPercentage")
         .populate(
           "stationMasterUserId",
-          "firstName lastName contact altContact email status isGstActive"
+          "firstName lastName contact altContact email status isGstActive extraAddOn"
         );
 
       if (!booking) {

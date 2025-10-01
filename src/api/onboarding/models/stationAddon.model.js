@@ -39,8 +39,8 @@ const handleStationAddon = async (req, res) => {
     if (action === "create") {
       const newAddon = {
         name,
-        amount,
-        maxAmount,
+        amount: Number(amount),
+        maxAmount: Number(maxAmount),
         gstPercentage: Number(gstPercentage),
         gstStatus,
         status,
