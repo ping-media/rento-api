@@ -506,6 +506,7 @@ const getExtraAddOns = async (req, res) => {
         appInfo: 1,
         maintenance: 1,
         testMode: 1,
+        payments: 1,
       }
     );
 
@@ -526,6 +527,7 @@ const getExtraAddOns = async (req, res) => {
     const maintenance = general.maintenance || false;
     const appInfo = general.appInfo || {};
     const testMode = general.testMode || false;
+    const payments = general.payments || null;
 
     return res.status(200).json({
       status: 200,
@@ -538,6 +540,7 @@ const getExtraAddOns = async (req, res) => {
       appInfo,
       maintenance: maintenance,
       testMode: testMode,
+      payments,
       // pagination: {
       //   total,
       //   page,

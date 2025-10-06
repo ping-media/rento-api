@@ -93,6 +93,11 @@ const GeneralSchema = new Schema(
     },
     maintenance: { type: Boolean, default: false },
     testMode: { type: Boolean, default: true },
+    payments: {
+      cash: { type: Boolean, default: false },
+      partiallyPay: { type: Boolean, default: true },
+      online: { type: Boolean, default: true },
+    },
   },
   { timestamps: true }
 );
