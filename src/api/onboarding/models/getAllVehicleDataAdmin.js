@@ -805,7 +805,7 @@ const updateMultipleVehicles = async (req, res) => {
           !newPlan._id ||
           updatedPlan.some((p) => String(p._id) === String(newPlan._id));
 
-        const plan = Plan.findById(newPlan._id);
+        const plan = await Plan.findById(newPlan._id);
 
         if (!plan) {
           return res.json({
