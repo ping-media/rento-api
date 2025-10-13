@@ -57,6 +57,7 @@ const {
 const {
   // vehicleChangeInBooking,
   vehicleChange,
+  vehicleChangeNew,
 } = require("../models/vehicleChange.model");
 const { extentBooking } = require("../models/extentBooking.model");
 const { forgetPasswordFunction } = require("../models/forgetPassword");
@@ -1139,8 +1140,8 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
 });
 
 router.post("/vehicleChange", Authentication, async (req, res) => {
-  // vehicleChangeInBooking(req, res);
-  vehicleChange(req, res);
+  // vehicleChange(req, res);
+  vehicleChangeNew(req, res);
 });
 
 router.post("/maintenanceVehicle", Authentication, async (req, res) => {

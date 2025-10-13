@@ -1,8 +1,8 @@
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const Log = require("../../../db/schemas/onboarding/log");
-const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
+// const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Station = require("../../../db/schemas/onboarding/station.schema");
-const Otp = require("../../../db/schemas/onboarding/logOtp");
+// const Otp = require("../../../db/schemas/onboarding/logOtp");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
 const { createOrderId } = require("./booking.model");
 const { createPaymentLinkUtil } = require("./razorpay.model");
@@ -487,8 +487,18 @@ const vehicleChangeNew = async (req, res) => {
         oldRemainingValue = (oldTotalPrice / totalBookingDuration) * daysLeft;
 
         // Calculate cost of new vehicle for remaining days
+        // newRemainingCost =
+        // (newVehicleData.totalRentalCost / totalBookingDuration) * daysLeft;
+
+        const newVehicleFullPrice =
+          newVehicleData.totalRentalCost +
+          Number(booking?.bookingPrice?.extraAddonPrice || 0) +
+          (Number(newVehicleData?.tax || booking?.bookingPrice?.tax) || 0) +
+          (Number(booking?.bookingPrice?.addonTax) || 0);
+
+        // Calculate cost of new vehicle for remaining days (using FULL price)
         newRemainingCost =
-          (newVehicleData.totalRentalCost / totalBookingDuration) * daysLeft;
+          (newVehicleFullPrice / totalBookingDuration) * daysLeft;
 
         // Price difference: positive = customer owes more, negative = customer gets refund
         priceDifference = newRemainingCost - oldRemainingValue;
@@ -740,4 +750,4 @@ const vehicleChangeNew = async (req, res) => {
   }
 };
 
-module.exports = { vehicleChangeInBooking, vehicleChange };
+module.exports = { vehicleChangeInBooking, vehicleChange, vehicleChangeNew };
