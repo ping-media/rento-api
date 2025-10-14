@@ -9,6 +9,7 @@ const TempExtension = require("../../../db/schemas/onboarding/tempExtension.sche
 const {
   sendPushNotificationUsingUserId,
 } = require("../../../utils/pushNotification");
+const WebhookLog = require("../../../db/schemas/onboarding/webhook.schema");
 
 const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -214,16 +215,120 @@ const createPaymentLink = async (req, res) => {
 };
 
 // webhooks code
+// const razorpayWebhookAdmin = async (req, res) => {
+//   const signature = req.headers["x-razorpay-signature"];
+//   const isValid = verifyRazorpaySignature(JSON.stringify(req.body), signature);
+
+//   if (!isValid) return res.status(200).send("Invalid signature");
+
+//   const entity = req.body.payload?.payment_link?.entity;
+
+//   if (!entity) {
+//     console.log("Missing payment_link.entity in webhook payload");
+//     return res.status(200).send("Malformed payload");
+//   }
+
+//   const notes = entity.notes || {};
+//   const amountPaid = (entity.amount || 0) / 100;
+//   const type = notes?.type?.toLowerCase() || "";
+//   const requestFrom = notes?.requestFrom?.toLowerCase() || "";
+//   const noteOrderId = notes?.razorPayOrderId || "";
+//   const typeId = notes?.typeId || "";
+//   const bookingId = notes?.bookingId;
+
+//   // Validate required fields
+//   if (!bookingId) {
+//     console.log("Missing bookingId in notes");
+//     return res.status(200).send("Missing booking ID");
+//   }
+
+//   let paymentId = "";
+//   const orderId = entity.order_id;
+
+//   for (let attempt = 0; attempt < 3; attempt++) {
+//     const payments = await razorpay.orders.fetchPayments(orderId);
+//     // checking whether the payment is successfull or not and getting tran id
+//     if (payments.items && payments.items.length > 0) {
+//       const successfulPayment = payments.items.find(
+//         (p) => p.status === "captured" || p.status === "authorized"
+//       );
+//       if (successfulPayment) {
+//         paymentId = successfulPayment.id;
+//         break;
+//       }
+//     }
+//     await new Promise((resolve) => setTimeout(resolve, 200));
+//   }
+
+//   if (type === "" || type === "partiallypay") {
+//     try {
+//       await updateBookingAfterPaymentAdmin(
+//         bookingId,
+//         amountPaid,
+//         type,
+//         paymentId
+//       );
+//       return res.status(200).send("Booking Payment received");
+//     } catch (err) {
+//       console.error("Error updating booking:", err);
+//       return res.status(200).send("Booking update failed");
+//     }
+//   } else if (
+//     type === "extension" &&
+//     requestFrom === "admin" &&
+//     noteOrderId !== ""
+//   ) {
+//     try {
+//       await updateBookingAdminExtension(typeId, paymentId, noteOrderId);
+//       return res.status(200).send("Admin Extend Booking Payment received");
+//     } catch (err) {
+//       console.error("Error updating booking:", err);
+//       return res.status(200).send("Booking extend failed");
+//     }
+//   } else if (type === "ChangeVehicle") {
+//     try {
+//       await updateBookingForVehicleChange(
+//         bookingId,
+//         amountPaid,
+//         typeId,
+//         paymentId
+//       );
+//       return res.status(200).send("Extend Booking Payment received");
+//     } catch (err) {
+//       console.error("Error updating booking:", err);
+//       return res.status(200).send("Booking extend failed");
+//     }
+//   } else if (type === "extension") {
+//     try {
+//       await updateBookingWithNewExtension(
+//         bookingId,
+//         amountPaid,
+//         typeId,
+//         paymentId
+//       );
+//       return res.status(200).send("Extend Booking Payment received");
+//     } catch (err) {
+//       console.error("Error updating booking:", err);
+//       return res.status(200).send("Booking extend failed");
+//     }
+//   }
+// };
 const razorpayWebhookAdmin = async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
-  const isValid = verifyRazorpaySignature(JSON.stringify(req.body), signature);
+  const body = JSON.stringify(req.body);
 
-  if (!isValid) return res.status(200).send("Invalid signature");
+  // Verify signature
+  const isValid = verifyRazorpaySignature(body, signature);
+
+  if (!isValid) {
+    console.error("Invalid signature received for admin webhook");
+    return res.status(200).send("Invalid signature");
+  }
 
   const entity = req.body.payload?.payment_link?.entity;
 
   if (!entity) {
-    console.log("Missing payment_link.entity in webhook payload");
+    console.error("Missing payment_link.entity in webhook payload");
     return res.status(200).send("Malformed payload");
   }
 
@@ -234,84 +339,246 @@ const razorpayWebhookAdmin = async (req, res) => {
   const noteOrderId = notes?.razorPayOrderId || "";
   const typeId = notes?.typeId || "";
   const bookingId = notes?.bookingId;
+  const orderId = entity.order_id;
+  const paymentLinkId = entity.id;
 
   // Validate required fields
-  if (!bookingId) {
-    console.log("Missing bookingId in notes");
-    return res.status(200).send("Missing booking ID");
+  if (!bookingId || !orderId || !paymentLinkId) {
+    console.error("Missing required fields:", {
+      bookingId,
+      orderId,
+      paymentLinkId,
+    });
+    return res.status(200).send("Missing required fields");
   }
 
-  let paymentId = "";
-  const orderId = entity.order_id;
+  try {
+    // Check if webhook already processed (idempotency)
+    const existingLog = await WebhookLog.findOne({
+      razorpayPaymentId: paymentLinkId,
+      eventType: "payment_link.admin",
+    });
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const payments = await razorpay.orders.fetchPayments(orderId);
-    // checking whether the payment is successfull or not and getting tran id
-    if (payments.items && payments.items.length > 0) {
-      const successfulPayment = payments.items.find(
-        (p) => p.status === "captured" || p.status === "authorized"
-      );
-      if (successfulPayment) {
-        paymentId = successfulPayment.id;
-        break;
+    if (existingLog) {
+      console.log(`Admin webhook already processed: ${paymentLinkId}`);
+      return res.status(200).send("Webhook already processed");
+    }
+
+    // Fetch payment with retry logic
+    let paymentId = "";
+    let paymentStatus = null;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const payments = await razorpay.orders.fetchPayments(orderId);
+
+        if (payments.items && payments.items.length > 0) {
+          const successfulPayment = payments.items.find(
+            (p) => p.status === "captured" || p.status === "authorized"
+          );
+
+          if (successfulPayment) {
+            paymentId = successfulPayment.id;
+            paymentStatus = successfulPayment.status;
+            break;
+          }
+        }
+
+        // Wait before retry
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        }
+      } catch (fetchError) {
+        console.error(
+          `Payment fetch attempt ${attempt + 1} failed:`,
+          fetchError.message
+        );
+
+        if (attempt === 2) {
+          throw new Error("Failed to fetch payment after 3 attempts");
+        }
       }
     }
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
 
-  if (type === "" || type === "partiallypay") {
-    try {
-      await updateBookingAfterPaymentAdmin(
+    if (!paymentId) {
+      console.error(`No successful payment found for order: ${orderId}`);
+
+      await WebhookLog.create({
+        razorpayPaymentId: paymentLinkId,
+        eventType: "payment_link.admin",
+        bookingId,
+        status: "error",
+        error: "No successful payment found",
+        rawPayload: entity,
+      }).catch((logErr) =>
+        console.error("Webhook log creation failed:", logErr)
+      );
+
+      return res.status(200).send("No successful payment found");
+    }
+
+    // Route based on type
+    let handlerResult = null;
+
+    if (type === "" || type === "partiallypay") {
+      handlerResult = await updateBookingAfterPaymentAdmin(
         bookingId,
         amountPaid,
         type,
         paymentId
       );
-      return res.status(200).send("Booking Payment received");
-    } catch (err) {
-      console.error("Error updating booking:", err);
-      return res.status(200).send("Booking update failed");
-    }
-  } else if (
-    type === "extension" &&
-    requestFrom === "admin" &&
-    noteOrderId !== ""
-  ) {
-    try {
-      await updateBookingAdminExtension(typeId, paymentId, noteOrderId);
-      return res.status(200).send("Admin Extend Booking Payment received");
-    } catch (err) {
-      console.error("Error updating booking:", err);
-      return res.status(200).send("Booking extend failed");
-    }
-  } else if (type === "ChangeVehicle") {
-    try {
-      await updateBookingForVehicleChange(
+    } else if (
+      type === "extension" &&
+      requestFrom === "admin" &&
+      noteOrderId !== ""
+    ) {
+      handlerResult = await updateBookingAdminExtension(
+        typeId,
+        paymentId,
+        noteOrderId
+      );
+    } else if (type === "changevehicle") {
+      handlerResult = await updateBookingForVehicleChange(
         bookingId,
         amountPaid,
         typeId,
         paymentId
       );
-      return res.status(200).send("Extend Booking Payment received");
-    } catch (err) {
-      console.error("Error updating booking:", err);
-      return res.status(200).send("Booking extend failed");
-    }
-  } else if (type === "extension") {
-    try {
-      await updateBookingWithNewExtension(
+    } else if (type === "extension") {
+      handlerResult = await updateBookingWithNewExtension(
         bookingId,
         amountPaid,
         typeId,
         paymentId
       );
-      return res.status(200).send("Extend Booking Payment received");
-    } catch (err) {
-      console.error("Error updating booking:", err);
-      return res.status(200).send("Booking extend failed");
+    } else {
+      console.warn(`Unknown payment type: ${type}`);
+
+      await WebhookLog.create({
+        razorpayPaymentId: paymentLinkId,
+        eventType: "payment_link.admin",
+        bookingId,
+        status: "mismatch",
+        warning: true,
+        error: `Unknown payment type: ${type}`,
+        rawPayload: entity,
+      }).catch((logErr) =>
+        console.error("Webhook log creation failed:", logErr)
+      );
+
+      return res.status(200).send("Unknown payment type");
     }
+
+    // Log successful webhook
+    await WebhookLog.create({
+      razorpayPaymentId: paymentLinkId,
+      eventType: "payment_link.admin",
+      bookingId,
+      status: "success",
+      verifiedStatus: paymentStatus,
+      rawPayload: entity,
+    }).catch((logErr) => console.error("Webhook log creation failed:", logErr));
+
+    return res.status(200).send("Payment processed successfully");
+  } catch (error) {
+    console.error("Admin webhook handling failed:", error);
+
+    await WebhookLog.create({
+      razorpayPaymentId: paymentLinkId || "unknown",
+      eventType: "payment_link.admin",
+      bookingId: bookingId || "unknown",
+      status: "error",
+      error: error.message,
+      rawPayload: entity,
+    }).catch((logErr) => console.error("Webhook log creation failed:", logErr));
+
+    return res.status(200).send("Internal error");
   }
 };
+
+// const razorpayWebhook = async (req, res) => {
+//   const signature = req.headers["x-razorpay-signature"];
+//   const body = JSON.stringify(req.body);
+
+//   const expectedSignature = crypto
+//     .createHmac("sha256", RAZORPAY_SECRET)
+//     .update(body)
+//     .digest("hex");
+
+//   if (signature !== expectedSignature) {
+//     return res
+//       .status(200)
+//       .json({ success: false, message: "Invalid signature" });
+//   }
+
+//   const event = req.body;
+
+//   try {
+//     // if (event.event === "payment.captured") {
+//     const payment = event.payload.payment.entity;
+//     const bookingId = payment.notes?.booking_id;
+//     const type = payment.notes?.type || "";
+//     const typeId = payment.notes?.typeId || "";
+//     const amountInPaise = payment.amount;
+//     const amountPaid = amountInPaise / 100;
+//     const razorpayPaymentId = payment.id;
+
+//     const paymentTime = new Date(payment.created_at * 1000);
+
+//     const verifiedPayment = await razorpay.payments.fetch(razorpayPaymentId);
+
+//     if (verifiedPayment.status === "captured") {
+//       if (type === "extension") {
+//         await handleExtendBookingWebhook(
+//           bookingId,
+//           razorpayPaymentId,
+//           amountPaid,
+//           typeId,
+//           paymentTime
+//         );
+//       } else if (type === "" || type === "partiallyPay") {
+//         await updateBookingAfterPayment(
+//           bookingId,
+//           razorpayPaymentId,
+//           amountPaid,
+//           type,
+//           paymentTime
+//         );
+
+//         if (bookingId) {
+//           await sendMessageAfterBooking(bookingId);
+//         }
+//       }
+//     }
+
+//     // if (event.event === "payment.failed") {
+//     // const payment = event.payload.payment.entity;
+//     // const bookingId = payment.notes?.booking_id;
+//     // const type = payment.notes?.type || "";
+//     // const typeId = payment.notes?.typeId || "";
+//     // const amountInPaise = payment.amount;
+//     // const amountPaid = amountInPaise / 100;
+//     // const razorpayPaymentId = payment.id;
+
+//     if (verifiedPayment.status === "failed") {
+//       if (type === "extension") {
+//         await markExtendBookingAsFailed(
+//           bookingId,
+//           razorpayPaymentId,
+//           amountPaid,
+//           typeId
+//         );
+//       } else {
+//         await markBookingAsFailed(bookingId, razorpayPaymentId, amountPaid);
+//       }
+//     }
+
+//     return res.status(200).json({ success: true });
+//   } catch (error) {
+//     console.error("Webhook handling failed:", error);
+//     return res.status(200).json({ success: false, error: "Internal error" });
+//   }
+// };
 
 const razorpayWebhook = async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
@@ -329,22 +596,40 @@ const razorpayWebhook = async (req, res) => {
   }
 
   const event = req.body;
+  const eventType = event.event;
+  const payment = event.payload.payment.entity;
+  const razorpayPaymentId = payment.id;
 
   try {
-    // if (event.event === "payment.captured") {
-    const payment = event.payload.payment.entity;
+    // Check if webhook already processed
+    const existingWebhookLog = await WebhookLog.findOne({
+      razorpayPaymentId,
+      eventType,
+    });
+
+    if (existingWebhookLog) {
+      console.log(
+        `Webhook already processed: ${razorpayPaymentId} - ${eventType}`
+      );
+      return res
+        .status(200)
+        .json({ success: true, message: "Webhook already processed" });
+    }
+
+    // Verify payment status with Razorpay before processing
+    const verifiedPayment = await razorpay.payments.fetch(razorpayPaymentId);
     const bookingId = payment.notes?.booking_id;
     const type = payment.notes?.type || "";
     const typeId = payment.notes?.typeId || "";
     const amountInPaise = payment.amount;
     const amountPaid = amountInPaise / 100;
-    const razorpayPaymentId = payment.id;
-
     const paymentTime = new Date(payment.created_at * 1000);
 
-    const verifiedPayment = await razorpay.payments.fetch(razorpayPaymentId);
-
-    if (verifiedPayment.status === "captured") {
+    // Route based on event type
+    if (
+      eventType === "payment.captured" &&
+      verifiedPayment.status === "captured"
+    ) {
       if (type === "extension") {
         await handleExtendBookingWebhook(
           bookingId,
@@ -366,18 +651,18 @@ const razorpayWebhook = async (req, res) => {
           await sendMessageAfterBooking(bookingId);
         }
       }
-    }
 
-    // if (event.event === "payment.failed") {
-    // const payment = event.payload.payment.entity;
-    // const bookingId = payment.notes?.booking_id;
-    // const type = payment.notes?.type || "";
-    // const typeId = payment.notes?.typeId || "";
-    // const amountInPaise = payment.amount;
-    // const amountPaid = amountInPaise / 100;
-    // const razorpayPaymentId = payment.id;
-
-    if (verifiedPayment.status === "failed") {
+      // Log successful webhook
+      await WebhookLog.create({
+        razorpayPaymentId,
+        eventType,
+        status: "success",
+        verifiedStatus: verifiedPayment.status,
+      });
+    } else if (
+      eventType === "payment.failed" &&
+      verifiedPayment.status === "failed"
+    ) {
       if (type === "extension") {
         await markExtendBookingAsFailed(
           bookingId,
@@ -388,11 +673,47 @@ const razorpayWebhook = async (req, res) => {
       } else {
         await markBookingAsFailed(bookingId, razorpayPaymentId, amountPaid);
       }
+
+      // Log failed webhook
+      await WebhookLog.create({
+        razorpayPaymentId,
+        eventType,
+        status: "failed",
+        verifiedStatus: verifiedPayment.status,
+      });
+    } else {
+      // Mismatch between event type and actual payment status
+      console.warn(
+        `Event type mismatch: ${eventType} but status is ${verifiedPayment.status}`
+      );
+
+      // Log the mismatch
+      await WebhookLog.create({
+        razorpayPaymentId,
+        eventType,
+        status: "mismatch",
+        verifiedStatus: verifiedPayment.status,
+        warning: true,
+      });
+
+      return res.status(200).json({
+        success: false,
+        message: "Event and payment status mismatch",
+      });
     }
 
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error("Webhook handling failed:", error);
+
+    // Log error
+    await WebhookLog.create({
+      razorpayPaymentId: payment.id,
+      eventType,
+      status: "error",
+      error: error.message,
+    }).catch((err) => console.error("Failed to log webhook error:", err));
+
     return res.status(200).json({ success: false, error: "Internal error" });
   }
 };
