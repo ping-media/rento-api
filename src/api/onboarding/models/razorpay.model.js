@@ -748,7 +748,7 @@ const updateBookingAfterPayment = async (
         title: "Payment Received",
         date: Date.now(),
         paymentAmount: amountPaid,
-        paymentId: razorpayPaymentId,
+        paymentId: razorpayPaymentId || "",
       },
     ],
   });
@@ -946,7 +946,7 @@ const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
     currentBooking_id: booking._id,
     timeLine: [
       {
-        title: "Booking Extended",
+        title: "Booking Extended by customer",
         date: Date.now(),
         paymentAmount: data.extendAmount?.amount || 0,
         paymentId: paymentId || "",
@@ -1013,7 +1013,7 @@ const handleExtendBookingWebhook = async (
         title: "Payment Received",
         date: Date.now(),
         paymentAmount: amountPaid,
-        paymentId: paymentId,
+        paymentId: paymentId || "",
       },
     ],
   });
@@ -1022,7 +1022,7 @@ const handleExtendBookingWebhook = async (
     currentBooking_id: booking._id,
     timeLine: [
       {
-        title: "Booking extended",
+        title: "Booking extended by customer",
         date: Date.now(),
         extendDate: extend.bookingEndDateAndTime,
       },
@@ -1072,7 +1072,7 @@ const markExtendBookingAsFailed = async (
         title: "Payment Failed",
         paymentAmount: amountPaid,
         date: Date.now(),
-        paymentId: razorpayPaymentId,
+        paymentId: razorpayPaymentId || "",
       },
     ],
   });
