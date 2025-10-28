@@ -90,7 +90,10 @@ const {
   deleteImageFromBucket,
 } = require("../models/uploadAndDeleteImage.modal");
 const { sendMessageAfterBooking } = require("../../../utils");
-const { handleStationAddon } = require("../models/stationAddon.model");
+const {
+  handleStationAddon,
+  handleUpdatePayment,
+} = require("../models/stationAddon.model");
 // const { cancelPendingPayments } = require("../utils/cron.js");
 
 // create messages
@@ -108,6 +111,10 @@ router.post("/updateMultipleVehicles", Authentication, async (req, res) => {
 
 router.post("/manageAddOn", Authentication, async (req, res) => {
   manageExtraAddOn(req, res);
+});
+
+router.post("/toggle-payment-mode", Authentication, async (req, res) => {
+  handleUpdatePayment(req, res);
 });
 
 router.post("/updateGeneral", Authentication, async (req, res) => {

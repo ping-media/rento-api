@@ -101,6 +101,20 @@ const stationSchema = new Schema(
         },
       },
     ],
+    payments: {
+      online: {
+        type: Boolean,
+        default: true,
+      },
+      partiallyPay: {
+        type: Boolean,
+        default: true,
+      },
+      cash: {
+        type: Boolean,
+        default: false,
+      },
+    },
     isGstActive: {
       type: String,
       enum: ["active", "inactive"],

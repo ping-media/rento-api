@@ -3987,6 +3987,18 @@ const getVehicleTblData = async (query) => {
       };
     }
 
+    // Add this validation after the existing date format validation
+    const currentDate = new Date();
+    const bookingStartDate = new Date(BookingStartDateAndTime);
+
+    if (bookingStartDate < currentDate) {
+      return {
+        status: 400,
+        message: "Booking start date cannot be in the past.",
+        data: [],
+      };
+    }
+
     const startDate = BookingStartDateAndTime;
     const endDate = BookingEndDateAndTime;
 

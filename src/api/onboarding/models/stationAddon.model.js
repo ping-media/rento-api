@@ -126,6 +126,55 @@ const handleStationAddon = async (req, res) => {
   }
 };
 
+const handleUpdatePayment = async (req, res) => {
+  const { _id, key, value } = req.body;
+
+  if (!_id || !key || typeof value !== "boolean") {
+    return res.status(400).json({
+      success: false,
+      message: "station id, key, and value are required",
+    });
+  }
+
+  try {
+    const validKeys = ["online", "cash", "partiallyPay"];
+    if (!validKeys.includes(key)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid payment key. Must be one of: ${validKeys.join(", ")}`,
+      });
+    }
+
+    const updateField = `payments.${key}`;
+
+    const updatedStation = await Station.findByIdAndUpdate(
+      _id,
+      { $set: { [updateField]: value } },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedStation) {
+      return res.status(404).json({
+        success: false,
+        message: "Station not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Payment method ${key} updated successfully`,
+    });
+  } catch (error) {
+    console.error("Error updating payment:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while updating payment",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   handleStationAddon,
+  handleUpdatePayment,
 };

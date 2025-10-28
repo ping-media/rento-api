@@ -27,9 +27,18 @@ const kycApprovalFunction = async (req, res) => {
     });
 
     if (existingKyc && existingKyc.userId.toString() !== userId) {
-      return res.status(400).json({
+      const user = await User.findById(existingKyc.userId);
+
+      return res.status(200).json({
         status: 400,
-        message: "Aadhaar or License already assigned to another user",
+        message: `Aadhaar or License already assigned to another user named ${
+          user?.firstName || "USER"
+        }`,
+        userInfo: {
+          name: `${user?.firstName || "USER"} ${user?.lastName}`,
+          phone: user?.contact || "--",
+          email: user?.email || "--",
+        },
       });
     }
 
