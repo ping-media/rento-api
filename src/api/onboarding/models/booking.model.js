@@ -1414,7 +1414,7 @@ const updateBooking = async (req, res) => {
   const { BookingStartDateAndTime, BookingEndDateAndTime, _id } = req.body;
 
   if (!_id || !BookingStartDateAndTime || !BookingEndDateAndTime) {
-    return res.status(400).json({
+    return res.status(200).json({
       message: "Missing required fields! try again",
     });
   }
@@ -1422,7 +1422,7 @@ const updateBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(_id);
     if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
+      return res.status(200).json({ message: "Booking not found" });
     }
 
     const oldStart = booking.BookingStartDateAndTime;
@@ -1450,9 +1450,11 @@ const updateBooking = async (req, res) => {
       });
 
       if (conflict) {
-        return res.status(409).json({
+        return res.status(200).json({
           success: false,
-          message: "The vehicle is already booked during the selected time.",
+          message: `The vehicle is already booked during the selected time with booking id ${
+            conflict?.bookingId || "--"
+          }.`,
         });
       }
     }
@@ -1498,7 +1500,7 @@ const editBooking = async (req, res) => {
   const { addOn, totalAddOnPrice, addonTax, _id } = req.body;
 
   if (!_id || !addOn) {
-    return res.status(400).json({
+    return res.status(200).json({
       message: "Missing required fields! try again",
     });
   }
@@ -1506,7 +1508,7 @@ const editBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(_id);
     if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
+      return res.status(200).json({ message: "Booking not found" });
     }
 
     const bookingPrice = booking.bookingPrice;
