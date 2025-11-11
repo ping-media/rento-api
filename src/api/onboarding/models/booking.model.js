@@ -1190,10 +1190,11 @@ const extendBooking = async (req, res) => {
         currentBooking_id: booking._id,
         timeLine: [
           {
-            title: "Booking Extended",
+            title: "Booking Extended by User",
             date: Date.now(),
             paymentAmount: amount || 0,
             endDate: data.BookingEndDateAndTime,
+            paymentId: data?.extendAmount?.transactionId || "",
             extended: true,
           },
         ],
