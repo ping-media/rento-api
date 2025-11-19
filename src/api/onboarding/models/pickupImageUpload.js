@@ -3,6 +3,7 @@ require("dotenv").config();
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const { resizeImg } = require("../../../utils/resizeImage");
+const User = require("../../../db/schemas/onboarding/user.schema");
 
 // Validate required environment variables
 const {
@@ -286,12 +287,30 @@ const savePickupImageLinks = async (req, res) => {
       oldVehicleEndMeterReading,
       imageLinks,
       startDateAndTime,
+      altContact,
+      address,
     } = req.body;
 
     if (!userId || userId === "") {
       return res.json({ message: "Invalid user ID provided." });
     }
 
+    // updating user altContact and address if send from frontend
+    const userUpdate = {};
+
+    if (altContact && altContact.trim() !== "") {
+      userUpdate.altContact = altContact.trim();
+    }
+
+    if (address && address.trim() !== "") {
+      userUpdate.address = address.trim();
+    }
+
+    if (Object.keys(userUpdate).length > 0) {
+      await User.findByIdAndUpdate(userId, { $set: userUpdate }, { new: true });
+    }
+
+    // continue with rest of the code
     if (typeof imageLinks === "string") {
       try {
         imageLinks = JSON.parse(imageLinks);
