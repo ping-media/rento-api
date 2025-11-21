@@ -306,6 +306,26 @@ const savePickupImageLinks = async (req, res) => {
       userUpdate.address = address.trim();
     }
 
+    if (userUpdate.altContact) {
+      const existingUser = await User.findOne({
+        $and: [
+          {
+            $or: [
+              { contact: userUpdate.altContact },
+              { altContact: userUpdate.altContact },
+            ],
+          },
+          { _id: { $ne: userId } },
+        ],
+      });
+
+      if (existingUser) {
+        return res.status(200).json({
+          message: `This number already belongs to ${existingUser.firstName} ${existingUser.lastName}`,
+        });
+      }
+    }
+
     if (Object.keys(userUpdate).length > 0) {
       await User.findByIdAndUpdate(userId, { $set: userUpdate }, { new: true });
     }
@@ -315,12 +335,12 @@ const savePickupImageLinks = async (req, res) => {
       try {
         imageLinks = JSON.parse(imageLinks);
       } catch {
-        return res.status(400).json({ message: "Invalid imageLinks format" });
+        return res.status(200).json({ message: "Invalid imageLinks format" });
       }
     }
 
     if (!Array.isArray(imageLinks)) {
-      return res.status(400).json({ message: "imageLinks should be an array" });
+      return res.status(200).json({ message: "imageLinks should be an array" });
     }
 
     const booking = await Booking.findOne({ _id }).populate(
