@@ -703,7 +703,9 @@ router.post("/validedToken", async (req, res) => {
     return res.json({ isUserValid: false });
   } catch (error) {
     console.error("Error during token validation:", error.message);
-    return res.status(401).json({ message: "Invalid or expired token" });
+    return res
+      .status(401)
+      .json({ isUserValid: false, message: "Invalid or expired token" });
   }
 });
 
