@@ -1341,7 +1341,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
             currentBooking_id: booking._id,
             timeLine: [
               {
-                title: "Booking Extended",
+                title: "Booking Extended by Admin",
                 date: Date.now(),
                 paymentAmount: amount || 0,
                 endDate: data.BookingEndDateAndTime,
