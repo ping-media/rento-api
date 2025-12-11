@@ -94,7 +94,7 @@ const {
   handleStationAddon,
   handleUpdatePayment,
 } = require("../models/stationAddon.model");
-// const { cancelPendingPayments } = require("../utils/cron.js");
+const { cancelPendingPayments } = require("../utils/cron.js");
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
