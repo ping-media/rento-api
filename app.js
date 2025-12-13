@@ -45,6 +45,22 @@ const startServer = async () => {
   // use routes
   app.use(onboardingRouters);
 
+  if (process.env.NODE_ENV !== "production") {
+    app.get("/api/cron", async (req, res) => {
+      console.log("🧪 Testing cron locally...");
+      try {
+        const cronHandler = require("./api/cron");
+        await cronHandler(req, res);
+      } catch (error) {
+        console.error("❌ Cron error:", error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
+  }
+
   // database connection
   try {
     mongoose.connect(process.env.DB_URL);

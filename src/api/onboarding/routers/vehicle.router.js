@@ -94,7 +94,7 @@ const {
   handleStationAddon,
   handleUpdatePayment,
 } = require("../models/stationAddon.model");
-const { cancelPendingPayments } = require("../utils/cron.js");
+// const { cancelPendingPayments } = require("../utils/cron.js");
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
@@ -1173,12 +1173,12 @@ router.get("/getTimelineData", Authentication, async (req, res) => {
   timelineFunctionForGet(req, res);
 });
 
-router.get("/cron", async (req, res) => {
-  console.log("Cron job is working");
-  //res.send("Cron job is working");
-  cancelPendingPayments(req, res);
-  res.json({ message: "Cron job executed !" });
-});
+// router.get("/cron", async (req, res) => {
+//   console.log("Cron job is working");
+//   //res.send("Cron job is working");
+//   cancelPendingPayments(req, res);
+//   res.json({ message: "Cron job executed !" });
+// });
 
 router.post("/extendBooking", async (req, res) => {
   extentBooking(req, res);

@@ -295,35 +295,66 @@ const updateStationInfo = async (query) => {
 //     const obj = { status: 200, message: "Data fetched successfully", data: {} };
 //     const { stationId, month, year } = query;
 
-//     const now = new Date();
+//     const matchFilter = {};
 
-//     const targetMonth =
-//       month && !isNaN(parseInt(month)) ? parseInt(month) - 1 : now.getMonth();
-//     const targetYear =
-//       year && !isNaN(parseInt(year)) ? parseInt(year) : now.getFullYear();
+//     // Apply stationId if present
+//     if (stationId) matchFilter.stationId = stationId;
 
-//     const startDate = new Date(targetYear, targetMonth, 1);
+//     // Parse month name to number
+//     if (month && year) {
+//       const monthMap = {
+//         january: 1,
+//         february: 2,
+//         march: 3,
+//         april: 4,
+//         may: 5,
+//         june: 6,
+//         july: 7,
+//         august: 8,
+//         september: 9,
+//         october: 10,
+//         november: 11,
+//         december: 12,
+//       };
 
-//     const isCurrentMonth =
-//       targetMonth === now.getMonth() && targetYear === now.getFullYear();
+//       const monthNum = monthMap[month.toLowerCase()];
+//       const yearNum = parseInt(year);
 
-//     const endDate = isCurrentMonth
-//       ? now
-//       : new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+//       if (monthNum && !isNaN(yearNum)) {
+//         matchFilter.$expr = {
+//           $and: [
+//             { $eq: [{ $month: "$createdAt" }, monthNum] },
+//             { $eq: [{ $year: "$createdAt" }, yearNum] },
+//           ],
+//         };
+//       }
+//     }
 
-//     const stationFilter = stationId ? { stationId } : {};
-//     const dateFilter =
-//       !isNaN(startDate) && !isNaN(endDate)
-//         ? { createdAt: { $gte: startDate, $lte: endDate } }
-//         : {};
+//     const bookings = await Booking.find({
+//       ...matchFilter,
+//     });
 
-//     // Fetch bookings and calculate totalAmount
-//     const bookings = await Booking.find({ ...stationFilter, ...dateFilter });
+//     const cancelBookings = bookings.filter(
+//       (booking) => booking.bookingStatus === "canceled"
+//     );
 
-//     const cancelBookings =
-//       bookings?.length > 0
-//         ? bookings.filter((booking) => booking.bookingStatus === "canceled")
-//         : [];
+//     const nonCancelledBookings = bookings.filter(
+//       (booking) => booking.bookingStatus !== "canceled"
+//     );
+
+//     const payOnPickupCount = nonCancelledBookings.filter(
+//       (b) =>
+//         b.bookingPrice?.payOnPickupMethod !== undefined &&
+//         b.bookingPrice?.payOnPickupMethod !== null
+//     ).length;
+
+//     const amountLeftObjectCount = nonCancelledBookings.filter(
+//       (b) =>
+//         b.bookingPrice?.AmountLeftAfterUserPaid &&
+//         typeof b.bookingPrice.AmountLeftAfterUserPaid === "object" &&
+//         !Array.isArray(b.bookingPrice.AmountLeftAfterUserPaid) &&
+//         b.bookingPrice.AmountLeftAfterUserPaid?.status === "paid"
+//     ).length;
 
 //     const amount = bookings.reduce(
 //       (acc, item) => {
@@ -345,9 +376,7 @@ const updateStationInfo = async (query) => {
 
 //         const extendTotal = Array.isArray(item.bookingPrice.extendAmount)
 //           ? item.bookingPrice.extendAmount.reduce((sum, e) => {
-//               return e.status === "paid"
-//                 ? Number(sum) + (Number(e.amount) || 0)
-//                 : Number(sum);
+//               return e.status === "paid" ? sum + (Number(e.amount) || 0) : sum;
 //             }, 0)
 //           : 0;
 
@@ -359,9 +388,7 @@ const updateStationInfo = async (query) => {
 
 //         const diffTotal = Array.isArray(item.bookingPrice.diffAmount)
 //           ? item.bookingPrice.diffAmount.reduce((sum, d) => {
-//               return d.status === "paid"
-//                 ? Number(sum) + (Number(d.amount) || 0)
-//                 : Number(sum);
+//               return d.status === "paid" ? sum + (Number(d.amount) || 0) : sum;
 //             }, 0)
 //           : 0;
 
@@ -373,41 +400,36 @@ const updateStationInfo = async (query) => {
 //       { total: 0, extendCount: 0 }
 //     );
 
-//     let extendBookingCount = amount?.extendCount;
-//     let Amount = amount?.total;
+//     const extendBookingCount = amount.extendCount;
+//     const Amount = amount.total;
+//     const cancelBookingsCount = cancelBookings.length;
 
-//     let bookingsCount = 0,
-//       cancelBookingsCount = cancelBookings?.length;
+//     const bookingsCount = await Booking.countDocuments({
+//       ...matchFilter,
+//     });
 
-//     if (stationId) {
-//       // Fetch only station-specific counts
-//       [bookingsCount] = await Promise.all([
-//         Booking.countDocuments({ ...stationFilter, ...dateFilter }),
-//       ]);
-//     } else {
-//       [bookingsCount] = await Promise.all([
-//         Booking.countDocuments({ ...dateFilter }),
-//       ]);
-//     }
-
-//     // Populate the data object
 //     obj.data = {
 //       bookingsCount,
 //       cancelBookingsCount,
 //       extendBookingCount,
+//       CashPaymentReceivedCount: payOnPickupCount + amountLeftObjectCount,
 //       Amount,
 //     };
 
 //     return obj;
 //   } catch (error) {
-//     return { status: 500, message: "An error occurred", error: error.message };
+//     return {
+//       status: 500,
+//       message: "An error occurred",
+//       error: error.message,
+//     };
 //   }
 // }
+
 async function getAllDataCount(query) {
   try {
     const obj = { status: 200, message: "Data fetched successfully", data: {} };
     const { stationId, month, year } = query;
-
     const matchFilter = {};
 
     // Apply stationId if present
@@ -429,7 +451,6 @@ async function getAllDataCount(query) {
         november: 11,
         december: 12,
       };
-
       const monthNum = monthMap[month.toLowerCase()];
       const yearNum = parseInt(year);
 
@@ -469,8 +490,10 @@ async function getAllDataCount(query) {
         b.bookingPrice.AmountLeftAfterUserPaid?.status === "paid"
     ).length;
 
+    // ✅ FIXED: Calculate total amount including extend bookings properly
     const amount = bookings.reduce(
       (acc, item) => {
+        // Skip canceled, pending, or refunded bookings
         if (
           item.bookingStatus === "canceled" ||
           item.bookingStatus === "pending" ||
@@ -478,6 +501,7 @@ async function getAllDataCount(query) {
         )
           return acc;
 
+        // Calculate base booking price (with or without discount)
         const basePriceRaw =
           item.bookingPrice.isDiscountZero === true ||
           (item.bookingPrice.discountTotalPrice &&
@@ -487,26 +511,67 @@ async function getAllDataCount(query) {
 
         const basePrice = Number(basePriceRaw) || 0;
 
-        const extendTotal = Array.isArray(item.bookingPrice.extendAmount)
-          ? item.bookingPrice.extendAmount.reduce((sum, e) => {
-              return e.status === "paid" ? sum + (Number(e.amount) || 0) : sum;
-            }, 0)
-          : 0;
+        // ✅ Calculate extend booking total (amount + addOnAmount + tax + addonTax)
+        let extendTotal = 0;
+        let extendCount = 0;
 
-        const extendCount = Array.isArray(item.bookingPrice.extendAmount)
-          ? item.bookingPrice.extendAmount.reduce((count, e) => {
-              return e.status === "paid" ? count + 1 : count;
-            }, 0)
-          : 0;
+        if (Array.isArray(item.bookingPrice.extendAmount)) {
+          item.bookingPrice.extendAmount.forEach((extend) => {
+            if (extend.status === "paid") {
+              const amount = Number(extend.amount) || 0;
+              const addOnAmount = Number(extend.addOnAmount) || 0;
+              const tax = Number(extend.tax) || 0;
+              const addonTax = Number(extend.addonTax) || 0;
 
+              // Total for this extend entry
+              extendTotal += amount + addOnAmount + tax + addonTax;
+              extendCount += 1;
+            }
+          });
+        }
+
+        // Calculate vehicle change difference amount
         const diffTotal = Array.isArray(item.bookingPrice.diffAmount)
           ? item.bookingPrice.diffAmount.reduce((sum, d) => {
               return d.status === "paid" ? sum + (Number(d.amount) || 0) : sum;
             }, 0)
           : 0;
 
+        // ✅ Calculate late fees if paid
+        let lateFeeTotal = 0;
+        const lateFeeBasedOnHour =
+          Number(item.bookingPrice.lateFeeBasedOnHour) || 0;
+        const lateFeeBasedOnKM =
+          Number(item.bookingPrice.lateFeeBasedOnKM) || 0;
+
+        // Only add late fees if payment method is not "NA"
+        if (
+          item.bookingPrice.lateFeePaymentMethod &&
+          item.bookingPrice.lateFeePaymentMethod !== "NA"
+        ) {
+          lateFeeTotal = lateFeeBasedOnHour + lateFeeBasedOnKM;
+        }
+
+        // ✅ Calculate additional fees if paid
+        let additionalFeeTotal = 0;
+        const additionalPrice = Number(item.bookingPrice.additionalPrice) || 0;
+
+        // Only add additional fees if payment method is not "NA"
+        if (
+          item.bookingPrice.additionFeePaymentMethod &&
+          item.bookingPrice.additionFeePaymentMethod !== "NA"
+        ) {
+          additionalFeeTotal = additionalPrice;
+        }
+
         return {
-          total: acc.total + basePrice + extendTotal + diffTotal,
+          total:
+            acc.total +
+            basePrice +
+            extendTotal +
+            diffTotal +
+            lateFeeTotal +
+            additionalFeeTotal,
           extendCount: acc.extendCount + extendCount,
         };
       },
