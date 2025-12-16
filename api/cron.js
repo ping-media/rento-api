@@ -27,14 +27,25 @@ module.exports = async function handler(req, res) {
     // Connect to database
     await ensureDBConnection();
 
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const now = new Date();
 
     const result = await Booking.updateMany(
       {
         paymentStatus: "pending",
         bookingStatus: "pending",
         rideStatus: "pending",
-        createdAt: { $lt: oneDayAgo },
+        $expr: {
+          $lt: [
+            {
+              $add: [
+                { $toDate: "$BookingStartDateAndTime" },
+                24 * 60 * 60 * 1000,
+              ],
+            },
+            now,
+          ],
+        },
       },
       {
         $set: {
