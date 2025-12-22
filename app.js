@@ -33,7 +33,7 @@ const startServer = async () => {
       allowedHeaders: ["Content-Type", "Authorization", "token"],
     })
   );
-  app.options("*", cors());
+  // app.options("*", cors());
 
   app.use("/assets", express.static(path.join(__dirname, "assets")));
 
