@@ -14,7 +14,6 @@ const PORT = process.env.PORT || 8080;
 
 const startServer = async () => {
   app.use(morgan("dev"));
-  app.set("views", path.join(__dirname, "/src/views/pages"));
   app.use("/public", express.static("public"));
   app.use(express.json({ extended: true, limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "50mb" }));
