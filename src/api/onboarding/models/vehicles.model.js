@@ -4097,110 +4097,6 @@ const getVehicleTblData = async (query) => {
       },
 
       {
-        // $addFields: {
-        //   conflictingBookings: {
-        //     $filter: {
-        //       input: "$bookings",
-        //       as: "booking",
-        //       cond: {
-        //         $and: [
-        //           // {
-        //           //   $ne: ["$$booking.rideStatus", "canceled"],
-        //           // },
-        //           {
-        //             $not: {
-        //               $in: [
-        //                 "$$booking.rideStatus",
-        //                 ["pending", "canceled", "completed"],
-        //               ],
-        //               $in: ["$$booking.bookingStatus", ["canceled"]],
-        //             },
-        //           },
-        //           {
-        //             $not: [
-        //               { $lt: ["$$booking.BookingEndDateAndTime", startDate] },
-        //             ],
-        //           },
-        //           {
-        //             $or: [
-        //               {
-        //                 $and: [
-        //                   {
-        //                     $gte: [
-        //                       "$$booking.BookingStartDateAndTime",
-        //                       startDate,
-        //                     ],
-        //                   },
-        //                   {
-        //                     $lte: [
-        //                       "$$booking.BookingStartDateAndTime",
-        //                       endDate,
-        //                     ],
-        //                   },
-        //                 ],
-        //               },
-        //               {
-        //                 $and: [
-        //                   {
-        //                     $gte: [
-        //                       "$$booking.BookingEndDateAndTime",
-        //                       startDate,
-        //                     ],
-        //                   },
-        //                   {
-        //                     $lte: ["$$booking.BookingEndDateAndTime", endDate],
-        //                   },
-        //                 ],
-        //               },
-        //               {
-        //                 $and: [
-        //                   {
-        //                     $lte: [
-        //                       "$$booking.BookingStartDateAndTime",
-        //                       startDate,
-        //                     ],
-        //                   },
-        //                   {
-        //                     $gte: ["$$booking.BookingEndDateAndTime", endDate],
-        //                   },
-        //                 ],
-        //               },
-        //             ],
-        //           },
-        //         ],
-        //       },
-        //     },
-        //   },
-        //   conflictingMaintenance: {
-        //     $filter: {
-        //       input: "$maintenanceData",
-        //       as: "maintenance",
-        //       cond: {
-        //         $or: [
-        //           {
-        //             $and: [
-        //               { $gte: ["$$maintenance.startDate", startDate] },
-        //               { $lte: ["$$maintenance.startDate", endDate] },
-        //             ],
-        //           },
-        //           {
-        //             $and: [
-        //               { $gte: ["$$maintenance.endDate", startDate] },
-        //               { $lte: ["$$maintenance.endDate", endDate] },
-        //             ],
-        //           },
-        //           {
-        //             $and: [
-        //               { $lte: ["$$maintenance.startDate", startDate] },
-        //               { $gte: ["$$maintenance.endDate", endDate] },
-        //             ],
-        //           },
-        //         ],
-        //       },
-        //     },
-        //   },
-        // },
-
         $addFields: {
           conflictingBookings: {
             $filter: {
@@ -4217,6 +4113,7 @@ const getVehicleTblData = async (query) => {
                       { $eq: ["$$booking.paymentStatus", "paid"] },
                       { $eq: ["$$booking.paymentStatus", "partially_paid"] },
                       { $eq: ["$$booking.paymentStatus", "partiallyPay"] },
+                      { $eq: ["$$booking.paymentStatus", "pending"] },
                     ],
                   },
 

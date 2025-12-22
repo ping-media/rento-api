@@ -99,7 +99,6 @@ async function adminLogin({ email, password }) {
   if (email && password) {
     // Find the user by email
     const result = await User.findOne({ email });
-    // console.log(result)
     let stationData;
     if (result) {
       const { userType, _id } = result;
@@ -140,14 +139,64 @@ async function adminLogin({ email, password }) {
     const token = JWT.sign({ id: result._id }, BCRYPT_TOKEN, {
       expiresIn: "43200m",
     });
+
+    // Access token - expires in 7 days
+    // const token = JWT.sign({ id: result._id }, BCRYPT_TOKEN, {
+    //   expiresIn: "10080m", // 7 days
+    // });
+
+    // // Refresh token - expires in 90 days
+    // const refreshToken = JWT.sign(
+    //   { id: result._id, type: "refresh" },
+    //   BCRYPT_TOKEN,
+    //   {
+    //     expiresIn: "129600m", // 90 days
+    //   }
+    // );
     const { password: dbPassword, ...rest } = result.toObject();
     obj.data = rest;
     obj.token = token;
+    // obj.refreshToken = refreshToken;
     obj.Station = stationData || null;
   } else {
     obj.status = 401;
     obj.message = "Invalid data or something is missing";
   }
+  return obj;
+}
+
+async function refreshToken({ refreshToken }) {
+  const obj = {
+    status: 200,
+    message: "Token refreshed successfully",
+    token: "",
+  };
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: "Refresh token is required" });
+  }
+
+  const decoded = JWT.verify(refreshToken, BCRYPT_TOKEN);
+
+  // Verify it's a refresh token
+  if (decoded.type !== "refresh") {
+    obj.message = "Invalid refresh token";
+    return obj;
+  }
+
+  const user = await User.findOne({ _id: decoded.id });
+
+  if (!user || user.status !== "active") {
+    obj.message = "User not found or inactive";
+    return obj;
+  }
+
+  // Generate new access token
+  const newToken = JWT.sign({ id: user._id }, BCRYPT_TOKEN, {
+    expiresIn: "10080m", // 7 days
+  });
+
+  obj.token = newToken;
   return obj;
 }
 
@@ -316,4 +365,5 @@ module.exports = {
   logOut,
   verifyOtp,
   resendOtp,
+  refreshToken,
 };

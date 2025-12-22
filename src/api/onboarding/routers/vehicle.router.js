@@ -709,6 +709,70 @@ router.post("/validedToken", async (req, res) => {
   }
 });
 
+// router.post("/validedToken", async (req, res) => {
+//   const { token, _id, dataFlag } = req.body;
+//   const flag = dataFlag !== undefined ? dataFlag : true;
+
+//   try {
+//     let userId = _id;
+//     let tokenExpiringSoon = false;
+
+//     if (!userId) {
+//       if (!token) {
+//         return res
+//           .status(401)
+//           .json({ message: "Authentication token is required" });
+//       }
+
+//       const decoded = jwt.verify(token, process.env.BCRYPT_TOKEN);
+//       req.user = decoded;
+//       userId = req.user.id;
+
+//       // Check if token expires in less than 2 days
+//       const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+//       if (expiresIn < 172800) {
+//         // 2 days in seconds
+//         tokenExpiringSoon = true;
+//       }
+//     }
+
+//     const user = await User.findOne({ _id: userId });
+//     const userDocument = await Document.findOne({ userId: userId });
+
+//     if (!user) {
+//       return res.json({ isUserValid: false });
+//     }
+
+//     if (user.status === "active" && flag === true) {
+//       let profileImage = "";
+//       if (userDocument) {
+//         const file = userDocument.files?.filter((file) =>
+//           file?.fileName?.includes("Selfie")
+//         );
+//         if (file) {
+//           profileImage = file[0]?.imageUrl || "";
+//         }
+//       }
+
+//       const newData = { ...user?._doc, profileImage };
+//       return res.json({
+//         data: newData,
+//         isUserValid: true,
+//         tokenExpiringSoon, // Frontend can use this to refresh token
+//       });
+//     } else if (user.status === "active" && flag === false) {
+//       return res.json({ isUserValid: true, tokenExpiringSoon });
+//     }
+
+//     return res.json({ isUserValid: false });
+//   } catch (error) {
+//     console.error("Error during token validation:", error.message);
+//     return res
+//       .status(401)
+//       .json({ isUserValid: false, message: "Invalid or expired token" });
+//   }
+// });
+
 router.post("/uploadDocument", (req, res) => {
   upload.array("images", 5)(req, res, function (err) {
     if (err instanceof multer.MulterError) {

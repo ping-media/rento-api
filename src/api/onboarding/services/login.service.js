@@ -7,11 +7,26 @@ const {
   updateProfile,
   updateNotificationsSettings,
   getNotificationsSettings,
+  refreshToken,
 } = require("../models/login.model");
 
 exports.adminLogin = async (req, res) => {
   try {
     const result = await adminLogin(req.body);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
+exports.refreshToken = async (req, res) => {
+  try {
+    const result = await refreshToken(req.body);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({
