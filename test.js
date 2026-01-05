@@ -31,6 +31,11 @@
 //   ]
 // }
 
+// {
+//       "src": "/(.*)",
+//       "dest": "/app.js"
+//     }
+
 function convertTo24Hour(timeString) {
   // Split the string into time and period (AM/PM)
   const [time, period] = timeString.split(" "); // "10:00 PM" -> ["10:00", "PM"]
