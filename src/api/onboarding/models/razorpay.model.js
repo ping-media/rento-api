@@ -682,13 +682,16 @@ const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
   }
 
   // Add to timeline
+  const totalExtendAmount =
+    (data.extendAmount?.amount || 0) + (data.extendAmount?.addOnAmount || 0) ||
+    0;
   await timelineFunctionServer({
     currentBooking_id: booking._id,
     timeLine: [
       {
         title: "Booking Extended by customer",
         date: Date.now(),
-        paymentAmount: data.extendAmount?.amount || 0,
+        paymentAmount: totalExtendAmount,
         paymentId: paymentId || "",
         endDate: data.BookingEndDateAndTime,
         extended: true,

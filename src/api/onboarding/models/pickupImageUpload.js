@@ -34,6 +34,8 @@ const s3 = new S3Client({
   },
 });
 
+const isDev = process.env.NODE_ENV === "development";
+
 // Function to upload document
 const pickupImageUp = async (req, res) => {
   try {
@@ -331,16 +333,31 @@ const savePickupImageLinks = async (req, res) => {
     }
 
     // continue with rest of the code
-    if (typeof imageLinks === "string") {
-      try {
-        imageLinks = JSON.parse(imageLinks);
-      } catch {
-        return res.status(200).json({ message: "Invalid imageLinks format" });
-      }
-    }
+    let parsedImageLinks = [];
 
-    if (!Array.isArray(imageLinks)) {
-      return res.status(200).json({ message: "imageLinks should be an array" });
+    if (!isDev) {
+      if (!imageLinks) {
+        return res.status(400).json({ message: "imageLinks required" });
+      }
+
+      if (typeof imageLinks === "string") {
+        try {
+          // imageLinks = JSON.parse(imageLinks);
+          parsedImageLinks = JSON.parse(imageLinks);
+        } catch {
+          return res.status(200).json({ message: "Invalid imageLinks format" });
+        }
+      } else if (Array.isArray(imageLinks)) {
+        parsedImageLinks = imageLinks;
+      } else {
+        return res
+          .status(200)
+          .json({ message: "imageLinks should be an array" });
+      }
+
+      // if (!Array.isArray(imageLinks)) {
+      //   return res.status(200).json({ message: "imageLinks should be an array" });
+      // }
     }
 
     const booking = await Booking.findOne({ _id }).populate(
@@ -367,13 +384,16 @@ const savePickupImageLinks = async (req, res) => {
     }
 
     const tempObj = {};
-    imageLinks.forEach((file, index) => {
-      if (!file.fileName || !file.imageUrl) return;
-      tempObj[`file_${index}`] = {
-        fileName: file.fileName,
-        imageUrl: file.imageUrl,
-      };
-    });
+    if (!isDev) {
+      // imageLinks.forEach((file, index) => {
+      parsedImageLinks.forEach((file, index) => {
+        if (!file.fileName || !file.imageUrl) return;
+        tempObj[`file_${index}`] = {
+          fileName: file.fileName,
+          imageUrl: file.imageUrl,
+        };
+      });
+    }
 
     if (isVehicleUpdate && diffAmountId) {
       const pickupData = await pickupImage.findOne({ bookingId });

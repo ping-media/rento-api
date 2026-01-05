@@ -787,6 +787,7 @@ const initiateBooking = async (req, res) => {
     if (bookingData?.bookingPrice?.isDiscountZero) {
       bookingData = {
         ...bookingData,
+        paymentInitiatedDate: new Date().getTime(),
         paymentMethod: "online",
         bookingStatus: "done",
         paymentStatus: "paid",
@@ -823,6 +824,7 @@ const initiateBooking = async (req, res) => {
         ...bookingData,
         payInitFrom: "Cash",
         bookingStatus: "done",
+        paymentInitiatedDate: Date.now(),
         paymentMethod: paymentMethod,
       };
 
@@ -1257,10 +1259,9 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
       return res.status(200).json({ message: "Booking not found" });
     }
 
-    const extendId =
-      `extend_${booking.bookingId}_${data.extendAmount.id}` || "";
+    const extendId = `${booking.bookingId}_ext_${data.extendAmount.id}` || "";
 
-    if (extendId === "") {
+    if (extendId.trim() === "") {
       return res
         .status(200)
         .json({ message: "Unable to create extend id! try again" });
@@ -1271,6 +1272,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
         ...data,
         extendAmount: {
           ...data?.extendAmount,
+          extendId,
           paymentMethod: "cash",
           status: "paid",
         },
@@ -1280,7 +1282,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
         booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
       }
 
-      if (!booking.bookingPrice.extendAmount) {
+      if (!booking?.bookingPrice?.extendAmount) {
         booking.bookingPrice.extendAmount = [];
       }
 
