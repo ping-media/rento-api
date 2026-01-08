@@ -1,29 +1,37 @@
-const Booking = require("../src/db/schemas/onboarding/booking.schema");
 const mongoose = require("mongoose");
+
+// Import your booking schema
+const Booking = require("../src/db/schemas/onboarding/booking.schema");
+require("dotenv").config();
 
 async function ensureDBConnection() {
   if (mongoose.connection.readyState === 1) {
-    // Already connected
     return;
   }
 
   if (mongoose.connection.readyState === 2) {
-    // Currently connecting, wait for it
     await new Promise((resolve) => {
       mongoose.connection.once("connected", resolve);
     });
     return;
   }
 
-  // Not connected, connect now
   await mongoose.connect(process.env.DB_URL);
-  console.log("MongoDB Connected (Cron)");
 }
 
-module.exports = async function handler(req, res) {
-  console.log("Cron job started: Canceling pending payments...");
+module.exports = async (req, res) => {
+  // Verify the request is from Vercel Cron
+  if (process.env.NODE_ENV !== "production") {
+    console.log("Development mode: Skipping cron authorization");
+  } else {
+    if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+  }
 
   try {
+    console.log("Cron job started: Canceling pending payments...");
+
     // Connect to database
     await ensureDBConnection();
 
@@ -72,7 +80,7 @@ module.exports = async function handler(req, res) {
       });
     }
   } catch (error) {
-    console.error("Cron job error:", error.message);
+    console.error("Cron job error:", error);
     return res.status(500).json({
       success: false,
       error: error.message,
