@@ -42,7 +42,7 @@ const startServer = async () => {
   });
 
   app.get("/ping", (_req, res) => {
-    res.status(200).send("ok");
+    res.status(200).send("Checking ping is ok or not");
   });
 
   // use routes
