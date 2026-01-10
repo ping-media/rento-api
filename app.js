@@ -72,6 +72,7 @@ const startServer = async () => {
     console.log("Error connecting to MongoDB:", err);
   }
 
+  // start server
   if (process.env.NODE_ENV !== "production") {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on PORT ${PORT}...`);
