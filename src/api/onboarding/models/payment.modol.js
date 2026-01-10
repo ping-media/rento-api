@@ -88,6 +88,7 @@ const paymentRec = async (req, res) => {
             paymentgatewayOrderId: ext.orderId,
             paySuccessId: ext.transactionId,
             paymentStatus: ext.status || "pending",
+            paymentInitiatedDate: ext.paymentInitiatedDate,
             payInitFrom: ext?.paymentMethod === "online" ? "razorPay" : "cash",
             createdAt: booking.createdAt,
             updatedAt: booking.updatedAt,
@@ -111,6 +112,7 @@ const paymentRec = async (req, res) => {
               paymentgatewayOrderId: diff.orderId,
               paySuccessId: diff.transactionId,
               paymentStatus: diff.status || "pending",
+              paymentInitiatedDate: "",
               payInitFrom:
                 diff?.paymentMethod === "online" ? "razorPay" : "cash",
               createdAt: booking.createdAt,

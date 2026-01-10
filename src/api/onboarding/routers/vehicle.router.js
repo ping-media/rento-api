@@ -999,6 +999,7 @@ router.post("/createOrderId", async (req, res) => {
     receipt: "receipt#" + booking_id,
     payment_capture: 1,
     notes: {
+      bookingId: booking_id,
       type: type || "",
     },
   };

@@ -895,4 +895,5 @@ module.exports = {
   updateBookingAfterPayment,
   markExtendBookingAsFailed,
   markBookingAsFailed,
+  verifyRazorpaySignature,
 };

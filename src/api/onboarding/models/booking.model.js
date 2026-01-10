@@ -8,13 +8,17 @@ const { booking } = require("./vehicles.model.js");
 const { timelineFunctionServer } = require("./timeline.model.js");
 const { default: axios } = require("axios");
 const Timeline = require("../../../db/schemas/onboarding/timeline.schema.js");
-const { createPaymentLinkUtil } = require("./razorpay.model.js");
+const {
+  createPaymentLinkUtil,
+  verifyRazorpaySignature,
+} = require("./razorpay.model.js");
 const {
   sendPushNotificationUsingUserId,
 } = require("../../../utils/pushNotification.js");
 const { sendMessageAfterBooking } = require("../../../utils/index.js");
-require("dotenv").config();
 const mongoose = require("mongoose");
+const crypto = require("crypto");
+require("dotenv").config();
 
 // Get All Bookings with Filtering and Pagination
 // const getBooking = async (query) => {
@@ -1111,7 +1115,7 @@ const initiateExtendBooking = async (req, res) => {
 };
 
 const extendBooking = async (req, res) => {
-  const { _id, bookingId, amount, data } = req.body;
+  const { _id, bookingId, amount, data, razorpay_signature } = req.body;
 
   // Validate required fields
   if (!_id || !bookingId || !amount || !data?.extendAmount?.id) {
@@ -1121,31 +1125,65 @@ const extendBooking = async (req, res) => {
     });
   }
 
-  let paymentDetails;
-  try {
-    paymentDetails = await axios.get(
-      `https://api.razorpay.com/v1/payments/${data?.extendAmount?.transactionId}`,
-      {
-        auth: {
-          username: process.env.VITE_RAZOR_KEY_ID,
-          password: process.env.VITE_RAZOR_KEY_SECRET,
-        },
-      }
-    );
-  } catch (err) {
-    console.error("Razorpay API error:", err?.response?.data || err.message);
-    return res.status(400).json({
+  const { orderId, transactionId } = data.extendAmount;
+
+  if (!orderId || !transactionId || !razorpay_signature) {
+    return res.status(200).json({
       success: false,
-      message: "Unable to verify payment with Razorpay. Please try again.",
+      message:
+        "Payment verification data missing! try contact admin for support",
     });
   }
 
-  if (paymentDetails.data?.status !== "captured") {
-    return res.status(400).json({
+  const body = `${orderId}|${transactionId}`;
+
+  const expectedSignature = crypto
+    .createHmac("sha256", process.env.VITE_RAZOR_KEY_SECRET)
+    .update(body)
+    .digest("hex");
+
+  if (razorpay_signature !== expectedSignature) {
+    return res.status(200).json({
       success: false,
-      message: "Payment not captured! Contact Admin for support.",
+      message:
+        "Invalid payment signature. Payment verification failed! try contact admin for support",
     });
   }
+  // const isValidSignature = verifyRazorpaySignature(body, razorpay_signature);
+
+  // if (!isValidSignature) {
+  //   return res.status(200).json({
+  //     success: false,
+  //     message:
+  //       "Invalid payment signature. Payment verification failed! try contact admin for support",
+  //   });
+  // }
+
+  // let paymentDetails;
+  // try {
+  //   paymentDetails = await axios.get(
+  //     `https://api.razorpay.com/v1/payments/${data?.extendAmount?.transactionId}`,
+  //     {
+  //       auth: {
+  //         username: process.env.VITE_RAZOR_KEY_ID,
+  //         password: process.env.VITE_RAZOR_KEY_SECRET,
+  //       },
+  //     }
+  //   );
+  // } catch (err) {
+  //   console.error("Razorpay API error:", err?.response?.data || err.message);
+  //   return res.status(400).json({
+  //     success: false,
+  //     message: "Unable to verify payment with Razorpay. Please try again.",
+  //   });
+  // }
+
+  // if (paymentDetails.data?.status !== "captured") {
+  //   return res.status(400).json({
+  //     success: false,
+  //     message: "Payment not captured! Contact Admin for support.",
+  //   });
+  // }
 
   try {
     const booking = await Booking.findById(_id);
@@ -1154,12 +1192,23 @@ const extendBooking = async (req, res) => {
     }
 
     // Update properties individually
-    if (data.BookingEndDateAndTime) {
-      booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
-    }
-
     if (!booking.bookingPrice.extendAmount) {
       booking.bookingPrice.extendAmount = [];
+    }
+
+    const existingExtension = booking.bookingPrice.extendAmount.find(
+      (ext) => ext.orderId === orderId
+    );
+
+    if (existingExtension) {
+      return res.json({
+        success: true,
+        message: "Extension already processed",
+      });
+    }
+
+    if (data.BookingEndDateAndTime) {
+      booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
     }
 
     const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
@@ -1211,19 +1260,20 @@ const extendBooking = async (req, res) => {
         );
       }
 
-      res.json({
+      return res.json({
         success: true,
         message: "Booking extended successfully",
       });
     } else {
-      res.json({
+      return res.json({
         success: false,
         message: "Unable to extend booking! try again",
       });
     }
   } catch (error) {
-    console.error("Error in initiateExtendBooking:", error);
-    res.json({
+    console.error("Error in extendbooking:", error);
+    return res.status(500).json({
+      success: false,
       message: "Internal server error",
       error: error.message,
       bookingUpdate: false,
@@ -1239,6 +1289,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
     data,
     extensionMode,
     extensionNote,
+    isUser = false,
     createPaymentLink = true,
   } = req.body;
 
@@ -1320,7 +1371,9 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
           currentBooking_id: booking._id,
           timeLine: [
             {
-              title: "Booking Extended by Admin",
+              title: isUser
+                ? "Booking Extended by User"
+                : "Booking Extended by Admin",
               date: Date.now(),
               paymentAmount: amount || 0,
               endDate: data.BookingEndDateAndTime,
@@ -1344,7 +1397,9 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
             currentBooking_id: booking._id,
             timeLine: [
               {
-                title: "Booking Extended by Admin",
+                title: isUser
+                  ? "Booking Extended by User"
+                  : "Booking Extended by Admin",
                 date: Date.now(),
                 paymentAmount: amount || 0,
                 endDate: data.BookingEndDateAndTime,
@@ -1367,7 +1422,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
       _id: _id,
       type: "extension",
       typeId: extendId,
-      requestFrom: "admin",
+      requestFrom: isUser ? "user" : "admin",
     });
 
     await TempExtension.create({
@@ -1382,6 +1437,23 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
       },
       isCompleted: false,
     });
+
+    if (isUser) {
+      if (razorpayOrder?.id) {
+        return res.status(200).json({
+          success: true,
+          message: "extend request placed",
+          orderId: razorpayOrder.id,
+          booking_id: booking._id || _id,
+          payableAmount: amount,
+        });
+      } else {
+        return res.status(200).json({
+          success: false,
+          message: "unable to complete extend request! try again",
+        });
+      }
+    }
 
     const paymentLink = await createPaymentLinkUtil({
       bookingId: _id,
