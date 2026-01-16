@@ -1,6 +1,18 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
+const slideSchema = new mongoose.Schema({
+  _id: { type: Schema.Types.ObjectId, auto: true },
+  link: { type: String },
+});
+
+const testimonialSchema = new mongoose.Schema({
+  _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+  name: { type: String, required: true },
+  message: { type: String, required: true },
+  rating: { type: Number, default: 5 },
+});
+
 const GeneralSchema = new Schema(
   {
     weakend: {
@@ -32,6 +44,60 @@ const GeneralSchema = new Schema(
         },
       },
     ],
+    slides: {
+      type: [slideSchema],
+      validate: {
+        validator: function (value) {
+          return value.length <= 10;
+        },
+        message: "You can only have up to 10 slides.",
+      },
+    },
+    info: {
+      email: {
+        type: String,
+        required: true,
+        match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
+      },
+      contact: { type: Number, required: true },
+      waContact: { type: Number, required: true },
+      address: { type: String, required: true },
+      socialmedia: {
+        facebook: { type: String, default: "#" },
+        instagram: { type: String, default: "#" },
+        twitter: { type: String, default: "#" },
+      },
+      appLink: {
+        IOS: { type: String, default: "#" },
+        Android: { type: String, default: "#" },
+      },
+    },
+    testimonial: {
+      type: [testimonialSchema],
+      validate: {
+        validator: function (value) {
+          return value.length <= 10;
+        },
+        message: "You can only have up to 10 testimonial.",
+      },
+    },
+    appInfo: {
+      android: {
+        latestVersion: {
+          type: String,
+        },
+        forceUpdate: {
+          type: Boolean,
+        },
+      },
+    },
+    maintenance: { type: Boolean, default: false },
+    testMode: { type: Boolean, default: true },
+    payments: {
+      cash: { type: Boolean, default: false },
+      partiallyPay: { type: Boolean, default: true },
+      online: { type: Boolean, default: true },
+    },
   },
   { timestamps: true }
 );

@@ -4,8 +4,10 @@ const {
   verifyOtp,
   resendOtp,
   adminLogin,
+  updateProfile,
   updateNotificationsSettings,
-  getNotificationsSettings
+  getNotificationsSettings,
+  refreshToken,
 } = require("../models/login.model");
 
 exports.adminLogin = async (req, res) => {
@@ -22,6 +24,33 @@ exports.adminLogin = async (req, res) => {
   }
 };
 
+exports.refreshToken = async (req, res) => {
+  try {
+    const result = await refreshToken(req.body);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const result = await updateProfile(req.body);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
 
 exports.loginUser = async (req, res) => {
   try {
@@ -39,14 +68,14 @@ exports.loginUser = async (req, res) => {
 
 exports.guestLogin = async (req, res) => {
   try {
-      let ip = req.ip || req.connection.remoteAddress;
-      
-      // If the application is behind a proxy or load balancer like Nginx, use the `X-Forwarded-For` header
-      ip = req.headers['x-forwarded-for'] || ip;
-      
-      // 'x-forwarded-for' header may return multiple IP addresses in the format: "client IP, proxy 1 IP, proxy 2 IP"
-      // Therefore, the client IP is the first one in the list
-      ip = ip.split(',')[0].trim();    
+    let ip = req.ip || req.connection.remoteAddress;
+
+    // If the application is behind a proxy or load balancer like Nginx, use the `X-Forwarded-For` header
+    ip = req.headers["x-forwarded-for"] || ip;
+
+    // 'x-forwarded-for' header may return multiple IP addresses in the format: "client IP, proxy 1 IP, proxy 2 IP"
+    // Therefore, the client IP is the first one in the list
+    ip = ip.split(",")[0].trim();
     const result = await guestLogin(ip);
     return res.status(200).json(result);
   } catch (err) {
@@ -73,7 +102,6 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
-
 exports.resendOtp = async (req, res) => {
   try {
     const result = await resendOtp(req.body);
@@ -86,11 +114,11 @@ exports.resendOtp = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.updateNotificationsSettings = async (req, res) => {
   try {
-    req.body['userId'] = req.user.id
+    req.body["userId"] = req.user.id;
     const result = await updateNotificationsSettings(req.body);
     return res.status(200).json(result);
   } catch (err) {
@@ -101,7 +129,7 @@ exports.updateNotificationsSettings = async (req, res) => {
       status: 400,
     });
   }
-}
+};
 
 exports.getNotificationsSettings = async (req, res) => {
   try {
@@ -115,4 +143,4 @@ exports.getNotificationsSettings = async (req, res) => {
       status: 400,
     });
   }
-}
+};

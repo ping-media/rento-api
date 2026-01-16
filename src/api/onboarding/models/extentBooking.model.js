@@ -1,6 +1,5 @@
 const { getVehicleTbl } = require("../models/vehicles.model");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
-// const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
 
 const extentBooking = async (req, res) => {
@@ -84,7 +83,7 @@ const extentBooking = async (req, res) => {
         Amount,
         managerContact,
       ];
-      whatsappMessage(contact, "booking_extend", messageData);
+      whatsappMessage([contact], "booking_extend", messageData);
       return res.status(200).json({
         status: 200,
         message: "booking extended successfully ",

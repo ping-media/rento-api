@@ -3,7 +3,7 @@ const router = require("express").Router();
 const loginService = require("../services/login.service");
 const auth = require("../../../middlewares/auth/index");
 
-// guest login 
+// guest login
 router.post("/guest", async (req, res) => {
   loginService.guestLogin(req, res);
 });
@@ -15,6 +15,14 @@ router.post("/login", async (req, res) => {
 
 router.post("/adminLogin", async (req, res) => {
   loginService.adminLogin(req, res);
+});
+
+router.post("/refreshToken", async (req, res) => {
+  loginService.refreshToken(req, res);
+});
+
+router.post("/updateProfile", async (req, res) => {
+  loginService.updateProfile(req, res);
 });
 
 // Verify Otp
@@ -36,10 +44,5 @@ router.post("/notifications", auth(), async (req, res) => {
 router.get("/notifications", auth(), async (req, res) => {
   loginService.getNotificationsSettings(req, res);
 });
-
-
-
-
-
 
 module.exports = router;

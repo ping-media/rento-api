@@ -14,7 +14,6 @@ const PORT = process.env.PORT || 8080;
 
 const startServer = async () => {
   app.use(morgan("dev"));
-  app.set("views", path.join(__dirname, "/src/views/pages"));
   app.use("/public", express.static("public"));
   app.use(express.json({ extended: true, limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -42,8 +41,28 @@ const startServer = async () => {
     res.send("Hi there, Welcome to rento bikes");
   });
 
+  app.get("/ping", (_req, res) => {
+    res.status(200).send("Checking ping is ok or not");
+  });
+
   // use routes
   app.use(onboardingRouters);
+
+  if (process.env.NODE_ENV !== "production") {
+    app.get("/api/cron", async (req, res) => {
+      console.log("🧪 Testing cron locally...");
+      try {
+        const cronHandler = require("./api/cron");
+        await cronHandler(req, res);
+      } catch (error) {
+        console.error("❌ Cron error:", error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
+  }
 
   // database connection
   try {
@@ -53,9 +72,16 @@ const startServer = async () => {
     console.log("Error connecting to MongoDB:", err);
   }
 
-  app.listen(PORT, () => {
-    console.log(`Server running on PORT ${PORT}...`);
-  });
+  // start server
+  if (process.env.NODE_ENV !== "production") {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on PORT ${PORT}...`);
+    });
+  } else {
+    app.listen(PORT, () => {
+      console.log(`Server running on PORT ${PORT}...`);
+    });
+  }
 };
 
 startServer();

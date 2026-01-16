@@ -66,8 +66,67 @@ const stationSchema = new Schema(
     longitude: {
       type: String,
     },
+    mapLink: {
+      type: String,
+    },
+    weekendPriceIncrease: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
+    },
+    weekendPercentage: {
+      type: Number,
+      default: 0,
+    },
+    extraAddOn: [
+      {
+        _id: { type: Schema.Types.ObjectId, auto: true },
+        name: { type: String, trim: true, lowercase: true, required: true },
+        amount: { type: Number, min: 0, default: 0 },
+        maxAmount: { type: Number, min: 0, default: 0 },
+        gstPercentage: {
+          type: Number,
+          default: 0,
+          min: [0, "GST value cannot be negative"],
+        },
+        gstStatus: {
+          type: String,
+          enum: ["active", "inactive"],
+          default: "active",
+        },
+        status: {
+          type: String,
+          enum: ["active", "inactive"],
+          default: "active",
+        },
+      },
+    ],
+    payments: {
+      online: {
+        type: Boolean,
+        default: true,
+      },
+      partiallyPay: {
+        type: Boolean,
+        default: true,
+      },
+      cash: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    isGstActive: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "inactive",
+    },
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
+    },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+  { timestamps: true }
 );
 
 const station = mongoose.model("station", stationSchema);

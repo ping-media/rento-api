@@ -1,33 +1,18 @@
-// import files
-const { sendEmail } = require("../../../utils/email/index");
-
-// import packages
-const JWT = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 require("dotenv").config();
 const { mongoose } = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { Auth } = require("two-step-auth");
-const nodemailer = require("nodemailer");
-// import errors
-const errorMessages = require("../errors/errors");
-const { sendMessage } = require("../../../utils/Phone");
 const User = require("../../../db/schemas/onboarding/user.schema");
-const Traffic = require("../../../db/schemas/onboarding/traffic.schema ");
-const { booking } = require("../services/vehicles.service");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const Vehicle = require("../../../db/schemas/onboarding/vehicle.schema");
-const { contactValidation, emailValidation } = require("../../../constant");
-const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
-const station = require("../../../db/schemas/onboarding/station.schema");
-const coupon = require("../../../db/schemas/onboarding/coupons.schema");
-const invoiceTbl = require("../../../db/schemas/onboarding/invoice-tbl.schema");
-const plan = require("../../../db/schemas/onboarding/plan.schema");
-const order = require("../../../db/schemas/onboarding/order.schema");
-const location = require("../../../db/schemas/onboarding/location.schema");
-const Otp = require("../../../db/schemas/onboarding/logOtp");
-const vehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema");
-const { log } = require("winston");
+const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
+const Station = require("../../../db/schemas/onboarding/station.schema");
+const {
+  contactValidation,
+  emailValidation,
+  convertTo24Hour,
+} = require("../../../constant");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
 const { sendOtpByEmail } = require("../../../utils/emailSend");
 
@@ -62,6 +47,50 @@ async function updateUser({
       (o.message = "Invalid details"), (o.status = "401");
     }
     return "Updated Successfully";
+  } catch (error) {
+    throw new Error(error);
+  }
+}
+
+async function addOrUpdateMobileToken({ _id, token }) {
+  const o = {
+    status: 200,
+    success: true,
+    message: "data fetched successfully",
+    data: [],
+  };
+  try {
+    if (!token || !token.trim()) {
+      o.status = 400;
+      o.message = "Token is required";
+      return o;
+    }
+
+    const user = await User.findOne({ _id: ObjectId(_id) });
+
+    if (!user) {
+      o.status = 401;
+      o.success = false;
+      o.message = "Invalid user ID";
+      return o;
+    }
+
+    if (user.mobileToken === token) {
+      o.message = "Token already up-to-date";
+      return o;
+    }
+
+    await User.updateOne(
+      { _id: ObjectId(_id) },
+      {
+        $set: {
+          mobileToken: token,
+        },
+      }
+    );
+
+    o.message = "Token updated successfully";
+    return o;
   } catch (error) {
     throw new Error(error);
   }
@@ -157,6 +186,38 @@ const getAllUsers = async (query) => {
       .skip(skip)
       .limit(pageSize);
 
+    if (_id) {
+      const user = await User.findById(_id).select("-otp -password");
+      if (!user) {
+        obj.status = 404;
+        obj.message = "User not found";
+        return obj;
+      }
+
+      const documents = await Document.find({ userId: user._id });
+      let userWithDocs = {
+        ...user.toObject(),
+        documents: documents[0]?.files || [],
+      };
+
+      if (user.userType === "manager") {
+        const station = await Station.find({ userId: user._id });
+
+        userWithDocs = {
+          ...userWithDocs,
+          station: station || null,
+        };
+      }
+
+      obj.data = [userWithDocs];
+      obj.pagination = {
+        totalPages: 1,
+        currentPage: 1,
+        limit: 1,
+      };
+      return obj;
+    }
+
     if (users.length === 0) {
       obj.status = 404;
       obj.message = "No data found";
@@ -179,299 +240,369 @@ const getAllUsers = async (query) => {
   return obj;
 };
 
+const updateStationInfo = async (query) => {
+  try {
+    const {
+      _id,
+      openStartTime,
+      openEndTime,
+      weekendPriceIncrease,
+      weekendPercentage,
+    } = query;
+
+    if (!_id) {
+      console.log(_id);
+      return {
+        success: false,
+        message: "Station id not found!",
+      };
+    }
+
+    const updateFields = {};
+
+    if (openStartTime !== undefined)
+      updateFields.openStartTime = convertTo24Hour(openStartTime);
+    if (openEndTime !== undefined)
+      updateFields.openEndTime = convertTo24Hour(openEndTime);
+    if (weekendPriceIncrease !== undefined)
+      updateFields.weekendPriceIncrease = weekendPriceIncrease;
+    if (weekendPercentage !== undefined)
+      updateFields.weekendPercentage = Number(weekendPercentage);
+
+    const updatedStation = await Station.findOneAndUpdate(
+      { _id },
+      { $set: updateFields },
+      { new: true }
+    );
+
+    return {
+      success: true,
+      message: "Station info updated successfully",
+      data: updatedStation,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      message: "Error updating station info",
+      error: error.message,
+    };
+  }
+};
+
+// async function getAllDataCount(query) {
+//   try {
+//     const obj = { status: 200, message: "Data fetched successfully", data: {} };
+//     const { stationId, month, year } = query;
+
+//     const matchFilter = {};
+
+//     // Apply stationId if present
+//     if (stationId) matchFilter.stationId = stationId;
+
+//     // Parse month name to number
+//     if (month && year) {
+//       const monthMap = {
+//         january: 1,
+//         february: 2,
+//         march: 3,
+//         april: 4,
+//         may: 5,
+//         june: 6,
+//         july: 7,
+//         august: 8,
+//         september: 9,
+//         october: 10,
+//         november: 11,
+//         december: 12,
+//       };
+
+//       const monthNum = monthMap[month.toLowerCase()];
+//       const yearNum = parseInt(year);
+
+//       if (monthNum && !isNaN(yearNum)) {
+//         matchFilter.$expr = {
+//           $and: [
+//             { $eq: [{ $month: "$createdAt" }, monthNum] },
+//             { $eq: [{ $year: "$createdAt" }, yearNum] },
+//           ],
+//         };
+//       }
+//     }
+
+//     const bookings = await Booking.find({
+//       ...matchFilter,
+//     });
+
+//     const cancelBookings = bookings.filter(
+//       (booking) => booking.bookingStatus === "canceled"
+//     );
+
+//     const nonCancelledBookings = bookings.filter(
+//       (booking) => booking.bookingStatus !== "canceled"
+//     );
+
+//     const payOnPickupCount = nonCancelledBookings.filter(
+//       (b) =>
+//         b.bookingPrice?.payOnPickupMethod !== undefined &&
+//         b.bookingPrice?.payOnPickupMethod !== null
+//     ).length;
+
+//     const amountLeftObjectCount = nonCancelledBookings.filter(
+//       (b) =>
+//         b.bookingPrice?.AmountLeftAfterUserPaid &&
+//         typeof b.bookingPrice.AmountLeftAfterUserPaid === "object" &&
+//         !Array.isArray(b.bookingPrice.AmountLeftAfterUserPaid) &&
+//         b.bookingPrice.AmountLeftAfterUserPaid?.status === "paid"
+//     ).length;
+
+//     const amount = bookings.reduce(
+//       (acc, item) => {
+//         if (
+//           item.bookingStatus === "canceled" ||
+//           item.bookingStatus === "pending" ||
+//           item.bookingStatus === "refunded"
+//         )
+//           return acc;
+
+//         const basePriceRaw =
+//           item.bookingPrice.isDiscountZero === true ||
+//           (item.bookingPrice.discountTotalPrice &&
+//             item.bookingPrice.discountTotalPrice > 0)
+//             ? item.bookingPrice.discountTotalPrice
+//             : item.bookingPrice.totalPrice;
+
+//         const basePrice = Number(basePriceRaw) || 0;
+
+//         const extendTotal = Array.isArray(item.bookingPrice.extendAmount)
+//           ? item.bookingPrice.extendAmount.reduce((sum, e) => {
+//               return e.status === "paid" ? sum + (Number(e.amount) || 0) : sum;
+//             }, 0)
+//           : 0;
+
+//         const extendCount = Array.isArray(item.bookingPrice.extendAmount)
+//           ? item.bookingPrice.extendAmount.reduce((count, e) => {
+//               return e.status === "paid" ? count + 1 : count;
+//             }, 0)
+//           : 0;
+
+//         const diffTotal = Array.isArray(item.bookingPrice.diffAmount)
+//           ? item.bookingPrice.diffAmount.reduce((sum, d) => {
+//               return d.status === "paid" ? sum + (Number(d.amount) || 0) : sum;
+//             }, 0)
+//           : 0;
+
+//         return {
+//           total: acc.total + basePrice + extendTotal + diffTotal,
+//           extendCount: acc.extendCount + extendCount,
+//         };
+//       },
+//       { total: 0, extendCount: 0 }
+//     );
+
+//     const extendBookingCount = amount.extendCount;
+//     const Amount = amount.total;
+//     const cancelBookingsCount = cancelBookings.length;
+
+//     const bookingsCount = await Booking.countDocuments({
+//       ...matchFilter,
+//     });
+
+//     obj.data = {
+//       bookingsCount,
+//       cancelBookingsCount,
+//       extendBookingCount,
+//       CashPaymentReceivedCount: payOnPickupCount + amountLeftObjectCount,
+//       Amount,
+//     };
+
+//     return obj;
+//   } catch (error) {
+//     return {
+//       status: 500,
+//       message: "An error occurred",
+//       error: error.message,
+//     };
+//   }
+// }
+
 async function getAllDataCount(query) {
   try {
     const obj = { status: 200, message: "Data fetched successfully", data: {} };
-    const { stationId } = query;
+    const { stationId, month, year } = query;
+    const matchFilter = {};
 
-    const stationFilter = stationId ? { stationId } : {};
+    // Apply stationId if present
+    if (stationId) matchFilter.stationId = stationId;
 
-    // Fetch bookings and calculate totalAmount
-    const bookings = await Booking.find(stationFilter);
-    const Amount = bookings.reduce((acc, item) => {
-      if (item.bookingStatus === "canceled") return acc;
+    // Parse month name to number
+    if (month && year) {
+      const monthMap = {
+        january: 1,
+        february: 2,
+        march: 3,
+        april: 4,
+        may: 5,
+        june: 6,
+        july: 7,
+        august: 8,
+        september: 9,
+        october: 10,
+        november: 11,
+        december: 12,
+      };
+      const monthNum = monthMap[month.toLowerCase()];
+      const yearNum = parseInt(year);
 
-      const basePrice =
-        item.bookingPrice.discountTotalPrice &&
-        item.bookingPrice.discountTotalPrice !== 0
-          ? item.bookingPrice.discountTotalPrice
-          : item.bookingPrice.totalPrice;
-
-      const extendTotal = Array.isArray(item.bookingPrice.extendPrice)
-        ? item.bookingPrice.extendPrice.reduce((sum, e) => {
-            return e.status === "paid" ? sum + (e.amount || 0) : sum;
-          }, 0)
-        : 0;
-
-      const diffTotal = Array.isArray(item.bookingPrice.diffAmount)
-        ? item.bookingPrice.diffAmount.reduce((sum, d) => {
-            return d.status === "paid" ? sum + (d.amount || 0) : sum;
-          }, 0)
-        : 0;
-
-      return acc + basePrice + extendTotal + diffTotal;
-    }, 0);
-
-    let usersCount = 0,
-      bookingsCount = 0,
-      vehiclesCount = 0,
-      locationCount = 0,
-      stationsCount = 0,
-      couponsCount = 0,
-      invoicesCount = 0,
-      plansCount = 0;
-
-    if (stationId) {
-      // Fetch only station-specific counts
-      [bookingsCount, vehiclesCount, invoicesCount] = await Promise.all([
-        Booking.countDocuments(stationFilter),
-        vehicleTable.countDocuments(stationFilter),
-        invoiceTbl.countDocuments(stationFilter),
-      ]);
-    } else {
-      // Fetch general counts without station filter
-      [
-        usersCount,
-        bookingsCount,
-        vehiclesCount,
-        locationCount,
-        stationsCount,
-        couponsCount,
-        invoicesCount,
-        plansCount,
-      ] = await Promise.all([
-        User.countDocuments({}),
-        Booking.countDocuments({}),
-        vehicleMaster.countDocuments({}),
-        location.countDocuments({}),
-        station.countDocuments({}),
-        coupon.countDocuments({}),
-        invoiceTbl.countDocuments({}),
-        plan.countDocuments({}),
-      ]);
+      if (monthNum && !isNaN(yearNum)) {
+        matchFilter.$expr = {
+          $and: [
+            { $eq: [{ $month: "$createdAt" }, monthNum] },
+            { $eq: [{ $year: "$createdAt" }, yearNum] },
+          ],
+        };
+      }
     }
 
-    // Populate the data object
+    const bookings = await Booking.find({
+      ...matchFilter,
+    });
+
+    const cancelBookings = bookings.filter(
+      (booking) => booking.bookingStatus === "canceled"
+    );
+
+    const nonCancelledBookings = bookings.filter(
+      (booking) => booking.bookingStatus !== "canceled"
+    );
+
+    const payOnPickupCount = nonCancelledBookings.filter(
+      (b) =>
+        b.bookingPrice?.payOnPickupMethod !== undefined &&
+        b.bookingPrice?.payOnPickupMethod !== null
+    ).length;
+
+    const amountLeftObjectCount = nonCancelledBookings.filter(
+      (b) =>
+        b.bookingPrice?.AmountLeftAfterUserPaid &&
+        typeof b.bookingPrice.AmountLeftAfterUserPaid === "object" &&
+        !Array.isArray(b.bookingPrice.AmountLeftAfterUserPaid) &&
+        b.bookingPrice.AmountLeftAfterUserPaid?.status === "paid"
+    ).length;
+
+    // ✅ FIXED: Calculate total amount including extend bookings properly
+    const amount = bookings.reduce(
+      (acc, item) => {
+        // Skip canceled, pending, or refunded bookings
+        if (
+          item.bookingStatus === "canceled" ||
+          item.bookingStatus === "pending" ||
+          item.bookingStatus === "refunded"
+        )
+          return acc;
+
+        // Calculate base booking price (with or without discount)
+        const basePriceRaw =
+          item.bookingPrice.isDiscountZero === true ||
+          (item.bookingPrice.discountTotalPrice &&
+            item.bookingPrice.discountTotalPrice > 0)
+            ? item.bookingPrice.discountTotalPrice
+            : item.bookingPrice.totalPrice;
+
+        const basePrice = Number(basePriceRaw) || 0;
+
+        // ✅ Calculate extend booking total (amount + addOnAmount + tax + addonTax)
+        let extendTotal = 0;
+        let extendCount = 0;
+
+        if (Array.isArray(item.bookingPrice.extendAmount)) {
+          item.bookingPrice.extendAmount.forEach((extend) => {
+            if (extend.status === "paid") {
+              const amount = Number(extend.amount) || 0;
+              const addOnAmount = Number(extend.addOnAmount) || 0;
+              const tax = Number(extend.tax) || 0;
+              const addonTax = Number(extend.addonTax) || 0;
+
+              // Total for this extend entry
+              extendTotal += amount + addOnAmount + tax + addonTax;
+              extendCount += 1;
+            }
+          });
+        }
+
+        // Calculate vehicle change difference amount
+        const diffTotal = Array.isArray(item.bookingPrice.diffAmount)
+          ? item.bookingPrice.diffAmount.reduce((sum, d) => {
+              return d.status === "paid" ? sum + (Number(d.amount) || 0) : sum;
+            }, 0)
+          : 0;
+
+        // ✅ Calculate late fees if paid
+        let lateFeeTotal = 0;
+        const lateFeeBasedOnHour =
+          Number(item.bookingPrice.lateFeeBasedOnHour) || 0;
+        const lateFeeBasedOnKM =
+          Number(item.bookingPrice.lateFeeBasedOnKM) || 0;
+
+        // Only add late fees if payment method is not "NA"
+        if (
+          item.bookingPrice.lateFeePaymentMethod &&
+          item.bookingPrice.lateFeePaymentMethod !== "NA"
+        ) {
+          lateFeeTotal = lateFeeBasedOnHour + lateFeeBasedOnKM;
+        }
+
+        // ✅ Calculate additional fees if paid
+        let additionalFeeTotal = 0;
+        const additionalPrice = Number(item.bookingPrice.additionalPrice) || 0;
+
+        // Only add additional fees if payment method is not "NA"
+        if (
+          item.bookingPrice.additionFeePaymentMethod &&
+          item.bookingPrice.additionFeePaymentMethod !== "NA"
+        ) {
+          additionalFeeTotal = additionalPrice;
+        }
+
+        return {
+          total:
+            acc.total +
+            basePrice +
+            extendTotal +
+            diffTotal +
+            lateFeeTotal +
+            additionalFeeTotal,
+          extendCount: acc.extendCount + extendCount,
+        };
+      },
+      { total: 0, extendCount: 0 }
+    );
+
+    const extendBookingCount = amount.extendCount;
+    const Amount = amount.total;
+    const cancelBookingsCount = cancelBookings.length;
+
+    const bookingsCount = await Booking.countDocuments({
+      ...matchFilter,
+    });
+
     obj.data = {
-      ...(stationId
-        ? {}
-        : {
-            usersCount,
-            locationCount,
-            stationsCount,
-            couponsCount,
-            plansCount,
-            invoicesCount,
-          }),
       bookingsCount,
-      vehiclesCount,
+      cancelBookingsCount,
+      extendBookingCount,
+      CashPaymentReceivedCount: payOnPickupCount + amountLeftObjectCount,
       Amount,
     };
 
     return obj;
   } catch (error) {
-    return { status: 500, message: "An error occurred", error: error.message };
+    return {
+      status: 500,
+      message: "An error occurred",
+      error: error.message,
+    };
   }
 }
-
-// async function saveUser({
-//   _id,
-//   userType,
-//   status,
-//   altContact,
-//   firstName,
-//   lastName,
-//   contact,
-//   email,
-//   password,
-//   deleteRec,
-//   kycApproved,
-//   isEmailVerified,
-//   isContactVerified,
-//   drivingLicence,
-//   idProof,
-//   addressProof,
-//   dateofbirth,
-//   gender,
-//   otp,
-// }) {
-//   const response = { status: 200, message: "Data processed successfully", data: [] };
-
-//   try {
-//     // Validate _id
-//     if (_id && _id.length !== 24) {
-//       response.status = 400;
-//       response.message = "Invalid _id";
-//       return response;
-//     }
-
-//     // Validate contact
-//     if (contact) {
-//       const isValid = contactValidation(contact);
-//       if (!isValid) {
-//         response.status = 400;
-//         response.message = "Invalid phone number";
-//         return response;
-//       }
-//       if (!_id) {
-//         const existingUser = await User.findOne({ contact });
-//         if (existingUser) {
-//           response.status = 409; // Conflict
-//           response.message = "This contact number already exists";
-//           return response;
-//         }
-//       }
-//     }
-
-//     // Validate altContact
-//     if (altContact) {
-//       const isValid = contactValidation(altContact);
-//       if (!isValid) {
-//         response.status = 400;
-//         response.message = "Invalid alternative contact number";
-//         return response;
-//       }
-//     }
-
-//     // Validate userType
-//     const validUserTypes = ["manager", "customer", "admin"];
-//     let checkUserType = "customer";
-//     if (userType) {
-//       if (!validUserTypes.includes(userType)) {
-//         response.status = 400;
-//         response.message = "Invalid user type";
-//         return response;
-//       }
-//       if ((userType === "admin" || userType === "manager") && !password && !_id) {
-//         response.status = 400;
-//         response.message = "Password is required for admin or manager";
-//         return response;
-//       }
-//       checkUserType = userType;
-//     }
-
-//     // Validate status
-//     const validStatuses = ["active", "inactive"];
-//     let checkStatus = "active";
-//     if (status) {
-//       if (!validStatuses.includes(status)) {
-//         response.status = 400;
-//         response.message = "Invalid user status";
-//         return response;
-//       }
-//       checkStatus = status;
-//     }
-
-//     // Validate kycApproved
-//     const validKycStatuses = ["yes", "no"];
-//     let checkKycApproved = "no";
-//     if (kycApproved) {
-//       if (!validKycStatuses.includes(kycApproved)) {
-//         response.status = 400;
-//         response.message = "Invalid KYC approval status";
-//         return response;
-//       }
-//       checkKycApproved = kycApproved;
-//     }
-
-//     // Validate isEmailVerified
-//     let checkIsEmailVerified = "no";
-//     if (isEmailVerified && validKycStatuses.includes(isEmailVerified)) {
-//       checkIsEmailVerified = isEmailVerified;
-//     }
-
-//     // Validate isContactVerified
-//     let checkIsContactVerified = "no";
-//     if (isContactVerified && validKycStatuses.includes(isContactVerified)) {
-//       checkIsContactVerified = isContactVerified;
-//     }
-
-//     // Validate email
-//     if (email) {
-//       const isValidEmail = emailValidation(email);
-//       if (!isValidEmail) {
-//         response.status = 400;
-//         response.message = "Invalid email address";
-//         return response;
-//       }
-//     }
-
-//     // Prepare user object
-//     const userObj = {
-//       addressProof,
-//       drivingLicence,
-//       idProof,
-//       isContactVerified: checkIsContactVerified,
-//       isEmailVerified: checkIsEmailVerified,
-//       kycApproved: checkKycApproved,
-//       userType: checkUserType,
-//       status: checkStatus,
-//       altContact,
-//       firstName,
-//       lastName,
-//       contact,
-//       email,
-//       password,
-//       dateofbirth,
-//       gender,
-//     };
-
-//     if (_id) {
-//       // Update or delete user
-//       const existingUser = await User.findById(_id);
-//       if (!existingUser) {
-//         response.status = 404;
-//         response.message = "User not found";
-//         return response;
-//       }
-//       if (deleteRec) {
-//         await User.findByIdAndDelete(_id);
-//         response.message = "User deleted successfully";
-//         response.data = { _id };
-//         return response;
-//       }
-//       // Update user
-//       await User.findByIdAndUpdate(_id, userObj, { new: true });
-//       response.message = "User updated successfully";
-//       response.data = userObj;
-//     } else {
-//       // Validate required fields for new user
-//       if (!firstName || !lastName || !contact || !email) {
-//         response.status = 400;
-//         response.message = "Missing required fields for new user";
-//         return response;
-//       }
-
-//       // OTP verification for customers
-//       if (userType === "customer") {
-//         const otpRecord = await Otp.findOne({ contact });
-//         if (!otpRecord) {
-//           response.status = 404;
-//           response.message = "No OTP found for the given contact number";
-//           return response;
-//         }
-//         if (otp !== otpRecord.otp) {
-//           response.status = 401;
-//           response.message = "Invalid OTP";
-//           return response;
-//         }
-//         await Otp.deleteOne({ contact });
-//       }
-
-//       // Save new user
-//       const newUser = new User(userObj);
-//       await newUser.save();
-//       response.message = "User created successfully";
-//       response.data = newUser.toObject();
-//     }
-//   } catch (error) {
-//     console.error("Error in saveUser:", error.message);
-//     response.status = 500;
-//     response.message = "Internal server error";
-//   }
-
-//   return response;
-// }
 
 async function saveUser(userData) {
   const {
@@ -604,7 +735,7 @@ async function saveUser(userData) {
       dateofbirth,
       gender,
     };
-if (password) {
+    if (password) {
       const passwordRegex =
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
       if (!passwordRegex.test(password)) {
@@ -678,7 +809,7 @@ if (password) {
       //const name = firstName + lastName;
       const newUser = new User(userObj);
       await newUser.save();
-      whatsappMessage(contact, "welcome_customer", [firstName]);
+      whatsappMessage([contact], "welcome_customer", [firstName]);
       sendOtpByEmail(email, firstName, lastName);
       return {
         status: 200,
@@ -691,184 +822,6 @@ if (password) {
     return { status: 500, message: "Internal server error" };
   }
 }
-
-// async function saveUser(userData) {
-//   const {
-//     _id,
-//     userType = "customer",
-//     status = "active",
-//     altContact,
-//     firstName,
-//     lastName,
-//     contact,
-//     email,
-//     password,
-//     deleteRec,
-//     kycApproved = "no",
-//     isEmailVerified = "no",
-//     isContactVerified = "no",
-//     isDocumentVerified = "no",
-//     drivingLicence,
-//     idProof,
-//     addressProof,
-//     dateofbirth = "Na",
-//     gender,
-//     otp,
-//   } = userData;
-
-//   const response = { status: 200, message: "Data processed successfully", data: [] };
-
-//   function isAtLeast18(dob) {
-//     const dobDate = new Date(dob);
-//     const today = new Date();
-
-//     console.log("DOB Date: ", dobDate);
-//     console.log("Today's Date: ", today);
-
-//     let age = today.getFullYear() - dobDate.getFullYear();
-
-//     const hasHadBirthdayThisYear =
-//       today.getMonth() > dobDate.getMonth() ||
-//       (today.getMonth() === dobDate.getMonth() && today.getDate() >= dobDate.getDate());
-
-//     if (!hasHadBirthdayThisYear) {
-//       age -= 1;
-//     }
-
-//     console.log("Calculated Age: ", age);
-
-//     return age >= 18;
-//   }
-
-//   try {
-//     const validateId = (id) => id && id.length === 24;
-//     const isValidContact = (number) => contactValidation(number);
-//     const isValidEmail = (email) => emailValidation(email);
-//     const isValidEnum = (value, validList) => validList.includes(value);
-
-//     if (_id && !validateId(_id)) {
-//       return { status: 400, message: "Invalid _id" };
-//     }
-
-//     if (userType == "manager" || userType == "admin") {
-//       const existingUser = await User.findOne({ email });
-//       if (existingUser) {
-//         return { status: 409, message: "This email already exists" };
-//       }
-//     }
-
-//     if (contact) {
-//       if (!isValidContact(contact)) {
-//         return { status: 400, message: "Invalid phone number" };
-//       }
-//       if (!_id) {
-//         const existingUser = await User.findOne({ contact });
-//         if (existingUser) {
-//           return { status: 409, message: "This contact number already exists" };
-//         }
-//       }
-//     }
-
-//     if (altContact && !isValidContact(altContact)) {
-//       return { status: 400, message: "Invalid alternative contact number" };
-//     }
-
-//     if (altContact === "") {
-//       return { status: 400, message: "AltContact is required" };
-//     }
-
-//     const validUserTypes = ["manager", "customer", "admin"];
-//     if (!isValidEnum(userType, validUserTypes)) {
-//       return { status: 400, message: "Invalid user type" };
-//     }
-
-//     if ((userType === "admin" || userType === "manager") && !password && !_id) {
-//       return { status: 400, message: "Password is required for admin or manager" };
-//     }
-
-//     const validStatuses = ["active", "inactive"];
-//     if (!isValidEnum(status, validStatuses)) {
-//       return { status: 400, message: "Invalid user status" };
-//     }
-
-//     const validKycStatuses = ["yes", "no"];
-//     if (!isValidEnum(kycApproved, validKycStatuses)) {
-//       return { status: 400, message: "Invalid KYC approval status" };
-//     }
-//     if (!isValidEnum(isEmailVerified, validKycStatuses)) {
-//       return { status: 400, message: "Invalid email verification status" };
-//     }
-//     if (!isValidEnum(isContactVerified, validKycStatuses)) {
-//       return { status: 400, message: "Invalid contact verification status" };
-//     }
-
-//     if (email && !isValidEmail(email)) {
-//       return { status: 400, message: "Invalid email address" };
-//     }
-
-//     const userObj = {
-//       addressProof,
-//       drivingLicence,
-//       idProof,
-//       isContactVerified,
-//       isEmailVerified,
-//       isDocumentVerified,
-//       kycApproved,
-//       userType,
-//       status,
-//       altContact,
-//       firstName,
-//       lastName,
-//       contact,
-//       email,
-//       password,
-//       dateofbirth,
-//       gender,
-//     };
-
-//     if (password) {
-//       const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
-//       if (!passwordRegex.test(password)) {
-//         return { status: 400, message: "Password validation does not match" };
-//       }
-//       userObj.password = bcrypt.hashSync(password, 8);
-//     }
-
-//     if (_id) {
-//       const existingUser = await User.findById(_id);
-//       if (!existingUser) {
-//         return { status: 404, message: "User not found" };
-//       }
-//       if (deleteRec) {
-//         await User.findByIdAndDelete(_id);
-//         return { status: 200, message: "User deleted successfully", data: { _id } };
-//       }
-
-//       if (!userObj.altContact || userObj.altContact === "") {
-//         return { status: 400, message: "AltContact is required" };
-//       }
-//       if (dateofbirth || !isAtLeast18(userObj.dateofbirth)) {
-//         return { status: 400, message: "User should be 18 or older" };
-//       }
-
-//       await User.findByIdAndUpdate(_id, { $set: userObj }, { new: true });
-//       return { status: 200, message: "User updated successfully", data: userObj };
-//     } else {
-//       if (!firstName || !lastName || !contact || !email) {
-//         return { status: 400, message: "Missing required fields for new user" };
-//       }
-
-//       const newUser = new User(userObj);
-//       await newUser.save();
-//       whatsappMessage(contact, "welcome_customer", [firstName]);
-//       sendOtpByEmail(email, firstName, lastName);
-//       return { status: 200, message: "User created successfully", data: newUser.toObject() };
-//     }
-//   } catch (error) {
-//     console.error("Error in saveUser:", error.message);
-//     return { status: 500, message: "Internal server error" };
-//   }
-// }
 
 async function updateImage(req) {
   const obj = { status: 200, message: "image updated successfully", data: "" };
@@ -939,120 +892,6 @@ async function getUserByContact(body) {
   }
 }
 
-// async function sendOtps(o) {
-//   const obj = { status: 200, message: "data fetched successfully", data: [] };
-//   const { email, contact } = o
-//   try {
-//     if (contact) {
-//       const isValidContact = contactValidation(contact)
-//       if (isValidContact) {
-//         const findUser = await User.findOne({ contact })
-//         if (findUser) {
-//           const contactOtp = Math.floor(100000 + Math.random() * 900000)
-//           await User.updateOne(
-//             { contact },
-//             {
-//               $set: { otp: contactOtp }
-//             },
-//             { new: true }
-//           );
-//           obj.data = contact
-//           obj.message = "otp sent successfully on your regoistered contact number"
-//         } else {
-//           obj.status=401;
-//           flag = false
-//           obj.message = "user does not exist"
-//           return obj
-//         }
-//       } else {
-//         flag = false
-//         obj.message = "contact is invalid"
-//         obj.data = contact
-//         return obj
-//       }
-//     } else if (email) {
-//       const random = Math.floor(100000 + Math.random() * 900000)
-//       let receiver = {
-//         from: "kashyapshivram512@gmail.com",
-//         to: email,
-//         subject: "Rent moto user verification with otp service",
-//         text: "Hi " + email + ", " + "Your verification otp is " + random
-//       };
-//       const response = await transporter.sendMail(receiver)
-//       if (response) {
-//         obj.data = response
-//         const user = await User.findOne({ email })
-//         if (user) {
-//           await User.updateOne(
-//             { email },
-//             {
-//               $set: { otp: random }
-//             },
-//             { new: true }
-//           );
-//         }
-//         obj.message = "otp sent successfully on your registered email"
-//         obj.data = email
-//       } else {
-//         obj.status = 401
-//         obj.data = email
-//         obj.message = "data not found"
-//       }
-//     } else {
-//       obj.status = 401
-//       obj.message = "invalid email or contact"
-//       obj.data = contact
-//       return obj
-//     }
-//     return obj;
-//   } catch (error) {
-//     throw new Error(error);
-//   }
-// }
-
-// async function verify({ type, otp, contact }) {
-//   const obj = { status: 200, message: "data fetched successfully", data: [] };
-//   if (type && otp && contact) {
-//     if (type == "email") {
-//       const findUser = await User.findOne({ contact })
-//       if (findUser) {
-//         const { _doc } = findUser
-//         if (otp == _doc.otp) {
-//           obj.message = "otp verified successfully"
-//           await User.updateOne(
-//             { contact },
-//             {
-//               $set: { otp: "" }
-//             },
-//             { new: true }
-//           )
-//         } else {
-//           obj.status = 401
-//           obj.message = "invalid otp"
-//         }
-//       } else {
-//         obj.status = 401
-//         obj.message = "invalid contact"
-//       }
-//     } else {
-//       if (type == "contact" && otp == "123456") {
-//         const findUser = await User.findOne({ contact })
-//         if (findUser) {
-//           obj.data = findUser
-//           obj.message = "otp verified successfully"
-//         } else {
-//           obj.status = 401
-//           obj.message = "invalid contact"
-//         }
-//       }
-//     }
-//   } else {
-//     obj.status = 401
-//     obj.message = "invalid data"
-//   }
-//   return obj;
-// }
-
 async function login(emailId) {
   try {
     const res = await Auth(emailId, "Infoaxon");
@@ -1098,4 +937,6 @@ module.exports = {
   searchUser,
   updateImage,
   getUserByContact,
+  addOrUpdateMobileToken,
+  updateStationInfo,
 };

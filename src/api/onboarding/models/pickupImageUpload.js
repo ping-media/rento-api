@@ -1,11 +1,9 @@
-const path = require("path");
-const multer = require("multer");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 require("dotenv").config();
 const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const { resizeImg } = require("../../../utils/resizeImage");
-const { timelineFunction } = require("../models/timeline.model");
+const User = require("../../../db/schemas/onboarding/user.schema");
 
 // Validate required environment variables
 const {
@@ -36,11 +34,7 @@ const s3 = new S3Client({
   },
 });
 
-// Configure Multer for Memory Storage
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // Limit to 10 MB
-});
+const isDev = process.env.NODE_ENV === "development";
 
 // Function to upload document
 const pickupImageUp = async (req, res) => {
@@ -56,6 +50,7 @@ const pickupImageUp = async (req, res) => {
       PaymentMode,
       paymentStatus,
       isVehicleUpdate,
+      diffAmountId,
       vehicleNumber,
       oldVehicleEndMeterReading,
     } = req.body;
@@ -90,25 +85,34 @@ const pickupImageUp = async (req, res) => {
     const getMilliseconds = () => new Date().getTime();
 
     // Loop through files and upload to S3
-    for (let index = 0; index < req.files.length; index++) {
-      const file = req.files[index];
-      const resizedImageBuffer = await resizeImg(file);
-      // Generate a unique file name
-      const fileName = `${userId}_${getMilliseconds()}_${index}`;
+    if (process.env.NODE_ENV === "production") {
+      for (let index = 0; index < req.files.length; index++) {
+        const file = req.files[index];
+        const resizedImageBuffer = await resizeImg(file);
+        // Generate a unique file name
+        const fileName = `${userId}_${getMilliseconds()}_${index}`;
 
-      const params = {
-        Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
-        Key: fileName, // Unique File Name
-        Body: resizedImageBuffer, // File Content
-        ContentType: file.mimetype, // MIME Type
-      };
+        const params = {
+          Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
+          Key: fileName, // Unique File Name
+          Body: resizedImageBuffer, // File Content
+          ContentType: file.mimetype, // MIME Type
+        };
 
-      // Upload to S3
-      await s3.send(new PutObjectCommand(params));
+        // Upload to S3
+        await s3.send(new PutObjectCommand(params));
 
-      // Construct the S3 File URL
-      const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
-      uploadedFiles.push({ fileName, imageUrl });
+        // Construct the S3 File URL
+        const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+        uploadedFiles.push({ fileName, imageUrl });
+      }
+    } else {
+      for (let index = 0; index < req.files.length; index++) {
+        uploadedFiles.push({
+          fileName: `dev_file_${index}.jpg`,
+          imageUrl: `https://example.com/dev_placeholder_${index}.jpg`,
+        });
+      }
     }
 
     const tempObj = {};
@@ -119,7 +123,7 @@ const pickupImageUp = async (req, res) => {
       };
     });
 
-    if (isVehicleUpdate) {
+    if (isVehicleUpdate && diffAmountId) {
       const pickupData = await pickupImage.findOne({ bookingId });
 
       const updatedData = [
@@ -142,6 +146,20 @@ const pickupImageUp = async (req, res) => {
           },
         },
         { new: true }
+      );
+
+      // updating diff amount flag
+      await Booking.updateOne(
+        { _id },
+        {
+          $set: {
+            "bookingPrice.diffAmount.$[elem].rideStatus": true,
+          },
+        },
+        {
+          arrayFilters: [{ "elem.id": Number(diffAmountId) }],
+          new: true,
+        }
       );
 
       if (newDocument) {
@@ -200,8 +218,6 @@ const pickupImageUp = async (req, res) => {
             rideStatus: "ongoing",
             "vehicleBasic.endRide": OTP,
             "bookingPrice.AmountLeftAfterUserPaid": updatedAmountLeft,
-            // "bookingPrice.AmountLeftAfterUserPaid.status": "paid",
-            // "bookingPrice.AmountLeftAfterUserPaid.paymentMethod": PaymentMode,
             paymentStatus: "paid",
           },
         },
@@ -254,80 +270,288 @@ const pickupImageUp = async (req, res) => {
   }
 };
 
-// const pickupImageUp = async (req, res) => {
-//   try {
-//     const { userId, images } = req.body;
+// function to start ride and save vehicle images
+const savePickupImageLinks = async (req, res) => {
+  try {
+    let {
+      userId,
+      bookingId,
+      data,
+      startMeterReading,
+      endMeterReading,
+      _id,
+      rideOtp,
+      PaymentMode,
+      paymentStatus,
+      isVehicleUpdate,
+      diffAmountId,
+      vehicleNumber,
+      oldVehicleEndMeterReading,
+      imageLinks,
+      startDateAndTime,
+      altContact,
+      address,
+    } = req.body;
 
-//     if (!userId || userId.length !== 24) {
-//       return res.status(400).json({ message: "Invalid user ID provided." });
-//     }
+    if (!userId || userId === "") {
+      return res.json({ message: "Invalid user ID provided." });
+    }
 
-//     const uploadedFiles = [];
+    // updating user altContact and address if send from frontend
+    const userUpdate = {};
 
-//     const getMilliseconds = () => new Date().getTime();
+    if (altContact && altContact.trim() !== "") {
+      userUpdate.altContact = altContact.trim();
+    }
 
-//     // Validate req.files existence
-//     if (!req.files || req.files.length === 0) {
-//       return res.status(400).json({ message: "No files uploaded." });
-//     }
+    if (address && address.trim() !== "") {
+      userUpdate.address = address.trim();
+    }
 
-//     // Loop through files and upload to S3
-//     for (const [index, file] of req.files.entries()) {
-//       // Generate a unique file name
-//       const fileName = `${userId}_${getMilliseconds()}_${index}`;
+    if (userUpdate.altContact) {
+      const existingUser = await User.findOne({
+        $and: [
+          {
+            $or: [
+              { contact: userUpdate.altContact },
+              { altContact: userUpdate.altContact },
+            ],
+          },
+          { _id: { $ne: userId } },
+        ],
+      });
 
-//       const params = {
-//         Bucket: process.env.AWS_BUCKET_NAME, // S3 Bucket Name
-//         Key: fileName, // Unique File Name
-//         Body: file.buffer, // File Content
-//         ContentType: file.mimetype, // MIME Type
-//       };
+      if (existingUser) {
+        return res.status(200).json({
+          message: `This number already belongs to ${existingUser.firstName} ${existingUser.lastName}`,
+        });
+      }
+    }
 
-//       // Upload to S3
-//       try {
-//         await s3.send(new PutObjectCommand(params));
-//       } catch (err) {
-//         console.error(`Error uploading file ${fileName}:`, err);
-//         throw new Error(`Failed to upload file ${fileName}`);
-//       }
+    if (Object.keys(userUpdate).length > 0) {
+      await User.findByIdAndUpdate(userId, { $set: userUpdate }, { new: true });
+    }
 
-//       // Construct the S3 File URL
-//       const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
-//       uploadedFiles.push({ fileName, imageUrl });
-//     }
+    // continue with rest of the code
+    let parsedImageLinks = [];
 
-//     // Map files for database insertion
-//     const filesToInsert = uploadedFiles.map(file => ({
-//       userId,
-//       fileName: file.fileName,
-//       imageUrl: file.imageUrl,
-//     }));
+    if (!isDev) {
+      if (!imageLinks) {
+        return res.status(400).json({ message: "imageLinks required" });
+      }
 
-//     // Save all files to the database
-//     await pickupImage.insertMany(filesToInsert);
+      if (typeof imageLinks === "string") {
+        try {
+          // imageLinks = JSON.parse(imageLinks);
+          parsedImageLinks = JSON.parse(imageLinks);
+        } catch {
+          return res.status(200).json({ message: "Invalid imageLinks format" });
+        }
+      } else if (Array.isArray(imageLinks)) {
+        parsedImageLinks = imageLinks;
+      } else {
+        return res
+          .status(200)
+          .json({ message: "imageLinks should be an array" });
+      }
 
-//     // Respond with success
-//     return res.status(200).json({
-//       status: 200,
-//       message: "Files uploaded successfully.",
-//       uploadedFiles,
-//     });
-//   } catch (error) {
-//     console.error("Error uploading files:", error);
+      // if (!Array.isArray(imageLinks)) {
+      //   return res.status(200).json({ message: "imageLinks should be an array" });
+      // }
+    }
 
-//     // Respond with error
-//     return res.status(500).json({
-//       status: 500,
-//       message: "Failed to upload files to S3.",
-//       error: error.message,
-//     });
-//   }
-// };
+    const booking = await Booking.findOne({ _id }).populate(
+      "userId",
+      "kycApproved"
+    );
+    const kycStatus = booking?.userId?.kycApproved;
+
+    if (kycStatus === "no") {
+      return res.json({
+        status: 400,
+        message: "Customer kyc is not Approved",
+        isKyc: false,
+      });
+    }
+
+    const { vehicleBasic, paymentMethod, bookingStatus } = booking;
+
+    const newBookingStatus =
+      bookingStatus === "pending" ? "done" : bookingStatus;
+
+    if (vehicleBasic.startRide !== Number(rideOtp)) {
+      return res.json({ status: 400, message: "Invalid Otp" });
+    }
+
+    const tempObj = {};
+    if (!isDev) {
+      // imageLinks.forEach((file, index) => {
+      parsedImageLinks.forEach((file, index) => {
+        if (!file.fileName || !file.imageUrl) return;
+        tempObj[`file_${index}`] = {
+          fileName: file.fileName,
+          imageUrl: file.imageUrl,
+        };
+      });
+    }
+
+    if (isVehicleUpdate && diffAmountId) {
+      const pickupData = await pickupImage.findOne({ bookingId });
+
+      const updatedData = [
+        ...(pickupData?.data?.updatedData ?? []),
+        {
+          vehicleNumber,
+          startMeterReading: pickupData?.startMeterReading,
+          oldVehicleEndMeterReading,
+        },
+      ];
+
+      const newDocument = await pickupImage.findOneAndUpdate(
+        { userId, bookingId },
+        {
+          $set: {
+            files: tempObj,
+            data: updatedData,
+            startMeterReading,
+            endMeterReading,
+          },
+        },
+        { new: true }
+      );
+
+      // updating diff amount flag
+      await Booking.updateOne(
+        { _id },
+        {
+          $set: {
+            "bookingPrice.diffAmount.$[elem].rideStatus": true,
+          },
+        },
+        {
+          arrayFilters: [{ "elem.id": Number(diffAmountId) }],
+          new: true,
+        }
+      );
+
+      if (newDocument) {
+        return res.json({
+          status: 200,
+          message: "Vehicle changed successfully.",
+          newDocument: newDocument.toObject({ flattenMaps: true }),
+        });
+      }
+    }
+
+    const newDocument = new pickupImage({
+      userId,
+      bookingId,
+      files: tempObj,
+      data,
+      startMeterReading,
+      endMeterReading,
+    });
+
+    await newDocument.save();
+    const OTP = Math.floor(1000 + Math.random() * 9000);
+
+    if (
+      paymentStatus === "partially_paid" ||
+      paymentStatus === "partiallyPay"
+    ) {
+      const AmountLeftAfterUserPaid =
+        booking?.bookingPrice?.AmountLeftAfterUserPaid ||
+        booking?.bookingPrice?.AmountLeftAfterUserPaid?.amount;
+
+      let updatedAmountLeft = {};
+      if (
+        AmountLeftAfterUserPaid &&
+        typeof AmountLeftAfterUserPaid === "object" &&
+        !Array.isArray(AmountLeftAfterUserPaid)
+      ) {
+        updatedAmountLeft = {
+          ...AmountLeftAfterUserPaid,
+          status: "paid",
+          paymentMethod: PaymentMode,
+        };
+      } else {
+        updatedAmountLeft = {
+          status: "paid",
+          paymentMethod: PaymentMode,
+          ...AmountLeftAfterUserPaid,
+        };
+      }
+
+      await Booking.updateOne(
+        { _id },
+        {
+          $set: {
+            bookingStatus: newBookingStatus,
+            "bookingPrice.isPickupImageAdded": true,
+            rideStatus: "ongoing",
+            "vehicleBasic.endRide": OTP,
+            "bookingPrice.AmountLeftAfterUserPaid": updatedAmountLeft,
+            "vehicleBasic.RideStart": Number(startDateAndTime) || "",
+            paymentStatus: "paid",
+          },
+        },
+        { new: true }
+      );
+    } else if (
+      paymentMethod?.toLowerCase() === "cash" &&
+      paymentStatus === "pending"
+    ) {
+      await Booking.updateOne(
+        { _id },
+        {
+          $set: {
+            bookingStatus: newBookingStatus,
+            "bookingPrice.isPickupImageAdded": true,
+            rideStatus: "ongoing",
+            "vehicleBasic.endRide": OTP,
+            "bookingPrice.payOnPickupMethod": PaymentMode,
+            "vehicleBasic.RideStart": Number(startDateAndTime) || "",
+            paymentStatus: "paid",
+          },
+        },
+        { new: true }
+      );
+    } else {
+      await Booking.updateOne(
+        { _id },
+        {
+          $set: {
+            bookingStatus: newBookingStatus,
+            "bookingPrice.isPickupImageAdded": true,
+            rideStatus: "ongoing",
+            "vehicleBasic.endRide": OTP,
+            "vehicleBasic.RideStart": Number(startDateAndTime) || "",
+          },
+        },
+        { new: true }
+      );
+    }
+
+    return res.json({
+      status: 200,
+      message: "Ride started successfully.",
+      newDocument,
+      endOtp: OTP,
+    });
+  } catch (error) {
+    console.error("Error uploading files:", error);
+    return res.json({
+      status: 500,
+      message: "Failed to upload files to S3.",
+      error: error.message,
+    });
+  }
+};
 
 const getPickupImage = async (req, res) => {
   try {
     const { userId, bookingId, _id } = req.query;
-    //console.log(userId,bookingId,_id)
+
     const filter = {};
     if (_id) filter._id = _id;
     if (bookingId) filter.bookingId = bookingId;
@@ -348,21 +572,6 @@ const getPickupImage = async (req, res) => {
       message: "Image retrieved successfully.",
       data: documents,
     });
-
-    // const documents = await pickupImage.find();
-
-    // if (!documents || documents.length === 0) {
-    //   return res.json({
-    //     status: 400,
-    //     message: "No data found for the provided User ID.",
-    //   });
-
-    // }
-    //   return res.status(200).json({
-    //     status: 200,
-    //     message: "Image retrieved successfully.",
-    //     data: documents,
-    //   });
   } catch (error) {
     console.error("Error fetching documents:", error);
     return res.json({
@@ -399,4 +608,9 @@ const getAllPickupImage = async (req, res) => {
   }
 };
 
-module.exports = { pickupImageUp, getPickupImage, getAllPickupImage };
+module.exports = {
+  pickupImageUp,
+  getPickupImage,
+  getAllPickupImage,
+  savePickupImageLinks,
+};

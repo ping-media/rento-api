@@ -1,8 +1,284 @@
 const Booking = require("../../../db/schemas/onboarding/booking.schema.js");
 const General = require("../../../db/schemas/onboarding/general.schema.js");
 const Log = require("../../../api/onboarding/models/Logs.model.js");
+const station = require("../../../db/schemas/onboarding/station.schema.js");
+const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload.js");
+const TempExtension = require("../../../db/schemas/onboarding/tempExtension.schema.js");
+const { booking } = require("./vehicles.model.js");
+const { timelineFunctionServer } = require("./timeline.model.js");
+const { default: axios } = require("axios");
+const Timeline = require("../../../db/schemas/onboarding/timeline.schema.js");
+const {
+  createPaymentLinkUtil,
+  verifyRazorpaySignature,
+} = require("./razorpay.model.js");
+const {
+  sendPushNotificationUsingUserId,
+} = require("../../../utils/pushNotification.js");
+const { sendMessageAfterBooking } = require("../../../utils/index.js");
+const mongoose = require("mongoose");
+const crypto = require("crypto");
+require("dotenv").config();
 
 // Get All Bookings with Filtering and Pagination
+// const getBooking = async (query) => {
+//   const obj = { status: 200, message: "Data fetched successfully", data: [] };
+
+//   try {
+//     const {
+//       _id,
+//       bookingId,
+//       bookingStatus,
+//       userId = null,
+//       paymentStatus,
+//       search,
+//       vehicleBrand,
+//       vehicleName,
+//       stationName,
+//       rideStatus,
+//       paymentMethod,
+//       payInitFrom,
+//       stationId,
+//       sortBy,
+//       sortOrder,
+//       vehicleNumber,
+//       fullName,
+//       contact,
+//       isCash = false,
+//       page = 1,
+//       limit = 10,
+//     } = query;
+
+//     if (_id) {
+//       if (_id.length !== 24) {
+//         await Log({
+//           message: "Invalid booking ID",
+//           functionName: "booking",
+//           userId: userId || "Admin",
+//         });
+//         obj.status = 401;
+//         obj.message = "Invalid booking ID";
+//         return obj;
+//       }
+
+//       // Find booking by `_id`
+//       const booking = await Booking.findById(_id).populate(
+//         "userId",
+//         "firstName lastName contact createdAt updatedAt"
+//       );
+
+//       if (!booking) {
+//         await Log({
+//           message: "Booking not found for the provided ID",
+//           functionName: "booking",
+//           userId: userId || "Admin",
+//         });
+//         obj.status = 404;
+//         obj.message = "Booking not found";
+//         return obj;
+//       }
+
+//       obj.data = [booking];
+//       return obj;
+//     }
+
+//     const sortby = sortBy || "createdAt";
+//     const sortorder = sortOrder === "asc" ? 1 : -1;
+
+//     const pipeline = [];
+
+//     const matchFilters = {};
+//     if (bookingId) {
+//       matchFilters.bookingId = {
+//         $regex: bookingId,
+//         $options: "i",
+//       };
+//     }
+//     if (vehicleBrand) matchFilters.vehicleBrand = vehicleBrand;
+//     if (vehicleName) matchFilters.vehicleName = vehicleName;
+//     if (vehicleNumber) {
+//       matchFilters["vehicleBasic.vehicleNumber"] = {
+//         $regex: vehicleNumber,
+//         $options: "i",
+//       };
+//     }
+//     if (stationName) matchFilters.stationName = stationName;
+//     if (bookingStatus) matchFilters.bookingStatus = bookingStatus;
+//     if (paymentStatus) matchFilters.paymentStatus = paymentStatus;
+//     if (userId) matchFilters.userId = userId;
+//     if (rideStatus) matchFilters.rideStatus = rideStatus;
+//     if (paymentMethod) matchFilters.paymentMethod = paymentMethod;
+//     if (payInitFrom) matchFilters.payInitFrom = payInitFrom;
+//     if (stationId) matchFilters.stationId = stationId;
+
+//     if (Object.keys(matchFilters).length > 0) {
+//       pipeline.push({ $match: matchFilters });
+//     }
+
+//     if (isCash) {
+//       pipeline.push({
+//         $match: {
+//           $and: [
+//             {
+//               $or: [
+//                 {
+//                   "bookingPrice.AmountLeftAfterUserPaid.status": "paid",
+//                 },
+//                 {
+//                   "bookingPrice.payOnPickupMethod": {
+//                     $exists: true,
+//                   },
+//                 },
+//               ],
+//             },
+//             {
+//               bookingStatus: { $ne: "canceled" },
+//             },
+//           ],
+//         },
+//       });
+//     }
+
+//     pipeline.push({
+//       $lookup: {
+//         from: "users",
+//         localField: "userId",
+//         foreignField: "_id",
+//         as: "userId",
+//         pipeline: [
+//           {
+//             $project: {
+//               firstName: 1,
+//               lastName: 1,
+//               contact: 1,
+//               createdAt: 1,
+//               updatedAt: 1,
+//             },
+//           },
+//         ],
+//       },
+//     });
+
+//     pipeline.push({
+//       $unwind: {
+//         path: "$userId",
+//         preserveNullAndEmptyArrays: true,
+//       },
+//     });
+
+//     pipeline.push({
+//       $addFields: {
+//         "userId.fullName": {
+//           $concat: [
+//             { $ifNull: ["$userId.firstName", ""] },
+//             {
+//               $cond: {
+//                 if: {
+//                   $and: [
+//                     { $ne: ["$userId.firstName", null] },
+//                     { $ne: ["$userId.lastName", null] },
+//                   ],
+//                 },
+//                 then: " ",
+//                 else: "",
+//               },
+//             },
+//             { $ifNull: ["$userId.lastName", ""] },
+//           ],
+//         },
+//       },
+//     });
+
+//     const populatedFilters = {};
+//     if (fullName) {
+//       populatedFilters["userId.fullName"] = {
+//         $regex: fullName,
+//         $options: "i",
+//       };
+//     }
+//     if (contact) {
+//       populatedFilters["userId.contact"] = {
+//         $regex: contact,
+//         $options: "i",
+//       };
+//     }
+
+//     // Add search functionality
+//     if (search) {
+//       const searchRegex = new RegExp(search, "i");
+
+//       const searchConditions = [
+//         { bookingId: searchRegex },
+//         { vehicleBrand: searchRegex },
+//         { vehicleName: searchRegex },
+//         { "vehicleBasic.vehicleNumber": searchRegex },
+//         { stationName: searchRegex },
+//         { bookingStatus: searchRegex },
+//         { paymentStatus: searchRegex },
+//         { paymentMethod: searchRegex },
+//         { rideStatus: searchRegex },
+//         { payInitFrom: searchRegex },
+//         { BookingStartDateAndTime: { $regex: searchRegex } },
+//         { BookingEndDateAndTime: { $regex: searchRegex } },
+//         { "userId.fullName": searchRegex },
+//         { "userId.contact": searchRegex },
+//       ];
+
+//       if (Object.keys(populatedFilters).length > 0) {
+//         populatedFilters.$and = [{ $or: searchConditions }, populatedFilters];
+//       } else {
+//         populatedFilters.$or = searchConditions;
+//       }
+//     }
+
+//     if (Object.keys(populatedFilters).length > 0) {
+//       pipeline.push({ $match: populatedFilters });
+//     }
+
+//     const skip = (page - 1) * limit;
+//     const countPipeline = [...pipeline, { $count: "total" }];
+
+//     pipeline.push({ $sort: { [sortby]: sortorder } });
+//     pipeline.push({ $skip: skip });
+//     pipeline.push({ $limit: Number(limit) });
+
+//     const [bookings, countResult] = await Promise.all([
+//       Booking.aggregate(pipeline),
+//       Booking.aggregate(countPipeline),
+//     ]);
+
+//     if (!bookings.length) {
+//       await Log({
+//         message: "No bookings found for the provided filters",
+//         functionName: "booking",
+//         userId: userId || "Admin",
+//       });
+//       obj.message = "No records found";
+//       obj.status = 200;
+//       return obj;
+//     }
+
+//     obj.data = bookings;
+
+//     const totalRecords = countResult.length > 0 ? countResult[0].total : 0;
+//     obj.pagination = {
+//       totalPages: Math.ceil(totalRecords / limit),
+//       currentPage: Number(page),
+//       limit: Number(limit),
+//     };
+//   } catch (error) {
+//     console.error("Error fetching bookings:", error);
+//     await Log({
+//       message: `Error fetching bookings: ${error.message}`,
+//       functionName: "booking",
+//     });
+//     obj.status = 500;
+//     obj.message = "Internal server error";
+//   }
+
+//   return obj;
+// };
+
 const getBooking = async (query) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -21,6 +297,13 @@ const getBooking = async (query) => {
       paymentMethod,
       payInitFrom,
       stationId,
+      sortBy,
+      sortOrder,
+      vehicleNumber,
+      fullName,
+      contact,
+      isCash = false,
+      dateCheck,
       page = 1,
       limit = 10,
     } = query;
@@ -37,8 +320,11 @@ const getBooking = async (query) => {
         return obj;
       }
 
-      // Find booking by `_id`
-      const booking = await Booking.findById(_id);
+      const booking = await Booking.findById(_id).populate(
+        "userId",
+        "firstName lastName contact altContact email createdAt updatedAt"
+      );
+
       if (!booking) {
         await Log({
           message: "Booking not found for the provided ID",
@@ -54,57 +340,190 @@ const getBooking = async (query) => {
       return obj;
     }
 
-    const filters = {};
-    if (_id) filters._id = _id;
-    if (bookingId) filters.bookingId = bookingId;
-    if (vehicleBrand) filters.vehicleBrand = vehicleBrand;
-    if (vehicleName) filters.vehicleName = vehicleName;
-    if (stationName) filters.stationName = stationName;
-    if (bookingStatus) filters.bookingStatus = bookingStatus;
-    if (paymentStatus) filters.paymentStatus = paymentStatus;
-    if (userId) filters.userId = userId;
-    if (rideStatus) filters.rideStatus = rideStatus;
-    if (paymentMethod) filters.paymentMethod = paymentMethod;
-    if (payInitFrom) filters.payInitFrom = payInitFrom;
-    if (stationId) filters.stationId = stationId;
+    const sortby = sortBy || "createdAt";
+    const sortorder = sortOrder === "asc" ? 1 : -1;
+
+    const pipeline = [];
+
+    const matchFilters = {};
+    if (bookingId) {
+      matchFilters.bookingId = {
+        $regex: bookingId,
+        $options: "i",
+      };
+    }
+    if (vehicleBrand) matchFilters.vehicleBrand = vehicleBrand;
+    if (vehicleName) matchFilters.vehicleName = vehicleName;
+    if (vehicleNumber) {
+      matchFilters["vehicleBasic.vehicleNumber"] = {
+        $regex: vehicleNumber,
+        $options: "i",
+      };
+    }
+    if (stationName) matchFilters.stationName = stationName;
+    if (bookingStatus) matchFilters.bookingStatus = bookingStatus;
+    if (paymentStatus) matchFilters.paymentStatus = paymentStatus;
+    if (userId) matchFilters.userId = userId;
+    if (rideStatus) matchFilters.rideStatus = rideStatus;
+    if (paymentMethod) matchFilters.paymentMethod = paymentMethod;
+    if (payInitFrom) matchFilters.payInitFrom = payInitFrom;
+    if (stationId) matchFilters.stationId = stationId;
+
+    if (Object.keys(matchFilters).length > 0) {
+      pipeline.push({ $match: matchFilters });
+    }
+
+    if (isCash) {
+      pipeline.push({
+        $match: {
+          $and: [
+            {
+              $or: [
+                {
+                  "bookingPrice.AmountLeftAfterUserPaid.status": "paid",
+                },
+                {
+                  "bookingPrice.payOnPickupMethod": {
+                    $exists: true,
+                  },
+                },
+              ],
+            },
+            {
+              bookingStatus: { $ne: "canceled" },
+            },
+          ],
+        },
+      });
+    }
+
+    pipeline.push({
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "userId",
+        pipeline: [
+          {
+            $project: {
+              firstName: 1,
+              lastName: 1,
+              contact: 1,
+              altContact: 1,
+              email: 1,
+              createdAt: 1,
+              updatedAt: 1,
+            },
+          },
+        ],
+      },
+    });
+
+    pipeline.push({
+      $unwind: {
+        path: "$userId",
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+
+    pipeline.push({
+      $addFields: {
+        "userId.fullName": {
+          $concat: [
+            { $ifNull: ["$userId.firstName", ""] },
+            {
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$userId.firstName", null] },
+                    { $ne: ["$userId.lastName", null] },
+                  ],
+                },
+                then: " ",
+                else: "",
+              },
+            },
+            { $ifNull: ["$userId.lastName", ""] },
+          ],
+        },
+      },
+    });
+
+    const populatedFilters = {};
+    if (fullName) {
+      populatedFilters["userId.fullName"] = {
+        $regex: fullName,
+        $options: "i",
+      };
+    }
+    if (contact) {
+      populatedFilters["userId.contact"] = {
+        $regex: contact,
+        $options: "i",
+      };
+    }
 
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, "i"); // Case-insensitive search
-      filters.$or = [
+      const searchRegex = new RegExp(search, "i");
+
+      const searchConditions = [
         { bookingId: searchRegex },
         { vehicleBrand: searchRegex },
         { vehicleName: searchRegex },
+        { "vehicleBasic.vehicleNumber": searchRegex },
         { stationName: searchRegex },
         { bookingStatus: searchRegex },
         { paymentStatus: searchRegex },
         { paymentMethod: searchRegex },
         { rideStatus: searchRegex },
         { payInitFrom: searchRegex },
-        {
-          BookingStartDateAndTime: {
-            $regex: searchRegex,
-          },
-        },
-        {
-          BookingEndDateAndTime: {
-            $regex: searchRegex,
-          },
-        },
+        { "userId.fullName": searchRegex },
+        { "userId.contact": searchRegex },
       ];
+
+      // Handle date search based on dateCheck flag
+      if (dateCheck === "pickup") {
+        searchConditions.push({
+          BookingStartDateAndTime: { $regex: searchRegex },
+        });
+      } else if (dateCheck === "dropoff") {
+        searchConditions.push({
+          BookingEndDateAndTime: { $regex: searchRegex },
+        });
+      } else {
+        // If dateCheck is not present, search in both date fields (original behavior)
+        searchConditions.push({
+          BookingStartDateAndTime: { $regex: searchRegex },
+        });
+        searchConditions.push({
+          BookingEndDateAndTime: { $regex: searchRegex },
+        });
+      }
+
+      if (Object.keys(populatedFilters).length > 0) {
+        populatedFilters.$and = [{ $or: searchConditions }, populatedFilters];
+      } else {
+        populatedFilters.$or = searchConditions;
+      }
+    }
+
+    if (Object.keys(populatedFilters).length > 0) {
+      pipeline.push({ $match: populatedFilters });
     }
 
     const skip = (page - 1) * limit;
+    const countPipeline = [...pipeline, { $count: "total" }];
 
-    const bookings = await Booking.find(filters)
-      .populate("userId", "firstName lastName contact createdAt updatedAt")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit));
+    pipeline.push({ $sort: { [sortby]: sortorder } });
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: Number(limit) });
 
-    // .select("bookingId vehicleName stationName bookingStartDateAndTime bookingEndDateAndTime bookingPrice bookingStatus rideStatus");
+    const [bookings, countResult] = await Promise.all([
+      Booking.aggregate(pipeline),
+      Booking.aggregate(countPipeline),
+    ]);
 
-    // If no bookings found
     if (!bookings.length) {
       await Log({
         message: "No bookings found for the provided filters",
@@ -116,13 +535,10 @@ const getBooking = async (query) => {
       return obj;
     }
 
-    // Add bookings to the response
     obj.data = bookings;
 
-    // Include pagination metadata
-    const totalRecords = await Booking.count(filters);
+    const totalRecords = countResult.length > 0 ? countResult[0].total : 0;
     obj.pagination = {
-      // totalRecords,
       totalPages: Math.ceil(totalRecords / limit),
       currentPage: Number(page),
       limit: Number(limit),
@@ -132,7 +548,6 @@ const getBooking = async (query) => {
     await Log({
       message: `Error fetching bookings: ${error.message}`,
       functionName: "booking",
-      //  userId: userId || "Admin",
     });
     obj.status = 500;
     obj.message = "Internal server error";
@@ -159,11 +574,34 @@ const getBookings = async (query) => {
           "userId",
           "firstName lastName contact altContact email kycApproved"
         )
-        .populate("vehicleTableId", "vehiclePlan perDayCost")
+        .populate("vehicleTableId", "vehiclePlan freeKms perDayCost")
+        .populate("vehicleMasterId", "gstPercentage")
         .populate(
           "stationMasterUserId",
-          "firstName lastName contact altContact email status"
+          "firstName lastName contact altContact email status isGstActive extraAddOn"
         );
+
+      if (!booking) {
+        await Log({
+          message: "Booking not found for the provided ID",
+          functionName: "booking",
+          userId: userId || null,
+        });
+        obj.status = 404;
+        obj.message = "Booking not found";
+        obj.isEmpty = true;
+        return obj;
+      }
+
+      const pickupImageData = await pickupImage
+        .findOne({
+          bookingId: booking?.bookingId,
+        })
+        .select("-bookingId -__v");
+
+      const stationData = await station.findOne({
+        stationId: booking?.stationId,
+      });
 
       const pricingRules = await General.findOne({});
 
@@ -230,22 +668,14 @@ const getBookings = async (query) => {
             }
           });
         }
-        const bookingObj = booking.toObject();
+        const bookingObj = {
+          ...booking.toObject(),
+          stationData,
+          pickupImage: pickupImageData,
+        };
         bookingObj.vehicleTableId.originalPerDayCost = originalPerDayCost;
         bookingObj.vehicleTableId.perDayCost = Math.round(finalPerDayCost);
         obj.data = [bookingObj];
-        return obj;
-      }
-
-      if (!booking) {
-        await Log({
-          message: "Booking not found for the provided ID",
-          functionName: "booking",
-          userId: userId || null,
-        });
-        obj.status = 404;
-        obj.message = "Booking not found";
-        obj.isEmpty = true;
         return obj;
       }
 
@@ -306,4 +736,1021 @@ const getBookings = async (query) => {
   return obj;
 };
 
-module.exports = { getBookings, getBooking };
+const createOrderId = async ({ amount, booking_id, _id, type, typeId }) => {
+  const key_id = process.env.VITE_RAZOR_KEY_ID;
+  const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
+
+  // API endpoint for Razorpay order creation
+  const url = "https://api.razorpay.com/v1/orders";
+
+  // Prepare the order data to send
+  const options = {
+    amount: amount * 100,
+    currency: "INR",
+    receipt: "receipt#" + booking_id,
+    payment_capture: 1,
+    notes: {
+      booking_id: _id.toString(),
+      type: type || "",
+      typeId: typeId || "",
+    },
+  };
+
+  try {
+    // Make the API request to Razorpay using axios
+    const response = await axios.post(url, options, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      auth: {
+        username: key_id,
+        password: key_secret,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    return error.message;
+  }
+};
+
+const initiateBooking = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    let { bookingData, paymentMethod } = req.body;
+
+    if (!bookingData.vehicleTableId || !bookingData.userId || !paymentMethod) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ message: "Required fields missing", status: 400 });
+    }
+
+    // is amount goes to zero after discount
+    if (bookingData?.bookingPrice?.isDiscountZero) {
+      bookingData = {
+        ...bookingData,
+        paymentInitiatedDate: new Date().getTime(),
+        paymentMethod: "online",
+        bookingStatus: "done",
+        paymentStatus: "paid",
+      };
+
+      const response = await booking(bookingData, { session });
+
+      if (response?.status === 200) {
+        const timeLineData = {
+          userId: response?.data?.userId,
+          bookingId: response?.data?.bookingId,
+          currentBooking_id: response?.data?._id,
+          isStart: true,
+          timeLine: [
+            {
+              title: "Booking Created",
+              date: Date.now(),
+              bookingEndDateAndTime: bookingData?.BookingEndDateAndTime || "",
+            },
+          ],
+        };
+        await timelineFunctionServer(timeLineData);
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      return res.json(response);
+    }
+
+    // for cash payment mode
+    if (paymentMethod === "cash") {
+      bookingData = {
+        ...bookingData,
+        payInitFrom: "Cash",
+        bookingStatus: "done",
+        paymentInitiatedDate: Date.now(),
+        paymentMethod: paymentMethod,
+      };
+
+      const response = await booking(bookingData, { session });
+
+      if (response?.status === 200) {
+        const paymentAmount =
+          bookingData?.bookingPrice?.discountTotalPrice > 0
+            ? bookingData?.bookingPrice?.discountTotalPrice
+            : bookingData?.bookingPrice?.totalPrice;
+
+        const timeLineData_1 = {
+          userId: response?.data?.userId,
+          bookingId: response?.data?.bookingId,
+          currentBooking_id: response?.data?._id,
+          isStart: true,
+          timeLine: [
+            {
+              title: "Booking Created",
+              date: Date.now(),
+              bookingEndDateAndTime: bookingData?.BookingEndDateAndTime || "",
+            },
+          ],
+        };
+
+        await timelineFunctionServer(timeLineData_1);
+
+        const timeLineData_2 = {
+          currentBooking_id: response?.data?._id,
+          timeLine: [
+            {
+              title: "Pay Later",
+              date: Date.now(),
+              paymentAmount: paymentAmount || 0,
+            },
+          ],
+        };
+        await timelineFunctionServer(timeLineData_2);
+
+        if (response?.data?.userId) {
+          await sendPushNotificationUsingUserId(
+            response.data.userId,
+            "Ride Confirmed!",
+            "Your ride is successfully booked. Get ready to pick up your vehicle on time!"
+          );
+        }
+
+        if (response?.data?.bookingId) {
+          const notificationSend = await sendMessageAfterBooking(
+            response?.data?.bookingId
+          );
+
+          if (!notificationSend.success) {
+            await Log({
+              message: notificationSend?.message,
+              functionName: "initiateBooking",
+            });
+          }
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.json(response);
+      }
+    }
+
+    // for other payment modes
+    if (paymentMethod === "partiallyPay") {
+      const totalAmount = Math.round(
+        bookingData?.bookingPrice?.discountTotalPrice ||
+          bookingData?.bookingPrice?.totalPrice
+      );
+
+      const userPaid = Math.round(totalAmount * 0.2);
+      const AmountLeftAfterUserPaid = totalAmount - userPaid;
+
+      bookingData = {
+        ...bookingData,
+        bookingPrice: {
+          ...bookingData.bookingPrice,
+          userPaid,
+          AmountLeftAfterUserPaid: {
+            amount: Math.round(AmountLeftAfterUserPaid),
+            status: "unpaid",
+          },
+        },
+      };
+    }
+
+    bookingData = { ...bookingData, paymentMethod: paymentMethod };
+
+    const response = await booking(bookingData, { session });
+
+    if (response?.status === 200) {
+      const timeLineData_1 = {
+        userId: response?.data?.userId,
+        bookingId: response?.data?.bookingId,
+        currentBooking_id: response?.data?._id,
+        isStart: true,
+        timeLine: [
+          {
+            title: "Booking Created",
+            date: Date.now(),
+            bookingEndDateAndTime: bookingData?.BookingEndDateAndTime || "",
+          },
+        ],
+      };
+
+      await timelineFunctionServer(timeLineData_1);
+
+      const payableAmount =
+        (paymentMethod === "partiallyPay"
+          ? bookingData?.bookingPrice?.userPaid
+          : bookingData?.bookingPrice?.discountTotalPrice &&
+            bookingData?.bookingPrice?.discountTotalPrice > 0
+          ? bookingData?.bookingPrice?.discountTotalPrice
+          : bookingData?.bookingPrice?.totalPrice) || 100;
+
+      const razorData = await createOrderId({
+        amount: payableAmount,
+        booking_id: response?.data?.bookingId,
+        _id: response?.data?._id,
+        type: paymentMethod === "partiallyPay" ? "partiallyPay" : "",
+      });
+
+      if (razorData?.status === "created") {
+        await Booking.findByIdAndUpdate(
+          response?.data?._id,
+          {
+            $set: {
+              payInitFrom: "Razorpay",
+              paymentInitiatedDate: razorData?.created_at,
+              paymentgatewayOrderId: razorData?.id,
+              paymentgatewayReceiptId: razorData?.receipt,
+            },
+          },
+          { session }
+        );
+
+        const timeLineData = {
+          currentBooking_id: response.data?._id,
+          timeLine: [
+            {
+              title: "Payment Initiated",
+              date: Date.now(),
+            },
+          ],
+        };
+
+        await timelineFunctionServer(timeLineData);
+      } else {
+        await session.abortTransaction();
+        session.endSession();
+        return res.json({ status: 500, message: "Failed to initiate payment" });
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      return res.json({
+        status: 200,
+        message: response?.message,
+        data: {
+          orderId: razorData?.id,
+          booking_id: response?.data?._id,
+          bookingId: response?.data?.bookingId,
+          payableAmount,
+        },
+      });
+    }
+
+    await session.abortTransaction();
+    session.endSession();
+    return res.json({
+      status: 500,
+      message: response?.message,
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("Booking error:", error);
+    return res.json({
+      status: 500,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+const initiateExtendBooking = async (req, res) => {
+  const { _id, bookingId, amount, data } = req.body;
+
+  // Validate required fields
+  if (!_id || !bookingId || !amount || !data) {
+    return res.status(400).json({
+      message: "Missing required fields! try again",
+    });
+  }
+
+  try {
+    const booking = await Booking.findById(_id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    const razorpayOrder = await createOrderId({
+      amount: amount,
+      booking_id: bookingId,
+      _id: _id,
+      type: "extension",
+      typeId: data.extendAmount.id,
+    });
+
+    // Update properties individually
+    if (data.BookingEndDateAndTime) {
+      booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
+    }
+
+    if (!booking.bookingPrice.extendAmount) {
+      booking.bookingPrice.extendAmount = [];
+    }
+
+    if (data.extendAmount) {
+      booking.bookingPrice.extendAmount.push({
+        ...data.extendAmount,
+        orderId: razorpayOrder.id,
+      });
+    }
+
+    if (!booking.extendBooking) {
+      booking.extendBooking = {};
+    }
+
+    if (!booking.extendBooking.oldBooking) {
+      booking.extendBooking.oldBooking = [];
+    }
+
+    if (data.oldBookings) {
+      booking.extendBooking.oldBooking.push(data.oldBookings);
+    }
+
+    booking.bookingStatus = "extended";
+
+    // Mark nested objects as modified
+    booking.markModified("bookingPrice");
+    booking.markModified("extendBooking");
+
+    const savedBooking = await booking.save();
+
+    if (savedBooking) {
+      await timelineFunctionServer({
+        currentBooking_id: booking._id,
+        timeLine: [
+          {
+            title: "Payment Initiated",
+            date: Date.now(),
+            paymentAmount: amount,
+            extendId: `extend_${booking.bookingId}_${data.extendAmount.id}`,
+            extendDate: data.extendAmount.bookingEndDateAndTime,
+          },
+        ],
+      });
+
+      res.json({
+        id: razorpayOrder.id,
+        status: razorpayOrder.status,
+        bookingUpdate: true,
+      });
+    } else {
+      res.json({
+        bookingUpdate: false,
+        message: "Unable to extend booking! try again",
+      });
+    }
+  } catch (error) {
+    console.error("Error in initiateExtendBooking:", error);
+    res.json({
+      message: "Internal server error",
+      error: error.message,
+      bookingUpdate: false,
+    });
+  }
+};
+
+const extendBooking = async (req, res) => {
+  const { _id, bookingId, amount, data, razorpay_signature } = req.body;
+
+  // Validate required fields
+  if (!_id || !bookingId || !amount || !data?.extendAmount?.id) {
+    // console.log("Missing required fields! try again");
+    return res.status(400).json({
+      message: "Missing required fields! try again",
+    });
+  }
+
+  const { orderId, transactionId } = data.extendAmount;
+
+  if (!orderId || !transactionId || !razorpay_signature) {
+    return res.status(200).json({
+      success: false,
+      message:
+        "Payment verification data missing! try contact admin for support",
+    });
+  }
+
+  const body = `${orderId}|${transactionId}`;
+
+  const expectedSignature = crypto
+    .createHmac("sha256", process.env.VITE_RAZOR_KEY_SECRET)
+    .update(body)
+    .digest("hex");
+
+  if (razorpay_signature !== expectedSignature) {
+    return res.status(200).json({
+      success: false,
+      message:
+        "Invalid payment signature. Payment verification failed! try contact admin for support",
+    });
+  }
+  // const isValidSignature = verifyRazorpaySignature(body, razorpay_signature);
+
+  // if (!isValidSignature) {
+  //   return res.status(200).json({
+  //     success: false,
+  //     message:
+  //       "Invalid payment signature. Payment verification failed! try contact admin for support",
+  //   });
+  // }
+
+  // let paymentDetails;
+  // try {
+  //   paymentDetails = await axios.get(
+  //     `https://api.razorpay.com/v1/payments/${data?.extendAmount?.transactionId}`,
+  //     {
+  //       auth: {
+  //         username: process.env.VITE_RAZOR_KEY_ID,
+  //         password: process.env.VITE_RAZOR_KEY_SECRET,
+  //       },
+  //     }
+  //   );
+  // } catch (err) {
+  //   console.error("Razorpay API error:", err?.response?.data || err.message);
+  //   return res.status(400).json({
+  //     success: false,
+  //     message: "Unable to verify payment with Razorpay. Please try again.",
+  //   });
+  // }
+
+  // if (paymentDetails.data?.status !== "captured") {
+  //   return res.status(400).json({
+  //     success: false,
+  //     message: "Payment not captured! Contact Admin for support.",
+  //   });
+  // }
+
+  try {
+    const booking = await Booking.findById(_id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Update properties individually
+    if (!booking.bookingPrice.extendAmount) {
+      booking.bookingPrice.extendAmount = [];
+    }
+
+    const existingExtension = booking.bookingPrice.extendAmount.find(
+      (ext) => ext.orderId === orderId
+    );
+
+    if (existingExtension) {
+      return res.json({
+        success: true,
+        message: "Extension already processed",
+      });
+    }
+
+    if (data.BookingEndDateAndTime) {
+      booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
+    }
+
+    const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
+    if (!existingIds.includes(data.extendAmount.id)) {
+      booking.bookingPrice.extendAmount.push(data.extendAmount);
+    }
+
+    if (!booking.extendBooking) {
+      booking.extendBooking = {};
+    }
+
+    if (!booking.extendBooking.oldBooking) {
+      booking.extendBooking.oldBooking = [];
+    }
+
+    if (data.oldBookings) {
+      booking.extendBooking.oldBooking.push(data.oldBookings);
+    }
+
+    booking.bookingStatus = "extended";
+
+    // Mark nested objects as modified
+    booking.markModified("bookingPrice");
+    booking.markModified("extendBooking");
+
+    const savedBooking = await booking.save();
+
+    if (savedBooking) {
+      await timelineFunctionServer({
+        currentBooking_id: booking._id,
+        timeLine: [
+          {
+            title: "Booking Extended by User",
+            date: Date.now(),
+            paymentAmount: amount || 0,
+            endDate: data.BookingEndDateAndTime,
+            paymentId: data?.extendAmount?.transactionId || "",
+            extended: true,
+          },
+        ],
+      });
+
+      // await sendMessageAfterBooking(booking.bookingId);
+      if (booking.userId) {
+        sendPushNotificationUsingUserId(
+          booking.userId,
+          "Ride Extended!",
+          "Your ride is successfully extended."
+        );
+      }
+
+      return res.json({
+        success: true,
+        message: "Booking extended successfully",
+      });
+    } else {
+      return res.json({
+        success: false,
+        message: "Unable to extend booking! try again",
+      });
+    }
+  } catch (error) {
+    console.error("Error in extendbooking:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+      bookingUpdate: false,
+    });
+  }
+};
+
+const initiateExtendBookingAfterPayment = async (req, res) => {
+  let {
+    _id,
+    bookingId,
+    amount,
+    data,
+    extensionMode,
+    extensionNote,
+    isUser = false,
+    createPaymentLink = true,
+  } = req.body;
+
+  if (!_id || !bookingId || !amount || !data || !extensionMode) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  const allowedModes = ["online", "cash"];
+  if (!allowedModes.includes(extensionMode?.toLowerCase())) {
+    return res
+      .status(400)
+      .json({ message: "Invalid extension mode. Allowed: online, cash." });
+  }
+
+  try {
+    const booking = await Booking.findById(_id);
+    if (!booking) {
+      return res.status(200).json({ message: "Booking not found" });
+    }
+
+    const extendId = `${booking.bookingId}_ext_${data.extendAmount.id}` || "";
+
+    if (extendId.trim() === "") {
+      return res
+        .status(200)
+        .json({ message: "Unable to create extend id! try again" });
+    }
+
+    if (extensionMode === "cash") {
+      data = {
+        ...data,
+        extendAmount: {
+          ...data?.extendAmount,
+          extendId,
+          paymentMethod: "cash",
+          status: "paid",
+        },
+      };
+
+      if (data.BookingEndDateAndTime) {
+        booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
+      }
+
+      if (!booking?.bookingPrice?.extendAmount) {
+        booking.bookingPrice.extendAmount = [];
+      }
+
+      const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
+      if (!existingIds.includes(data.extendAmount.id)) {
+        booking.bookingPrice.extendAmount.push(data.extendAmount);
+      }
+
+      if (!booking.extendBooking) {
+        booking.extendBooking = {};
+      }
+
+      if (!booking.extendBooking.oldBooking) {
+        booking.extendBooking.oldBooking = [];
+      }
+
+      if (data.oldBookings) {
+        booking.extendBooking.oldBooking.push(data.oldBookings);
+      }
+
+      if (extensionNote !== null) {
+        booking.notes.push(extensionNote);
+      }
+
+      booking.bookingStatus = "extended";
+
+      // Mark nested objects as modified
+      booking.markModified("bookingPrice");
+      booking.markModified("extendBooking");
+
+      const savedBooking = await booking.save();
+
+      if (savedBooking) {
+        await timelineFunctionServer({
+          currentBooking_id: booking._id,
+          timeLine: [
+            {
+              title: isUser
+                ? "Booking Extended by User"
+                : "Booking Extended by Admin",
+              date: Date.now(),
+              paymentAmount: amount || 0,
+              endDate: data.BookingEndDateAndTime,
+              extended: true,
+            },
+          ],
+        });
+
+        if (booking.userId) {
+          sendPushNotificationUsingUserId(
+            booking.userId,
+            "Ride Extended!",
+            "Your ride is successfully extended."
+          );
+        }
+
+        return res.json({
+          success: true,
+          message: "Ride extended successfully",
+          timeLine: {
+            currentBooking_id: booking._id,
+            timeLine: [
+              {
+                title: isUser
+                  ? "Booking Extended by User"
+                  : "Booking Extended by Admin",
+                date: Date.now(),
+                paymentAmount: amount || 0,
+                endDate: data.BookingEndDateAndTime,
+                extended: true,
+              },
+            ],
+          },
+        });
+      } else {
+        return res.json({
+          success: false,
+          message: "unable to extend booking! try again",
+        });
+      }
+    }
+
+    const razorpayOrder = await createOrderId({
+      amount: amount,
+      booking_id: bookingId,
+      _id: _id,
+      type: "extension",
+      typeId: extendId,
+      requestFrom: isUser ? "user" : "admin",
+    });
+
+    await TempExtension.create({
+      extendId: extendId,
+      bookingId: booking._id || _id,
+      userId: booking.userId,
+      razorpayOrderId: razorpayOrder.id,
+      amount,
+      extendData: {
+        ...data,
+        extendAmount: { ...data.extendAmount, orderId: razorpayOrder.id },
+      },
+      isCompleted: false,
+    });
+
+    if (isUser) {
+      if (razorpayOrder?.id) {
+        return res.status(200).json({
+          success: true,
+          message: "extend request placed",
+          orderId: razorpayOrder.id,
+          booking_id: booking._id || _id,
+          payableAmount: amount,
+        });
+      } else {
+        return res.status(200).json({
+          success: false,
+          message: "unable to complete extend request! try again",
+        });
+      }
+    }
+
+    const paymentLink = await createPaymentLinkUtil({
+      bookingId: _id,
+      amount,
+      orderId: razorpayOrder.id,
+      type: "extension",
+      typeId: extendId,
+      endDate: data.extendAmount.bookingEndDateAndTime,
+      requestFrom: "admin",
+    });
+
+    if (paymentLink?.paymentLinkId) {
+      res.status(200).json({
+        success: true,
+        message: "extend request placed",
+        timeLine: paymentLink?.timeLineData || null,
+      });
+    } else {
+      res.status(200).json({
+        success: false,
+        message: "unable to complete extend request! try again",
+      });
+    }
+  } catch (error) {
+    console.error("initiateExtendBooking error:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+const updateBooking = async (req, res) => {
+  const { BookingStartDateAndTime, BookingEndDateAndTime, _id } = req.body;
+
+  if (!_id || !BookingStartDateAndTime || !BookingEndDateAndTime) {
+    return res.status(200).json({
+      message: "Missing required fields! try again",
+    });
+  }
+
+  try {
+    const booking = await Booking.findById(_id);
+    if (!booking) {
+      return res.status(200).json({ message: "Booking not found" });
+    }
+
+    const oldStart = booking.BookingStartDateAndTime;
+    const oldEnd = booking.BookingEndDateAndTime;
+    const newStart = BookingStartDateAndTime;
+    const newEnd = BookingEndDateAndTime;
+
+    const isStartUpdate = newStart !== oldStart;
+    const isEndUpdate = newEnd !== oldEnd;
+
+    const shouldCheckConflicts =
+      (isStartUpdate && newStart < oldStart) ||
+      (isEndUpdate && newEnd > oldEnd);
+
+    if (shouldCheckConflicts) {
+      const conflict = await Booking.findOne({
+        vehicleTableId: booking.vehicleTableId,
+        _id: { $ne: booking._id },
+        $or: [
+          {
+            BookingStartDateAndTime: { $lt: newEnd },
+            BookingEndDateAndTime: { $gt: newStart },
+          },
+        ],
+      });
+
+      if (conflict) {
+        return res.status(200).json({
+          success: false,
+          message: `The vehicle is already booked during the selected time with booking id ${
+            conflict?.bookingId || "--"
+          }.`,
+        });
+      }
+    }
+
+    // Perform update
+    booking.BookingStartDateAndTime = newStart;
+    booking.BookingEndDateAndTime = newEnd;
+    await booking.save();
+
+    const timelineData = {
+      currentBooking_id: booking._id,
+      timeLine: [
+        {
+          title: "Booking Rescheduled",
+          date: Date.now(),
+          newStartDate: isStartUpdate ? newStart : "",
+          newEndDate: isEndUpdate ? newEnd : "",
+        },
+      ],
+    };
+
+    await timelineFunctionServer(timelineData);
+
+    res.json({
+      success: true,
+      isStartUpdate,
+      isEndUpdate,
+      timeline: timelineData,
+    });
+  } catch (error) {
+    console.warn(
+      "Unable to update or rescheduled booking! try again",
+      error?.message
+    );
+    res.json({
+      success: false,
+      message: "Unable to update or rescheduled booking! try again.",
+    });
+  }
+};
+
+const editBooking = async (req, res) => {
+  const { addOn, totalAddOnPrice, addonTax, _id } = req.body;
+
+  if (!_id || !addOn) {
+    return res.status(200).json({
+      message: "Missing required fields! try again",
+    });
+  }
+
+  try {
+    const booking = await Booking.findById(_id);
+    if (!booking) {
+      return res.status(200).json({ message: "Booking not found" });
+    }
+
+    const bookingPrice = booking.bookingPrice;
+    addOn.forEach((item) => {
+      const exists = bookingPrice.extraAddonDetails.some(
+        (existing) => existing._id === item._id
+      );
+
+      if (!exists) {
+        bookingPrice.extraAddonDetails.push(item);
+      }
+    });
+
+    bookingPrice.extraAddonPrice += totalAddOnPrice;
+    bookingPrice.addonTax += Number(addonTax) || 0;
+
+    let amount = 0;
+    if (!bookingPrice?.isDiscountZero && bookingPrice.discountTotalPrice > 0) {
+      bookingPrice.discountTotalPrice += totalAddOnPrice;
+      amount = bookingPrice.discountTotalPrice;
+    } else {
+      bookingPrice.totalPrice += totalAddOnPrice;
+      amount = bookingPrice?.totalPrice;
+    }
+
+    booking.markModified("bookingPrice");
+    await booking.save();
+
+    const timeLineData = {
+      currentBooking_id: booking._id,
+      timeLine: [
+        {
+          title: "Booking Updated",
+          paymentAmount: amount,
+          date: Date.now(),
+        },
+      ],
+    };
+
+    await timelineFunctionServer(timeLineData);
+
+    res.json({
+      success: true,
+      message: "Booking updated successfully",
+      data: bookingPrice,
+      timeLineData,
+    });
+  } catch (error) {
+    console.warn("Unable to update booking! try again", error?.message);
+    res.json({
+      success: false,
+      message: "Unable to update booking! try again.",
+    });
+  }
+};
+
+const removeExtendByExtendId = async (extendId) => {
+  try {
+    const doc = await Timeline.findOne({ "timeLine.extendId": extendId });
+
+    if (!doc) {
+      console.log("No timeline entry found with extendId:", extendId);
+      return { success: false, message: "No matching document" };
+    }
+
+    const result = await Timeline.updateOne(
+      { "timeLine.extendId": extendId },
+      { $pull: { timeLine: { extendId: extendId } } }
+    );
+
+    if (result.modifiedCount > 0) {
+      console.log("Successfully removed extend entry from timeLine");
+      return { success: true };
+    } else {
+      console.log("Extend ID found, but entry was not removed");
+      return { success: false };
+    }
+  } catch (error) {
+    console.error("Error removing extend entry:", error);
+    return { success: false, error };
+  }
+};
+
+const deleteBooking = async (req, res) => {
+  const { bookingId, userId, type, typeId } = req.body;
+
+  if (!bookingId && !userId) {
+    return res.status(400).json({ message: "Booking ID is required" });
+  }
+
+  try {
+    if (type === "extend" && typeId && Number(typeId) != 0) {
+      const booking = await Booking.findById(bookingId);
+
+      if (!booking) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Booking not found" });
+      }
+
+      const extendArray = booking.bookingPrice.extendAmount || [];
+
+      const index = extendArray.findIndex((item) => item.id === Number(typeId));
+
+      if (index === -1) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Extend item not found" });
+      }
+
+      const { extendId, originalBookingEndDateAndTime } = extendArray[index];
+      extendArray.splice(index, 1);
+
+      if (originalBookingEndDateAndTime) {
+        booking.BookingEndDateAndTime = originalBookingEndDateAndTime;
+      }
+
+      if (
+        !booking.bookingPrice.extendAmount ||
+        booking.bookingPrice.extendAmount?.length === 0
+      ) {
+        booking.bookingStatus = "done";
+      }
+
+      booking.markModified("bookingPrice");
+
+      // Save updated booking
+      await booking.save();
+
+      if (extendId) {
+        await removeExtendByExtendId(extendId);
+      }
+
+      return res.status(200).json({
+        message: "Extend entry and related timeline deleted",
+        success: true,
+      });
+    }
+
+    const deletedBooking = await Booking.findByIdAndDelete(bookingId);
+
+    if (!deletedBooking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    if (bookingId) {
+      await Timeline.deleteMany({ currentBooking_id: bookingId });
+    }
+
+    res.status(200).json({
+      message: "Booking and timeline deleted successfully",
+      success: true,
+    });
+  } catch (error) {
+    console.error("Error deleting booking:", error);
+    res.status(500).json({ message: "Server error while deleting booking" });
+  }
+};
+
+module.exports = {
+  getBookings,
+  getBooking,
+  initiateBooking,
+  createOrderId,
+  extendBooking,
+  initiateExtendBooking,
+  initiateExtendBookingAfterPayment,
+  editBooking,
+  updateBooking,
+  deleteBooking,
+};
