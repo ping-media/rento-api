@@ -20,7 +20,7 @@ if (
   !AWS_BUCKET_NAME
 ) {
   console.error(
-    "Missing required environment variables for AWS configuration."
+    "Missing required environment variables for AWS configuration.",
   );
   process.exit(1);
 }
@@ -61,7 +61,7 @@ const pickupImageUp = async (req, res) => {
 
     const booking = await Booking.findOne({ _id }).populate(
       "userId",
-      "kycApproved"
+      "kycApproved",
     );
     const kycStatus = booking?.userId?.kycApproved;
 
@@ -145,7 +145,7 @@ const pickupImageUp = async (req, res) => {
             endMeterReading,
           },
         },
-        { new: true }
+        { new: true },
       );
 
       // updating diff amount flag
@@ -159,7 +159,7 @@ const pickupImageUp = async (req, res) => {
         {
           arrayFilters: [{ "elem.id": Number(diffAmountId) }],
           new: true,
-        }
+        },
       );
 
       if (newDocument) {
@@ -221,7 +221,7 @@ const pickupImageUp = async (req, res) => {
             paymentStatus: "paid",
           },
         },
-        { new: true }
+        { new: true },
       );
     } else if (
       paymentMethod?.toLowerCase() === "cash" &&
@@ -238,7 +238,7 @@ const pickupImageUp = async (req, res) => {
             paymentStatus: "paid",
           },
         },
-        { new: true }
+        { new: true },
       );
     } else {
       await Booking.updateOne(
@@ -250,7 +250,7 @@ const pickupImageUp = async (req, res) => {
             "vehicleBasic.endRide": OTP,
           },
         },
-        { new: true }
+        { new: true },
       );
     }
 
@@ -268,6 +268,12 @@ const pickupImageUp = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+const normalizeAltContact = (value) => {
+  if (!value) return null;
+  const cleaned = value.trim();
+  return /^\d{10}$/.test(cleaned) ? cleaned : null;
 };
 
 // function to start ride and save vehicle images
@@ -293,6 +299,24 @@ const savePickupImageLinks = async (req, res) => {
       address,
     } = req.body;
 
+    let normalizedAltContact = null;
+
+    if (Array.isArray(altContact)) {
+      normalizedAltContact = altContact.find(
+        (v) => typeof v === "string" && v.trim() !== "",
+      );
+    } else if (typeof altContact === "string" && altContact.trim() !== "") {
+      normalizedAltContact = altContact.trim();
+    }
+
+    const isValidIndianMobile = (num) => /^\d{10}$/.test(num);
+
+    if (normalizedAltContact && !isValidIndianMobile(normalizedAltContact)) {
+      return res.json({
+        message: "Invalid alternate contact number",
+      });
+    }
+
     if (!userId || userId === "") {
       return res.json({ message: "Invalid user ID provided." });
     }
@@ -300,25 +324,17 @@ const savePickupImageLinks = async (req, res) => {
     // updating user altContact and address if send from frontend
     const userUpdate = {};
 
-    if (altContact && altContact.trim() !== "") {
-      userUpdate.altContact = altContact.trim();
-    }
+    // if (altContact && altContact.trim() !== "") {
+    //   userUpdate.altContact = altContact.trim();
+    // }
 
-    if (address && address.trim() !== "") {
-      userUpdate.address = address.trim();
-    }
-
-    if (userUpdate.altContact) {
+    if (normalizedAltContact) {
       const existingUser = await User.findOne({
-        $and: [
-          {
-            $or: [
-              { contact: userUpdate.altContact },
-              { altContact: userUpdate.altContact },
-            ],
-          },
-          { _id: { $ne: userId } },
+        $or: [
+          { contact: normalizedAltContact },
+          { altContact: normalizedAltContact },
         ],
+        _id: { $ne: userId },
       });
 
       if (existingUser) {
@@ -326,7 +342,33 @@ const savePickupImageLinks = async (req, res) => {
           message: `This number already belongs to ${existingUser.firstName} ${existingUser.lastName}`,
         });
       }
+
+      userUpdate.altContact = normalizedAltContact;
     }
+
+    if (address && address?.trim() !== "") {
+      userUpdate.address = address.trim();
+    }
+
+    // if (userUpdate.altContact) {
+    //   const existingUser = await User.findOne({
+    //     $and: [
+    //       {
+    //         $or: [
+    //           { contact: userUpdate.altContact },
+    //           { altContact: userUpdate.altContact },
+    //         ],
+    //       },
+    //       { _id: { $ne: userId } },
+    //     ],
+    //   });
+
+    //   if (existingUser) {
+    //     return res.status(200).json({
+    //       message: `This number already belongs to ${existingUser.firstName} ${existingUser.lastName}`,
+    //     });
+    //   }
+    // }
 
     if (Object.keys(userUpdate).length > 0) {
       await User.findByIdAndUpdate(userId, { $set: userUpdate }, { new: true });
@@ -362,7 +404,7 @@ const savePickupImageLinks = async (req, res) => {
 
     const booking = await Booking.findOne({ _id }).populate(
       "userId",
-      "kycApproved"
+      "kycApproved",
     );
     const kycStatus = booking?.userId?.kycApproved;
 
@@ -417,7 +459,7 @@ const savePickupImageLinks = async (req, res) => {
             endMeterReading,
           },
         },
-        { new: true }
+        { new: true },
       );
 
       // updating diff amount flag
@@ -431,7 +473,7 @@ const savePickupImageLinks = async (req, res) => {
         {
           arrayFilters: [{ "elem.id": Number(diffAmountId) }],
           new: true,
-        }
+        },
       );
 
       if (newDocument) {
@@ -495,7 +537,7 @@ const savePickupImageLinks = async (req, res) => {
             paymentStatus: "paid",
           },
         },
-        { new: true }
+        { new: true },
       );
     } else if (
       paymentMethod?.toLowerCase() === "cash" &&
@@ -514,7 +556,7 @@ const savePickupImageLinks = async (req, res) => {
             paymentStatus: "paid",
           },
         },
-        { new: true }
+        { new: true },
       );
     } else {
       await Booking.updateOne(
@@ -528,7 +570,7 @@ const savePickupImageLinks = async (req, res) => {
             "vehicleBasic.RideStart": Number(startDateAndTime) || "",
           },
         },
-        { new: true }
+        { new: true },
       );
     }
 

@@ -16,19 +16,20 @@ const webhookLogSchema = new mongoose.Schema(
       enum: ["success", "failed", "mismatch", "error"],
       required: true,
     },
+    utrNumber: Number,
     verifiedStatus: String,
     bookingId: String,
     warning: Boolean,
     error: String,
     rawPayload: mongoose.Schema.Types.Mixed,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Compound unique index to prevent duplicate webhook processing
 webhookLogSchema.index(
   { razorpayPaymentId: 1, eventType: 1 },
-  { unique: true }
+  { unique: true },
 );
 
 module.exports = mongoose.model("WebhookLog", webhookLogSchema);

@@ -66,7 +66,7 @@ const vehicleChangeInBooking = async (req, res) => {
     const updatedData = await Booking.findOneAndUpdate(
       { _id: _id },
       { $set: o },
-      { new: true }
+      { new: true },
     );
 
     await Log({
@@ -224,7 +224,7 @@ const vehicleChange = async (req, res) => {
             (sum, p) => {
               return sum + (Number(p.amount) + Number(p.addOnAmount || 0));
             },
-            0
+            0,
           );
           if (oldExtendBookingPrice > 0) {
             oldTotalPrice += oldExtendBookingPrice;
@@ -476,7 +476,7 @@ const vehicleChangeNew = async (req, res) => {
             (sum, p) => {
               return sum + (Number(p.amount) + Number(p.addOnAmount || 0));
             },
-            0
+            0,
           );
           if (oldExtendBookingPrice > 0) {
             oldTotalPrice += oldExtendBookingPrice;
@@ -557,44 +557,75 @@ const vehicleChangeNew = async (req, res) => {
 
       // Only add diffAmount entry if there's a significant price difference
       if (hasSignificantDifference) {
-        booking.bookingPrice.diffAmount = [
-          ...(booking.bookingPrice.diffAmount || []),
-          {
-            id: changedId,
-            title: "changedVehicle",
-            amount: isExtraPayment ? Math.round(Math.abs(priceDifference)) : 0,
-            refundAmount: isRefund ? Math.round(Math.abs(priceDifference)) : 0,
-            oldAmount: Math.round(oldRemainingValue),
-            newAmount: Math.round(newRemainingCost),
-            paymentMethod: isRefund ? "refund" : "",
-            orderId: newOrderId,
-            transactionId: "",
-            status: isExtraPayment ? "unpaid" : "paid",
-            rideStatus: false,
-          },
-        ];
+        // booking.bookingPrice.diffAmount = [
+        //   ...(booking.bookingPrice.diffAmount || []),
+        //   {
+        //     id: changedId,
+        //     title: "changedVehicle",
+        //     amount: isExtraPayment ? Math.round(Math.abs(priceDifference)) : 0,
+        //     refundAmount: isRefund ? Math.round(Math.abs(priceDifference)) : 0,
+        //     oldAmount: Math.round(oldRemainingValue),
+        //     newAmount: Math.round(newRemainingCost),
+        //     paymentMethod: isRefund ? "refund" : "",
+        //     orderId: newOrderId,
+        //     paymentInitiatedDate: new Date().getTime(),
+        //     transactionId: "",
+        //     status: isExtraPayment ? "unpaid" : "paid",
+        //     rideStatus: false,
+        //   },
+        // ];
+        booking.bookingPrice.diffAmount.push({
+          id: changedId,
+          title: "changedVehicle",
+          amount: isExtraPayment ? Math.round(Math.abs(priceDifference)) : 0,
+          refundAmount: isRefund ? Math.round(Math.abs(priceDifference)) : 0,
+          oldAmount: Math.round(oldRemainingValue),
+          newAmount: Math.round(newRemainingCost),
+          paymentMethod: isRefund ? "refund" : "",
+          orderId: newOrderId,
+          paymentInitiatedDate: new Date().getTime(),
+          transactionId: "",
+          status: isExtraPayment ? "unpaid" : "paid",
+          rideStatus: false,
+        });
       } else {
         // No price difference - just record the vehicle change
-        booking.bookingPrice.diffAmount = [
-          ...(booking.bookingPrice.diffAmount || []),
-          {
-            id: changedId,
-            title: "changedVehicle",
-            amount: 0,
-            refundAmount: 0,
-            oldAmount: Math.round(oldRemainingValue),
-            newAmount: Math.round(newRemainingCost),
-            paymentMethod: "",
-            orderId: "",
-            transactionId: "",
-            status: "paid",
-            rideStatus: false,
-          },
-        ];
+        // booking.bookingPrice.diffAmount = [
+        //   ...(booking.bookingPrice.diffAmount || []),
+        //   {
+        //     id: changedId,
+        //     title: "changedVehicle",
+        //     amount: 0,
+        //     refundAmount: 0,
+        //     oldAmount: Math.round(oldRemainingValue),
+        //     newAmount: Math.round(newRemainingCost),
+        //     paymentMethod: "",
+        //     paymentInitiatedDate: new Date().getTime(),
+        //     orderId: "",
+        //     transactionId: "",
+        //     status: "paid",
+        //     rideStatus: false,
+        //   },
+        // ];
+        booking.bookingPrice.diffAmount.push({
+          id: changedId,
+          title: "changedVehicle",
+          amount: 0,
+          refundAmount: 0,
+          oldAmount: Math.round(oldRemainingValue),
+          newAmount: Math.round(newRemainingCost),
+          paymentMethod: "",
+          paymentInitiatedDate: new Date().getTime(),
+          orderId: "",
+          transactionId: "",
+          status: "paid",
+          rideStatus: false,
+        });
       }
 
       booking.vehicleBasic.vehicleNumber = newVehicleData.vehicleNumber;
 
+      booking.markModified("bookingPrice.diffAmount");
       booking.markModified("bookingPrice");
       booking.markModified("vehicleBasic");
       booking.markModified("changeVehicle");
@@ -688,24 +719,40 @@ const vehicleChangeNew = async (req, res) => {
       booking.bookingPrice.vehiclePrice = newVehicleData?.totalRentalCost;
       booking.bookingPrice.totalPrice = newVehiclePrice;
 
-      booking.bookingPrice.diffAmount = [
-        ...(booking.bookingPrice.diffAmount || []),
-        {
-          id: (booking.bookingPrice.diffAmount?.length || 0) + 1,
-          title: "changedVehicle",
-          amount: 0,
-          refundAmount: 0,
-          oldAmount: Math.round(oldVehiclePrice),
-          newAmount: Math.round(newVehiclePrice),
-          paymentMethod: "",
-          orderId: "",
-          transactionId: "",
-          status: "paid",
-          rideStatus: false,
-        },
-      ];
+      // booking.bookingPrice.diffAmount = [
+      //   ...(booking.bookingPrice.diffAmount || []),
+      //   {
+      //     id: (booking.bookingPrice.diffAmount?.length || 0) + 1,
+      //     title: "changedVehicle",
+      //     amount: 0,
+      //     refundAmount: 0,
+      //     oldAmount: Math.round(oldVehiclePrice),
+      //     newAmount: Math.round(newVehiclePrice),
+      //     paymentMethod: "",
+      //     orderId: "",
+      //     transactionId: "",
+      //     status: "paid",
+      //     rideStatus: false,
+      //   },
+      // ];
+      booking.bookingPrice.diffAmount.push({
+        id: (booking.bookingPrice.diffAmount?.length || 0) + 1,
+        title: "changedVehicle",
+        amount: 0,
+        refundAmount: 0,
+        oldAmount: Math.round(oldVehiclePrice),
+        newAmount: Math.round(newVehiclePrice),
+        paymentMethod: "",
+        paymentInitiatedDate: new Date().getTime(),
+        orderId: "",
+        transactionId: "",
+        status: "paid",
+        rideStatus: false,
+      });
+
       booking.vehicleBasic.vehicleNumber = newVehicleData.vehicleNumber;
 
+      booking.markModified("bookingPrice.diffAmount");
       booking.markModified("bookingPrice");
       booking.markModified("vehicleBasic");
       booking.markModified("changeVehicle");

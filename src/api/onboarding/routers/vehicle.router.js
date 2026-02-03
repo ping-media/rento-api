@@ -84,6 +84,7 @@ const {
   initiateExtendBookingAfterPayment,
   editBooking,
   extendBooking,
+  initiateExtensionBooking,
 } = require("../models/booking.model");
 const {
   uploadImageToBucketForPickupImage,
@@ -234,6 +235,10 @@ router.post("/initiate-booking", async (req, res) => {
   initiateBooking(req, res);
 });
 
+router.post("/initiate-extension", async (req, res) => {
+  initiateExtensionBooking(req, res);
+});
+
 router.post("/delete-booking", async (req, res) => {
   deleteBooking(req, res);
 });
@@ -282,36 +287,72 @@ router.get("/check-booking-status/:bookingId", async (req, res) => {
   });
 });
 
-router.get("/check-booking-status/:bookingId/:action", async (req, res) => {
-  const { bookingId, action } = req.params;
-  const booking = await Booking.findById(bookingId);
+router.get(
+  "/check-booking-status/:bookingId/:action/:extendId",
+  async (req, res) => {
+    try {
+      const { bookingId, action, extendId } = req.params;
+      const booking = await Booking.findById(bookingId);
 
-  if (!booking) return res.status(404).json({ message: "Booking not found" });
+      if (!booking)
+        return res.status(404).json({ message: "Booking not found" });
 
-  if (action === "extend") {
-    const extendBooking =
-      booking.bookingPrice.extendAmount[
-        booking.bookingPrice.extendAmount?.length - 1
-      ] || null;
+      if (action === "extend" && extendId) {
+        const extendIdNum = Number(extendId);
 
-    if (extendBooking !== null) {
-      return res.json({
-        status: extendBooking.status,
+        if (isNaN(extendIdNum)) {
+          return res.json({
+            message: "Invalid extension ID",
+            success: false,
+          });
+        }
+        const bookingPrice = booking.bookingPrice;
+
+        if (
+          !bookingPrice?.extendAmount ||
+          !Array.isArray(bookingPrice.extendAmount)
+        ) {
+          return res.json({
+            message: "Extension not found",
+            success: false,
+          });
+        }
+
+        const extendBooking =
+          bookingPrice.extendAmount?.find((ext) => ext.id === extendIdNum) ??
+          null;
+        // const extendBooking =
+        //   booking.bookingPrice.extendAmount[
+        //     booking.bookingPrice.extendAmount?.length - 1
+        //   ] || null;
+
+        if (extendBooking) {
+          return res.json({
+            status: extendBooking.status,
+            success: true,
+          });
+        } else {
+          return res.json({
+            message: "extension not found",
+            success: false,
+          });
+        }
+      }
+
+      res.json({
+        paymentStatus: booking.paymentStatus,
+        bookingStatus: booking.bookingStatus,
         success: true,
       });
-    } else {
-      return res.json({
-        message: "extension not found",
+    } catch (error) {
+      console.error("Error checking booking status:", error);
+      return res.status(500).json({
+        message: "Internal server error",
         success: false,
       });
     }
-  }
-
-  res.json({
-    paymentStatus: booking.paymentStatus,
-    bookingStatus: booking.bookingStatus,
-  });
-});
+  },
+);
 
 router.get("/getBookings", async (req, res) => {
   vehiclesService.getBookings(req, res);
@@ -362,7 +403,7 @@ router.post(
     }
     fileUpload(req, res);
     // vehiclesService.createLocation(req, res);
-  }
+  },
 );
 
 router.post(
@@ -382,7 +423,7 @@ router.post(
         .json({ message: "File upload failed. No file provided." });
     }
     addAndDeleteSlides(req, res);
-  }
+  },
 );
 
 // Update Location (image is optional)
@@ -417,7 +458,7 @@ router.put(
         //console.log(objData)
         const updatedLocation = await Location.updateOne(
           { _id },
-          { $set: objData }
+          { $set: objData },
         );
 
         //console.log(updatedLocation)
@@ -429,7 +470,7 @@ router.put(
       console.error("Error updating location:", error.message);
       res.json({ message: "An error occurred while updating location" });
     }
-  }
+  },
 );
 
 router.delete("/deleteLocation", async (req, res) => {
@@ -502,7 +543,7 @@ router.post(
       });
     }
     VehicalfileUpload(req, res);
-  }
+  },
 );
 
 router.put(
@@ -510,7 +551,7 @@ router.put(
   Authentication,
   async (req, res) => {
     enableOrDisableVehicles(req, res);
-  }
+  },
 );
 
 router.put(
@@ -572,7 +613,7 @@ router.put(
         await vehicleMaster.updateOne(
           { _id },
           { $set: updateData },
-          { new: true }
+          { new: true },
         );
       } else {
         obj.message = "No valid fields provided for update";
@@ -590,7 +631,7 @@ router.put(
       obj.message = "An error occurred while updating VehicleMaster";
       return res.json(obj);
     }
-  }
+  },
 );
 
 router.delete("/deleteVehicleMaster", async (req, res) => {
@@ -687,7 +728,7 @@ router.post("/validedToken", async (req, res) => {
       let profileImage = "";
       if (userDocument) {
         const file = userDocument.files?.filter((file) =>
-          file?.fileName?.includes("Selfie")
+          file?.fileName?.includes("Selfie"),
         );
         if (file) {
           profileImage = file[0]?.imageUrl || "";
@@ -885,7 +926,7 @@ router.post("/deleteDocument", async (req, res) => {
 
     // Filter out the file with the specified fileName
     const updatedFiles = document.files.filter(
-      (file) => file.fileName !== fileName
+      (file) => file.fileName !== fileName,
     );
 
     if (fileName) {
@@ -956,7 +997,7 @@ router.post(
       return res.status(400).send({ message: "No files uploaded." });
     }
     uploadImageToBucketForPickupImage(req, res);
-  }
+  },
 );
 
 router.post("/start-ride", async (req, res) => {
@@ -1060,7 +1101,7 @@ router.post(
     } else {
       return res.status(400).json({ success: false, error: result.error });
     }
-  }
+  },
 );
 
 // Update booking route
@@ -1145,7 +1186,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     await pickupImage.updateOne(
       { bookingId },
       { $set: { endMeterReading, rideEndDate } },
-      { new: true }
+      { new: true },
     );
 
     let paymentStatus = booking?.paymentStatus;
@@ -1167,7 +1208,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
             paymentStatus: paymentStatus,
           },
         },
-        { new: true }
+        { new: true },
       );
     } else {
       await Booking.updateOne(
@@ -1180,7 +1221,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
             paymentStatus: paymentStatus,
           },
         },
-        { new: true }
+        { new: true },
       );
     }
 
@@ -1197,8 +1238,8 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       rideStatus === "canceled"
         ? "Canceled"
         : rideStatus === "ongoing"
-        ? "Start"
-        : "Completed"
+          ? "Start"
+          : "Completed"
     } successful`;
 
     const response = { lateFeeBasedOnHour, lateFeeBasedOnKM, rideStatus };
@@ -1284,7 +1325,7 @@ router.post("/sendReminder", Authentication, async (req, res) => {
 
     // Fetch station details
     const station = await Station.findOne({ stationName }).select(
-      "latitude longitude"
+      "latitude longitude",
     );
     if (!station) {
       console.error(`Station not found for stationName: ${stationName}`);
@@ -1367,7 +1408,7 @@ router.post("/cancelledBooking", Authentication, async (req, res) => {
     const UpdatedData = await Booking.findByIdAndUpdate(
       { _id: ObjectId(_id) },
       { $set: o },
-      { new: true }
+      { new: true },
     );
 
     await Log({
@@ -1412,7 +1453,7 @@ router.post("/cancelledBooking", Authentication, async (req, res) => {
       BookingStartDateAndTime,
       stationName,
       totalPrice,
-      managerContact
+      managerContact,
     );
 
     return res.json(obj);

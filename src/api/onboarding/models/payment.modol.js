@@ -62,9 +62,10 @@ const paymentRec = async (req, res) => {
         transactionType: "Main Booking",
         amount: booking.bookingPrice?.totalPrice || 0,
         payInitFrom: booking.payInitFrom,
+        utrNumber: booking.bookingPrice?.utrNumber || "NA",
         payment_order_id: booking.payment_order_id,
-        paySuccessId: booking.paySuccessId,
-        paymentgatewayOrderId: booking.paymentgatewayOrderId,
+        paySuccessId: booking?.paySuccessId || "NA",
+        paymentgatewayOrderId: booking?.paymentgatewayOrderId || "NA",
         paymentStatus: booking.paymentStatus,
         paymentMethod: booking.paymentMethod,
         paymentInitiatedDate: booking.paymentInitiatedDate,
@@ -83,13 +84,14 @@ const paymentRec = async (req, res) => {
               Number(ext.amount) +
                 Number(ext?.tax || 0) +
                 Number(ext?.addonTax || 0) +
-                Number(ext?.addOnAmount || 0)
+                Number(ext?.addOnAmount || 0),
             ),
             paymentgatewayOrderId: ext.orderId,
             paySuccessId: ext.transactionId,
             paymentStatus: ext.status || "pending",
             paymentInitiatedDate: ext.paymentInitiatedDate,
             payInitFrom: ext?.paymentMethod === "online" ? "razorPay" : "cash",
+            utrNumber: ext?.utrNumber || "NA",
             createdAt: booking.createdAt,
             updatedAt: booking.updatedAt,
             userId: booking.userId,
@@ -107,7 +109,7 @@ const paymentRec = async (req, res) => {
               amount: Math.round(
                 Number(diff.amount) +
                   Number(diff?.tax || 0) +
-                  Number(diff?.addonTax || 0)
+                  Number(diff?.addonTax || 0),
               ),
               paymentgatewayOrderId: diff.orderId,
               paySuccessId: diff.transactionId,
@@ -115,6 +117,7 @@ const paymentRec = async (req, res) => {
               paymentInitiatedDate: "",
               payInitFrom:
                 diff?.paymentMethod === "online" ? "razorPay" : "cash",
+              utrNumber: diff?.utrNumber || "NA",
               createdAt: booking.createdAt,
               updatedAt: booking.updatedAt,
               userId: booking.userId,
@@ -139,7 +142,7 @@ const paymentRec = async (req, res) => {
           regex.test(t.paymentStatus || "") ||
           regex.test(t.payment_order_id || "") ||
           regex.test(t.payInitFrom || "") ||
-          regex.test(t.paySuccessId || "")
+          regex.test(t.paySuccessId || ""),
       );
     }
 

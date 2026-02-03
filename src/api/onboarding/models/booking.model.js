@@ -322,7 +322,7 @@ const getBooking = async (query) => {
 
       const booking = await Booking.findById(_id).populate(
         "userId",
-        "firstName lastName contact altContact email createdAt updatedAt"
+        "firstName lastName contact altContact email createdAt updatedAt",
       );
 
       if (!booking) {
@@ -572,13 +572,13 @@ const getBookings = async (query) => {
       const booking = await Booking.findById(_id)
         .populate(
           "userId",
-          "firstName lastName contact altContact email kycApproved"
+          "firstName lastName contact altContact email kycApproved",
         )
         .populate("vehicleTableId", "vehiclePlan freeKms perDayCost")
         .populate("vehicleMasterId", "gstPercentage")
         .populate(
           "stationMasterUserId",
-          "firstName lastName contact altContact email status isGstActive extraAddOn"
+          "firstName lastName contact altContact email status isGstActive extraAddOn",
         );
 
       if (!booking) {
@@ -615,7 +615,7 @@ const getBookings = async (query) => {
           booking.BookingEndDateAndTime
             ? new Date(
                 booking.extendBooking?.originalEndDate ||
-                  booking.BookingEndDateAndTime
+                  booking.BookingEndDateAndTime,
               )
             : null;
 
@@ -872,13 +872,13 @@ const initiateBooking = async (req, res) => {
           await sendPushNotificationUsingUserId(
             response.data.userId,
             "Ride Confirmed!",
-            "Your ride is successfully booked. Get ready to pick up your vehicle on time!"
+            "Your ride is successfully booked. Get ready to pick up your vehicle on time!",
           );
         }
 
         if (response?.data?.bookingId) {
           const notificationSend = await sendMessageAfterBooking(
-            response?.data?.bookingId
+            response?.data?.bookingId,
           );
 
           if (!notificationSend.success) {
@@ -900,7 +900,7 @@ const initiateBooking = async (req, res) => {
     if (paymentMethod === "partiallyPay") {
       const totalAmount = Math.round(
         bookingData?.bookingPrice?.discountTotalPrice ||
-          bookingData?.bookingPrice?.totalPrice
+          bookingData?.bookingPrice?.totalPrice,
       );
 
       const userPaid = Math.round(totalAmount * 0.2);
@@ -944,9 +944,9 @@ const initiateBooking = async (req, res) => {
         (paymentMethod === "partiallyPay"
           ? bookingData?.bookingPrice?.userPaid
           : bookingData?.bookingPrice?.discountTotalPrice &&
-            bookingData?.bookingPrice?.discountTotalPrice > 0
-          ? bookingData?.bookingPrice?.discountTotalPrice
-          : bookingData?.bookingPrice?.totalPrice) || 100;
+              bookingData?.bookingPrice?.discountTotalPrice > 0
+            ? bookingData?.bookingPrice?.discountTotalPrice
+            : bookingData?.bookingPrice?.totalPrice) || 100;
 
       const razorData = await createOrderId({
         amount: payableAmount,
@@ -966,7 +966,7 @@ const initiateBooking = async (req, res) => {
               paymentgatewayReceiptId: razorData?.receipt,
             },
           },
-          { session }
+          { session },
         );
 
         const timeLineData = {
@@ -1011,6 +1011,113 @@ const initiateBooking = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
     console.error("Booking error:", error);
+    return res.json({
+      status: 500,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+const initiateExtensionBooking = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    let { data, extendId, amount } = req.body;
+
+    if (!data?._id || !amount || !data?.extendAmount?.id) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ message: "Required fields missing", status: 400 });
+    }
+
+    if (typeof amount === number && amount === 0) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({
+        message: "payable amount should be greater than 0",
+        status: 400,
+      });
+    }
+
+    const { _id } = data;
+
+    const booking = await Booking.findById(_id).session(session);
+
+    if (!booking) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    const razorData = await createOrderId({
+      amount,
+      booking_id: booking?.bookingId,
+      _id: booking?._id,
+      typeId: extendId,
+      type: "user-extension",
+    });
+
+    if (razorData?.status === "created") {
+      // Update properties individually
+      if (!booking.bookingPrice.extendAmount) {
+        booking.bookingPrice.extendAmount = [];
+      }
+
+      // if (data.BookingEndDateAndTime) {
+      //   booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
+      // }
+
+      const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
+
+      if (!existingIds.includes(data.extendAmount.id)) {
+        booking.bookingPrice.extendAmount.push({
+          ...data.extendAmount,
+          paymentInitiatedDate: razorData?.created_at,
+          orderId: razorData?.id || "",
+        });
+      }
+
+      if (!booking.extendBooking) {
+        booking.extendBooking = {};
+      }
+
+      if (!booking.extendBooking.oldBooking) {
+        booking.extendBooking.oldBooking = [];
+      }
+
+      if (data.oldBookings) {
+        booking.extendBooking.oldBooking.push(data.oldBookings);
+      }
+
+      // booking.bookingStatus = "extended";
+
+      // Mark nested objects as modified
+      booking.markModified("bookingPrice.extendAmount");
+      booking.markModified("bookingPrice");
+      booking.markModified("extendBooking");
+
+      await booking.save({ session });
+
+      await session.commitTransaction();
+      session.endSession();
+
+      return res.json({
+        status: 200,
+        success: true,
+        message: "extend created successfully",
+        data: {
+          orderId: razorData?.id,
+          type: "user-extension",
+          amount,
+        },
+      });
+    }
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("Booking extend error:", error);
     return res.json({
       status: 500,
       message: "Something went wrong",
@@ -1197,7 +1304,7 @@ const extendBooking = async (req, res) => {
     }
 
     const existingExtension = booking.bookingPrice.extendAmount.find(
-      (ext) => ext.orderId === orderId
+      (ext) => ext.orderId === orderId,
     );
 
     if (existingExtension) {
@@ -1256,7 +1363,7 @@ const extendBooking = async (req, res) => {
         sendPushNotificationUsingUserId(
           booking.userId,
           "Ride Extended!",
-          "Your ride is successfully extended."
+          "Your ride is successfully extended.",
         );
       }
 
@@ -1324,18 +1431,31 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
         extendAmount: {
           ...data?.extendAmount,
           extendId,
+          paymentInitiatedDate: new Date().getTime(),
+          paymentSuccessDate: new Date().getTime(),
           paymentMethod: "cash",
           status: "paid",
         },
       };
 
+      const existingExtension = booking.bookingPrice.extendAmount.find(
+        (ext) => ext.orderId === orderId,
+      );
+
+      if (existingExtension) {
+        return res.json({
+          success: true,
+          message: "Extension already processed",
+        });
+      }
+
       if (data.BookingEndDateAndTime) {
         booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
       }
 
-      if (!booking?.bookingPrice?.extendAmount) {
-        booking.bookingPrice.extendAmount = [];
-      }
+      // if (!booking?.bookingPrice?.extendAmount) {
+      //   booking.bookingPrice.extendAmount = [];
+      // }
 
       const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
       if (!existingIds.includes(data.extendAmount.id)) {
@@ -1386,7 +1506,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
           sendPushNotificationUsingUserId(
             booking.userId,
             "Ride Extended!",
-            "Your ride is successfully extended."
+            "Your ride is successfully extended.",
           );
         }
 
@@ -1433,7 +1553,11 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
       amount,
       extendData: {
         ...data,
-        extendAmount: { ...data.extendAmount, orderId: razorpayOrder.id },
+        extendAmount: {
+          ...data?.extendAmount,
+          extendId,
+          orderId: razorpayOrder.id,
+        },
       },
       isCompleted: false,
     });
@@ -1562,7 +1686,7 @@ const updateBooking = async (req, res) => {
   } catch (error) {
     console.warn(
       "Unable to update or rescheduled booking! try again",
-      error?.message
+      error?.message,
     );
     res.json({
       success: false,
@@ -1589,7 +1713,7 @@ const editBooking = async (req, res) => {
     const bookingPrice = booking.bookingPrice;
     addOn.forEach((item) => {
       const exists = bookingPrice.extraAddonDetails.some(
-        (existing) => existing._id === item._id
+        (existing) => existing._id === item._id,
       );
 
       if (!exists) {
@@ -1651,7 +1775,7 @@ const removeExtendByExtendId = async (extendId) => {
 
     const result = await Timeline.updateOne(
       { "timeLine.extendId": extendId },
-      { $pull: { timeLine: { extendId: extendId } } }
+      { $pull: { timeLine: { extendId: extendId } } },
     );
 
     if (result.modifiedCount > 0) {
@@ -1746,6 +1870,7 @@ module.exports = {
   getBookings,
   getBooking,
   initiateBooking,
+  initiateExtensionBooking,
   createOrderId,
   extendBooking,
   initiateExtendBooking,

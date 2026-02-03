@@ -191,6 +191,7 @@ const razorpayWebhookAdmin = async (req, res) => {
     // Fetch payment with retry logic
     let paymentId = "";
     let paymentStatus = null;
+    let utrNumber = null;
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -198,12 +199,18 @@ const razorpayWebhookAdmin = async (req, res) => {
 
         if (payments.items && payments.items.length > 0) {
           const successfulPayment = payments.items.find(
-            (p) => p.status === "captured" || p.status === "authorized"
+            (p) => p.status === "captured" || p.status === "authorized",
           );
 
           if (successfulPayment) {
             paymentId = successfulPayment.id;
             paymentStatus = successfulPayment.status;
+
+            // Extract UTR number from the successful payment
+            utrNumber =
+              successfulPayment.acquirer_data?.utr ||
+              successfulPayment.acquirer_data?.bank_transaction_id ||
+              null;
             break;
           }
         }
@@ -215,7 +222,7 @@ const razorpayWebhookAdmin = async (req, res) => {
       } catch (fetchError) {
         console.error(
           `Payment fetch attempt ${attempt + 1} failed:`,
-          fetchError.message
+          fetchError.message,
         );
 
         if (attempt === 2) {
@@ -235,7 +242,7 @@ const razorpayWebhookAdmin = async (req, res) => {
         error: "No successful payment found",
         rawPayload: entity,
       }).catch((logErr) =>
-        console.error("Webhook log creation failed:", logErr)
+        console.error("Webhook log creation failed:", logErr),
       );
 
       return res.status(200).send("No successful payment found");
@@ -249,7 +256,8 @@ const razorpayWebhookAdmin = async (req, res) => {
         bookingId,
         amountPaid,
         type,
-        paymentId
+        paymentId,
+        utrNumber,
       );
     } else if (
       type === "extension" &&
@@ -259,21 +267,24 @@ const razorpayWebhookAdmin = async (req, res) => {
       handlerResult = await updateBookingAdminExtension(
         typeId,
         paymentId,
-        noteOrderId
+        noteOrderId,
+        utrNumber,
       );
     } else if (type === "changevehicle") {
       handlerResult = await updateBookingForVehicleChange(
         bookingId,
         amountPaid,
         typeId,
-        paymentId
+        paymentId,
+        utrNumber,
       );
     } else if (type === "extension") {
       handlerResult = await updateBookingWithNewExtension(
         bookingId,
         amountPaid,
         typeId,
-        paymentId
+        paymentId,
+        utrNumber,
       );
     } else {
       console.warn(`Unknown payment type: ${type}`);
@@ -287,7 +298,7 @@ const razorpayWebhookAdmin = async (req, res) => {
         error: `Unknown payment type: ${type}`,
         rawPayload: entity,
       }).catch((logErr) =>
-        console.error("Webhook log creation failed:", logErr)
+        console.error("Webhook log creation failed:", logErr),
       );
 
       return res.status(200).send("Unknown payment type");
@@ -300,6 +311,7 @@ const razorpayWebhookAdmin = async (req, res) => {
       bookingId,
       status: "success",
       verifiedStatus: paymentStatus,
+      utrNumber,
       rawPayload: entity,
     }).catch((logErr) => console.error("Webhook log creation failed:", logErr));
 
@@ -349,7 +361,7 @@ const razorpayWebhook = async (req, res) => {
 
     if (existingWebhookLog) {
       console.log(
-        `Webhook already processed: ${razorpayPaymentId} - ${eventType}`
+        `Webhook already processed: ${razorpayPaymentId} - ${eventType}`,
       );
       return res
         .status(200)
@@ -365,18 +377,28 @@ const razorpayWebhook = async (req, res) => {
     const amountPaid = amountInPaise / 100;
     const paymentTime = new Date(payment.created_at * 1000);
 
+    // Extract UTR number from acquirer_data
+    const utrNumber =
+      verifiedPayment.acquirer_data?.utr ||
+      verifiedPayment.acquirer_data?.bank_transaction_id ||
+      payment.acquirer_data?.utr ||
+      payment.acquirer_data?.bank_transaction_id ||
+      null;
+
     // Route based on event type
     if (
       eventType === "payment.captured" &&
       verifiedPayment.status === "captured"
     ) {
-      if (type === "extension") {
+      // if (type === "extension") {
+      if (type === "user-extension" && typeId) {
         await handleExtendBookingWebhook(
           bookingId,
           razorpayPaymentId,
           amountPaid,
           typeId,
-          paymentTime
+          utrNumber,
+          paymentTime,
         );
       } else if (type === "" || type === "partiallyPay") {
         await updateBookingAfterPayment(
@@ -384,7 +406,8 @@ const razorpayWebhook = async (req, res) => {
           razorpayPaymentId,
           amountPaid,
           type,
-          paymentTime
+          utrNumber,
+          paymentTime,
         );
 
         if (bookingId) {
@@ -398,6 +421,7 @@ const razorpayWebhook = async (req, res) => {
         eventType,
         status: "success",
         verifiedStatus: verifiedPayment.status,
+        utrNumber,
       });
     } else if (
       eventType === "payment.failed" &&
@@ -408,7 +432,7 @@ const razorpayWebhook = async (req, res) => {
           bookingId,
           razorpayPaymentId,
           amountPaid,
-          typeId
+          typeId,
         );
       } else {
         await markBookingAsFailed(bookingId, razorpayPaymentId, amountPaid);
@@ -424,7 +448,7 @@ const razorpayWebhook = async (req, res) => {
     } else {
       // Mismatch between event type and actual payment status
       console.warn(
-        `Event type mismatch: ${eventType} but status is ${verifiedPayment.status}`
+        `Event type mismatch: ${eventType} but status is ${verifiedPayment.status}`,
       );
 
       // Log the mismatch
@@ -463,12 +487,18 @@ const updateBookingAfterPayment = async (
   razorpayPaymentId,
   amountPaid,
   type,
-  paymentTime
+  utrNumber,
+  paymentTime,
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
 
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new Error("Booking not found");
+
+  if (utrNumber) {
+    booking.bookingPrice.utrNumber = utrNumber;
+    booking.markModified("bookingPrice");
+  }
 
   if (type === "partiallyPay") {
     booking.paymentStatus = "partially_paid";
@@ -497,7 +527,7 @@ const updateBookingAfterPayment = async (
     sendPushNotificationUsingUserId(
       booking.userId,
       "Ride Confirmed!",
-      "Your ride is successfully booked. Get ready to pick up your vehicle on time!"
+      "Your ride is successfully booked. Get ready to pick up your vehicle on time!",
     );
   }
 };
@@ -506,12 +536,18 @@ const updateBookingAfterPaymentAdmin = async (
   bookingId,
   amountPaid,
   type,
-  paymentId
+  paymentId,
+  utrNumber,
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
   const booking = await Booking.findById(bookingId);
 
   if (!booking) return res.status(200).send("Booking not found");
+
+  if (utrNumber) {
+    booking.bookingPrice.utrNumber = utrNumber;
+    booking.markModified("bookingPrice");
+  }
 
   if (type === "partiallyPay") {
     booking.paymentStatus = "partially_paid";
@@ -540,7 +576,7 @@ const updateBookingAfterPaymentAdmin = async (
     sendPushNotificationUsingUserId(
       booking.userId,
       "Ride Confirmed!",
-      "Your ride is successfully booked. Get ready to pick up your vehicle on time!"
+      "Your ride is successfully booked. Get ready to pick up your vehicle on time!",
     );
   }
 };
@@ -549,7 +585,8 @@ const updateBookingWithNewExtension = async (
   bookingId,
   amountPaid,
   typeId,
-  paymentId
+  paymentId,
+  utrNumber,
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
   const booking = await Booking.findById(bookingId);
@@ -558,13 +595,17 @@ const updateBookingWithNewExtension = async (
     return res.status(200).send("Booking or extension not found");
 
   const extend = booking.bookingPrice.extendAmount.find(
-    (e) => e.id?.toString() === typeId?.toString()
+    (e) => e.id?.toString() === typeId?.toString(),
   );
   if (extend) {
     extend.status = "paid";
     extend.paymentMethod = "online";
     extend.paymentDate = new Date();
     extend.transactionId = paymentId;
+
+    if (utrNumber) {
+      extend.utrNumber = utrNumber;
+    }
   }
   booking.bookingStatus = "extended";
 
@@ -589,7 +630,7 @@ const updateBookingWithNewExtension = async (
     sendPushNotificationUsingUserId(
       booking.userId,
       "Ride Extended!",
-      "Your ride is successfully extended."
+      "Your ride is successfully extended.",
     );
   }
 };
@@ -598,7 +639,8 @@ const updateBookingForVehicleChange = async (
   bookingId,
   amountPaid,
   typeId,
-  paymentId
+  paymentId,
+  utrNumber,
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
   const booking = await Booking.findById(bookingId);
@@ -607,13 +649,17 @@ const updateBookingForVehicleChange = async (
     return res.status(200).send("Booking or diff not found");
 
   const change = booking.bookingPrice.diffAmount.find(
-    (e) => e.id?.toString() === typeId?.toString()
+    (e) => e.id?.toString() === typeId?.toString(),
   );
   if (change) {
     change.status = "paid";
     change.paymentMethod = "online";
     change.paymentDate = new Date();
     change.transactionId = paymentId;
+
+    if (utrNumber) {
+      change.utrNumber = utrNumber;
+    }
   }
 
   booking.markModified("bookingPrice.diffAmount");
@@ -637,12 +683,17 @@ const updateBookingForVehicleChange = async (
     sendPushNotificationUsingUserId(
       booking.userId,
       "Vehicle Changed!",
-      "Your vehicle is successfully Changed."
+      "Your vehicle is successfully Changed.",
     );
   }
 };
 
-const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
+const updateBookingAdminExtension = async (
+  typeId,
+  paymentId,
+  noteOrderId,
+  utrNumber,
+) => {
   if (!noteOrderId) throw new Error("Extend booking id not found.");
   const temp = await TempExtension.findOne({ razorpayOrderId: noteOrderId });
 
@@ -665,6 +716,7 @@ const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
     ...data.extendAmount,
     transactionId: paymentId || "",
     paymentMethod: "online",
+    utrNumber: utrNumber ?? null,
     status: "paid",
   });
 
@@ -703,7 +755,7 @@ const updateBookingAdminExtension = async (typeId, paymentId, noteOrderId) => {
     sendPushNotificationUsingUserId(
       booking.userId,
       "Ride Extended!",
-      "Your ride is successfully extended."
+      "Your ride is successfully extended.",
     );
   }
 };
@@ -713,23 +765,21 @@ const handleExtendBookingWebhook = async (
   paymentId,
   amountPaid,
   typeId,
-  paymentTime
+  utrNumber,
+  paymentTime,
 ) => {
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new Error("Booking not found");
 
-  const extendAmountIndex = booking.bookingPrice?.extendAmount?.findIndex(
-    (item) => item.id === typeId
+  const typeIdNum = typeof typeId === "string" ? Number(typeId) : typeId;
+
+  const extend = booking.bookingPrice?.extendAmount?.find(
+    (item) => item.id === typeIdNum || item.id === typeId,
   );
 
-  if (
-    extendAmountIndex === -1 ||
-    !booking.bookingPrice?.extendAmount?.[extendAmountIndex]
-  ) {
+  if (!extend) {
     throw new Error(`Extend amount with ID ${typeId} not found`);
   }
-
-  const extend = booking.bookingPrice.extendAmount[extendAmountIndex];
 
   if (extend.status === "paid") {
     console.log(`Payment for extend amount ID ${typeId} already processed`);
@@ -741,11 +791,16 @@ const handleExtendBookingWebhook = async (
   extend.transactionId = paymentId;
   extend.paymentDate = new Date();
   extend.razorPayDate = paymentTime || "";
+  extend.paymentInitiatedDate = new Date().getTime();
+
+  if (utrNumber) {
+    extend.utrNumber = utrNumber;
+  }
 
   booking.bookingStatus = "extended";
-  booking.paymentStatus = "paid";
 
-  booking.markModified("bookingPrice");
+  booking.markModified("bookingPrice.extendAmount");
+  // booking.markModified("bookingPrice");
 
   await booking.save();
 
@@ -753,20 +808,9 @@ const handleExtendBookingWebhook = async (
     currentBooking_id: booking._id,
     timeLine: [
       {
-        title: "Payment Received",
+        title: "Booking Extended by User",
         date: Date.now(),
-        paymentAmount: amountPaid,
-        paymentId: paymentId || "",
-      },
-    ],
-  });
-
-  await timelineFunctionServer({
-    currentBooking_id: booking._id,
-    timeLine: [
-      {
-        title: "Booking extended by customer",
-        date: Date.now(),
+        paymentAmount: amountPaid || 0,
         extendDate: extend.bookingEndDateAndTime,
       },
     ],
@@ -776,7 +820,7 @@ const handleExtendBookingWebhook = async (
     sendPushNotificationUsingUserId(
       booking.userId,
       "Ride Extended!",
-      "Your ride is successfully extended."
+      "Your ride is successfully extended.",
     );
   }
 };
@@ -785,7 +829,7 @@ const markExtendBookingAsFailed = async (
   bookingId,
   razorpayPaymentId,
   amountPaid,
-  extendAmountId
+  extendAmountId,
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
 
@@ -794,7 +838,7 @@ const markExtendBookingAsFailed = async (
 
   if (extendAmountId && booking.bookingPrice?.extendAmount?.length > 0) {
     const extendAmountIndex = booking.bookingPrice.extendAmount.findIndex(
-      (item) => item.id === extendAmountId
+      (item) => item.id === extendAmountId,
     );
 
     if (extendAmountIndex !== -1) {
@@ -802,21 +846,21 @@ const markExtendBookingAsFailed = async (
       if (extendItem.transactionId) {
         try {
           const payment = await razorpay.payments.fetch(
-            extendItem.transactionId
+            extendItem.transactionId,
           );
           if (payment?.status === "captured") {
             console.log(
-              `Skipping removal for extendAmountId ${extendAmountId} — valid captured payment ${extendItem.transactionId}`
+              `Skipping removal for extendAmountId ${extendAmountId} — valid captured payment ${extendItem.transactionId}`,
             );
             return;
           }
 
           console.warn(
-            `Extension ${extendAmountId} has payment ${extendItem.transactionId} but status is ${payment?.status}`
+            `Extension ${extendAmountId} has payment ${extendItem.transactionId} but status is ${payment?.status}`,
           );
         } catch (err) {
           console.warn(
-            `Failed to verify Razorpay payment ${extendItem.transactionId} for extendAmountId ${extendAmountId}: ${err.message}`
+            `Failed to verify Razorpay payment ${extendItem.transactionId} for extendAmountId ${extendAmountId}: ${err.message}`,
           );
         }
       }
@@ -847,7 +891,7 @@ const markExtendBookingAsFailed = async (
 const markBookingAsFailed = async (
   bookingId,
   razorpayPaymentId,
-  amountPaid
+  amountPaid,
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
 
@@ -859,7 +903,7 @@ const markBookingAsFailed = async (
     const existingPayment = await razorpay.payments.fetch(booking.paySuccessId);
     if (existingPayment?.status === "captured") {
       console.log(
-        `Skipping markBookingAsFailed — booking ${bookingId} already has successful payment ${booking.razorpayPaymentId}`
+        `Skipping markBookingAsFailed — booking ${bookingId} already has successful payment ${booking.razorpayPaymentId}`,
       );
       return;
     }
