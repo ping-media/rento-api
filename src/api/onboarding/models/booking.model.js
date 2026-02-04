@@ -1438,16 +1438,16 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
         },
       };
 
-      const existingExtension = booking.bookingPrice.extendAmount.find(
-        (ext) => ext.orderId === orderId,
-      );
+      // const existingExtension = booking.bookingPrice.extendAmount.find(
+      //   (ext) => ext.orderId === orderId,
+      // );
 
-      if (existingExtension) {
-        return res.json({
-          success: true,
-          message: "Extension already processed",
-        });
-      }
+      // if (existingExtension) {
+      //   return res.json({
+      //     success: true,
+      //     message: "Extension already processed",
+      //   });
+      // }
 
       if (data.BookingEndDateAndTime) {
         booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
