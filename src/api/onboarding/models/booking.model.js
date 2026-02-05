@@ -1453,9 +1453,6 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
         booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
       }
 
-      // if (!booking?.bookingPrice?.extendAmount) {
-      //   booking.bookingPrice.extendAmount = [];
-      // }
       if (!Array.isArray(booking.bookingPrice.extendAmount)) {
         booking.bookingPrice.extendAmount = [];
       }
