@@ -1226,7 +1226,6 @@ const extendBooking = async (req, res) => {
 
   // Validate required fields
   if (!_id || !bookingId || !amount || !data?.extendAmount?.id) {
-    // console.log("Missing required fields! try again");
     return res.status(400).json({
       message: "Missing required fields! try again",
     });
