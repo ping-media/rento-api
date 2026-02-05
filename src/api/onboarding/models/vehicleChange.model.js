@@ -556,6 +556,10 @@ const vehicleChangeNew = async (req, res) => {
       }
 
       // Only add diffAmount entry if there's a significant price difference
+      if (!Array.isArray(booking.bookingPrice.diffAmount)) {
+        booking.bookingPrice.diffAmount = [];
+      }
+
       if (hasSignificantDifference) {
         // booking.bookingPrice.diffAmount = [
         //   ...(booking.bookingPrice.diffAmount || []),

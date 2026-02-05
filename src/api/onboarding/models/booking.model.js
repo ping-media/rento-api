@@ -1456,6 +1456,9 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
       // if (!booking?.bookingPrice?.extendAmount) {
       //   booking.bookingPrice.extendAmount = [];
       // }
+      if (!Array.isArray(booking.bookingPrice.extendAmount)) {
+        booking.bookingPrice.extendAmount = [];
+      }
 
       const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
       if (!existingIds.includes(data.extendAmount.id)) {
