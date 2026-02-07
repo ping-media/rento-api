@@ -111,8 +111,30 @@ const vehicleTableSchema = new Schema(
       required: true,
     },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } },
 );
+
+// Core relations
+vehicleTableSchema.index({ vehicleMasterId: 1 });
+vehicleTableSchema.index({ stationId: 1 });
+vehicleTableSchema.index({ locationId: 1 });
+
+// Status filters
+vehicleTableSchema.index({ vehicleStatus: 1 });
+vehicleTableSchema.index({ vehicleBookingStatus: 1 });
+
+// Availability (MOST IMPORTANT)
+vehicleTableSchema.index({
+  stationId: 1,
+  vehicleStatus: 1,
+  vehicleBookingStatus: 1,
+});
+
+// Station dashboards
+vehicleTableSchema.index({
+  stationId: 1,
+  createdAt: -1,
+});
 
 const vehicleTable = mongoose.model("vehicleTable", vehicleTableSchema);
 

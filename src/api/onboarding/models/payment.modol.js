@@ -1,5 +1,21 @@
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 
+const getSortTime = (paymentInitiatedDate, updatedAt, createdAt) => {
+  if (paymentInitiatedDate) {
+    let ts = Number(paymentInitiatedDate);
+
+    if (!Number.isNaN(ts)) {
+      if (ts < 1e12) ts *= 1000;
+      return ts;
+    }
+  }
+
+  if (updatedAt) return new Date(updatedAt).getTime();
+  if (createdAt) return new Date(createdAt).getTime();
+
+  return 0;
+};
+
 const paymentRec = async (req, res) => {
   try {
     const {
@@ -60,9 +76,12 @@ const paymentRec = async (req, res) => {
       transactions.push({
         bookingId: booking.bookingId,
         transactionType: "Main Booking",
-        amount: booking.bookingPrice?.totalPrice || 0,
+        amount:
+          booking.bookingPrice.discountTotalPrice > 0
+            ? booking.bookingPrice.discountTotalPrice
+            : booking.bookingPrice?.totalPrice || 0,
         payInitFrom: booking.payInitFrom,
-        utrNumber: booking.bookingPrice?.utrNumber || "NA",
+        rrnNumber: booking.bookingPrice?.rrnNumber || "NA",
         payment_order_id: booking.payment_order_id,
         paySuccessId: booking?.paySuccessId || "NA",
         paymentgatewayOrderId: booking?.paymentgatewayOrderId || "NA",
@@ -72,6 +91,12 @@ const paymentRec = async (req, res) => {
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt,
         userId: booking.userId,
+
+        __sortTime: getSortTime(
+          booking.paymentInitiatedDate,
+          booking.updatedAt,
+          booking.createdAt,
+        ),
       });
 
       // Extend payments
@@ -91,10 +116,16 @@ const paymentRec = async (req, res) => {
             paymentStatus: ext.status || "pending",
             paymentInitiatedDate: ext.paymentInitiatedDate,
             payInitFrom: ext?.paymentMethod === "online" ? "razorPay" : "cash",
-            utrNumber: ext?.utrNumber || "NA",
+            rrnNumber: ext?.rrnNumber || "NA",
             createdAt: booking.createdAt,
             updatedAt: booking.updatedAt,
             userId: booking.userId,
+
+            __sortTime: getSortTime(
+              ext.paymentInitiatedDate,
+              booking.updatedAt,
+              booking.createdAt,
+            ),
           });
         });
       }
@@ -117,10 +148,16 @@ const paymentRec = async (req, res) => {
               paymentInitiatedDate: "",
               payInitFrom:
                 diff?.paymentMethod === "online" ? "razorPay" : "cash",
-              utrNumber: diff?.utrNumber || "NA",
+              rrnNumber: diff?.rrnNumber || "NA",
               createdAt: booking.createdAt,
               updatedAt: booking.updatedAt,
               userId: booking.userId,
+
+              __sortTime: getSortTime(
+                diff.paymentInitiatedDate,
+                booking.updatedAt,
+                booking.createdAt,
+              ),
             });
           }
         });
@@ -146,32 +183,17 @@ const paymentRec = async (req, res) => {
       );
     }
 
-    // transactions.sort((a, b) => {
-    //   const dateA = new Date(a.updatedAt);
-    //   const dateB = new Date(b.updatedAt);
-    //   return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
-    // });
-    transactions.sort((a, b) => {
-      const getTime = (t) => {
-        if (t?.paymentInitiatedDate) {
-          const ts = Number(t.paymentInitiatedDate);
-          if (!Number.isNaN(ts)) return ts;
-        }
-
-        if (t?.updatedAt) return new Date(t.updatedAt).getTime();
-        if (t?.createdAt) return new Date(t.createdAt).getTime();
-
-        return 0;
-      };
-
-      const timeA = getTime(a);
-      const timeB = getTime(b);
-
-      return sortOrder === "asc" ? timeA - timeB : timeB - timeA;
-    });
+    transactions.sort((a, b) =>
+      sortOrder === "asc"
+        ? a.__sortTime - b.__sortTime
+        : b.__sortTime - a.__sortTime,
+    );
 
     const totalRecords = transactions.length;
-    const paginatedData = transactions.slice(skip, skip + Number(limit));
+    // const paginatedData = transactions.slice(skip, skip + Number(limit));
+    const paginatedData = transactions
+      .slice(skip, skip + Number(limit))
+      .map(({ __sortTime, ...rest }) => rest);
 
     const pagination = {
       totalPages: Math.ceil(totalRecords / limit),

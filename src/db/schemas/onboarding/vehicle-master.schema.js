@@ -40,7 +40,7 @@ const vehicleMasterSchema = new Schema(
       default: "active",
     },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } },
 );
 
 vehicleMasterSchema.pre("save", function (next) {
@@ -55,6 +55,22 @@ vehicleMasterSchema.pre("save", function (next) {
   }
   next();
 });
+
+// Core filters
+vehicleMasterSchema.index({ status: 1 });
+
+// Main browsing filters
+vehicleMasterSchema.index({
+  vehicleCategory: 1,
+  vehicleType: 1,
+  status: 1,
+});
+
+// Admin listing
+vehicleMasterSchema.index({ createdAt: -1 });
+
+// Brand filtering (optional)
+vehicleMasterSchema.index({ vehicleBrand: 1, status: 1 });
 
 const vehicleMaster = mongoose.model("vehicleMaster", vehicleMasterSchema);
 

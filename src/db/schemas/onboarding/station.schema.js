@@ -126,8 +126,29 @@ const stationSchema = new Schema(
       default: "active",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
+
+// Unique station lookup
+// (already created via unique: true on stationId)
+
+// Location-based
+stationSchema.index({ locationId: 1 });
+
+// Status filtering
+stationSchema.index({ status: 1 });
+
+// User ↔ station mapping
+stationSchema.index({ userId: 1 });
+
+// City dashboards
+stationSchema.index({ city: 1, status: 1 });
+
+// State dashboards (optional)
+stationSchema.index({ state: 1, status: 1 });
+
+// Admin listing
+stationSchema.index({ status: 1, createdAt: -1 });
 
 const station = mongoose.model("station", stationSchema);
 

@@ -21,7 +21,7 @@ const planSchema = new Schema(
       require: true,
     },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } },
 );
 
 planSchema.pre("save", function (next) {
@@ -31,6 +31,12 @@ planSchema.pre("save", function (next) {
 
   next();
 });
+
+// Sorting
+planSchema.index({ createdAt: -1 });
+
+// Optional (only if filtering by duration)
+planSchema.index({ planDuration: 1 });
 
 const Plan = mongoose.model("Plan", planSchema);
 

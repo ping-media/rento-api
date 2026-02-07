@@ -1,7 +1,8 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const couponSchema = new Schema({
+const couponSchema = new Schema(
+  {
     couponName: {
       type: String,
       required: true,
@@ -12,38 +13,39 @@ const couponSchema = new Schema({
       type: Number,
     },
     couponCount: {
-      type:Number,
+      type: Number,
     },
     discountType: {
       type: String,
-      enum: ['percentage', 'fixed'],
-      required: true      
+      enum: ["percentage", "fixed"],
+      required: true,
     },
     discount: {
       type: String,
 
-      required: true      
+      required: true,
     },
     isCouponActive: {
       type: String,
-      enum: ['active', 'inActive'],
-      required: true      
-    }
-  }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
+      enum: ["active", "inActive"],
+      required: true,
+    },
+  },
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } },
+);
 
-  // couponSchema.pre('save', function (next) {
-  //   if (this.couponName) {
-  //     this.couponName = this.couponName.toLowerCase(); 
-  //   }
-    
-   
-  //   next();
-  // });
-  
-  
-  const coupon = mongoose.model('coupon', couponSchema);
-  
-  module.exports = coupon;
-  
+// Apply coupon fast
+couponSchema.index({
+  couponName: 1,
+  isCouponActive: 1,
+});
 
-  
+// Active / inactive filtering
+couponSchema.index({ isCouponActive: 1 });
+
+// Admin listing
+couponSchema.index({ createdAt: -1 });
+
+const coupon = mongoose.model("coupon", couponSchema);
+
+module.exports = coupon;

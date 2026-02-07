@@ -16,7 +16,7 @@ const webhookLogSchema = new mongoose.Schema(
       enum: ["success", "failed", "mismatch", "error"],
       required: true,
     },
-    utrNumber: Number,
+    rrnNumber: Number,
     verifiedStatus: String,
     bookingId: String,
     warning: Boolean,

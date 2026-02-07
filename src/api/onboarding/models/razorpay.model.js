@@ -191,7 +191,7 @@ const razorpayWebhookAdmin = async (req, res) => {
     // Fetch payment with retry logic
     let paymentId = "";
     let paymentStatus = null;
-    let utrNumber = null;
+    let rrnNumber = null;
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -206,10 +206,11 @@ const razorpayWebhookAdmin = async (req, res) => {
             paymentId = successfulPayment.id;
             paymentStatus = successfulPayment.status;
 
-            // Extract UTR number from the successful payment
-            utrNumber =
-              successfulPayment.acquirer_data?.utr ||
+            // Extract rrn number from the successful payment
+            rrnNumber =
+              successfulPayment.acquirer_data?.rrn ||
               successfulPayment.acquirer_data?.bank_transaction_id ||
+              successfulPayment.acquirer_data?.auth_code ||
               null;
             break;
           }
@@ -257,7 +258,7 @@ const razorpayWebhookAdmin = async (req, res) => {
         amountPaid,
         type,
         paymentId,
-        utrNumber,
+        rrnNumber,
       );
     } else if (
       type === "extension" &&
@@ -268,7 +269,7 @@ const razorpayWebhookAdmin = async (req, res) => {
         typeId,
         paymentId,
         noteOrderId,
-        utrNumber,
+        rrnNumber,
       );
     } else if (type === "changevehicle") {
       handlerResult = await updateBookingForVehicleChange(
@@ -276,7 +277,7 @@ const razorpayWebhookAdmin = async (req, res) => {
         amountPaid,
         typeId,
         paymentId,
-        utrNumber,
+        rrnNumber,
       );
     } else if (type === "extension") {
       handlerResult = await updateBookingWithNewExtension(
@@ -284,7 +285,7 @@ const razorpayWebhookAdmin = async (req, res) => {
         amountPaid,
         typeId,
         paymentId,
-        utrNumber,
+        rrnNumber,
       );
     } else {
       console.warn(`Unknown payment type: ${type}`);
@@ -311,7 +312,7 @@ const razorpayWebhookAdmin = async (req, res) => {
       bookingId,
       status: "success",
       verifiedStatus: paymentStatus,
-      utrNumber,
+      rrnNumber,
       rawPayload: entity,
     }).catch((logErr) => console.error("Webhook log creation failed:", logErr));
 
@@ -378,10 +379,14 @@ const razorpayWebhook = async (req, res) => {
     const paymentTime = new Date(payment.created_at * 1000);
 
     // Extract UTR number from acquirer_data
-    const utrNumber =
-      verifiedPayment.acquirer_data?.utr ||
-      verifiedPayment.acquirer_data?.bank_transaction_id ||
-      payment.acquirer_data?.utr ||
+    // const utrNumber =
+    //   verifiedPayment.acquirer_data?.utr ||
+    //   verifiedPayment.acquirer_data?.bank_transaction_id ||
+    //   payment.acquirer_data?.utr ||
+    //   payment.acquirer_data?.bank_transaction_id ||
+    //   null;
+    const rrn =
+      payment.acquirer_data?.rrn ||
       payment.acquirer_data?.bank_transaction_id ||
       null;
 
@@ -397,7 +402,7 @@ const razorpayWebhook = async (req, res) => {
           razorpayPaymentId,
           amountPaid,
           typeId,
-          utrNumber,
+          rrn,
           paymentTime,
         );
       } else if (type === "" || type === "partiallyPay") {
@@ -406,7 +411,7 @@ const razorpayWebhook = async (req, res) => {
           razorpayPaymentId,
           amountPaid,
           type,
-          utrNumber,
+          rrn,
           paymentTime,
         );
 
@@ -421,7 +426,7 @@ const razorpayWebhook = async (req, res) => {
         eventType,
         status: "success",
         verifiedStatus: verifiedPayment.status,
-        utrNumber,
+        rrn,
       });
     } else if (
       eventType === "payment.failed" &&
@@ -487,7 +492,7 @@ const updateBookingAfterPayment = async (
   razorpayPaymentId,
   amountPaid,
   type,
-  utrNumber,
+  rrn,
   paymentTime,
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
@@ -495,8 +500,8 @@ const updateBookingAfterPayment = async (
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new Error("Booking not found");
 
-  if (utrNumber) {
-    booking.bookingPrice.utrNumber = utrNumber;
+  if (rrn) {
+    booking.bookingPrice.rrnNumber = rrn;
     booking.markModified("bookingPrice");
   }
 
@@ -537,15 +542,15 @@ const updateBookingAfterPaymentAdmin = async (
   amountPaid,
   type,
   paymentId,
-  utrNumber,
+  rrnNumber,
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
   const booking = await Booking.findById(bookingId);
 
   if (!booking) return res.status(200).send("Booking not found");
 
-  if (utrNumber) {
-    booking.bookingPrice.utrNumber = utrNumber;
+  if (rrnNumber) {
+    booking.bookingPrice.rrnNumber = rrnNumber;
     booking.markModified("bookingPrice");
   }
 
@@ -586,7 +591,7 @@ const updateBookingWithNewExtension = async (
   amountPaid,
   typeId,
   paymentId,
-  utrNumber,
+  rrnNumber,
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
   const booking = await Booking.findById(bookingId);
@@ -603,8 +608,8 @@ const updateBookingWithNewExtension = async (
     extend.paymentDate = new Date();
     extend.transactionId = paymentId;
 
-    if (utrNumber) {
-      extend.utrNumber = utrNumber;
+    if (rrnNumber) {
+      extend.rrnNumber = rrnNumber;
     }
   }
   booking.bookingStatus = "extended";
@@ -640,7 +645,7 @@ const updateBookingForVehicleChange = async (
   amountPaid,
   typeId,
   paymentId,
-  utrNumber,
+  rrnNumber,
 ) => {
   if (!bookingId) throw new Error("Booking ID missing");
   const booking = await Booking.findById(bookingId);
@@ -657,8 +662,8 @@ const updateBookingForVehicleChange = async (
     change.paymentDate = new Date();
     change.transactionId = paymentId;
 
-    if (utrNumber) {
-      change.utrNumber = utrNumber;
+    if (rrnNumber) {
+      change.rrnNumber = rrnNumber;
     }
   }
 
@@ -692,7 +697,7 @@ const updateBookingAdminExtension = async (
   typeId,
   paymentId,
   noteOrderId,
-  utrNumber,
+  rrnNumber,
 ) => {
   if (!noteOrderId) throw new Error("Extend booking id not found.");
   const temp = await TempExtension.findOne({ razorpayOrderId: noteOrderId });
@@ -716,7 +721,7 @@ const updateBookingAdminExtension = async (
     ...data.extendAmount,
     transactionId: paymentId || "",
     paymentMethod: "online",
-    utrNumber: utrNumber ?? null,
+    rrnNumber: rrnNumber ?? null,
     status: "paid",
   });
 
@@ -765,7 +770,7 @@ const handleExtendBookingWebhook = async (
   paymentId,
   amountPaid,
   typeId,
-  utrNumber,
+  rrn,
   paymentTime,
 ) => {
   const booking = await Booking.findById(bookingId);
@@ -793,8 +798,8 @@ const handleExtendBookingWebhook = async (
   extend.razorPayDate = paymentTime || "";
   extend.paymentInitiatedDate = new Date().getTime();
 
-  if (utrNumber) {
-    extend.utrNumber = utrNumber;
+  if (rrn) {
+    extend.rrnNumber = rrn;
   }
 
   booking.bookingStatus = "extended";

@@ -155,7 +155,7 @@ const bookingSchema = new Schema(
       type: Object,
     },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } },
 );
 
 bookingSchema.pre("save", function (next) {
@@ -174,15 +174,37 @@ bookingSchema.pre("save", function (next) {
   if (this.payInitFrom) {
     this.payInitFrom = this.payInitFrom.toLowerCase();
   }
-  // if (this.BookingStartDateAndTime) {
-  //     this.BookingStartDateAndTime = moment(this.BookingStartDateAndTime).tz("Asia/Kolkata").toDate();
-  // }
-  // if (this.BookingEndDateAndTime) {
-  //     this.BookingEndDateAndTime = moment(this.BookingEndDateAndTime).tz("Asia/Kolkata").toDate();
-  // }
 
   next();
 });
+
+// Unique booking lookup
+bookingSchema.index({ bookingId: 1 }, { unique: true });
+
+// User related
+bookingSchema.index({ userId: 1, createdAt: -1 });
+
+// Station dashboards
+bookingSchema.index({ stationId: 1 });
+
+// Payments
+bookingSchema.index({ paymentStatus: 1 });
+bookingSchema.index({ paymentMethod: 1 });
+
+// Admin payment list (most important)
+bookingSchema.index({
+  stationId: 1,
+  paymentStatus: 1,
+  paymentMethod: 1,
+  createdAt: -1,
+});
+
+// Sorting & pagination
+bookingSchema.index({ createdAt: -1 });
+
+// Optional
+bookingSchema.index({ bookingStatus: 1 });
+bookingSchema.index({ rideStatus: 1 });
 
 const booking = mongoose.model("booking", bookingSchema);
 

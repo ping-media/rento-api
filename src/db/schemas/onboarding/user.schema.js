@@ -85,7 +85,7 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 userSchema.pre("save", function (next) {
@@ -101,6 +101,34 @@ userSchema.pre("save", function (next) {
 
   next();
 });
+
+// Auth & identity
+// (contact already indexed via unique: true)
+userSchema.index({ email: 1 });
+
+// Role & status
+userSchema.index({ userType: 1 });
+userSchema.index({ status: 1 });
+
+// Admin listing (MOST IMPORTANT)
+userSchema.index({
+  userType: 1,
+  status: 1,
+  createdAt: -1,
+});
+
+// KYC queues
+userSchema.index({
+  kycApproved: 1,
+  status: 1,
+});
+userSchema.index({
+  isDocumentVerified: 1,
+  status: 1,
+});
+
+// Pagination
+userSchema.index({ createdAt: -1 });
 
 const User = mongoose.model("User", userSchema);
 

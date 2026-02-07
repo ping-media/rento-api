@@ -23,8 +23,20 @@ const timelineSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } },
 );
+
+// Primary lookup
+timelineSchema.index({ bookingId: 1 }, { unique: true });
+
+// Booking reference
+timelineSchema.index({ currentBooking_id: 1 });
+
+// User timelines
+timelineSchema.index({ userId: 1 });
+
+// Recent activity
+timelineSchema.index({ userId: 1, updatedAt: -1 });
 
 const Timeline = mongoose.model("Timeline", timelineSchema);
 

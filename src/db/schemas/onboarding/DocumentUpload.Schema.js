@@ -17,8 +17,11 @@ const documentSchema = new Schema(
   },
   {
     timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" },
-  }
+  },
 );
+
+// indexing
+documentSchema.index({ userId: 1 }, { unique: true });
 
 const Document = mongoose.model("Document", documentSchema);
 

@@ -1,52 +1,54 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const VehicleSchema = new Schema({
-  bookingCount: {
-    type: Number,
-    required: true
+const VehicleSchema = new Schema(
+  {
+    bookingCount: {
+      type: Number,
+      required: true,
+    },
+    pricePerday: {
+      type: Number,
+      required: true,
+    },
+    name: {
+      type: String,
+      required: true,
+    },
+    url: {
+      type: String,
+      required: true,
+    },
+    distanceLimit: {
+      type: Number,
+      required: true,
+    },
+    accessChargePerKm: {
+      type: Number,
+      required: true,
+    },
+    transmissionType: {
+      type: String,
+      required: true,
+    },
+    brand: {
+      type: String,
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
-  pricePerday: {
-    type: Number,
-    required: true
-  },
-  name: {
-    type: String,
-    required: true
-  },
-  url: {
-    type: String,
-    required: true
-  },
-  distanceLimit: {
-    type: Number,
-    required: true
-  },
-  accessChargePerKm: {
-    type: Number,
-    required: true
-  },
-  transmissionType: {
-    type: String,
-    required: true
-  },
-  brand: {
-    type: String,
-    required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
-}, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
-
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } },
+);
 
 // Pre-save middleware to convert fields to lowercase
-VehicleSchema.pre('save', function (next) {
+VehicleSchema.pre("save", function (next) {
   if (this.name) {
     this.name = this.name.toLowerCase(); // Convert name to lowercase
   }
@@ -56,6 +58,20 @@ VehicleSchema.pre('save', function (next) {
   next();
 });
 
-const Vehicle = mongoose.model('Vehicle', VehicleSchema);
+// Filters
+VehicleSchema.index({ brand: 1 });
+VehicleSchema.index({ transmissionType: 1 });
+
+// Combined filter (MOST IMPORTANT)
+VehicleSchema.index({
+  brand: 1,
+  transmissionType: 1,
+});
+
+// Sorting
+VehicleSchema.index({ createdAt: -1 });
+VehicleSchema.index({ bookingCount: -1 });
+
+const Vehicle = mongoose.model("Vehicle", VehicleSchema);
 
 module.exports = Vehicle;
