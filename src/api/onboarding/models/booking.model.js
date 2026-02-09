@@ -1032,7 +1032,7 @@ const initiateExtensionBooking = async (req, res) => {
       return res.json({ message: "Required fields missing", status: 400 });
     }
 
-    if (typeof amount === number && amount === 0) {
+    if (typeof amount === "number" && amount === 0) {
       await session.abortTransaction();
       session.endSession();
       return res.json({

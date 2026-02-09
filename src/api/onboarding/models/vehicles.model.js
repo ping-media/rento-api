@@ -57,12 +57,12 @@ const createBookingDuration = async ({
               {
                 $set: updatePacket,
               },
-              { new: true }
+              { new: true },
             );
             obj.status = 201;
             obj.message = "Booking duration updated successfully";
           } else {
-            (obj.message = "Invalid data"), (obj.status = "401");
+            ((obj.message = "Invalid data"), (obj.status = "401"));
           }
         } else {
           await BookingDuration.updateOne(
@@ -70,13 +70,13 @@ const createBookingDuration = async ({
             {
               $set: { attachedVehicles: [bookingId] },
             },
-            { new: true }
+            { new: true },
           );
           obj.status = 201;
           obj.message = "Booking duration updated successfully";
         }
       } else {
-        (obj.message = "Invalid data"), (obj.status = "401");
+        ((obj.message = "Invalid data"), (obj.status = "401"));
       }
     } else {
       const obj = {
@@ -89,7 +89,7 @@ const createBookingDuration = async ({
       obj.message = "data saved successfully";
     }
   } else {
-    (obj.message = "Invalid data"), (obj.status = "401");
+    ((obj.message = "Invalid data"), (obj.status = "401"));
   }
   return obj;
 };
@@ -443,7 +443,7 @@ async function booking({
 
     if (_id) {
       const find = await Booking.findOne({ _id: ObjectId(_id) }).session(
-        session
+        session,
       );
       if (!find) {
         obj.status = 401;
@@ -481,7 +481,7 @@ async function booking({
       if (o.notes && Array.isArray(o.notes) && o.notes.length > 0) {
         if (isCancelled === true) {
           o.notes = o.notes.filter(
-            (note) => !note.noteType.includes("canceled")
+            (note) => !note.noteType.includes("canceled"),
           );
         } else {
           o.notes = [...(find.notes || []), o.notes[0]];
@@ -491,7 +491,7 @@ async function booking({
       const UpdatedData = await Booking.findByIdAndUpdate(
         { _id: ObjectId(_id) },
         { $set: o },
-        { new: true, session }
+        { new: true, session },
       );
 
       await Log({
@@ -535,9 +535,8 @@ async function booking({
             return obj;
           }
 
-          var stationMasterUser = await User.findById(
-            stationMasterUserId
-          ).session(session);
+          var stationMasterUser =
+            await User.findById(stationMasterUserId).session(session);
           if (!stationMasterUser) {
             obj.status = 404;
             obj.message = "Station master user not found";
@@ -587,7 +586,7 @@ async function booking({
           await whatsappMessage(
             [user.contact],
             "booking_confirm_paid",
-            messageData
+            messageData,
           );
         } else if (paymentStatus === "partially_paid") {
           const remainingAmount =
@@ -596,12 +595,12 @@ async function booking({
           messageData.push(
             bookingPrice.userPaid,
             remainingAmount,
-            vehicleBasic.refundableDeposit
+            vehicleBasic.refundableDeposit,
           );
           await whatsappMessage(
             [user.contact],
             "booking_confirmed_partial_paid",
-            messageData
+            messageData,
           );
         } else if (paymentStatus === "cash") {
           messageData.push(totalPrice, vehicleBasic.refundableDeposit);
@@ -609,7 +608,7 @@ async function booking({
           await whatsappMessage(
             [user.contact],
             "booking_confirm_cash",
-            messageData
+            messageData,
           );
         }
         sendEmailForBookingToStationMaster(
@@ -618,7 +617,7 @@ async function booking({
           vehicleName,
           BookingStartDateAndTime,
           BookingEndDateAndTime,
-          bookingId
+          bookingId,
         );
       }
 
@@ -762,7 +761,7 @@ const createOrder = async (o) => {
         await logError(
           "Invalid vehicle number during createOrder",
           "createOrder",
-          userId
+          userId,
         );
         return obj;
       }
@@ -777,7 +776,7 @@ const createOrder = async (o) => {
         await logError(
           "Invalid vehicle name during createOrder",
           "createOrder",
-          userId
+          userId,
         );
         return obj;
       }
@@ -805,7 +804,7 @@ const createOrder = async (o) => {
         await logError(
           "Invalid pickup location during createOrder",
           "createOrder",
-          userId
+          userId,
         );
         return obj;
       }
@@ -820,7 +819,7 @@ const createOrder = async (o) => {
         await logError(
           "Invalid location during createOrder",
           "createOrder",
-          userId
+          userId,
         );
         return obj;
       }
@@ -836,7 +835,7 @@ const createOrder = async (o) => {
       await logError(
         "Invalid paymentStatus during createOrder",
         "createOrder",
-        userId
+        userId,
       );
       return obj;
     }
@@ -851,7 +850,7 @@ const createOrder = async (o) => {
       await logError(
         "Invalid paymentMethod during createOrder",
         "createOrder",
-        userId
+        userId,
       );
       return obj;
     }
@@ -866,7 +865,7 @@ const createOrder = async (o) => {
           await logError(
             "Invalid user ID during createOrder",
             "createOrder",
-            userId
+            userId,
           );
           return obj;
         }
@@ -876,7 +875,7 @@ const createOrder = async (o) => {
         await logError(
           "Invalid user ID format during createOrder",
           "createOrder",
-          userId
+          userId,
         );
         return obj;
       }
@@ -891,7 +890,7 @@ const createOrder = async (o) => {
         await logError(
           "Invalid email format during createOrder",
           "createOrder",
-          userId
+          userId,
         );
         return obj;
       }
@@ -902,7 +901,7 @@ const createOrder = async (o) => {
         await logError(
           "Email not associated with any user during createOrder",
           "createOrder",
-          userId
+          userId,
         );
         return obj;
       }
@@ -917,7 +916,7 @@ const createOrder = async (o) => {
         await logError(
           "Invalid contact format during createOrder",
           "createOrder",
-          userId
+          userId,
         );
         return obj;
       }
@@ -928,7 +927,7 @@ const createOrder = async (o) => {
         await logError(
           "Contact not associated with any user during createOrder",
           "createOrder",
-          userId
+          userId,
         );
         return obj;
       }
@@ -941,7 +940,7 @@ const createOrder = async (o) => {
       await logError(
         "Invalid order ID format during createOrder",
         "createOrder",
-        userId
+        userId,
       );
       return obj;
     }
@@ -955,7 +954,7 @@ const createOrder = async (o) => {
         await logError(
           "Order not found for provided _id during createOrder",
           "createOrder",
-          userId
+          userId,
         );
         return obj;
       } else {
@@ -971,7 +970,7 @@ const createOrder = async (o) => {
         await Order.updateOne(
           { _id: ObjectId(_id) },
           { $set: o },
-          { new: true }
+          { new: true },
         );
         obj.message = "Order updated successfully";
         obj.data = o;
@@ -1007,7 +1006,7 @@ const createOrder = async (o) => {
         await logError(
           "Duplicate orderId during createOrder",
           "createOrder",
-          userId
+          userId,
         );
         return obj;
       }
@@ -1023,7 +1022,7 @@ const createOrder = async (o) => {
       await logError(
         "Missing required fields during createOrder",
         "createOrder",
-        userId
+        userId,
       );
     }
 
@@ -1033,7 +1032,7 @@ const createOrder = async (o) => {
     await logError(
       `Error in createOrder: ${error.message}`,
       "createOrder",
-      userId
+      userId,
     );
     obj.status = 500;
     obj.message = "Internal server error";
@@ -1070,7 +1069,7 @@ async function createLocation({ locationName, locationImage, deleteRec, _id }) {
       {
         $set: { locationName, locationImage },
       },
-      { new: true }
+      { new: true },
     );
     obj.message = "location updated successfully";
     obj.data = { _id };
@@ -1124,7 +1123,7 @@ async function createPlan({
 
             await vehicleTable.updateMany(
               {},
-              { $pull: { vehiclePlan: { _id: ObjectId(_id) } } }
+              { $pull: { vehiclePlan: { _id: ObjectId(_id) } } },
             );
 
             await Log({
@@ -1140,7 +1139,7 @@ async function createPlan({
           await Plan.updateOne(
             { _id: ObjectId(_id) },
             { $set: o },
-            { new: true }
+            { new: true },
           );
           obj.message = "Plan updated successfully";
           obj.data = o;
@@ -1201,7 +1200,7 @@ async function createInvoice({ bookingID, currentBookingId, _id, deleteRec }) {
       if (bookingID) {
         const bookingUpdateResult = await Booking.updateOne(
           { bookingId: bookingID.trim() },
-          { $set: { "bookingPrice.isInvoiceCreated": false } }
+          { $set: { "bookingPrice.isInvoiceCreated": false } },
         );
 
         console.log("Booking update result:", bookingUpdateResult);
@@ -1232,7 +1231,7 @@ async function createInvoice({ bookingID, currentBookingId, _id, deleteRec }) {
 
     // Fetch booking details
     const bookings = await Booking.findOne({ _id: currentBookingId }).select(
-      "userId bookingId paymentStatus bookingPrice vehicleBasic vehicleName"
+      "userId bookingId paymentStatus bookingPrice vehicleBasic vehicleName",
     );
 
     if (!bookings) {
@@ -1252,7 +1251,7 @@ async function createInvoice({ bookingID, currentBookingId, _id, deleteRec }) {
     } = bookings;
 
     const userData = await User.findOne({ _id: userId }).select(
-      "firstName lastName contact email"
+      "firstName lastName contact email",
     );
 
     if (!userData) {
@@ -1300,7 +1299,7 @@ async function createInvoice({ bookingID, currentBookingId, _id, deleteRec }) {
     let sequence = 1; // Default sequence
     if (lastInvoice && lastInvoice.invoiceNumber) {
       const match = lastInvoice.invoiceNumber.match(
-        new RegExp(`INV-${currentYear}-(\\d{5})`)
+        new RegExp(`INV-${currentYear}-(\\d{5})`),
       );
       if (match) {
         sequence = parseInt(match[1], 10) + 1;
@@ -1331,7 +1330,7 @@ async function createInvoice({ bookingID, currentBookingId, _id, deleteRec }) {
     const updateResult = await Booking.updateOne(
       { _id: currentBookingId },
       { $set: { "bookingPrice.isInvoiceCreated": true } },
-      { new: true }
+      { new: true },
     );
 
     return {
@@ -1501,7 +1500,7 @@ async function discountCoupons({
         {
           $set: o,
         },
-        { new: true }
+        { new: true },
       );
       obj.message = "Coupon updated successfully";
       obj.data = o;
@@ -1604,7 +1603,7 @@ async function createStation({
         logError(
           "Found invalid _id during the creating station",
           "createStation",
-          userId
+          userId,
         );
         return response;
       }
@@ -1616,7 +1615,7 @@ async function createStation({
         logError(
           "Station not found during the creating station",
           "createStation",
-          userId
+          userId,
         );
 
         return response;
@@ -1624,7 +1623,7 @@ async function createStation({
 
       if (addonId) {
         const addon = station.extraAddOn.find(
-          (a) => a._id.toString() === addonId.toString()
+          (a) => a._id.toString() === addonId.toString(),
         );
 
         if (!addon) {
@@ -1639,7 +1638,7 @@ async function createStation({
         logError(
           "Station addon updated successfully ",
           "createStation",
-          userId
+          userId,
         );
         response.status = 200;
         response.message = "Addon status updated successfully";
@@ -1663,7 +1662,7 @@ async function createStation({
       if (status) {
         await Station.updateOne(
           { _id: ObjectId(_id) },
-          { $set: { status: status } }
+          { $set: { status: status } },
         );
 
         await Log({
@@ -1676,7 +1675,7 @@ async function createStation({
         logError(
           "Station status updated successfully",
           "updateStationStatus",
-          userId
+          userId,
         );
 
         return response;
@@ -1704,7 +1703,7 @@ async function createStation({
     if (missingParams.length > 0) {
       response.status = 401;
       response.message = `Missing required parameters: ${missingParams.join(
-        ", "
+        ", ",
       )}`;
       return response;
     }
@@ -1716,7 +1715,7 @@ async function createStation({
       logError(
         "Invalid user ID found during the creating station",
         "createStation",
-        userId
+        userId,
       );
 
       return response;
@@ -1728,7 +1727,7 @@ async function createStation({
       logError(
         "User not found during the creating station",
         "createStation",
-        userId
+        userId,
       );
 
       return response;
@@ -1739,7 +1738,7 @@ async function createStation({
       logError(
         "User is not a manager found during the creating station",
         "createStation",
-        userId
+        userId,
       );
 
       return response;
@@ -1752,7 +1751,7 @@ async function createStation({
       logError(
         "Invalid location ID found during the creating station",
         "createStation",
-        userId
+        userId,
       );
 
       return response;
@@ -1765,7 +1764,7 @@ async function createStation({
       logError(
         "Location not found during the creating station",
         "createStation",
-        userId
+        userId,
       );
 
       return response;
@@ -1778,7 +1777,7 @@ async function createStation({
       logError(
         "Invalid pin code found during the creating station",
         "createStation",
-        userId
+        userId,
       );
 
       return response;
@@ -1805,7 +1804,7 @@ async function createStation({
       logError(
         "Invalid station ID found during the creating station",
         "createStation",
-        userId
+        userId,
       );
 
       return response;
@@ -1818,7 +1817,7 @@ async function createStation({
       logError(
         "Station already exists found during the creating station",
         "createStation",
-        userId
+        userId,
       );
 
       return response;
@@ -1874,7 +1873,7 @@ async function createVehicleMaster({
         logError(
           "Invalid vehicle type found during creating the vehicle master",
           "createVehicleMaster",
-          "Admin"
+          "Admin",
         );
         return response;
       }
@@ -1885,7 +1884,7 @@ async function createVehicleMaster({
       logError(
         "Invalid _id found during creating the vehicle master",
         "createVehicleMaster",
-        "Admin"
+        "Admin",
       );
 
       return response;
@@ -1898,7 +1897,7 @@ async function createVehicleMaster({
         logError(
           "Invalid vehicle _id found during creating the vehicle master",
           "createVehicleMaster",
-          "Admin"
+          "Admin",
         );
 
         return response;
@@ -1911,7 +1910,7 @@ async function createVehicleMaster({
         logError(
           "vehicle master deleted successfully",
           "createVehicleMaster",
-          "Admin"
+          "Admin",
         );
 
         return response;
@@ -1921,14 +1920,14 @@ async function createVehicleMaster({
         {
           $set: obj,
         },
-        { new: true }
+        { new: true },
       );
       response.status = 200;
       response.message = "vehicle master updated successfully";
       logError(
         "vehicle master updated successfully",
         "createVehicleMaster",
-        "Admin"
+        "Admin",
       );
 
       response.data = obj;
@@ -1941,7 +1940,7 @@ async function createVehicleMaster({
           logError(
             "vehicle master name already exists found during creating the vehicle master",
             "createVehicleMaster",
-            "Admin"
+            "Admin",
           );
 
           return response;
@@ -1952,7 +1951,7 @@ async function createVehicleMaster({
         logError(
           "vehicle master saved successfully",
           "createVehicleMaster",
-          "Admin"
+          "Admin",
         );
 
         response.data = obj;
@@ -1962,7 +1961,7 @@ async function createVehicleMaster({
         logError(
           "Invalid vehicle master details found during creating the vehicle master",
           "createVehicleMaster",
-          "Admin"
+          "Admin",
         );
       }
     }
@@ -2053,16 +2052,16 @@ async function searchVehicle({
             const { startDate, startTime } = BookingStartDateAndTime;
             const { endDate, endTime } = BookingEndDateAndTime;
             let bookingStartHours = new Date(
-              moment(startTime, "hh:mm A")
+              moment(startTime, "hh:mm A"),
             ).getHours();
             let bookingEndHours = new Date(
-              moment(endTime, "hh:mm A")
+              moment(endTime, "hh:mm A"),
             ).getHours();
             let bookingStartMinutes = new Date(
-              moment(startTime, "hh:mm A")
+              moment(startTime, "hh:mm A"),
             ).getMinutes();
             let bookingEndMinutes = new Date(
-              moment(endTime, "hh:mm A")
+              moment(endTime, "hh:mm A"),
             ).getMinutes();
             let checkSoldOut = false;
             let bookingStartDate = moment(startDate)
@@ -2185,7 +2184,7 @@ const getVehicleMasterData = async (query) => {
             ...vehicle.toObject(),
             vehicleCount,
           };
-        })
+        }),
       );
 
       obj.data = vehicleData;
@@ -2456,9 +2455,8 @@ const getVehicleTbl = async (query) => {
     let excludeVehicleId = null;
 
     if (excludeBookingId) {
-      const booking = await Booking.findById(excludeBookingId).select(
-        "vehicleTableId"
-      );
+      const booking =
+        await Booking.findById(excludeBookingId).select("vehicleTableId");
       if (booking?.vehicleTableId) {
         excludeVehicleId = booking.vehicleTableId;
       }
@@ -2934,7 +2932,7 @@ const getVehicleTbl = async (query) => {
     ];
 
     const allVehiclesForCheck = await vehicleTable.aggregate(
-      unavailabilityCheckPipeline
+      unavailabilityCheckPipeline,
     );
     let vehicles = await vehicleTable.aggregate(pipeline);
 
@@ -3003,7 +3001,7 @@ const getVehicleTbl = async (query) => {
         const endDateObj = new Date(endDate);
 
         const bookingDurationDays = Math.ceil(
-          (endDateObj - startDateObj) / (1000 * 60 * 60 * 24)
+          (endDateObj - startDateObj) / (1000 * 60 * 60 * 24),
         );
 
         let totalRentalCost = 0;
@@ -3028,7 +3026,7 @@ const getVehicleTbl = async (query) => {
           adjustedVehicle.vehiclePlan.length > 0
         ) {
           const sortedPlans = [...adjustedVehicle.vehiclePlan].sort(
-            (a, b) => b.planDuration - a.planDuration
+            (a, b) => b.planDuration - a.planDuration,
           );
 
           for (const plan of sortedPlans) {
@@ -3047,7 +3045,7 @@ const getVehicleTbl = async (query) => {
               remainingDays -= times * plan.planDuration;
 
               currentDate.setDate(
-                currentDate.getDate() + times * plan.planDuration
+                currentDate.getDate() + times * plan.planDuration,
               );
             }
           }
@@ -3147,7 +3145,7 @@ const getVehicleTbl = async (query) => {
           weekendPercentage !== 0
         ) {
           adjustedVehicle.perDayCost = Math.round(
-            originalPerDayCost + (originalPerDayCost * weekendPercentage) / 100
+            originalPerDayCost + (originalPerDayCost * weekendPercentage) / 100,
           );
         } else {
           adjustedVehicle.perDayCost = originalPerDayCost;
@@ -4284,13 +4282,13 @@ const getVehicleTblData = async (query) => {
     const availableVehicles = allVehicles.filter(
       (vehicle) =>
         vehicle.conflictingBookings.length === 0 &&
-        vehicle.conflictingMaintenance.length === 0
+        vehicle.conflictingMaintenance.length === 0,
     );
 
     const excludedVehicles = allVehicles.filter(
       (vehicle) =>
         vehicle.conflictingBookings.length > 0 ||
-        vehicle.conflictingMaintenance.length > 0
+        vehicle.conflictingMaintenance.length > 0,
     );
 
     const groupAvailableVehicles = {};
@@ -4580,13 +4578,13 @@ const getVehicleTblData = async (query) => {
       // Separate back into available and excluded
       paginatedAvailable = paginatedGroups.filter((v) =>
         cleanGroupedAvailable.some(
-          (av) => av._id && v._id && av._id.toString() === v._id.toString()
-        )
+          (av) => av._id && v._id && av._id.toString() === v._id.toString(),
+        ),
       );
       paginatedExcluded = paginatedGroups.filter((v) =>
         cleanGroupedExcluded.some(
-          (ex) => ex._id && v._id && ex._id.toString() === v._id.toString()
-        )
+          (ex) => ex._id && v._id && ex._id.toString() === v._id.toString(),
+        ),
       );
     }
 
@@ -4601,7 +4599,7 @@ const getVehicleTblData = async (query) => {
         const startDateObj = new Date(startDate);
         const endDateObj = new Date(endDate);
         const bookingDurationDays = Math.ceil(
-          (endDateObj - startDateObj) / (1000 * 60 * 60 * 24)
+          (endDateObj - startDateObj) / (1000 * 60 * 60 * 24),
         );
 
         adjustedVehicle.originalPerDayCost = originalPerDayCost;
@@ -4627,7 +4625,7 @@ const getVehicleTblData = async (query) => {
           adjustedVehicle.vehiclePlan.length > 0
         ) {
           const sortedPlans = [...adjustedVehicle.vehiclePlan].sort(
-            (a, b) => b.planDuration - a.planDuration
+            (a, b) => b.planDuration - a.planDuration,
           );
 
           for (const plan of sortedPlans) {
@@ -4647,7 +4645,7 @@ const getVehicleTblData = async (query) => {
 
               // Move currentDate forward for the plan days
               currentDate.setDate(
-                currentDate.getDate() + times * plan.planDuration
+                currentDate.getDate() + times * plan.planDuration,
               );
             }
           }
@@ -4727,7 +4725,7 @@ const getVehicleTblData = async (query) => {
           weekendPercentage !== 0
         ) {
           adjustedVehicle.perDayCost = Math.round(
-            originalPerDayCost + (originalPerDayCost * weekendPercentage) / 100
+            originalPerDayCost + (originalPerDayCost * weekendPercentage) / 100,
           );
         } else {
           adjustedVehicle.perDayCost = originalPerDayCost;
@@ -4834,7 +4832,7 @@ const getVehicleTblDataOld = async (query) => {
 
     const bookingDuration = getDurationInDays(
       BookingStartDateAndTime,
-      BookingEndDateAndTime
+      BookingEndDateAndTime,
     );
 
     const matchFilter = {};
@@ -5054,13 +5052,13 @@ const getVehicleTblDataOld = async (query) => {
     const availableVehicles = allVehicles.filter(
       (vehicle) =>
         vehicle.conflictingBookings.length === 0 &&
-        vehicle.conflictingMaintenance.length === 0
+        vehicle.conflictingMaintenance.length === 0,
     );
 
     const excludedVehicles = allVehicles.filter(
       (vehicle) =>
         vehicle.conflictingBookings.length > 0 ||
-        vehicle.conflictingMaintenance.length > 0
+        vehicle.conflictingMaintenance.length > 0,
     );
 
     const groupAvailableVehicles = {};
@@ -5242,13 +5240,13 @@ const getVehicleTblDataOld = async (query) => {
       // Separate back into available and excluded
       paginatedAvailable = paginatedGroups.filter((v) =>
         cleanGroupedAvailable.some(
-          (av) => av._id && v._id && av._id.toString() === v._id.toString()
-        )
+          (av) => av._id && v._id && av._id.toString() === v._id.toString(),
+        ),
       );
       paginatedExcluded = paginatedGroups.filter((v) =>
         cleanGroupedExcluded.some(
-          (ex) => ex._id && v._id && ex._id.toString() === v._id.toString()
-        )
+          (ex) => ex._id && v._id && ex._id.toString() === v._id.toString(),
+        ),
       );
     }
 
@@ -5351,7 +5349,7 @@ const getVehicleTblDataOld = async (query) => {
 
         // Calculate booking duration
         const bookingDurationDays = Math.ceil(
-          (endDateObj - startDateObj) / (1000 * 60 * 60 * 24)
+          (endDateObj - startDateObj) / (1000 * 60 * 60 * 24),
         );
 
         // Update perDayCost for display purposes based on start date
@@ -6221,7 +6219,7 @@ const getVehicleTblDataAllStation = async (query) => {
         finalExcludedVehicles = excludedVehicles;
         finalAvailableVehicles = availableVehicles.slice(
           0,
-          parsedLimit - excludedVehicles.length
+          parsedLimit - excludedVehicles.length,
         );
       }
     } else {
@@ -6267,13 +6265,13 @@ function groupVehiclesByName(vehicles) {
         existingVehicle.additionalData = [];
         // Add the first vehicle's details to the array (deep clone to avoid circular references)
         existingVehicle.additionalData.push(
-          JSON.parse(JSON.stringify(existingVehicle.vehicleDetails))
+          JSON.parse(JSON.stringify(existingVehicle.vehicleDetails)),
         );
       }
 
       // Add current vehicle details to the array (deep clone to avoid circular references)
       existingVehicle.additionalData.push(
-        JSON.parse(JSON.stringify(vehicle.vehicleDetails))
+        JSON.parse(JSON.stringify(vehicle.vehicleDetails)),
       );
 
       // Initialize stations array if it doesn't exist
@@ -6281,19 +6279,19 @@ function groupVehiclesByName(vehicles) {
         existingVehicle.stations = [];
         // Add the first vehicle's station data
         existingVehicle.stations.push(
-          JSON.parse(JSON.stringify(existingVehicle.stationData))
+          JSON.parse(JSON.stringify(existingVehicle.stationData)),
         );
       }
 
       // Check if this station already exists in the stations array
       const stationExists = existingVehicle.stations.some(
-        (station) => station.stationId === vehicle.stationData.stationId
+        (station) => station.stationId === vehicle.stationData.stationId,
       );
 
       if (!stationExists) {
         // Add current vehicle's station data
         existingVehicle.stations.push(
-          JSON.parse(JSON.stringify(vehicle.stationData))
+          JSON.parse(JSON.stringify(vehicle.stationData)),
         );
       }
 
@@ -6354,7 +6352,7 @@ function groupVehiclesByName(vehicles) {
 
       // Check if this station already exists in the stations array
       const stationExists = existingVehicle.stations.some(
-        (station) => station.stationId === vehicle.stationData.stationId
+        (station) => station.stationId === vehicle.stationData.stationId,
       );
 
       if (!stationExists) {
@@ -6453,9 +6451,10 @@ const getPlanData = async (query) => {
         },
       },
       { $match: matchFilter },
+      { $sort: { planDuration: 1 } },
       { $skip: skip },
       { $limit: Number(limit) },
-      { $sort: { createdAt: -1 } },
+      // { $sort: { createdAt: -1 } },
     ]);
 
     // Total records count
@@ -6549,7 +6548,7 @@ async function getLocationData(query) {
             ...location.toObject(),
             stationCount,
           };
-        })
+        }),
       );
 
       obj.data = locationData;

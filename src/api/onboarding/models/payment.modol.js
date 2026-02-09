@@ -72,14 +72,21 @@ const paymentRec = async (req, res) => {
     let transactions = [];
 
     bookings.forEach((booking) => {
+      const isDiscountApplied =
+        booking.bookingPrice.discountTotalPrice > 0 ?? false;
+      const isPartiallyPaid = booking.bookingPrice.userPaid > 0 ?? false;
+      const mainBookingAmount =
+        (isDiscountApplied
+          ? booking.bookingPrice.discountTotalPrice
+          : isPartiallyPaid
+            ? booking.bookingPrice.userPaid
+            : booking.bookingPrice?.totalPrice) ?? 0;
+
       // Main booking payment
       transactions.push({
         bookingId: booking.bookingId,
         transactionType: "Main Booking",
-        amount:
-          booking.bookingPrice.discountTotalPrice > 0
-            ? booking.bookingPrice.discountTotalPrice
-            : booking.bookingPrice?.totalPrice || 0,
+        amount: mainBookingAmount,
         payInitFrom: booking.payInitFrom,
         rrnNumber: booking.bookingPrice?.rrnNumber || "NA",
         payment_order_id: booking.payment_order_id,
@@ -108,8 +115,8 @@ const paymentRec = async (req, res) => {
             amount: Math.round(
               Number(ext.amount) +
                 Number(ext?.tax || 0) +
-                Number(ext?.addonTax || 0) +
-                Number(ext?.addOnAmount || 0),
+                Number(ext?.addonTax || 0),
+              // Number(ext?.addOnAmount || 0),
             ),
             paymentgatewayOrderId: ext.orderId,
             paySuccessId: ext.transactionId,
