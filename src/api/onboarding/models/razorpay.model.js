@@ -791,6 +791,8 @@ const handleExtendBookingWebhook = async (
     return;
   }
 
+  booking.BookingEndDateAndTime = extend.BookingEndDateAndTime;
+
   extend.status = "paid";
   extend.paymentMethod = "online";
   extend.transactionId = paymentId;

@@ -19,6 +19,7 @@ const vehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.sch
 const {
   getAllVehiclesData,
   updateMultipleVehicles,
+  getVehicleIds,
 } = require("../models/getAllVehicleDataAdmin");
 const { documentUpload, getDocument } = require("../models/DocumentUpload");
 const { getAllDocument } = require("../models/getAllDocumentAdmin");
@@ -693,6 +694,10 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
 
 router.get("/getAllVehiclesData", async (req, res) => {
   getAllVehiclesData(req, res);
+});
+
+router.get("/getAllVehiclesIdsData", async (req, res) => {
+  getVehicleIds(req, res);
 });
 
 router.get("/getAllInvoice", async (req, res) => {
