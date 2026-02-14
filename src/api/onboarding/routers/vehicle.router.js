@@ -86,6 +86,7 @@ const {
   editBooking,
   extendBooking,
   initiateExtensionBooking,
+  updateExtendBooking,
 } = require("../models/booking.model");
 const {
   uploadImageToBucketForPickupImage,
@@ -258,6 +259,10 @@ router.post("/initiate-extend-booking", async (req, res) => {
 
 router.post("/extend-booking", async (req, res) => {
   extendBooking(req, res);
+});
+
+router.post("/confirm-extend-booking", Authentication, async (req, res) => {
+  updateExtendBooking(req, res);
 });
 
 router.post("/initiate-extend-admin-booking", async (req, res) => {

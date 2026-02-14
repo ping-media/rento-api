@@ -1135,6 +1135,81 @@ const extendBooking = async (req, res) => {
   }
 };
 
+const updateExtendBooking = async (req, res) => {
+  const { _id, Note, data, extendId } = req.body;
+
+  try {
+    if (!_id || !extendId) {
+      return res.json({
+        success: false,
+        status: 400,
+        message: "Booking id not found!. try again",
+      });
+    }
+
+    const booking = await Booking.findById(_id);
+
+    if (!booking) {
+      return res.json({
+        success: false,
+        status: 400,
+        message: "Booking with given id not found!. try again",
+      });
+    }
+
+    if (Note) {
+      booking.notes = [...(booking.notes || []), Note];
+      booking.markModified("notes");
+    }
+
+    const bookingPrice = booking?.bookingPrice ?? null;
+
+    if (bookingPrice) {
+      const ExtendBookings = bookingPrice?.extendAmount ?? [];
+      const extendIndex = ExtendBookings.findIndex((e) => e.id === extendId);
+
+      if (extendIndex === -1) {
+        return res.json({
+          success: false,
+          status: 400,
+          message: "Extend booking not found!",
+        });
+      }
+
+      ExtendBookings[extendIndex] = {
+        ...ExtendBookings[extendIndex],
+        ...data,
+      };
+      booking.BookingEndDateAndTime =
+        ExtendBookings[extendIndex]?.bookingEndDateAndTime ||
+        ExtendBookings[extendIndex]?.BookingEndDateAndTime;
+      booking.bookingStatus = "extended";
+
+      booking.markModified("bookingPrice.extendAmount");
+    } else {
+      return res.json({
+        success: false,
+        status: 400,
+        message: "Not able to get booking data! try again",
+      });
+    }
+
+    await booking.save();
+
+    return res.json({
+      success: true,
+      status: 200,
+      message: "extension update successfully.",
+    });
+  } catch (error) {
+    return res.json({
+      success: false,
+      status: 500,
+      message: "Not able to update the extension data!. try again",
+    });
+  }
+};
+
 const initiateExtendBookingAfterPayment = async (req, res) => {
   let {
     _id,
@@ -1624,5 +1699,6 @@ module.exports = {
   initiateExtendBookingAfterPayment,
   editBooking,
   updateBooking,
+  updateExtendBooking,
   deleteBooking,
 };
