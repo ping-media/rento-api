@@ -325,7 +325,7 @@ router.get(
         }
 
         const extendBooking =
-          bookingPrice.extendAmount?.find((ext) => ext.id === extendIdNum) ??
+          bookingPrice?.extendAmount?.find((ext) => ext.id === extendIdNum) ??
           null;
         // const extendBooking =
         //   booking.bookingPrice.extendAmount[
@@ -346,7 +346,7 @@ router.get(
       }
 
       res.json({
-        paymentStatus: booking.paymentStatus,
+        paymentStatus: extendBooking.status,
         bookingStatus: booking.bookingStatus,
         success: true,
       });

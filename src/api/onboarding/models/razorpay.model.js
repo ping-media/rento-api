@@ -819,7 +819,9 @@ const handleExtendBookingWebhook = async (
         title: "Booking Extended by User",
         date: Date.now(),
         paymentAmount: amountPaid || 0,
-        extendDate: extend.bookingEndDateAndTime,
+        endDate: extend.bookingEndDateAndTime,
+        paymentId: paymentId || "",
+        extended: true,
       },
     ],
   });
