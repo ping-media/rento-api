@@ -3,6 +3,8 @@ const MaintenanceVehicle = require("../../../db/schemas/onboarding/maintenanceVe
 const mongoose = require("mongoose");
 const Plan = require("../../../db/schemas/onboarding/plan.schema");
 
+const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const updateManyVehicles = async (filter, updateData) => {
   try {
     if (typeof updateData !== "object" || Array.isArray(updateData)) {
@@ -380,7 +382,7 @@ const getVehicleIds = async (req, res) => {
       {
         $match: {
           "vehicleMasterData.vehicleName": {
-            $regex: vehicleName,
+            $regex: escapeRegex(vehicleName),
             $options: "i",
           },
         },
