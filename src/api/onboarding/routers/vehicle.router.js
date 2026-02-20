@@ -246,7 +246,7 @@ router.post("/delete-booking", async (req, res) => {
   deleteBooking(req, res);
 });
 
-router.post("/reschedule-booking", async (req, res) => {
+router.post("/reschedule-booking", Authentication, async (req, res) => {
   updateBooking(req, res);
 });
 

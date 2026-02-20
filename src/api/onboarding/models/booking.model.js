@@ -1489,7 +1489,7 @@ const updateBooking = async (req, res) => {
       currentBooking_id: booking._id,
       timeLine: [
         {
-          title: "Booking Rescheduled",
+          title: "Booking Rescheduled By Admin",
           date: Date.now(),
           newStartDate: isStartUpdate ? newStart : "",
           newEndDate: isEndUpdate ? newEnd : "",
@@ -1503,7 +1503,7 @@ const updateBooking = async (req, res) => {
       success: true,
       isStartUpdate,
       isEndUpdate,
-      timeline: timelineData,
+      timeline: timelineData.timeLine[0],
     });
   } catch (error) {
     console.warn(
