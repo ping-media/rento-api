@@ -23,7 +23,7 @@ const startServer = async () => {
       limit: "50mb",
       extended: true,
       parameterLimit: 50000,
-    })
+    }),
   );
 
   app.use(
@@ -31,7 +31,7 @@ const startServer = async () => {
       origin: "*",
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization", "token"],
-    })
+    }),
   );
   app.options("*", cors());
 

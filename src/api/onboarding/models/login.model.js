@@ -32,7 +32,7 @@ async function loginUser({ contact, countryCode, email }) {
       await sendEmail(
         email,
         "Viberzone login otp",
-        "<b>Please use this otp to authenticate vibezone </b>" + otp
+        "<b>Please use this otp to authenticate vibezone </b>" + otp,
       );
     } else {
       await sendMessage(process.env.OTP_TEMPLATE, otp, contact, countryCode);
@@ -56,7 +56,7 @@ async function loginUser({ contact, countryCode, email }) {
     await sendEmail(
       email,
       "Viberzone login otp",
-      "<b>Please use this otp to authenticate vibezone </b>" + otp
+      "<b>Please use this otp to authenticate vibezone </b>" + otp,
     );
   } else {
     await sendMessage(process.env.OTP_TEMPLATE, otp, contact, countryCode);
@@ -111,7 +111,7 @@ async function adminLogin({ email, password }) {
 
       if (userType == "manager") {
         stationData = await Station.findOne({ userId: _id }).select(
-          " stationName stationId locationId"
+          " stationName stationId locationId",
         );
       }
     }
@@ -140,23 +140,9 @@ async function adminLogin({ email, password }) {
       expiresIn: "43200m",
     });
 
-    // Access token - expires in 7 days
-    // const token = JWT.sign({ id: result._id }, BCRYPT_TOKEN, {
-    //   expiresIn: "10080m", // 7 days
-    // });
-
-    // // Refresh token - expires in 90 days
-    // const refreshToken = JWT.sign(
-    //   { id: result._id, type: "refresh" },
-    //   BCRYPT_TOKEN,
-    //   {
-    //     expiresIn: "129600m", // 90 days
-    //   }
-    // );
     const { password: dbPassword, ...rest } = result.toObject();
     obj.data = rest;
     obj.token = token;
-    // obj.refreshToken = refreshToken;
     obj.Station = stationData || null;
   } else {
     obj.status = 401;
@@ -165,15 +151,95 @@ async function adminLogin({ email, password }) {
   return obj;
 }
 
+// async function adminLogin({ email, password }) {
+//   const obj = {
+//     status: 200,
+//     message: "Admin logged in successfully",
+//     data: [],
+//     accessToken: "",
+//     refreshToken: "",
+//     Station: null,
+//   };
+
+//   if (!email || !password) {
+//     obj.status = 400;
+//     obj.message = "Email and password are required";
+//     return obj;
+//   }
+
+//   // Generic message prevents user enumeration attacks
+//   const invalidMsg = "Invalid credentials";
+
+//   const result = await User.findOne({ email: email.toLowerCase().trim() });
+
+//   if (!result) {
+//     obj.status = 401;
+//     obj.message = invalidMsg;
+//     return obj;
+//   }
+
+//   if (result.userType === "customer") {
+//     obj.status = 403;
+//     obj.message = "Access denied";
+//     return obj;
+//   }
+
+//   if (result.status === "inactive") {
+//     obj.status = 403;
+//     obj.message = "Account is inactive. Contact support.";
+//     return obj;
+//   }
+
+//   const isMatch = await bcrypt.compare(password, result.password); // async compare
+//   if (!isMatch) {
+//     obj.status = 401;
+//     obj.message = invalidMsg;
+//     return obj;
+//   }
+
+//   // Short-lived access token
+//   const accessToken = JWT.sign(
+//     { id: result._id, userType: result.userType },
+//     process.env.ACCESS_TOKEN_SECRET,
+//     { expiresIn: "15m" },
+//   );
+
+//   // Long-lived refresh token
+//   const refreshToken = JWT.sign(
+//     { id: result._id },
+//     process.env.REFRESH_TOKEN_SECRET,
+//     { expiresIn: "7d" },
+//   );
+
+//   // Save hashed refresh token in DB
+//   result.refreshToken = await bcrypt.hash(refreshToken, 10);
+//   await result.save();
+
+//   let stationData = null;
+//   if (result.userType === "manager") {
+//     stationData = await Station.findOne({ userId: result._id }).select(
+//       "stationName stationId locationId",
+//     );
+//   }
+
+//   const { password: _, refreshToken: __, ...rest } = result.toObject();
+//   obj.data = rest;
+//   obj.accessToken = accessToken;
+//   obj.refreshToken = refreshToken;
+//   obj.Station = stationData;
+
+//   return obj;
+// }
+
 async function refreshToken({ refreshToken }) {
   const obj = {
     status: 200,
     message: "Token refreshed successfully",
-    token: "",
+    accessToken: "",
   };
 
   if (!refreshToken) {
-    return res.status(401).json({ message: "Refresh token is required" });
+    return res.status(401).json({ message: "No refresh token" });
   }
 
   const decoded = JWT.verify(refreshToken, BCRYPT_TOKEN);
@@ -181,23 +247,75 @@ async function refreshToken({ refreshToken }) {
   // Verify it's a refresh token
   if (decoded.type !== "refresh") {
     obj.message = "Invalid refresh token";
-    return obj;
+    return res.status(403).json({ message: "Invalid refresh token" });
   }
 
   const user = await User.findOne({ _id: decoded.id });
 
   if (!user || user.status !== "active") {
     obj.message = "User not found or inactive";
-    return obj;
+    return res.status(403).json({ message: "Invalid refresh token" });
   }
+
+  // Verify against stored hash
+  const isValid = await bcrypt.compare(token, user.refreshToken);
+  if (!isValid)
+    return res.status(403).json({ message: "Invalid refresh token" });
 
   // Generate new access token
   const newToken = JWT.sign({ id: user._id }, BCRYPT_TOKEN, {
-    expiresIn: "10080m", // 7 days
+    expiresIn: "15m",
   });
 
   obj.token = newToken;
   return obj;
+}
+// async function refreshToken({ refreshToken }) {
+//   const obj = {
+//     status: 200,
+//     message: "Token refreshed successfully",
+//     token: "",
+//   };
+
+//   if (!refreshToken) {
+//     return res.status(401).json({ message: "Refresh token is required" });
+//   }
+
+//   const decoded = JWT.verify(refreshToken, BCRYPT_TOKEN);
+
+//   // Verify it's a refresh token
+//   if (decoded.type !== "refresh") {
+//     obj.message = "Invalid refresh token";
+//     return obj;
+//   }
+
+//   const user = await User.findOne({ _id: decoded.id });
+
+//   if (!user || user.status !== "active") {
+//     obj.message = "User not found or inactive";
+//     return obj;
+//   }
+
+//   // Generate new access token
+//   const newToken = JWT.sign({ id: user._id }, BCRYPT_TOKEN, {
+//     expiresIn: "10080m", // 7 days
+//   });
+
+//   obj.token = newToken;
+//   return obj;
+// }
+
+async function logout({ refreshToken }) {
+  // const token = req.cookies?.refreshToken;
+
+  if (refreshToken) {
+    // Clear refresh token from DB
+    const decoded = JWT.verify(refreshToken, process.env.BCRYPT_TOKEN);
+    await User.findByIdAndUpdate(decoded.id, { refreshToken: null });
+  }
+
+  res.clearCookie("refreshToken");
+  return { status: 200, message: "Logged out successfully" };
 }
 
 async function updateProfile({
@@ -253,7 +371,7 @@ async function updateProfile({
   let stationData = null;
   if (user.userType === "manager") {
     stationData = await Station.findOne({ userId: _id }).select(
-      "stationName stationId locationId"
+      "stationName stationId locationId",
     );
   }
 
@@ -339,7 +457,7 @@ async function resendOtp({ Contact, email }) {
     await sendEmail(
       email,
       "Viberzone login otp",
-      "<b>Please use this otp to authenticate vibezone </b>" + otp
+      "<b>Please use this otp to authenticate vibezone </b>" + otp,
     );
   } else {
     await sendMessage(process.env.OTP_TEMPLATE, otp, Contact);
@@ -362,6 +480,7 @@ module.exports = {
   updateProfile,
   adminLogin,
   guestLogin,
+  logout,
   logOut,
   verifyOtp,
   resendOtp,

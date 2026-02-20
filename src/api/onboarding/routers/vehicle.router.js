@@ -54,6 +54,7 @@ const {
 const {
   timelineFunction,
   timelineFunctionForGet,
+  addTimelineNote,
 } = require("../models/timeline.model");
 const {
   // vehicleChangeInBooking,
@@ -267,6 +268,10 @@ router.post("/confirm-extend-booking", Authentication, async (req, res) => {
 
 router.post("/initiate-extend-admin-booking", async (req, res) => {
   initiateExtendBookingAfterPayment(req, res);
+});
+
+router.post("/add-timeline-note", Authentication, async (req, res) => {
+  addTimelineNote(req, res);
 });
 
 router.post("/create-payment-link", async (req, res) => {

@@ -45,7 +45,7 @@ const timelineFunction = async (req, res) => {
 
       await Timeline.updateOne(
         { currentBooking_id },
-        { $set: { timeLine: updatedTimeline } }
+        { $set: { timeLine: updatedTimeline } },
       );
 
       if (
@@ -81,7 +81,7 @@ const timelineFunction = async (req, res) => {
           bookingId,
           amount,
           link,
-          managerContact
+          managerContact,
         );
       }
       return res.status(200).json({
@@ -141,7 +141,7 @@ const timelineFunctionServer = async ({
 
       await Timeline.updateOne(
         { currentBooking_id },
-        { $set: { timeLine: updatedTimeline } }
+        { $set: { timeLine: updatedTimeline } },
       );
 
       if (
@@ -177,7 +177,7 @@ const timelineFunctionServer = async ({
           bookingId,
           amount,
           link,
-          managerContact
+          managerContact,
         );
       }
       return {
@@ -191,6 +191,55 @@ const timelineFunctionServer = async ({
       status: 500,
       message: error.message,
     };
+  }
+};
+
+const addTimelineNote = async (req, res) => {
+  let { _id, index, note } = req.body;
+
+  if (!_id || index === undefined || index === null || !note) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Missing required fields" });
+  }
+
+  try {
+    const data = await Timeline.findById(_id);
+
+    if (!data) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Timeline data not found" });
+    }
+
+    const currentTimeline = data.timeLine[index] ?? null;
+
+    if (!currentTimeline) {
+      return res.status(400).json({
+        success: false,
+        message: "Timeline with given index not found",
+      });
+    }
+
+    if (!currentTimeline.notes) {
+      currentTimeline.notes = [];
+    }
+
+    currentTimeline.notes.push(note);
+    data.markModified(`timeLine.${index}.notes`);
+
+    await data.save();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Timeline updated successfully." });
+  } catch (error) {
+    console.log("Error while updating the timeline", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "unable to update the timeline at this movement! try again",
+    });
   }
 };
 
@@ -223,4 +272,5 @@ module.exports = {
   timelineFunction,
   timelineFunctionServer,
   timelineFunctionForGet,
+  addTimelineNote,
 };

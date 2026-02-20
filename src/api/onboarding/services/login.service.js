@@ -8,6 +8,7 @@ const {
   updateNotificationsSettings,
   getNotificationsSettings,
   refreshToken,
+  logout,
 } = require("../models/login.model");
 
 exports.adminLogin = async (req, res) => {
@@ -24,9 +25,59 @@ exports.adminLogin = async (req, res) => {
   }
 };
 
+// exports.adminLogin = async (req, res) => {
+//   try {
+//     const result = await adminLogin(req.body);
+
+//     if (result.status !== 200) {
+//       return res.status(result.status).json({
+//         status: result.status,
+//         message: result.message,
+//       });
+//     }
+
+//     // Refresh token goes in an HttpOnly cookie — JS cannot access this
+//     res.cookie("refreshToken", result.refreshToken, {
+//       httpOnly: true,
+//       secure: process.env.NODE_ENV === "production", // HTTPS only in prod
+//       sameSite: "strict",
+//       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+//     });
+
+//     return res.status(200).json({
+//       status: 200,
+//       message: result.message,
+//       accessToken: result.accessToken, // short lived, stored in memory on frontend
+//       data: result.data,
+//       Station: result.Station,
+//     });
+//   } catch (err) {
+//     return res.status(400).json({
+//       message: err.message,
+//       name: err.name,
+//       stack: err.stack,
+//       status: 400,
+//     });
+//   }
+// };
+
 exports.refreshToken = async (req, res) => {
   try {
     const result = await refreshToken(req.body);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    const result = await logout(req.body);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({

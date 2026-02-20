@@ -17,6 +17,10 @@ router.post("/adminLogin", async (req, res) => {
   loginService.adminLogin(req, res);
 });
 
+router.post("/logout", async (req, res) => {
+  loginService.logout(req, res);
+});
+
 router.post("/refreshToken", async (req, res) => {
   loginService.refreshToken(req, res);
 });
