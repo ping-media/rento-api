@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 
 // Import your booking schema
 const Booking = require("../src/db/schemas/onboarding/booking.schema");
+const {
+  timelineFunctionServer,
+} = require("../src/api/onboarding/models/timeline.model");
 require("dotenv").config();
 
 async function ensureDBConnection() {
@@ -35,50 +38,104 @@ module.exports = async (req, res) => {
     // Connect to database
     await ensureDBConnection();
 
-    // const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const now = new Date();
+    // const now = new Date();
 
-    const result = await Booking.updateMany(
-      {
-        paymentStatus: "pending",
-        bookingStatus: "pending",
-        rideStatus: "pending",
-        $expr: {
-          $lt: [
-            {
-              $add: [
-                { $toDate: "$BookingStartDateAndTime" },
-                24 * 60 * 60 * 1000,
-              ],
-            },
-            now,
-          ],
-        },
+    // const result = await Booking.updateMany(
+    //   {
+    //     paymentStatus: "pending",
+    //     bookingStatus: "pending",
+    //     rideStatus: "pending",
+    //     createdAt: {
+    //       $lt: new Date(now - 24 * 60 * 60 * 1000),
+    //     },
+    //     // $expr: {
+    //     //   $lt: [
+    //     //     {
+    //     //       $add: [
+    //     //         { $toDate: "$BookingStartDateAndTime" },
+    //     //         24 * 60 * 60 * 1000,
+    //     //       ],
+    //     //     },
+    //     //     now,
+    //     //   ],
+    //     // },
+    //   },
+    //   {
+    //     $set: {
+    //       paymentStatus: "failed",
+    //       bookingStatus: "canceled",
+    //       rideStatus: "canceled",
+    //     },
+    //   },
+    // );
+
+    const expiredBookings = await Booking.find({
+      paymentStatus: "pending",
+      bookingStatus: "pending",
+      rideStatus: "pending",
+      createdAt: {
+        $lt: new Date(Date.now() - 24 * 60 * 60 * 1000),
       },
-      {
-        $set: {
-          paymentStatus: "failed",
-          bookingStatus: "canceled",
-          rideStatus: "canceled",
-        },
-      }
-    );
+    }).select("_id userId bookingId");
 
-    if (result.modifiedCount > 0) {
-      console.log(`Canceled ${result.modifiedCount} pending bookings`);
-      return res.status(200).json({
-        success: true,
-        message: `Canceled ${result.modifiedCount} bookings`,
-        count: result.modifiedCount,
-      });
-    } else {
-      console.log("No pending payments to cancel");
+    if (expiredBookings.length === 0) {
       return res.status(200).json({
         success: true,
         message: "No pending payments to cancel",
         count: 0,
       });
     }
+
+    // Cancel all
+    await Booking.updateMany(
+      { _id: { $in: expiredBookings.map((b) => b._id) } },
+      {
+        $set: {
+          paymentStatus: "failed",
+          bookingStatus: "canceled",
+          rideStatus: "canceled",
+        },
+      },
+    );
+
+    // Add timeline for each
+    await Promise.all(
+      expiredBookings.map((booking) =>
+        timelineFunctionServer({
+          currentBooking_id: booking._id,
+          bookingId: booking.bookingId,
+          userId: booking.userId,
+          timeLine: [
+            {
+              title: "Booking Auto Cancelled By System",
+              date: Date.now(),
+            },
+          ],
+        }),
+      ),
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `Canceled ${expiredBookings.length} bookings`,
+      count: expiredBookings.length,
+    });
+
+    // if (result.modifiedCount > 0) {
+    //   console.log(`Canceled ${result.modifiedCount} pending bookings`);
+    //   return res.status(200).json({
+    //     success: true,
+    //     message: `Canceled ${result.modifiedCount} bookings`,
+    //     count: result.modifiedCount,
+    //   });
+    // } else {
+    //   console.log("No pending payments to cancel");
+    //   return res.status(200).json({
+    //     success: true,
+    //     message: "No pending payments to cancel",
+    //     count: 0,
+    //   });
+    // }
   } catch (error) {
     console.error("Cron job error:", error);
     return res.status(500).json({
