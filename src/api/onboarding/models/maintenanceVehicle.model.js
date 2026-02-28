@@ -144,7 +144,7 @@ const maintenanceVehicleFunction = async (req, res) => {
       }
       const existingMaintenance = await MaintenanceVehicle.updateMany(
         { _id: { $in: maintenanceIds } },
-        { $set: { endDate } }
+        { $set: { endDate, status: "inactive" } },
       );
       return res.json({
         status: 200,
@@ -153,9 +153,8 @@ const maintenanceVehicleFunction = async (req, res) => {
       });
     } else if (maintenanceId) {
       // Edit existing record
-      const existingMaintenance = await MaintenanceVehicle.findById(
-        maintenanceId
-      );
+      const existingMaintenance =
+        await MaintenanceVehicle.findById(maintenanceId);
 
       if (!existingMaintenance) {
         return res.json({
@@ -174,7 +173,9 @@ const maintenanceVehicleFunction = async (req, res) => {
       }
 
       existingMaintenance.endDate = endDate;
+      await existingMaintenance.save();
 
+      existingMaintenance.status = "inactive";
       await existingMaintenance.save();
 
       return res.json({
@@ -186,6 +187,7 @@ const maintenanceVehicleFunction = async (req, res) => {
       // Check for overlapping maintenance schedules
       const overlappingMaintenance = await MaintenanceVehicle.findOne({
         vehicleTableId: vehicleTableId,
+        status: "active",
         $or: [
           // Case 1: New schedule starts during an existing schedule
           {
@@ -226,6 +228,7 @@ const maintenanceVehicleFunction = async (req, res) => {
           startDate,
           endDate,
           reason,
+          status: "active",
         };
         const newMaintenanceData = new MaintenanceVehicle(maintenanceData);
         await newMaintenanceData.save();

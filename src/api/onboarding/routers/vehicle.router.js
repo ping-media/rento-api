@@ -1282,9 +1282,9 @@ router.get("/maintenanceVehicle", Authentication, async (req, res) => {
   getMaintenanceVehicle(req, res);
 });
 
-router.get("/maintenanceVehicle", Authentication, async (req, res) => {
-  getMaintenanceVehicle(req, res);
-});
+// router.get("/maintenanceVehicle", Authentication, async (req, res) => {
+//   getMaintenanceVehicle(req, res);
+// });
 
 router.post("/createTimeline", async (req, res) => {
   timelineFunction(req, res);

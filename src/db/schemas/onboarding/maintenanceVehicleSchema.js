@@ -23,13 +23,27 @@ const maintenanceVehicleSchema = new Schema(
       require: true,
       lowercase: true,
     },
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
+    },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+  { timestamps: { createsdAt: "createdAt", updatedAt: "updatedAt" } },
 );
+
+// indexing
+maintenanceVehicleSchema.index({ vehicleTableId: 1 });
+maintenanceVehicleSchema.index({
+  vehicleTableId: 1,
+  status: 1,
+  startDate: 1,
+  endDate: 1,
+});
 
 const MaintenanceVehicle = mongoose.model(
   "MaintenanceVehicle",
-  maintenanceVehicleSchema
+  maintenanceVehicleSchema,
 );
 
 module.exports = MaintenanceVehicle;

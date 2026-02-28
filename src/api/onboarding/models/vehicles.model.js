@@ -2630,23 +2630,33 @@ const getVehicleTbl = async (query) => {
               input: "$maintenanceData",
               as: "maintenance",
               cond: {
-                $or: [
+                $and: [
                   {
-                    $and: [
-                      { $gte: ["$$maintenance.startDate", startDate] },
-                      { $lte: ["$$maintenance.startDate", endDate] },
+                    $eq: [
+                      { $ifNull: ["$$maintenance.status", "active"] },
+                      "active",
                     ],
                   },
                   {
-                    $and: [
-                      { $gte: ["$$maintenance.endDate", startDate] },
-                      { $lte: ["$$maintenance.endDate", endDate] },
-                    ],
-                  },
-                  {
-                    $and: [
-                      { $lte: ["$$maintenance.startDate", startDate] },
-                      { $gte: ["$$maintenance.endDate", endDate] },
+                    $or: [
+                      {
+                        $and: [
+                          { $gte: ["$$maintenance.startDate", startDate] },
+                          { $lte: ["$$maintenance.startDate", endDate] },
+                        ],
+                      },
+                      {
+                        $and: [
+                          { $gte: ["$$maintenance.endDate", startDate] },
+                          { $lte: ["$$maintenance.endDate", endDate] },
+                        ],
+                      },
+                      {
+                        $and: [
+                          { $lte: ["$$maintenance.startDate", startDate] },
+                          { $gte: ["$$maintenance.endDate", endDate] },
+                        ],
+                      },
                     ],
                   },
                 ],
@@ -2824,23 +2834,33 @@ const getVehicleTbl = async (query) => {
               input: "$maintenanceData",
               as: "maintenance",
               cond: {
-                $or: [
+                $and: [
                   {
-                    $and: [
-                      { $gte: ["$$maintenance.startDate", startDate] },
-                      { $lte: ["$$maintenance.startDate", endDate] },
+                    $eq: [
+                      { $ifNull: ["$$maintenance.status", "active"] },
+                      "active",
                     ],
                   },
                   {
-                    $and: [
-                      { $gte: ["$$maintenance.endDate", startDate] },
-                      { $lte: ["$$maintenance.endDate", endDate] },
-                    ],
-                  },
-                  {
-                    $and: [
-                      { $lte: ["$$maintenance.startDate", startDate] },
-                      { $gte: ["$$maintenance.endDate", endDate] },
+                    $or: [
+                      {
+                        $and: [
+                          { $gte: ["$$maintenance.startDate", startDate] },
+                          { $lte: ["$$maintenance.startDate", endDate] },
+                        ],
+                      },
+                      {
+                        $and: [
+                          { $gte: ["$$maintenance.endDate", startDate] },
+                          { $lte: ["$$maintenance.endDate", endDate] },
+                        ],
+                      },
+                      {
+                        $and: [
+                          { $lte: ["$$maintenance.startDate", startDate] },
+                          { $gte: ["$$maintenance.endDate", endDate] },
+                        ],
+                      },
                     ],
                   },
                 ],
@@ -3436,33 +3456,43 @@ const getVehicleTblData = async (query) => {
               input: "$maintenanceData",
               as: "maintenance",
               cond: {
-                $or: [
-                  // Maintenance starts during search period
+                $and: [
                   {
-                    $and: [
-                      { $gte: ["$$maintenance.startDate", startDate] },
-                      { $lt: ["$$maintenance.startDate", endDate] },
+                    $eq: [
+                      { $ifNull: ["$$maintenance.status", "active"] },
+                      "active",
                     ],
                   },
-                  // Maintenance ends during search period
                   {
-                    $and: [
-                      { $gt: ["$$maintenance.endDate", startDate] },
-                      { $lte: ["$$maintenance.endDate", endDate] },
-                    ],
-                  },
-                  // Maintenance completely encompasses search period
-                  {
-                    $and: [
-                      { $lte: ["$$maintenance.startDate", startDate] },
-                      { $gte: ["$$maintenance.endDate", endDate] },
-                    ],
-                  },
-                  // Search period completely encompasses maintenance
-                  {
-                    $and: [
-                      { $gte: ["$$maintenance.startDate", startDate] },
-                      { $lte: ["$$maintenance.endDate", endDate] },
+                    $or: [
+                      // Maintenance starts during search period
+                      {
+                        $and: [
+                          { $gte: ["$$maintenance.startDate", startDate] },
+                          { $lt: ["$$maintenance.startDate", endDate] },
+                        ],
+                      },
+                      // Maintenance ends during search period
+                      {
+                        $and: [
+                          { $gt: ["$$maintenance.endDate", startDate] },
+                          { $lte: ["$$maintenance.endDate", endDate] },
+                        ],
+                      },
+                      // Maintenance completely encompasses search period
+                      {
+                        $and: [
+                          { $lte: ["$$maintenance.startDate", startDate] },
+                          { $gte: ["$$maintenance.endDate", endDate] },
+                        ],
+                      },
+                      // Search period completely encompasses maintenance
+                      {
+                        $and: [
+                          { $gte: ["$$maintenance.startDate", startDate] },
+                          { $lte: ["$$maintenance.endDate", endDate] },
+                        ],
+                      },
                     ],
                   },
                 ],
@@ -3470,110 +3500,6 @@ const getVehicleTblData = async (query) => {
             },
           },
         },
-
-        // $addFields: {
-        //   conflictingBookings: {
-        //     $filter: {
-        //       input: "$bookings",
-        //       as: "booking",
-        //       cond: {
-        //         $and: [
-        //           {
-        //             $and: [
-        //               { $ne: ["$$booking.rideStatus", "pending"] },
-        //               { $ne: ["$$booking.rideStatus", "canceled"] },
-        //               { $ne: ["$$booking.rideStatus", "completed"] },
-        //               { $ne: ["$$booking.bookingStatus", "canceled"] },
-        //             ],
-        //           },
-        //           // Check payment status: exclude if paid or partially paid
-        //           {
-        //             $or: [
-        //               { $eq: ["$$booking.paymentStatus", "paid"] },
-        //               { $eq: ["$$booking.paymentStatus", "partially_paid"] },
-        //             ],
-        //           },
-        //           {
-        //             $gte: ["$$booking.BookingEndDateAndTime", startDate],
-        //           },
-        //           // Check for time overlap (any of these conditions means conflict)
-        //           {
-        //             $or: [
-        //               // Booking starts during search period
-        //               {
-        //                 $and: [
-        //                   {
-        //                     $gte: [
-        //                       "$$booking.BookingStartDateAndTime",
-        //                       startDate,
-        //                     ],
-        //                   },
-        //                   {
-        //                     $lt: ["$$booking.BookingStartDateAndTime", endDate],
-        //                   },
-        //                 ],
-        //               },
-        //               // Booking ends during search period
-        //               {
-        //                 $and: [
-        //                   {
-        //                     $gt: ["$$booking.BookingEndDateAndTime", startDate],
-        //                   },
-        //                   {
-        //                     $lte: ["$$booking.BookingEndDateAndTime", endDate],
-        //                   },
-        //                 ],
-        //               },
-        //               // Booking completely encompasses search period
-        //               {
-        //                 $and: [
-        //                   {
-        //                     $lte: [
-        //                       "$$booking.BookingStartDateAndTime",
-        //                       startDate,
-        //                     ],
-        //                   },
-        //                   {
-        //                     $gte: ["$$booking.BookingEndDateAndTime", endDate],
-        //                   },
-        //                 ],
-        //               },
-        //             ],
-        //           },
-        //         ],
-        //       },
-        //     },
-        //   },
-
-        //   conflictingMaintenance: {
-        //     $filter: {
-        //       input: "$maintenanceData",
-        //       as: "maintenance",
-        //       cond: {
-        //         $or: [
-        //           {
-        //             $and: [
-        //               { $gte: ["$$maintenance.startDate", startDate] },
-        //               { $lte: ["$$maintenance.startDate", endDate] },
-        //             ],
-        //           },
-        //           {
-        //             $and: [
-        //               { $gte: ["$$maintenance.endDate", startDate] },
-        //               { $lte: ["$$maintenance.endDate", endDate] },
-        //             ],
-        //           },
-        //           {
-        //             $and: [
-        //               { $lte: ["$$maintenance.startDate", startDate] },
-        //               { $gte: ["$$maintenance.endDate", endDate] },
-        //             ],
-        //           },
-        //         ],
-        //       },
-        //     },
-        //   },
-        // },
       },
       {
         $addFields: {
@@ -3666,100 +3592,10 @@ const getVehicleTblData = async (query) => {
       }
     });
 
-    // Group excluded vehicles with the same approach
-    // excludedVehicles.forEach((vehicle) => {
-    //   const groupKey = `${vehicle.vehicleModel}-${
-    //     vehicle.vehicleMasterData?.vehicleBrand || ""
-    //   }-${vehicle.vehicleMasterData?.vehicleName || ""}-${vehicle.perDayCost}`;
-
-    //   if (!groupExcludedVehicles[groupKey]) {
-    //     groupExcludedVehicles[groupKey] = {
-    //       ...vehicle,
-    //       vehicleNumber: undefined,
-    //       lastServiceDate: undefined,
-    //       kmsRun: undefined,
-    //       lastMeterReading: undefined,
-    //       vehicleDetails: [
-    //         {
-    //           _id: vehicle._id,
-    //           vehicleNumber: vehicle.vehicleNumber,
-    //           lastServiceDate: vehicle.lastServiceDate,
-    //           kmsRun: vehicle.kmsRun,
-    //           lastMeterReading: vehicle.lastMeterReading || null,
-    //           BookingStartDate:
-    //             vehicle.bookings.length > 0
-    //               ? vehicle.bookings[vehicle.bookings.length - 1]
-    //                   .BookingStartDateAndTime
-    //               : null,
-    //           BookingEndDate:
-    //             vehicle.bookings.length > 0
-    //               ? vehicle.bookings[vehicle.bookings.length - 1]
-    //                   .BookingEndDateAndTime
-    //               : null,
-    //           MaintenanceStartDate:
-    //             vehicle.maintenanceData.length > 0
-    //               ? vehicle.maintenanceData[vehicle.maintenanceData.length - 1]
-    //                   .startDate
-    //               : null,
-    //           MaintenanceEndDate:
-    //             vehicle.maintenanceData.length > 0
-    //               ? vehicle.maintenanceData[vehicle.maintenanceData.length - 1]
-    //                   .endDate
-    //               : null,
-    //         },
-    //       ],
-    //     };
-    //   } else {
-    //     groupExcludedVehicles[groupKey].vehicleDetails.push({
-    //       _id: vehicle._id,
-    //       vehicleNumber: vehicle.vehicleNumber,
-    //       lastServiceDate: vehicle.lastServiceDate,
-    //       kmsRun: vehicle.kmsRun,
-    //       lastMeterReading: vehicle.lastMeterReading || null,
-    //       BookingStartDate:
-    //         vehicle.bookings.length > 0
-    //           ? vehicle.bookings[vehicle.bookings.length - 1]
-    //               .BookingStartDateAndTime
-    //           : null,
-    //       BookingEndDate:
-    //         vehicle.bookings.length > 0
-    //           ? vehicle.bookings[vehicle.bookings.length - 1]
-    //               .BookingEndDateAndTime
-    //           : null,
-    //       MaintenanceStartDate:
-    //         vehicle.maintenanceData.length > 0
-    //           ? vehicle.maintenanceData[vehicle.maintenanceData.length - 1]
-    //               .startDate
-    //           : null,
-    //       MaintenanceEndDate:
-    //         vehicle.maintenanceData.length > 0
-    //           ? vehicle.maintenanceData[vehicle.maintenanceData.length - 1]
-    //               .endDate
-    //           : null,
-    //     });
-    //   }
-    // });
     excludedVehicles.forEach((vehicle) => {
       const groupKey = `${vehicle.vehicleModel}-${
         vehicle.vehicleMasterData?.vehicleBrand || ""
       }-${vehicle.vehicleMasterData?.vehicleName || ""}-${vehicle.perDayCost}`;
-
-      // Debug: Log all conflicting bookings
-      // if (
-      //   vehicle.conflictingBookings &&
-      //   vehicle.conflictingBookings.length > 0
-      // ) {
-      //   console.log("Vehicle:", vehicle.vehicleNumber);
-      //   console.log(
-      //     "All conflicting bookings:",
-      //     vehicle.conflictingBookings.map((b) => ({
-      //       start: b.BookingStartDateAndTime,
-      //       end: b.BookingEndDateAndTime,
-      //       status: b.paymentStatus,
-      //       rideStatus: b.rideStatus,
-      //     }))
-      //   );
-      // }
 
       // Find the LATEST conflicting booking end date
       let latestBookingEndDate = null;
