@@ -38,43 +38,45 @@ module.exports = async (req, res) => {
     // Connect to database
     await ensureDBConnection();
 
-    // const now = new Date();
+    // deleting the extension
+    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
 
-    // const result = await Booking.updateMany(
-    //   {
-    //     paymentStatus: "pending",
-    //     bookingStatus: "pending",
-    //     rideStatus: "pending",
-    //     createdAt: {
-    //       $lt: new Date(now - 24 * 60 * 60 * 1000),
-    //     },
-    //     // $expr: {
-    //     //   $lt: [
-    //     //     {
-    //     //       $add: [
-    //     //         { $toDate: "$BookingStartDateAndTime" },
-    //     //         24 * 60 * 60 * 1000,
-    //     //       ],
-    //     //     },
-    //     //     now,
-    //     //   ],
-    //     // },
-    //   },
-    //   {
-    //     $set: {
-    //       paymentStatus: "failed",
-    //       bookingStatus: "canceled",
-    //       rideStatus: "canceled",
-    //     },
-    //   },
-    // );
+    const bookingsWithUnpaidExtends = await Booking.find({
+      "bookingPrice.extendAmount": {
+        $elemMatch: {
+          status: "unpaid",
+          paymentInitiatedDate: { $lt: tenMinutesAgo },
+        },
+      },
+    }).select("_id");
 
+    if (bookingsWithUnpaidExtends.length > 0) {
+      await Booking.updateMany(
+        {
+          _id: { $in: bookingsWithUnpaidExtends.map((b) => b._id) },
+        },
+        {
+          $pull: {
+            "bookingPrice.extendAmount": {
+              status: "unpaid",
+              paymentInitiatedDate: { $lt: tenMinutesAgo },
+            },
+          },
+        },
+      );
+
+      console.log(`Deleted ${bookingsWithUnpaidExtends.length} unpaid extends`);
+    }
+
+    // main booking cancelling
     const expiredBookings = await Booking.find({
       paymentStatus: "pending",
       bookingStatus: "pending",
       rideStatus: "pending",
       createdAt: {
-        $lt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        // $lt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        // change form 24 hour to 10 mins
+        $lt: new Date(Date.now() - 10 * 60 * 1000),
       },
     }).select("_id userId bookingId");
 
@@ -120,22 +122,6 @@ module.exports = async (req, res) => {
       message: `Canceled ${expiredBookings.length} bookings`,
       count: expiredBookings.length,
     });
-
-    // if (result.modifiedCount > 0) {
-    //   console.log(`Canceled ${result.modifiedCount} pending bookings`);
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: `Canceled ${result.modifiedCount} bookings`,
-    //     count: result.modifiedCount,
-    //   });
-    // } else {
-    //   console.log("No pending payments to cancel");
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: "No pending payments to cancel",
-    //     count: 0,
-    //   });
-    // }
   } catch (error) {
     console.error("Cron job error:", error);
     return res.status(500).json({

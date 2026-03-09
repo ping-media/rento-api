@@ -98,6 +98,7 @@ const {
   handleStationAddon,
   handleUpdatePayment,
 } = require("../models/stationAddon.model");
+const { getPolicy, savePolicy } = require("../models/policy.model");
 // const { cancelPendingPayments } = require("../utils/cron.js");
 
 // create messages
@@ -180,6 +181,12 @@ router.post("/create-station-addon", Authentication, async (req, res) => {
 router.post("/searchVehicle", async (req, res) => {
   vehiclesService.searchVehicle(req, res);
 });
+
+// GET policy by type
+router.get("/all-policy/:type", getPolicy);
+
+// CREATE or UPDATE policy
+router.post("/all-policy", Authentication, savePolicy);
 
 // get messages
 router.get("/getMessages/:chatId", auth(), async (req, res) => {
