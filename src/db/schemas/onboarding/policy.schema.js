@@ -8,7 +8,12 @@ const policySchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      enum: ["refund_policy", "terms_and_conditions", "privacy_policy"],
+      enum: [
+        "refund_policy",
+        "terms_and_conditions",
+        "privacy_policy",
+        "booking_terms",
+      ],
       index: true,
     },
     content: {
