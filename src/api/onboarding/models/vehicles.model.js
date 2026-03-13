@@ -2667,7 +2667,7 @@ const getVehicleTbl = async (query) => {
       },
       {
         $match: {
-          "vehicleMasterData.status": { $ne: "inactive" },
+          // "vehicleMasterData.status": { $ne: "inactive" },
           ...(vehicleBrand
             ? { "vehicleMasterData.vehicleBrand": vehicleBrand }
             : {}),
@@ -2683,6 +2683,7 @@ const getVehicleTbl = async (query) => {
           vehicleStatus: 1,
           conflictingBookings: 1,
           conflictingMaintenance: 1,
+          "vehicleMasterData.status": 1,
         },
       },
     ];
@@ -2979,6 +2980,12 @@ const getVehicleTbl = async (query) => {
             vehicleId: vehicle._id,
             vehicleNumber: vehicle.vehicleNumber,
             reason: "Vehicle is not active",
+          });
+        } else if (vehicle.vehicleMasterData?.status === "inactive") {
+          unavailabilityReasons.push({
+            vehicleId: vehicle._id,
+            vehicleNumber: vehicle.vehicleNumber,
+            reason: "Vehicle master is inactive",
           });
         } else if (vehicle.conflictingBookings.length > 0) {
           unavailabilityReasons.push({
@@ -3522,8 +3529,8 @@ const getVehicleTblData = async (query) => {
 
       {
         $match: {
-          vehicleStatus: "active",
-          "vehicleMasterData.status": { $ne: "inactive" },
+          // vehicleStatus: "active",
+          // "vehicleMasterData.status": { $ne: "inactive" },
           ...(vehicleBrand
             ? { "vehicleMasterData.vehicleBrand": vehicleBrand }
             : {}),
@@ -3549,13 +3556,17 @@ const getVehicleTblData = async (query) => {
     const availableVehicles = allVehicles.filter(
       (vehicle) =>
         vehicle.conflictingBookings.length === 0 &&
-        vehicle.conflictingMaintenance.length === 0,
+        vehicle.conflictingMaintenance.length === 0 &&
+        vehicle.vehicleStatus === "active" &&
+        vehicle.vehicleMasterData?.status !== "inactive",
     );
 
     const excludedVehicles = allVehicles.filter(
       (vehicle) =>
         vehicle.conflictingBookings.length > 0 ||
-        vehicle.conflictingMaintenance.length > 0,
+        vehicle.conflictingMaintenance.length > 0 ||
+        vehicle.vehicleStatus !== "active" ||
+        vehicle.vehicleMasterData?.status === "inactive",
     );
 
     const groupAvailableVehicles = {};
