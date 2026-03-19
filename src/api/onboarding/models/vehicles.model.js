@@ -205,6 +205,29 @@ async function createVehicle({
           return response;
         }
 
+        if (vehicleStatus === "active") {
+          const masterId = vehicleMasterId || find.vehicleMasterId;
+          const findMaster = await VehicleMaster.findOne({
+            _id: ObjectId(masterId),
+          });
+          if (!findMaster) {
+            response.status = 401;
+            response.message = "Invalid vehicleMasterId";
+            return response;
+          }
+          if (findMaster.status !== "active") {
+            response.status = 401;
+            response.message =
+              "Please make the Vehicle Master active before activating this vehicle";
+            await Log({
+              message: `VehicleMaster ${vehicleMasterId} is inactive, cannot activate vehicle`,
+              functionName: "createVehicle",
+              userId: stationId,
+            });
+            return response;
+          }
+        }
+
         if (deleteRec) {
           await VehicleTable.deleteOne({ _id: ObjectId(_id) });
           response.message = "Vehicle deleted successfully";
@@ -2418,6 +2441,7 @@ const getVehicleTbl = async (query) => {
       page = 1,
       limit = 20,
       search,
+      includeUnavailable = false,
     } = query;
     if (!locationId) {
       if (!_id && !BookingStartDateAndTime && !BookingEndDateAndTime) {
@@ -2873,12 +2897,60 @@ const getVehicleTbl = async (query) => {
       },
 
       // Match active vehicles and filter out those with conflicting bookings or maintenance
+      // {
+      //   $match: {
+      //     vehicleStatus: "active",
+      //     "vehicleMasterData.status": { $ne: "inactive" },
+      //     "conflictingBookings.0": { $exists: false },
+      //     "conflictingMaintenance.0": { $exists: false },
+      //   },
+      // },
       {
-        $match: {
-          vehicleStatus: "active",
-          "vehicleMasterData.status": { $ne: "inactive" },
-          "conflictingBookings.0": { $exists: false },
-          "conflictingMaintenance.0": { $exists: false },
+        $match: includeUnavailable
+          ? {
+              // includeUnavailable=true → show all, just filter inactive master
+              vehicleStatus: "active",
+              "vehicleMasterData.status": { $ne: "inactive" },
+            }
+          : {
+              // default → strict, remove conflicting bookings and maintenance
+              vehicleStatus: "active",
+              "vehicleMasterData.status": { $ne: "inactive" },
+              "conflictingBookings.0": { $exists: false },
+              "conflictingMaintenance.0": { $exists: false },
+            },
+      },
+      {
+        $addFields: {
+          vehicleStatus: includeUnavailable
+            ? {
+                $cond: {
+                  if: { $gt: [{ $size: "$conflictingMaintenance" }, 0] },
+                  then: "maintenance",
+                  else: {
+                    $cond: {
+                      if: { $gt: [{ $size: "$conflictingBookings" }, 0] },
+                      then: "booked",
+                      else: "$vehicleStatus",
+                    },
+                  },
+                },
+              }
+            : "$vehicleStatus", // default → status untouched, conflicts already filtered
+          bookingConflict: includeUnavailable
+            ? {
+                $cond: {
+                  if: { $gt: [{ $size: "$conflictingBookings" }, 0] },
+                  then: {
+                    _id: { $arrayElemAt: ["$conflictingBookings._id", 0] },
+                    bookingId: {
+                      $arrayElemAt: ["$conflictingBookings.bookingId", 0],
+                    },
+                  },
+                  else: null,
+                },
+              }
+            : null, // default → no conflict info needed
         },
       },
 
@@ -2925,6 +2997,7 @@ const getVehicleTbl = async (query) => {
           refundableDeposit: 1,
           lateFee: 1,
           vehicleStatus: 1,
+          bookingConflict: 1,
           freeKms: 1,
           vehicleMasterId: 1,
           vehicleMasterData: 1,
