@@ -54,7 +54,7 @@ async function otpGenerat(req, res) {
           $set: {
             mobileToken: pushToken,
           },
-        }
+        },
       );
       if (updateResult.modifiedCount === 0) {
         errorMessage = "Push token update failed: no document modified";
@@ -79,15 +79,17 @@ async function otpGenerat(req, res) {
         createdAt: new Date(),
         expiresAt: new Date(Date.now() + 5 * 60 * 1000),
       },
-      { upsert: true }
+      { upsert: true },
     );
 
+    // if (process.env.NODE_ENV === "production") {
     const smsResponse = await sendOtpViaFast2Sms(contact, otp);
     if (smsResponse.error) {
       const message = `Failed to send OTP to ${contact}: ${smsResponse.error}`;
       await createLog(message, "optGernet", user._id, 500);
       return res.json({ status: 500, message: "Failed to send OTP" });
     }
+    // }
 
     const message = "OTP sent successfully";
     await createLog(message, "optGernet", user._id, 200);
@@ -149,7 +151,7 @@ async function verify(req, res) {
       let profileImage = "";
       if (userDocument) {
         const file = userDocument.files?.filter((file) =>
-          file?.fileName?.includes("Selfie")
+          file?.fileName?.includes("Selfie"),
         );
         if (file) {
           profileImage = file[0]?.imageUrl || "";
@@ -193,7 +195,7 @@ async function verify(req, res) {
     let profileImage = "";
     if (userDocument) {
       const file = userDocument.files?.filter((file) =>
-        file?.fileName?.includes("Selfie")
+        file?.fileName?.includes("Selfie"),
       );
       if (file) {
         profileImage = file[0]?.imageUrl || "";
@@ -204,7 +206,7 @@ async function verify(req, res) {
       await User.findByIdAndUpdate(
         user._id,
         { isContactVerified: "yes" },
-        { new: true }
+        { new: true },
       );
     }
 

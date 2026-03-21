@@ -46,6 +46,8 @@ const calculateVehicleChangePricing = async (booking, newVehicleTableId) => {
     ?.filter((d) => d.title === "changedVehicle" && d.newVehicleSnapshot)
     ?.at(-1);
 
+  let addonAlreadyInOldCost = false;
+
   if (lastVehicleChange?.newVehicleSnapshot) {
     const lastSnapshot = lastVehicleChange.newVehicleSnapshot;
     const lastNewVehicleCost =
@@ -53,7 +55,12 @@ const calculateVehicleChangePricing = async (booking, newVehicleTableId) => {
 
     if (lastNewVehicleCost > 0) {
       currentSegment.oldCost = lastNewVehicleCost;
+      // snapshot is vehicle-only cost → addon not included → add separately
+      addonAlreadyInOldCost = false;
     }
+  } else {
+    // bookingPrice.totalPrice already includes addon → don't add again
+    addonAlreadyInOldCost = true;
   }
 
   const segmentStart = new Date(currentSegment.startDate);
@@ -61,7 +68,12 @@ const calculateVehicleChangePricing = async (booking, newVehicleTableId) => {
   const segmentDays = Math.ceil(
     (segmentEnd - segmentStart) / (1000 * 60 * 60 * 24),
   );
-  const daysLeft = Math.ceil((segmentEnd - now) / (1000 * 60 * 60 * 24));
+  const rawDaysLeft = (segmentEnd - now) / (1000 * 60 * 60 * 24);
+  const daysLeft = Math.min(
+    Math.ceil(rawDaysLeft), // rounds up remaining time
+    segmentDays, // but never more than total segment
+  );
+  // const daysLeft = Math.ceil((segmentEnd - now) / (1000 * 60 * 60 * 24));
 
   const totalBookingDuration = Math.ceil(
     (new Date(booking.BookingEndDateAndTime) -
@@ -94,20 +106,6 @@ const calculateVehicleChangePricing = async (booking, newVehicleTableId) => {
     includeUnavailable: true,
   });
 
-  // ADD THESE:
-  //   console.log("=== vehicleChangePricing debug ===");
-  //   console.log("newVehicleTableId:", newVehicleTableId);
-  //   console.log(
-  //     "segment dates:",
-  //     currentSegment.startDate,
-  //     "→",
-  //     currentSegment.endDate,
-  //   );
-  //   console.log("excludeBookingId:", booking._id.toString());
-  //   console.log("getVehicleTbl status:", newVehiclePricing.status);
-  //   console.log("getVehicleTbl data length:", newVehiclePricing.data?.length);
-  //   console.log("getVehicleTbl message:", newVehiclePricing.message);
-
   if (newVehiclePricing.status !== 200 || !newVehiclePricing.data?.length) {
     return { success: false, message: "Unable to fetch new vehicle pricing." };
   }
@@ -119,16 +117,21 @@ const calculateVehicleChangePricing = async (booking, newVehicleTableId) => {
     Number(booking.bookingPrice.extraAddonPrice || 0) +
     Number(booking.bookingPrice.addonTax || 0);
 
-  const addonProrated = (addonCost / totalBookingDuration) * daysLeft;
+  const addonProrated = addonAlreadyInOldCost
+    ? 0
+    : (addonCost / totalBookingDuration) * daysLeft;
 
   const oldRemainingValue =
     (currentSegment.oldCost / segmentDays) * daysLeft + addonProrated;
 
+  const addonForNew = (addonCost / totalBookingDuration) * daysLeft;
   const newVehicleFullPrice =
     newVehiclePriced.totalRentalCost + Number(newVehiclePriced.tax || 0);
 
   const newRemainingCost =
-    (newVehicleFullPrice / segmentDays) * daysLeft + addonProrated;
+    (newVehicleFullPrice / segmentDays) * daysLeft + addonForNew;
+  // const newRemainingCost =
+  //   (newVehicleFullPrice / segmentDays) * daysLeft + addonProrated;
 
   const priceDifference = newRemainingCost - oldRemainingValue;
 
