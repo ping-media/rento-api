@@ -89,6 +89,7 @@ const {
   extendBooking,
   initiateExtensionBooking,
   updateExtendBooking,
+  checkAndClearUnpaidExtension,
 } = require("../models/booking.model");
 const {
   uploadImageToBucketForPickupImage,
@@ -248,6 +249,10 @@ router.post("/initiate-booking", async (req, res) => {
 
 router.post("/initiate-extension", async (req, res) => {
   initiateExtensionBooking(req, res);
+});
+
+router.post("/check-extend-status", async (req, res) => {
+  checkAndClearUnpaidExtension(req, res);
 });
 
 router.post("/delete-booking", async (req, res) => {

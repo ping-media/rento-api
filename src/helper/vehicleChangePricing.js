@@ -1,7 +1,11 @@
 const { getVehicleTbl } = require("../api/onboarding/models/vehicles.model");
 const vehicleTable = require("../db/schemas/onboarding/vehicle-table.schema");
 
-const calculateVehicleChangePricing = async (booking, newVehicleTableId) => {
+const calculateVehicleChangePricing = async (
+  booking,
+  newVehicleTableId,
+  isAdmin = false,
+) => {
   const now = new Date();
   const paidExtensions =
     booking.bookingPrice.extendAmount?.filter((e) => e.status === "paid") || [];
@@ -69,7 +73,7 @@ const calculateVehicleChangePricing = async (booking, newVehicleTableId) => {
     (segmentEnd - segmentStart) / (1000 * 60 * 60 * 24),
   );
   const rawDaysLeft = (segmentEnd - now) / (1000 * 60 * 60 * 24);
-  const daysLeft = Math.min(
+  let daysLeft = Math.min(
     Math.ceil(rawDaysLeft), // rounds up remaining time
     segmentDays, // but never more than total segment
   );
@@ -82,10 +86,15 @@ const calculateVehicleChangePricing = async (booking, newVehicleTableId) => {
   );
 
   if (daysLeft <= 0) {
-    return {
-      success: false,
-      message: "No remaining days left in the booking.",
-    };
+    if (!isAdmin) {
+      // only block non-admins
+      return {
+        success: false,
+        message: "No remaining days left in the booking.",
+      };
+    }
+
+    daysLeft = 0;
   }
 
   // --- Fetch new vehicle with pricing for this segment ---
@@ -111,6 +120,16 @@ const calculateVehicleChangePricing = async (booking, newVehicleTableId) => {
   }
 
   const newVehiclePriced = newVehiclePricing.data[0];
+
+  if (newVehiclePriced.bookingConflict !== null) {
+    if (!isAdmin) {
+      return {
+        success: false,
+        message: `Vehicle is already booked. Booking ID: ${newVehiclePriced.bookingConflict?.bookingId}`,
+      };
+    }
+    // admin: allow but will be flagged in response
+  }
 
   // --- Calculate difference ---
   const addonCost =
@@ -141,6 +160,8 @@ const calculateVehicleChangePricing = async (booking, newVehicleTableId) => {
 
   return {
     success: true,
+    isVehicleConflicted: newVehiclePriced.bookingConflict !== null,
+    conflictingBookingId: newVehiclePriced.bookingConflict?.bookingId || null,
     // segment info
     currentSegment,
     segmentDays,

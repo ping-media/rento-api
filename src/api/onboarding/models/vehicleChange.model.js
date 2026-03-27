@@ -783,6 +783,7 @@ const vehicleChange = async (req, res) => {
 
 const vehicleChangeNew = async (req, res) => {
   const { booking_id, newVehicleTableId } = req.body;
+  const isAdmin = req.user?.userType === "admin";
 
   try {
     if (!booking_id || !newVehicleTableId) {
@@ -809,6 +810,7 @@ const vehicleChangeNew = async (req, res) => {
     const pricing = await calculateVehicleChangePricing(
       booking,
       newVehicleTableId,
+      isAdmin,
     );
     if (!pricing.success) {
       return res.json({ success: false, message: pricing.message });
@@ -966,6 +968,7 @@ const vehicleChangeNew = async (req, res) => {
 
 const vehicleChangePreview = async (req, res) => {
   const { booking_id, newVehicleTableId } = req.body;
+  const isAdmin = req.user?.userType === "admin";
 
   try {
     if (!booking_id || !newVehicleTableId) {
@@ -992,6 +995,7 @@ const vehicleChangePreview = async (req, res) => {
     const pricing = await calculateVehicleChangePricing(
       booking,
       newVehicleTableId,
+      isAdmin,
     );
 
     if (!pricing.success) {

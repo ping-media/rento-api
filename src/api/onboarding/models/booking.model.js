@@ -16,7 +16,14 @@ const { sendMessageAfterBooking } = require("../../../utils/index.js");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 const User = require("../../../db/schemas/onboarding/user.schema.js");
+const Razorpay = require("razorpay");
+const Logs = require("../../../db/schemas/onboarding/log.js");
 require("dotenv").config();
+
+const razorpay = new Razorpay({
+  key_id: process.env.VITE_RAZOR_KEY_ID,
+  key_secret: process.env.VITE_RAZOR_KEY_SECRET,
+});
 
 const getBooking = async (query) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
@@ -874,6 +881,82 @@ const initiateExtensionBooking = async (req, res) => {
   }
 };
 
+const checkAndClearUnpaidExtension = async (req, res) => {
+  const { booking_id } = req.body;
+
+  try {
+    const booking = await Booking.findById(booking_id);
+    if (!booking)
+      return res.json({ success: false, message: "Booking not found" });
+
+    const lastExt = booking.bookingPrice?.extendAmount?.at(-1);
+
+    if (!lastExt || lastExt.status !== "unpaid") {
+      return res.json({
+        success: true,
+        message: "No unpaid extension found",
+        canRetry: true,
+      });
+    }
+
+    // No orderId — safe to delete directly
+    if (!lastExt.orderId || lastExt.orderId === "") {
+      booking.bookingPrice.extendAmount =
+        booking.bookingPrice.extendAmount.filter((e) => e.id !== lastExt.id);
+      booking.markModified("bookingPrice.extendAmount");
+      await booking.save();
+      return res.json({
+        success: true,
+        canRetry: true,
+        message: "Cleared. You can retry now.",
+      });
+    }
+
+    // Has orderId — check with Razorpay
+    const order = await razorpay.orders.fetch(lastExt.orderId);
+
+    if (order?.status === "paid") {
+      // Recover it
+      lastExt.status = "paid";
+      lastExt.paymentMethod = "online";
+      lastExt.transactionId = order.id;
+      lastExt.paymentDate = new Date();
+      booking.BookingEndDateAndTime =
+        lastExt.bookingEndDateAndTime || lastExt.BookingEndDateAndTime;
+      booking.bookingStatus = "extended";
+      booking.markModified("bookingPrice.extendAmount");
+      await booking.save();
+      return res.json({
+        success: true,
+        canRetry: false,
+        message:
+          "Your previous payment was successful! Booking has been extended.",
+      });
+    }
+
+    // Not paid — delete and allow retry
+    booking.bookingPrice.extendAmount =
+      booking.bookingPrice.extendAmount.filter((e) => e.id !== lastExt.id);
+    booking.markModified("bookingPrice.extendAmount");
+    await booking.save();
+    return res.json({
+      success: true,
+      canRetry: true,
+      message: "Cleared. You can retry now.",
+    });
+  } catch (error) {
+    await Logs.create({
+      message: error.message,
+      functionName: "checkAndClearUnpaidExtension",
+      otherInfo: { booking_id },
+    });
+    return res.json({
+      success: false,
+      message: "Unable to check status. Try again.",
+    });
+  }
+};
+
 const initiateExtendBooking = async (req, res) => {
   const { _id, bookingId, amount, data } = req.body;
 
@@ -1239,6 +1322,15 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
       return res.status(200).json({ message: "Booking not found" });
     }
 
+    const allowedPaymentStatuses = ["paid", "partiallyPay", "partially_paid"];
+    if (!allowedPaymentStatuses.includes(booking.paymentStatus)) {
+      return res.status(200).json({
+        success: false,
+        message:
+          "Please complete the initial payment and start the ride before extending.",
+      });
+    }
+
     const extendId = `${booking.bookingId}_ext_${data.extendAmount.id}` || "";
 
     if (extendId.trim() === "") {
@@ -1360,7 +1452,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
 
     const razorpayOrder = await createOrderId({
       amount: amount,
-      booking_id: bookingId,
+      booking_id: booking.bookingId,
       _id: _id,
       type: "extension",
       typeId: extendId,
@@ -1693,6 +1785,7 @@ module.exports = {
   getBooking,
   initiateBooking,
   initiateExtensionBooking,
+  checkAndClearUnpaidExtension,
   createOrderId,
   extendBooking,
   initiateExtendBooking,

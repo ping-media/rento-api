@@ -136,9 +136,13 @@ async function adminLogin({ email, password }) {
       return obj;
     }
 
-    const token = JWT.sign({ id: result._id }, BCRYPT_TOKEN, {
-      expiresIn: "43200m",
-    });
+    const token = JWT.sign(
+      { id: result._id, userType: result.userType },
+      BCRYPT_TOKEN,
+      {
+        expiresIn: "43200m",
+      },
+    );
 
     const { password: dbPassword, ...rest } = result.toObject();
     obj.data = rest;

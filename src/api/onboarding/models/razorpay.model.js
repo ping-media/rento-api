@@ -10,6 +10,7 @@ const {
   sendPushNotificationUsingUserId,
 } = require("../../../utils/pushNotification");
 const WebhookLog = require("../../../db/schemas/onboarding/webhook.schema");
+const Log = require("../../../db/schemas/onboarding/log");
 
 const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -774,7 +775,14 @@ const handleExtendBookingWebhook = async (
   paymentTime,
 ) => {
   const booking = await Booking.findById(bookingId);
-  if (!booking) throw new Error("Booking not found");
+  if (!booking) {
+    await Log.create({
+      message: "booking not found during extend webhook",
+      functionName: "handleExtendBookingWebhook",
+      otherInfo: { bookingId, paymentId, typeId },
+    });
+    throw new Error("Booking not found");
+  }
 
   const typeIdNum = typeof typeId === "string" ? Number(typeId) : typeId;
 
@@ -783,6 +791,16 @@ const handleExtendBookingWebhook = async (
   );
 
   if (!extend) {
+    await Log.create({
+      message: `extend amount not found in booking`,
+      functionName: "handleExtendBookingWebhook",
+      otherInfo: {
+        bookingId,
+        typeId,
+        paymentId,
+        existingIds: booking.bookingPrice?.extendAmount?.map((e) => e.id),
+      },
+    });
     throw new Error(`Extend amount with ID ${typeId} not found`);
   }
 

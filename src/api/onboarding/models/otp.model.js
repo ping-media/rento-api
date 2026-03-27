@@ -82,14 +82,14 @@ async function otpGenerat(req, res) {
       { upsert: true },
     );
 
-    // if (process.env.NODE_ENV === "production") {
-    const smsResponse = await sendOtpViaFast2Sms(contact, otp);
-    if (smsResponse.error) {
-      const message = `Failed to send OTP to ${contact}: ${smsResponse.error}`;
-      await createLog(message, "optGernet", user._id, 500);
-      return res.json({ status: 500, message: "Failed to send OTP" });
+    if (process.env.NODE_ENV === "production") {
+      const smsResponse = await sendOtpViaFast2Sms(contact, otp);
+      if (smsResponse.error) {
+        const message = `Failed to send OTP to ${contact}: ${smsResponse.error}`;
+        await createLog(message, "optGernet", user._id, 500);
+        return res.json({ status: 500, message: "Failed to send OTP" });
+      }
     }
-    // }
 
     const message = "OTP sent successfully";
     await createLog(message, "optGernet", user._id, 200);

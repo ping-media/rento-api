@@ -5,6 +5,9 @@ const Booking = require("../src/db/schemas/onboarding/booking.schema");
 const {
   timelineFunctionServer,
 } = require("../src/api/onboarding/models/timeline.model");
+const {
+  recoverUnpaidExtensions,
+} = require("../src/helper/recoverUnpaidExtensions");
 require("dotenv").config();
 
 async function ensureDBConnection() {
@@ -39,34 +42,35 @@ module.exports = async (req, res) => {
     await ensureDBConnection();
 
     // deleting the extension
-    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+    await recoverUnpaidExtensions();
+    // const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
 
-    const bookingsWithUnpaidExtends = await Booking.find({
-      "bookingPrice.extendAmount": {
-        $elemMatch: {
-          status: "unpaid",
-          paymentInitiatedDate: { $lt: tenMinutesAgo },
-        },
-      },
-    }).select("_id");
+    // const bookingsWithUnpaidExtends = await Booking.find({
+    //   "bookingPrice.extendAmount": {
+    //     $elemMatch: {
+    //       status: "unpaid",
+    //       paymentInitiatedDate: { $lt: tenMinutesAgo },
+    //     },
+    //   },
+    // }).select("_id");
 
-    if (bookingsWithUnpaidExtends.length > 0) {
-      await Booking.updateMany(
-        {
-          _id: { $in: bookingsWithUnpaidExtends.map((b) => b._id) },
-        },
-        {
-          $pull: {
-            "bookingPrice.extendAmount": {
-              status: "unpaid",
-              paymentInitiatedDate: { $lt: tenMinutesAgo },
-            },
-          },
-        },
-      );
+    // if (bookingsWithUnpaidExtends.length > 0) {
+    //   await Booking.updateMany(
+    //     {
+    //       _id: { $in: bookingsWithUnpaidExtends.map((b) => b._id) },
+    //     },
+    //     {
+    //       $pull: {
+    //         "bookingPrice.extendAmount": {
+    //           status: "unpaid",
+    //           paymentInitiatedDate: { $lt: tenMinutesAgo },
+    //         },
+    //       },
+    //     },
+    //   );
 
-      console.log(`Deleted ${bookingsWithUnpaidExtends.length} unpaid extends`);
-    }
+    //   console.log(`Deleted ${bookingsWithUnpaidExtends.length} unpaid extends`);
+    // }
 
     // main booking cancelling
     const expiredBookings = await Booking.find({
@@ -83,7 +87,7 @@ module.exports = async (req, res) => {
     if (expiredBookings.length === 0) {
       return res.status(200).json({
         success: true,
-        message: "No pending payments to cancel",
+        message: "No pending bookings to cancel",
         count: 0,
       });
     }
