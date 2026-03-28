@@ -38,6 +38,9 @@ const recoverUnpaidExtensions = async () => {
           const order = await razorpay.orders.fetch(ext.orderId);
 
           if (order?.status === "paid") {
+            const payments = await razorpay.orders.fetchPayments(ext.orderId);
+            const payment = payments?.items?.[0]; // latest payment for this order
+
             ext.status = "paid";
             ext.paymentMethod = "online";
             ext.transactionId = order.id;
@@ -45,6 +48,13 @@ const recoverUnpaidExtensions = async () => {
 
             booking.BookingEndDateAndTime =
               ext.bookingEndDateAndTime || ext.BookingEndDateAndTime;
+
+            ext.paymentInitiatedDate = new Date().getTime();
+
+            if (payment?.acquirer_data?.rrn) {
+              ext.rrnNumber = payment.acquirer_data.rrn;
+            }
+
             booking.bookingStatus = "extended";
 
             shouldDelete = false;
@@ -57,6 +67,7 @@ const recoverUnpaidExtensions = async () => {
                   date: Date.now(),
                   paymentAmount: ext.amount || 0,
                   endDate: ext.bookingEndDateAndTime,
+                  paymentId: order.id || "",
                   extended: true,
                 },
               ],

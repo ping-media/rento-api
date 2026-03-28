@@ -917,15 +917,41 @@ const checkAndClearUnpaidExtension = async (req, res) => {
 
     if (order?.status === "paid") {
       // Recover it
+      const payments = await razorpay.orders.fetchPayments(ext.orderId);
+      const payment = payments?.items?.[0]; // latest payment for this order
+
       lastExt.status = "paid";
       lastExt.paymentMethod = "online";
       lastExt.transactionId = order.id;
       lastExt.paymentDate = new Date();
+
       booking.BookingEndDateAndTime =
         lastExt.bookingEndDateAndTime || lastExt.BookingEndDateAndTime;
+
+      ext.paymentInitiatedDate = new Date().getTime();
+
+      if (payment?.acquirer_data?.rrn) {
+        ext.rrnNumber = payment.acquirer_data.rrn;
+      }
+
       booking.bookingStatus = "extended";
       booking.markModified("bookingPrice.extendAmount");
       await booking.save();
+
+      await timelineFunctionServer({
+        currentBooking_id: booking._id,
+        timeLine: [
+          {
+            title: "Booking Extended by User",
+            date: Date.now(),
+            paymentAmount: ext.amount || 0,
+            endDate: ext.bookingEndDateAndTime,
+            paymentId: order.id || "",
+            extended: true,
+          },
+        ],
+      });
+
       return res.json({
         success: true,
         canRetry: false,
