@@ -22,7 +22,7 @@ const calculateVehicleChangePricing = async (
         type: "extension",
         index: i,
         startDate: ext.BookingStartDateAndTime,
-        endDate: ext.bookingEndDateAndTime,
+        endDate: ext.bookingEndDateAndTime || ext.BookingEndDateAndTime,
         oldCost: Number(ext.amount || 0) + Number(ext.addOnAmount || 0),
         appliedPlans: ext.appliedPlans || [],
       };
