@@ -40,11 +40,11 @@ async function updateUser({
         {
           $set: obj,
         },
-        { new: true }
+        { new: true },
       );
       o.message = "user updated successfully";
     } else {
-      (o.message = "Invalid details"), (o.status = "401");
+      ((o.message = "Invalid details"), (o.status = "401"));
     }
     return "Updated Successfully";
   } catch (error) {
@@ -86,7 +86,7 @@ async function addOrUpdateMobileToken({ _id, token }) {
         $set: {
           mobileToken: token,
         },
-      }
+      },
     );
 
     o.message = "Token updated successfully";
@@ -272,7 +272,7 @@ const updateStationInfo = async (query) => {
     const updatedStation = await Station.findOneAndUpdate(
       { _id },
       { $set: updateFields },
-      { new: true }
+      { new: true },
     );
 
     return {
@@ -469,17 +469,17 @@ async function getAllDataCount(query) {
     });
 
     const cancelBookings = bookings.filter(
-      (booking) => booking.bookingStatus === "canceled"
+      (booking) => booking.bookingStatus === "canceled",
     );
 
     const nonCancelledBookings = bookings.filter(
-      (booking) => booking.bookingStatus !== "canceled"
+      (booking) => booking.bookingStatus !== "canceled",
     );
 
     const payOnPickupCount = nonCancelledBookings.filter(
       (b) =>
         b.bookingPrice?.payOnPickupMethod !== undefined &&
-        b.bookingPrice?.payOnPickupMethod !== null
+        b.bookingPrice?.payOnPickupMethod !== null,
     ).length;
 
     const amountLeftObjectCount = nonCancelledBookings.filter(
@@ -487,7 +487,7 @@ async function getAllDataCount(query) {
         b.bookingPrice?.AmountLeftAfterUserPaid &&
         typeof b.bookingPrice.AmountLeftAfterUserPaid === "object" &&
         !Array.isArray(b.bookingPrice.AmountLeftAfterUserPaid) &&
-        b.bookingPrice.AmountLeftAfterUserPaid?.status === "paid"
+        b.bookingPrice.AmountLeftAfterUserPaid?.status === "paid",
     ).length;
 
     // ✅ FIXED: Calculate total amount including extend bookings properly
@@ -575,7 +575,7 @@ async function getAllDataCount(query) {
           extendCount: acc.extendCount + extendCount,
         };
       },
-      { total: 0, extendCount: 0 }
+      { total: 0, extendCount: 0 },
     );
 
     const extendBookingCount = amount.extendCount;
@@ -674,16 +674,41 @@ async function saveUser(userData) {
         return { status: 400, message: "Invalid phone number" };
       }
       if (!_id) {
-        const existingUser = await User.findOne({ contact });
+        // const existingUser = await User.findOne({ contact });
+        const existingUser = await User.findOne({
+          $or: [{ contact }, { altContact: contact }],
+        });
         if (existingUser) {
           return { status: 409, message: "This contact number already exists" };
         }
       }
     }
 
-    if (altContact && !isValidContact(altContact)) {
-      return { status: 400, message: "Invalid alternative contact number" };
+    if (altContact) {
+      if (!isValidContact(altContact)) {
+        return { status: 400, message: "Invalid alternative contact number" };
+      }
+      if (contact && altContact === contact) {
+        return {
+          status: 400,
+          message:
+            "Alternate contact should not be the same as primary contact.",
+        };
+      }
+      if (!_id) {
+        const existingAltUser = await User.findOne({ contact: altContact });
+        if (existingAltUser) {
+          return {
+            status: 409,
+            message: "This alternate contact number already exists",
+          };
+        }
+      }
     }
+
+    // if (altContact && !isValidContact(altContact)) {
+    //   return { status: 400, message: "Invalid alternative contact number" };
+    // }
 
     const validUserTypes = ["manager", "customer", "admin"];
     if (!isValidEnum(userType, validUserTypes)) {
@@ -798,7 +823,7 @@ async function saveUser(userData) {
       const data = await User.findByIdAndUpdate(
         _id,
         { $set: userObj },
-        { new: true }
+        { new: true },
       );
       return { status: 200, message: "User updated successfully", data: data };
     } else {
@@ -844,7 +869,7 @@ async function getUserProfile(userId) {
         status: 1,
         gender: 1,
         dob: 1,
-      }
+      },
     );
     if (result) {
       obj.data = result;

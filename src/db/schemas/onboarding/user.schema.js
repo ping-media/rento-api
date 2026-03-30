@@ -32,6 +32,17 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    addresses: {
+      type: [{ type: String, trim: true }],
+      default: [],
+      validate: {
+        validator: function (arr) {
+          return arr.length <= 5;
+        },
+        message: "Maximum 5 addresses allowed",
+      },
+    },
+
     contact: {
       type: String,
       required: true,

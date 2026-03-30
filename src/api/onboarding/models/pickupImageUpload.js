@@ -330,12 +330,16 @@ const savePickupImageLinks = async (req, res) => {
 
     if (normalizedAltContact) {
       const existingUser = await User.findOne({
-        $or: [
-          { contact: normalizedAltContact },
-          { altContact: normalizedAltContact },
-        ],
+        contact: normalizedAltContact,
         _id: { $ne: userId },
       });
+      // const existingUser = await User.findOne({
+      //   $or: [
+      //     { contact: normalizedAltContact },
+      //     { altContact: normalizedAltContact },
+      //   ],
+      //   _id: { $ne: userId },
+      // });
 
       if (existingUser) {
         return res.status(200).json({
@@ -346,29 +350,29 @@ const savePickupImageLinks = async (req, res) => {
       userUpdate.altContact = normalizedAltContact;
     }
 
-    if (address && address?.trim() !== "") {
-      userUpdate.address = address.trim();
-    }
-
-    // if (userUpdate.altContact) {
-    //   const existingUser = await User.findOne({
-    //     $and: [
-    //       {
-    //         $or: [
-    //           { contact: userUpdate.altContact },
-    //           { altContact: userUpdate.altContact },
-    //         ],
-    //       },
-    //       { _id: { $ne: userId } },
-    //     ],
-    //   });
-
-    //   if (existingUser) {
-    //     return res.status(200).json({
-    //       message: `This number already belongs to ${existingUser.firstName} ${existingUser.lastName}`,
-    //     });
-    //   }
+    // if (address && address?.trim() !== "") {
+    //   userUpdate.address = address.trim();
     // }
+
+    if (address && address.trim() !== "") {
+      const trimmedAddress = address.trim();
+      const currentUser = await User.findById(userId).select(
+        "addressProof addresses",
+      );
+
+      if (!currentUser.addressProof || currentUser.addressProof.trim() === "") {
+        // addressProof is empty, save here first
+        userUpdate.addressProof = trimmedAddress;
+      } else if (currentUser.addresses.length < 5) {
+        // addressProof already has value, push to addresses array
+        await User.findByIdAndUpdate(
+          userId,
+          { $addToSet: { addresses: trimmedAddress } },
+          { new: true },
+        );
+      }
+      // if addresses.length >= 5, silently skip
+    }
 
     if (Object.keys(userUpdate).length > 0) {
       await User.findByIdAndUpdate(userId, { $set: userUpdate }, { new: true });
@@ -396,10 +400,6 @@ const savePickupImageLinks = async (req, res) => {
           .status(200)
           .json({ message: "imageLinks should be an array" });
       }
-
-      // if (!Array.isArray(imageLinks)) {
-      //   return res.status(200).json({ message: "imageLinks should be an array" });
-      // }
     }
 
     const booking = await Booking.findOne({ _id }).populate(
