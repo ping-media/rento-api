@@ -4,7 +4,11 @@ const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema")
 const Otp = require("../../../db/schemas/onboarding/logOtp");
 const Log = require("../../../db/schemas/onboarding/log");
 const { mongoose } = require("mongoose");
-const ObjectId = mongoose.Types.ObjectId;
+require("dotenv").config();
+
+// const ObjectId = mongoose.Types.ObjectId;
+
+const DEMOACCOUNT = process.env.ENVIRONMENT;
 
 // Function to create logs
 async function createLog(message, functionName, userId, status = 200) {
@@ -44,7 +48,7 @@ async function otpGenerat(req, res) {
       return res.json({ status: 400, message });
     }
 
-    if (user.isDeleted) {
+    if (user?.isDeleted) {
       const message = "This account has been deleted";
       await createLog(message, "optGernet", user._id, 403);
       return res.json({ status: 403, message, success: false });
@@ -67,7 +71,7 @@ async function otpGenerat(req, res) {
       }
     }
 
-    if (contact === "9027408729" || contact === "8433408211") {
+    if (contact === DEMOACCOUNT) {
       const message = "Login allowed without OTP validation";
       await createLog(message, "optGernet", user._id, 200);
       return res
@@ -220,10 +224,7 @@ async function verify(req, res) {
       return res.json({ status: 400, message });
     }
 
-    if (
-      (contact === "9027408729" || contact === "8433408211") &&
-      otp === "123456"
-    ) {
+    if (contact === DEMOACCOUNT && otp === "123456") {
       const user = await User.findOne({ contact });
       const userDocument = await Document.findOne({ userId: user?._id });
       let profileImage = "";
