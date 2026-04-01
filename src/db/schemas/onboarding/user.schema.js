@@ -90,6 +90,18 @@ const userSchema = new mongoose.Schema(
       enum: ["yes", "no"],
       default: "no",
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletionReason: {
+      type: String,
+      default: null,
+    },
     status: {
       type: String,
       enum: ["active", "inactive"],
@@ -137,6 +149,8 @@ userSchema.index({
   isDocumentVerified: 1,
   status: 1,
 });
+
+userSchema.index({ isDeleted: 1 });
 
 // Pagination
 userSchema.index({ createdAt: -1 });

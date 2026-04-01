@@ -2,7 +2,7 @@ const router = require("express").Router();
 const accountService = require("../services/account.service");
 const auth = require("../../../middlewares/auth/index");
 const upload = require("../../../utils/file-upload/file-upload");
-const { otpGenerat, verify } = require("../models/otp.model");
+const { otpGenerat, verify, softDeleteUser } = require("../models/otp.model");
 const { emailOtp } = require("../models/otpSendByEmail");
 const Authentication = require("../../../middlewares/Authentication");
 
@@ -41,6 +41,10 @@ router.post("/getUsersByContact", async (req, res) => {
 
 router.post("/otpGenerat", async (req, res) => {
   otpGenerat(req, res);
+});
+
+router.post("/delete-account", async (req, res) => {
+  softDeleteUser(req, res);
 });
 
 router.post("/verifyOtp", async (req, res) => {

@@ -44,6 +44,12 @@ async function otpGenerat(req, res) {
       return res.json({ status: 400, message });
     }
 
+    if (user.isDeleted) {
+      const message = "This account has been deleted";
+      await createLog(message, "optGernet", user._id, 403);
+      return res.json({ status: 403, message, success: false });
+    }
+
     // this is for mobile devices when every user login this token will be store in db
     let errorMessage = "";
 
@@ -98,6 +104,78 @@ async function otpGenerat(req, res) {
     const message = `Error in optGernet: ${error.message}`;
     console.error(message);
     await createLog(message, "optGernet", null, 500);
+    return res.status(500).json({
+      status: 500,
+      message: "An error occurred while processing the request",
+    });
+  }
+}
+
+async function softDeleteUser(req, res) {
+  try {
+    const { userId, reason } = req.body;
+
+    if (!userId) {
+      return res.json({ status: 400, message: "User ID is required" });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.json({ status: 404, message: "User not found" });
+    }
+
+    if (user.isDeleted) {
+      return res.json({ status: 400, message: "Account is already deleted" });
+    }
+
+    // Anonymize PII while keeping financial record structure intact
+    const anonymizedId = user._id.toString();
+
+    await User.updateOne(
+      { _id: userId },
+      {
+        $set: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletionReason: reason || "Requested by user",
+          status: "inactive",
+
+          // Anonymize personal data
+          firstName: "deleted",
+          lastName: "user",
+          email: `deleted_${anonymizedId}@removed.com`,
+          contact: anonymizedId.slice(-10), // keeps uniqueness constraint intact
+          altContact: null,
+          dateofbirth: null,
+          gender: "not specified",
+          addresses: [],
+
+          // Clear sensitive documents
+          drivingLicence: null,
+          idProof: null,
+          addressProof: null,
+
+          // Clear auth tokens
+          otp: null,
+          mobileToken: null,
+          password: null,
+        },
+      },
+    );
+
+    await createLog("User account soft deleted", "softDeleteUser", userId, 200);
+
+    return res.status(200).json({
+      status: 200,
+      success: true,
+      message:
+        "Your account has been deleted. Financial records are retained as required by law.",
+    });
+  } catch (error) {
+    const message = `Error in softDeleteUser: ${error.message}`;
+    console.error(message);
+    await createLog(message, "softDeleteUser", null, 500);
     return res.status(500).json({
       status: 500,
       message: "An error occurred while processing the request",
@@ -227,4 +305,4 @@ async function verify(req, res) {
   }
 }
 
-module.exports = { otpGenerat, verify };
+module.exports = { otpGenerat, verify, softDeleteUser };
