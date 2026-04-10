@@ -126,12 +126,18 @@ const pickupImageUp = async (req, res) => {
     if (isVehicleUpdate && diffAmountId) {
       const pickupData = await pickupImage.findOne({ bookingId });
 
+      const formattedOldVehicleEndMeterReading = isNaN(
+        Number(oldVehicleEndMeterReading),
+      )
+        ? 0
+        : Number(oldVehicleEndMeterReading);
+
       const updatedData = [
         ...(pickupData?.data?.updatedData ?? []),
         {
           vehicleNumber,
           startMeterReading: pickupData?.startMeterReading,
-          oldVehicleEndMeterReading,
+          oldVehicleEndMeterReading: formattedOldVehicleEndMeterReading,
         },
       ];
 
@@ -140,7 +146,8 @@ const pickupImageUp = async (req, res) => {
         {
           $set: {
             files: tempObj,
-            data: updatedData,
+            data: { updatedData: updatedData },
+            // data: updatedData,
             startMeterReading,
             endMeterReading,
           },
@@ -440,12 +447,21 @@ const savePickupImageLinks = async (req, res) => {
     if (isVehicleUpdate && diffAmountId) {
       const pickupData = await pickupImage.findOne({ bookingId });
 
+      const formattedOldVehicleEndMeterReading = isNaN(
+        Number(oldVehicleEndMeterReading),
+      )
+        ? 0
+        : Number(oldVehicleEndMeterReading);
+
+      const oldVehicleNumber =
+        booking?.changeVehicle?.vehicleNumber || vehicleNumber; // fallback to sent value
+
       const updatedData = [
         ...(pickupData?.data?.updatedData ?? []),
         {
-          vehicleNumber,
+          vehicleNumber: oldVehicleNumber,
           startMeterReading: pickupData?.startMeterReading,
-          oldVehicleEndMeterReading,
+          oldVehicleEndMeterReading: formattedOldVehicleEndMeterReading,
         },
       ];
 
@@ -454,7 +470,8 @@ const savePickupImageLinks = async (req, res) => {
         {
           $set: {
             files: tempObj,
-            data: updatedData,
+            // data: updatedData,
+            data: { updatedData: updatedData },
             startMeterReading,
             endMeterReading,
           },

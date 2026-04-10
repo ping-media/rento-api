@@ -1133,6 +1133,156 @@ router.post(
 );
 
 // Update booking route
+// router.put("/rideUpdate", Authentication, async (req, res) => {
+//   const {
+//     _id,
+//     endMeterReading,
+//     rideStatus,
+//     userId,
+//     bookingId,
+//     rideOtp,
+//     rideEndDate,
+//     startMeterReading,
+//     lateFeeBasedOnHour,
+//     lateFeeBasedOnKM,
+//     additionalPrice,
+//     closingDate,
+//     paymentMode,
+//     refundAmount,
+//     endDateTime,
+//   } = req.body;
+
+//   const obj = { status: 200, message: "", data: {} };
+//   try {
+//     const booking = await Booking.findOne({ _id });
+
+//     let { vehicleBasic, bookingPrice, BookingEndDateAndTime } = booking;
+
+//     const rideStatusFromBooking = booking?.rideStatus;
+//     if (rideStatusFromBooking === "completed") {
+//       obj.status = 400;
+//       obj.message = "Ride already finished";
+//       return res.json(obj);
+//     }
+
+//     let lateFeePaymentMethod = "NA";
+//     let additionFeePaymentMethod = "NA";
+
+//     if (lateFeeBasedOnHour !== 0 || lateFeeBasedOnKM !== 0) {
+//       lateFeePaymentMethod = paymentMode;
+//     }
+//     if (additionalPrice !== 0) {
+//       additionFeePaymentMethod = paymentMode;
+//     }
+
+//     let newBookingPrice = {
+//       ...bookingPrice,
+//       lateFeeBasedOnHour,
+//       lateFeeBasedOnKM,
+//       additionalPrice,
+//       lateFeePaymentMethod,
+//       additionFeePaymentMethod,
+//     };
+
+//     if (refundAmount) {
+//       newBookingPrice = { ...newBookingPrice, refundAmount };
+//     }
+
+//     if (!rideOtp || rideOtp?.toString().length != 4) {
+//       await Log({
+//         message: `Ride OTP is required or invalid ${_id}`,
+//         functionName: "rideUpdate",
+//         userId,
+//       });
+//       obj.status = 400;
+//       obj.message = "Ride OTP is required and must be a 4-digit";
+//       return res.json(obj);
+//     }
+
+//     if (rideOtp != vehicleBasic.endRide) {
+//       await Log({
+//         message: `Invalid Otp ${_id}`,
+//         functionName: "rideUpdate",
+//         userId,
+//       });
+
+//       obj.status = 400;
+//       obj.message = "Invalid Otp";
+//       return res.json(obj);
+//     }
+
+//     // Update the booking document
+//     await pickupImage.updateOne(
+//       { bookingId },
+//       { $set: { endMeterReading, rideEndDate } },
+//       { new: true },
+//     );
+
+//     let paymentStatus = booking?.paymentStatus;
+
+//     if (refundAmount > 0) {
+//       paymentStatus = "refunded";
+//     }
+
+//     if (closingDate) {
+//       await Booking.updateOne(
+//         { _id: ObjectId(_id) },
+//         {
+//           $set: {
+//             rideStatus,
+//             bookingPrice: newBookingPrice,
+//             BookingEndDateAndTime: closingDate,
+//             "extendBooking.originalEndDate": BookingEndDateAndTime,
+//             "vehicleBasic.RideEnd": Number(endDateTime) || "",
+//             paymentStatus: paymentStatus,
+//           },
+//         },
+//         { new: true },
+//       );
+//     } else {
+//       await Booking.updateOne(
+//         { _id: ObjectId(_id) },
+//         {
+//           $set: {
+//             rideStatus,
+//             bookingPrice: newBookingPrice,
+//             "vehicleBasic.RideEnd": Number(endDateTime) || "",
+//             paymentStatus: paymentStatus,
+//           },
+//         },
+//         { new: true },
+//       );
+//     }
+
+//     // Log the booking update
+//     await Log({
+//       message: `Booking with ID ${_id} updated`,
+//       functionName: "rideUpdate",
+//       userId,
+//     });
+
+//     // Notify about the booking update
+//     obj.status = 200;
+//     obj.message = `Ride ${
+//       rideStatus === "canceled"
+//         ? "Canceled"
+//         : rideStatus === "ongoing"
+//           ? "Start"
+//           : "Completed"
+//     } successful`;
+
+//     const response = { lateFeeBasedOnHour, lateFeeBasedOnKM, rideStatus };
+//     obj.data = response;
+//     return res.status(200).json(obj);
+//   } catch (error) {
+//     console.error("Error during booking update:", error);
+//     return res.json({
+//       status: 500,
+//       message: "Internal server error",
+//     });
+//   }
+// });
+
 router.put("/rideUpdate", Authentication, async (req, res) => {
   const {
     _id,
@@ -1164,10 +1314,50 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       return res.json(obj);
     }
 
+    // ─── Server-side KM calculation ───────────────────────────────────────────
+    const pickupDoc = await pickupImage.findOne({ bookingId });
+
+    // Sum KMs from all previous vehicles (before any change)
+    const previousVehiclesKm = (pickupDoc?.data?.updatedData ?? []).reduce(
+      (sum, entry) => {
+        return (
+          sum +
+          Math.max(
+            0,
+            Number(entry.oldVehicleEndMeterReading || 0) -
+              Number(entry.startMeterReading || 0),
+          )
+        );
+      },
+      0,
+    );
+
+    // KMs on current vehicle
+    const currentVehicleKm = Math.max(
+      0,
+      Number(endMeterReading) - Number(pickupDoc?.startMeterReading || 0),
+    );
+
+    const totalDrivenKm = currentVehicleKm + previousVehiclesKm;
+
+    // Calculate allowed KM limit (base + any paid extend limits)
+    const paidExtends =
+      bookingPrice?.extendAmount?.filter((e) => e.status === "paid") || [];
+    const extendKmLimit = paidExtends.reduce(
+      (sum, e) => sum + Number(e?.freeLimit || 0),
+      0,
+    );
+    const allowedKm = Number(vehicleBasic?.freeLimit || 0) + extendKmLimit;
+
+    const extraKm = Math.max(0, totalDrivenKm - allowedKm);
+    const serverLateFeeBasedOnKM =
+      extraKm * Number(vehicleBasic?.extraKmCharge || 0);
+    // ──────────────────────────────────────────────────────────────────────────
+
     let lateFeePaymentMethod = "NA";
     let additionFeePaymentMethod = "NA";
 
-    if (lateFeeBasedOnHour !== 0 || lateFeeBasedOnKM !== 0) {
+    if (lateFeeBasedOnHour !== 0 || serverLateFeeBasedOnKM !== 0) {
       lateFeePaymentMethod = paymentMode;
     }
     if (additionalPrice !== 0) {
@@ -1177,7 +1367,8 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     let newBookingPrice = {
       ...bookingPrice,
       lateFeeBasedOnHour,
-      lateFeeBasedOnKM,
+      lateFeeBasedOnKM: serverLateFeeBasedOnKM, // 👈 server-calculated, not from frontend
+      totalDrivenKm, // 👈 stored for records/audit
       additionalPrice,
       lateFeePaymentMethod,
       additionFeePaymentMethod,
@@ -1204,13 +1395,12 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
         functionName: "rideUpdate",
         userId,
       });
-
       obj.status = 400;
       obj.message = "Invalid Otp";
       return res.json(obj);
     }
 
-    // Update the booking document
+    // Update pickup image document with end reading
     await pickupImage.updateOne(
       { bookingId },
       { $set: { endMeterReading, rideEndDate } },
@@ -1218,7 +1408,6 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     );
 
     let paymentStatus = booking?.paymentStatus;
-
     if (refundAmount > 0) {
       paymentStatus = "refunded";
     }
@@ -1253,14 +1442,12 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       );
     }
 
-    // Log the booking update
     await Log({
       message: `Booking with ID ${_id} updated`,
       functionName: "rideUpdate",
       userId,
     });
 
-    // Notify about the booking update
     obj.status = 200;
     obj.message = `Ride ${
       rideStatus === "canceled"
@@ -1270,7 +1457,12 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
           : "Completed"
     } successful`;
 
-    const response = { lateFeeBasedOnHour, lateFeeBasedOnKM, rideStatus };
+    const response = {
+      lateFeeBasedOnHour,
+      lateFeeBasedOnKM: serverLateFeeBasedOnKM, // 👈 return server value so frontend stays in sync
+      totalDrivenKm,
+      rideStatus,
+    };
     obj.data = response;
     return res.status(200).json(obj);
   } catch (error) {
