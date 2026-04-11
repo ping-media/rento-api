@@ -3052,7 +3052,8 @@ const getVehicleTbl = async (query) => {
           unavailabilityReasons.push({
             vehicleId: vehicle._id,
             vehicleNumber: vehicle.vehicleNumber,
-            reason: "Vehicle is not active",
+            // reason: "Vehicle is not active",
+            reason: "Vehicle is blocked. Unblock it to proceed",
           });
         } else if (vehicle.vehicleMasterData?.status === "inactive") {
           unavailabilityReasons.push({
@@ -3061,10 +3062,14 @@ const getVehicleTbl = async (query) => {
             reason: "Vehicle master is inactive",
           });
         } else if (vehicle.conflictingBookings.length > 0) {
+          const bookingId = vehicle.conflictingBookings[0].bookingId;
           unavailabilityReasons.push({
             vehicleId: vehicle._id,
             vehicleNumber: vehicle.vehicleNumber,
-            reason: "Vehicle is already booked",
+            // reason: "Vehicle is already booked",
+            reason: bookingId
+              ? `Vehicle is already booked and booking id is ${bookingId}`
+              : "Vehicle is already booked",
             bookingId: vehicle.conflictingBookings[0].bookingId,
           });
         } else if (vehicle.conflictingMaintenance.length > 0) {
