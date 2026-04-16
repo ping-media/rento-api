@@ -14,12 +14,24 @@ const locationSchema = new Schema(
     imageFileName: {
       type: String,
     },
+    latitude: {
+      type: Number,
+      default: null,
+    },
+    longitude: {
+      type: Number,
+      default: null,
+    },
+    radiusKm: {
+      type: Number,
+      default: 30, // detection radius in km — tune per city size
+    },
     locationStatus: {
       type: String,
       default: "active",
     },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } },
 );
 
 locationSchema.pre("save", function (next) {

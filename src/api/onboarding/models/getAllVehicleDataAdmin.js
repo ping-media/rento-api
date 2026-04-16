@@ -368,6 +368,35 @@ const getVehicleIds = async (req, res) => {
         },
       },
       {
+        $lookup: {
+          from: "maintenancevehicles", // collection name (IMPORTANT: plural, lowercase)
+          localField: "_id",
+          foreignField: "vehicleTableId",
+          as: "maintenanceData",
+        },
+      },
+      {
+        $addFields: {
+          activeMaintenance: {
+            $filter: {
+              input: "$maintenanceData",
+              as: "m",
+              cond: { $eq: ["$$m.status", "active"] },
+            },
+          },
+        },
+      },
+      {
+        $addFields: {
+          isUnderMaintenance: {
+            $gt: [{ $size: "$activeMaintenance" }, 0],
+          },
+          maintenanceInfo: {
+            $arrayElemAt: ["$activeMaintenance", 0],
+          },
+        },
+      },
+      {
         $unwind: {
           path: "$vehicleMasterData",
           preserveNullAndEmptyArrays: true,
@@ -395,6 +424,12 @@ const getVehicleIds = async (req, res) => {
           stationId: 1,
           lastMeterReading: 1,
           stationName: "$stationData.stationName",
+          isUnderMaintenance: 1,
+          maintenanceInfo: {
+            startDate: "$maintenanceInfo.startDate",
+            endDate: "$maintenanceInfo.endDate",
+            reason: "$maintenanceInfo.reason",
+          },
         },
       },
     ]);
@@ -406,6 +441,14 @@ const getVehicleIds = async (req, res) => {
       stationId: vehicle.stationId,
       stationName: vehicle.stationName,
       OdometerReading: vehicle.lastMeterReading,
+      isUnderMaintenance: vehicle.isUnderMaintenance ?? false,
+      maintenanceInfo: vehicle.maintenanceInfo
+        ? {
+            startDate: vehicle.maintenanceInfo.startDate,
+            endDate: vehicle.maintenanceInfo.endDate,
+            reason: vehicle.maintenanceInfo.reason,
+          }
+        : null,
     }));
 
     return res.json({

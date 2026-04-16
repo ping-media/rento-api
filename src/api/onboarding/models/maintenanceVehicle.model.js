@@ -56,6 +56,7 @@ const getMaintenanceVehicle = async (req, res) => {
 const maintenanceVehicleFunction = async (req, res) => {
   const {
     vehicleTableId,
+    vehicleTableIds,
     startDate,
     endDate,
     maintenanceId,
@@ -66,7 +67,11 @@ const maintenanceVehicleFunction = async (req, res) => {
 
   // Validate input for new or edit operations
   if (maintenanceIds?.length === 0) {
-    if (action !== "delete" && (!vehicleTableId || !startDate || !endDate)) {
+    // if (action !== "delete" && (!vehicleTableId || !startDate || !endDate)) {
+    if (
+      action !== "delete" &&
+      (!startDate || !endDate || (!vehicleTableId && !vehicleTableIds?.length))
+    ) {
       return res.json({
         status: 400,
         success: false,
@@ -184,68 +189,123 @@ const maintenanceVehicleFunction = async (req, res) => {
         message: "Maintenance schedule updated successfully",
       });
     } else {
-      // Check for overlapping maintenance schedules
-      const overlappingMaintenance = await MaintenanceVehicle.findOne({
-        vehicleTableId: vehicleTableId,
-        status: "active",
-        $or: [
-          // Case 1: New schedule starts during an existing schedule
-          {
-            startDate: { $lte: startDate },
-            endDate: { $gte: startDate },
-          },
-          // Case 2: New schedule ends during an existing schedule
-          {
-            startDate: { $lte: endDate },
-            endDate: { $gte: endDate },
-          },
-          // Case 3: New schedule completely contains an existing schedule
-          {
-            startDate: { $gte: startDate },
-            endDate: { $lte: endDate },
-          },
-        ],
-      });
+      const vehicleIds = vehicleTableIds?.length
+        ? vehicleTableIds
+        : [vehicleTableId];
 
-      if (overlappingMaintenance) {
+      const bulkData = [];
+
+      for (const vId of vehicleIds) {
+        // check overlapping for each vehicle
+        const overlappingMaintenance = await MaintenanceVehicle.findOne({
+          vehicleTableId: vId,
+          status: "active",
+          $or: [
+            {
+              startDate: { $lte: startDate },
+              endDate: { $gte: startDate },
+            },
+            {
+              startDate: { $lte: endDate },
+              endDate: { $gte: endDate },
+            },
+            {
+              startDate: { $gte: startDate },
+              endDate: { $lte: endDate },
+            },
+          ],
+        });
+
+        if (!overlappingMaintenance) {
+          bulkData.push({
+            vehicleTableId: vId,
+            startDate,
+            endDate,
+            reason,
+            status: "active",
+          });
+        }
+      }
+
+      if (bulkData.length === 0) {
         return res.json({
           status: 400,
           success: false,
-          message:
-            "Vehicle already has a maintenance schedule that overlaps with these dates and time",
+          message: "All selected vehicles already have overlapping maintenance",
         });
       }
 
-      const vehicleData = await getVehicleTbl(req.query);
+      await MaintenanceVehicle.insertMany(bulkData);
 
-      const data = vehicleData?.data?.filter((item) => {
-        return item._id.toString() === vehicleTableId;
-      });
-
-      if (data.length === 0) {
-        const maintenanceData = {
-          vehicleTableId,
-          startDate,
-          endDate,
-          reason,
-          status: "active",
-        };
-        const newMaintenanceData = new MaintenanceVehicle(maintenanceData);
-        await newMaintenanceData.save();
-
-        return res.status(200).json({
-          status: 200,
-          success: true,
-          message: "Vehicle successfully added to maintenance",
-        });
-      }
-
-      return res.json({
-        status: 404,
-        success: false,
-        message: "Vehicle is not available",
+      return res.status(200).json({
+        status: 200,
+        success: true,
+        message: `${bulkData.length} vehicle(s) added to maintenance`,
       });
     }
+    // else {
+    //   // Check for overlapping maintenance schedules
+    //   const overlappingMaintenance = await MaintenanceVehicle.findOne({
+    //     vehicleTableId: vehicleTableId,
+    //     status: "active",
+    //     $or: [
+    //       // Case 1: New schedule starts during an existing schedule
+    //       {
+    //         startDate: { $lte: startDate },
+    //         endDate: { $gte: startDate },
+    //       },
+    //       // Case 2: New schedule ends during an existing schedule
+    //       {
+    //         startDate: { $lte: endDate },
+    //         endDate: { $gte: endDate },
+    //       },
+    //       // Case 3: New schedule completely contains an existing schedule
+    //       {
+    //         startDate: { $gte: startDate },
+    //         endDate: { $lte: endDate },
+    //       },
+    //     ],
+    //   });
+
+    //   if (overlappingMaintenance) {
+    //     return res.json({
+    //       status: 400,
+    //       success: false,
+    //       message:
+    //         "Vehicle already has a maintenance schedule that overlaps with these dates and time",
+    //     });
+    //   }
+
+    //   const vehicleData = await getVehicleTbl(req.query);
+
+    //   const data = vehicleData?.data?.filter((item) => {
+    //     return item._id.toString() === vehicleTableId;
+    //   });
+
+    //   if (data.length === 0) {
+    //     const maintenanceData = {
+    //       vehicleTableId,
+    //       startDate,
+    //       endDate,
+    //       reason,
+    //       status: "active",
+    //     };
+    //     const newMaintenanceData = new MaintenanceVehicle(maintenanceData);
+    //     await newMaintenanceData.save();
+
+    //     return res.status(200).json({
+    //       status: 200,
+    //       success: true,
+    //       message: "Vehicle successfully added to maintenance",
+    //     });
+    //   }
+
+    //   return res.json({
+    //     status: 404,
+    //     success: false,
+    //     message: "Vehicle is not available",
+    //   });
+    // }
   } catch (error) {
     console.error("Error during maintenance vehicle process:", error);
     return res.json({

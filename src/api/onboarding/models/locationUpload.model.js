@@ -20,7 +20,7 @@ if (
   !AWS_BUCKET_NAME
 ) {
   console.error(
-    "Missing required environment variables for AWS configuration."
+    "Missing required environment variables for AWS configuration.",
   );
   process.exit(1);
 }
@@ -43,7 +43,15 @@ const upload = multer({
 // Route to upload the image
 const fileUpload = async (req, res) => {
   try {
-    const { _id, deleteRec, locationName, locationStatus } = req.body;
+    const {
+      _id,
+      deleteRec,
+      locationName,
+      locationStatus,
+      latitude,
+      longitude,
+      radiusKm,
+    } = req.body;
     //console.log(req.file)
     if (!_id) {
       const findName = await Location.findOne({ locationName });
@@ -88,7 +96,7 @@ const fileUpload = async (req, res) => {
       if (!find) {
         return res.json({
           status: 400,
-          message: "Invalid _id",
+          message: "Invalid location id",
         });
       }
       if (deleteRec) {
@@ -118,9 +126,12 @@ const fileUpload = async (req, res) => {
             locationImage: imageUrl,
             locationStatus,
             imageFileName,
+            ...(latitude !== undefined && { latitude: Number(latitude) }),
+            ...(longitude !== undefined && { longitude: Number(longitude) }),
+            ...(radiusKm !== undefined && { radiusKm: Number(radiusKm) }),
           },
         },
-        { new: true }
+        { new: true },
       );
 
       return res.status(200).json({
@@ -134,6 +145,9 @@ const fileUpload = async (req, res) => {
         _id,
         locationStatus,
         imageFileName,
+        ...(latitude !== undefined && { latitude: Number(latitude) }),
+        ...(longitude !== undefined && { longitude: Number(longitude) }),
+        ...(radiusKm !== undefined && { radiusKm: Number(radiusKm) }),
       });
       SaveLocation.save();
 

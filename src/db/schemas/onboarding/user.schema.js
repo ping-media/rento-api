@@ -43,6 +43,12 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+    lastLocation: {
+      latitude: { type: Number, default: null },
+      longitude: { type: Number, default: null },
+      capturedAt: { type: Date, default: null }, // when was this last updated
+    },
+
     contact: {
       type: String,
       required: true,

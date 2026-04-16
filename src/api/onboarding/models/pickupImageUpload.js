@@ -336,6 +336,16 @@ const savePickupImageLinks = async (req, res) => {
     // }
 
     if (normalizedAltContact) {
+      const currentUser = await User.findById(userId).select("contact");
+
+      if (currentUser?.contact === normalizedAltContact) {
+        return res.status(200).json({
+          success: false,
+          message:
+            "Alternate contact number cannot be same as primary contact number",
+        });
+      }
+
       const existingUser = await User.findOne({
         contact: normalizedAltContact,
         _id: { $ne: userId },
@@ -350,6 +360,7 @@ const savePickupImageLinks = async (req, res) => {
 
       if (existingUser) {
         return res.status(200).json({
+          success: false,
           message: `This number already belongs to ${existingUser.firstName} ${existingUser.lastName}`,
         });
       }

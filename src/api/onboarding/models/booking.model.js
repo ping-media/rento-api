@@ -482,7 +482,14 @@ const getBookings = async (query) => {
   return obj;
 };
 
-const createOrderId = async ({ amount, booking_id, _id, type, typeId }) => {
+const createOrderId = async ({
+  amount,
+  booking_id,
+  _id,
+  type,
+  typeId,
+  customBookingId,
+}) => {
   const key_id = process.env.VITE_RAZOR_KEY_ID;
   const key_secret = process.env.VITE_RAZOR_KEY_SECRET;
 
@@ -499,6 +506,7 @@ const createOrderId = async ({ amount, booking_id, _id, type, typeId }) => {
       booking_id: _id.toString(),
       type: type || "",
       typeId: typeId || "",
+      ...(customBookingId !== undefined && { rento_id: customBookingId }),
     },
   };
 
@@ -699,6 +707,7 @@ const initiateBooking = async (req, res) => {
         booking_id: response?.data?.bookingId,
         _id: response?.data?._id,
         type: paymentMethod === "partiallyPay" ? "partiallyPay" : "",
+        customBookingId: bookingData?.bookingId,
       });
 
       if (razorData?.status === "created") {
@@ -812,6 +821,7 @@ const initiateExtensionBooking = async (req, res) => {
       _id: booking?._id,
       typeId: extendId,
       type: "user-extension",
+      customBookingId: booking?.bookingId,
     });
 
     if (razorData?.status === "created") {
@@ -1005,6 +1015,7 @@ const initiateExtendBooking = async (req, res) => {
       _id: _id,
       type: "extension",
       typeId: data.extendAmount.id,
+      customBookingId: booking?.bookingId,
     });
 
     // Update properties individually
@@ -1483,6 +1494,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
       type: "extension",
       typeId: extendId,
       requestFrom: isUser ? "user" : "admin",
+      customBookingId: booking?.bookingId,
     });
 
     await TempExtension.create({

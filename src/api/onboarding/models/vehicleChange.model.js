@@ -137,6 +137,7 @@ const vehicleChangeInBooking = async (req, res) => {
       _id: _id,
       type: "ChangeVehicle",
       typeId: ChangeId,
+      customBookingId: bookingData?.bookingId,
     });
 
     const paymentData = await createPaymentLinkUtil({
@@ -285,6 +286,7 @@ const vehicleChange = async (req, res) => {
           _id: booking?._id,
           type: "ChangeVehicle",
           typeId: changedId,
+          customBookingId: booking?.bookingId,
         });
 
         if (razorpayOrder?.id) {
@@ -864,6 +866,7 @@ const vehicleChangeNew = async (req, res) => {
         _id: booking._id,
         type: "ChangeVehicle",
         typeId: changedId,
+        customBookingId: booking.bookingId,
       });
       if (razorpayOrder?.id) newOrderId = razorpayOrder.id;
     }

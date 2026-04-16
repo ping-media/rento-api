@@ -31,7 +31,7 @@ router.post("/signup", async (req, res) => {
   accountService.saveUser(req, res);
 });
 
-router.get("/getAllDataCount", async (req, res) => {
+router.get("/getAllDataCount", Authentication, async (req, res) => {
   accountService.getAllDataCount(req, res);
 });
 // Update image

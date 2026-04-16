@@ -450,6 +450,40 @@ router.post(
   },
 );
 
+// using this will update the user last location in there document
+router.put("/updateLastLocation", Authentication, async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+    const _id = req.user.id; // from your Authentication middleware
+
+    if (!latitude || !longitude) {
+      return res.json({
+        status: 400,
+        message: "Latitude and longitude required",
+      });
+    }
+
+    await User.updateOne(
+      { _id },
+      {
+        $set: {
+          "lastLocation.latitude": Number(latitude),
+          "lastLocation.longitude": Number(longitude),
+          "lastLocation.capturedAt": new Date(),
+        },
+      },
+    );
+
+    return res.json({ status: 200, message: "Location updated successfully" });
+  } catch (error) {
+    return res.json({
+      status: 500,
+      message: "An error occurred",
+      error: error.message,
+    });
+  }
+});
+
 // Update Location (image is optional)
 router.put(
   "/updateLocation",
@@ -469,21 +503,24 @@ router.put(
       const _id = req.body._id;
       const locationName = req.body.locationName;
       const locationStatus = req.body.locationStatus;
+      const latitude = req.body.latitude;
+      const longitude = req.body.longitude;
+      const radiusKm = req.body.radiusKm;
       if (_id) {
         const find = await Location.findOne({ _id });
         if (!find) {
           obj.status = 400;
-          obj.message = "Location _id is required";
+          obj.message = "Location id is required";
           return res.json(obj);
         }
         const objData = {};
         if (locationName) objData.locationName = locationName;
         if (locationStatus) objData.locationStatus = locationStatus;
+        if (latitude) objData.latitude = Number(latitude);
+        if (longitude) objData.longitude = Number(longitude);
+        if (radiusKm) objData.radiusKm = Number(radiusKm);
         //console.log(objData)
-        const updatedLocation = await Location.updateOne(
-          { _id },
-          { $set: objData },
-        );
+        await Location.updateOne({ _id }, { $set: objData });
 
         //console.log(updatedLocation)
         obj.message = "location updated successfully";
@@ -1367,8 +1404,8 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     let newBookingPrice = {
       ...bookingPrice,
       lateFeeBasedOnHour,
-      lateFeeBasedOnKM: serverLateFeeBasedOnKM, // 👈 server-calculated, not from frontend
-      totalDrivenKm, // 👈 stored for records/audit
+      lateFeeBasedOnKM: serverLateFeeBasedOnKM, // server-calculated, not from frontend
+      totalDrivenKm, // stored for records/audit
       additionalPrice,
       lateFeePaymentMethod,
       additionFeePaymentMethod,
@@ -1459,7 +1496,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
 
     const response = {
       lateFeeBasedOnHour,
-      lateFeeBasedOnKM: serverLateFeeBasedOnKM, // 👈 return server value so frontend stays in sync
+      lateFeeBasedOnKM: serverLateFeeBasedOnKM, // return server value so frontend stays in sync
       totalDrivenKm,
       rideStatus,
     };

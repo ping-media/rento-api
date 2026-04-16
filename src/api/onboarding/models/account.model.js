@@ -490,79 +490,77 @@ async function getAllDataCount(query) {
         b.bookingPrice.AmountLeftAfterUserPaid?.status === "paid",
     ).length;
 
-    // ✅ FIXED: Calculate total amount including extend bookings properly
+    // FIXED: Calculate total amount including extend bookings properly
     const amount = bookings.reduce(
       (acc, item) => {
         // Skip canceled, pending, or refunded bookings
         if (
           item.bookingStatus === "canceled" ||
-          item.bookingStatus === "pending" ||
-          item.bookingStatus === "refunded"
+          item.bookingStatus === "pending"
         )
           return acc;
 
-        // Calculate base booking price (with or without discount)
-        const basePriceRaw =
-          item.bookingPrice.isDiscountZero === true ||
-          (item.bookingPrice.discountTotalPrice &&
-            item.bookingPrice.discountTotalPrice > 0)
-            ? item.bookingPrice.discountTotalPrice
-            : item.bookingPrice.totalPrice;
+        const bp = item.bookingPrice;
 
-        const basePrice = Number(basePriceRaw) || 0;
+        // ─── BASE PRICE ───────────────────────────────────────────────
+        // Resolve full price (discount takes priority if present)
+        const fullPrice =
+          bp.isDiscountZero === true ||
+          (bp.discountTotalPrice && bp.discountTotalPrice > 0)
+            ? Number(bp.discountTotalPrice) || 0
+            : Number(bp.totalPrice) || 0;
 
-        // ✅ Calculate extend booking total (amount + addOnAmount + tax + addonTax)
+        let basePrice = 0;
+
+        if (bp.AmountLeftAfterUserPaid?.status === "paid") {
+          // Both parts collected → use full price directly, skip userPaid
+          basePrice = fullPrice;
+        } else if (bp.userPaid && Number(bp.userPaid) > 0) {
+          // Partial payment only — take what was actually paid
+          basePrice = Number(bp.userPaid);
+        } else {
+          // Full upfront payment (no partial split)
+          basePrice = fullPrice;
+        }
+
+        // ─── EXTEND BOOKING ───────────────────────────────────────────
         let extendTotal = 0;
         let extendCount = 0;
 
-        if (Array.isArray(item.bookingPrice.extendAmount)) {
-          item.bookingPrice.extendAmount.forEach((extend) => {
+        if (Array.isArray(bp.extendAmount)) {
+          bp.extendAmount.forEach((extend) => {
             if (extend.status === "paid") {
-              const amount = Number(extend.amount) || 0;
-              const addOnAmount = Number(extend.addOnAmount) || 0;
-              const tax = Number(extend.tax) || 0;
-              const addonTax = Number(extend.addonTax) || 0;
-
-              // Total for this extend entry
-              extendTotal += amount + addOnAmount + tax + addonTax;
+              extendTotal +=
+                (Number(extend.amount) || 0) +
+                (Number(extend.addOnAmount) || 0) +
+                (Number(extend.tax) || 0) +
+                (Number(extend.addonTax) || 0);
               extendCount += 1;
             }
           });
         }
 
-        // Calculate vehicle change difference amount
-        const diffTotal = Array.isArray(item.bookingPrice.diffAmount)
-          ? item.bookingPrice.diffAmount.reduce((sum, d) => {
-              return d.status === "paid" ? sum + (Number(d.amount) || 0) : sum;
-            }, 0)
+        // ─── VEHICLE CHANGE DIFF ──────────────────────────────────────
+        const diffTotal = Array.isArray(bp.diffAmount)
+          ? bp.diffAmount.reduce(
+              (sum, d) =>
+                d.status === "paid" ? sum + (Number(d.amount) || 0) : sum,
+              0,
+            )
           : 0;
 
-        // ✅ Calculate late fees if paid
-        let lateFeeTotal = 0;
-        const lateFeeBasedOnHour =
-          Number(item.bookingPrice.lateFeeBasedOnHour) || 0;
-        const lateFeeBasedOnKM =
-          Number(item.bookingPrice.lateFeeBasedOnKM) || 0;
+        // ─── LATE FEES (add if value > 0, no payment method check) ───
+        const lateFeeTotal =
+          (Number(bp.lateFeeBasedOnHour) > 0
+            ? Number(bp.lateFeeBasedOnHour)
+            : 0) +
+          (Number(bp.lateFeeBasedOnKM) > 0 ? Number(bp.lateFeeBasedOnKM) : 0);
 
-        // Only add late fees if payment method is not "NA"
-        if (
-          item.bookingPrice.lateFeePaymentMethod &&
-          item.bookingPrice.lateFeePaymentMethod !== "NA"
-        ) {
-          lateFeeTotal = lateFeeBasedOnHour + lateFeeBasedOnKM;
-        }
-
-        // ✅ Calculate additional fees if paid
-        let additionalFeeTotal = 0;
-        const additionalPrice = Number(item.bookingPrice.additionalPrice) || 0;
-
-        // Only add additional fees if payment method is not "NA"
-        if (
-          item.bookingPrice.additionFeePaymentMethod &&
-          item.bookingPrice.additionFeePaymentMethod !== "NA"
-        ) {
-          additionalFeeTotal = additionalPrice;
-        }
+        // ─── ADDITIONAL FEES ──────────────────────────────────────────
+        const additionalFeeTotal =
+          bp.additionFeePaymentMethod && bp.additionFeePaymentMethod !== "NA"
+            ? Number(bp.additionalPrice) || 0
+            : 0;
 
         return {
           total:
@@ -577,6 +575,92 @@ async function getAllDataCount(query) {
       },
       { total: 0, extendCount: 0 },
     );
+    // const amount = bookings.reduce(
+    //   (acc, item) => {
+    //     // Skip canceled, pending, or refunded bookings
+    //     if (
+    //       item.bookingStatus === "canceled" ||
+    //       item.bookingStatus === "pending" ||
+    //       item.bookingStatus === "refunded"
+    //     )
+    //       return acc;
+
+    //     // Calculate base booking price (with or without discount)
+    //     const basePriceRaw =
+    //       item.bookingPrice.isDiscountZero === true ||
+    //       (item.bookingPrice.discountTotalPrice &&
+    //         item.bookingPrice.discountTotalPrice > 0)
+    //         ? item.bookingPrice.discountTotalPrice
+    //         : item.bookingPrice.totalPrice;
+
+    //     const basePrice = Number(basePriceRaw) || 0;
+
+    //     // ✅ Calculate extend booking total (amount + addOnAmount + tax + addonTax)
+    //     let extendTotal = 0;
+    //     let extendCount = 0;
+
+    //     if (Array.isArray(item.bookingPrice.extendAmount)) {
+    //       item.bookingPrice.extendAmount.forEach((extend) => {
+    //         if (extend.status === "paid") {
+    //           const amount = Number(extend.amount) || 0;
+    //           const addOnAmount = Number(extend.addOnAmount) || 0;
+    //           const tax = Number(extend.tax) || 0;
+    //           const addonTax = Number(extend.addonTax) || 0;
+
+    //           // Total for this extend entry
+    //           extendTotal += amount + addOnAmount + tax + addonTax;
+    //           extendCount += 1;
+    //         }
+    //       });
+    //     }
+
+    //     // Calculate vehicle change difference amount
+    //     const diffTotal = Array.isArray(item.bookingPrice.diffAmount)
+    //       ? item.bookingPrice.diffAmount.reduce((sum, d) => {
+    //           return d.status === "paid" ? sum + (Number(d.amount) || 0) : sum;
+    //         }, 0)
+    //       : 0;
+
+    //     // ✅ Calculate late fees if paid
+    //     let lateFeeTotal = 0;
+    //     const lateFeeBasedOnHour =
+    //       Number(item.bookingPrice.lateFeeBasedOnHour) || 0;
+    //     const lateFeeBasedOnKM =
+    //       Number(item.bookingPrice.lateFeeBasedOnKM) || 0;
+
+    //     // Only add late fees if payment method is not "NA"
+    //     if (
+    //       item.bookingPrice.lateFeePaymentMethod &&
+    //       item.bookingPrice.lateFeePaymentMethod !== "NA"
+    //     ) {
+    //       lateFeeTotal = lateFeeBasedOnHour + lateFeeBasedOnKM;
+    //     }
+
+    //     // ✅ Calculate additional fees if paid
+    //     let additionalFeeTotal = 0;
+    //     const additionalPrice = Number(item.bookingPrice.additionalPrice) || 0;
+
+    //     // Only add additional fees if payment method is not "NA"
+    //     if (
+    //       item.bookingPrice.additionFeePaymentMethod &&
+    //       item.bookingPrice.additionFeePaymentMethod !== "NA"
+    //     ) {
+    //       additionalFeeTotal = additionalPrice;
+    //     }
+
+    //     return {
+    //       total:
+    //         acc.total +
+    //         basePrice +
+    //         extendTotal +
+    //         diffTotal +
+    //         lateFeeTotal +
+    //         additionalFeeTotal,
+    //       extendCount: acc.extendCount + extendCount,
+    //     };
+    //   },
+    //   { total: 0, extendCount: 0 },
+    // );
 
     const extendBookingCount = amount.extendCount;
     const Amount = amount.total;
@@ -700,7 +784,7 @@ async function saveUser(userData) {
         if (existingAltUser) {
           return {
             status: 409,
-            message: "This alternate contact number already exists",
+            message: "This contact number already exists",
           };
         }
       }
@@ -714,6 +798,7 @@ async function saveUser(userData) {
     if (!isValidEnum(userType, validUserTypes)) {
       return { status: 400, message: "Invalid user type" };
     }
+
     if ((userType === "admin" || userType === "manager") && !password && !_id) {
       return {
         status: 400,
@@ -778,6 +863,7 @@ async function saveUser(userData) {
       if (!existingUser) {
         return { status: 404, message: "User not found" };
       }
+
       if (deleteRec) {
         await User.findByIdAndDelete(_id);
         return {
@@ -786,24 +872,35 @@ async function saveUser(userData) {
           data: { _id },
         };
       }
-      //console.log(userObj.altContact)
-      //console.log(userType)
+
       if (userType !== "admin") {
         if (!userObj.altContact || userObj.altContact === "") {
           return { status: 400, message: "AltContact is required." };
         }
 
-        if (userObj.dateofbirth && !isAtLeast18(userObj.dateofbirth)) {
-          return { status: 400, message: "User should be 18 or older." };
+        const existingAltUser = await User.findOne({
+          contact: userObj.altContact,
+        });
+        if (existingAltUser) {
+          return {
+            status: 409,
+            message: "This contact number already exists",
+          };
         }
-        if (userObj.altContact == existingUser.contact) {
+
+        if (userObj.altContact === existingUser.contact) {
           return {
             status: 400,
             message:
               "Alternate contact should not be the same as primary contact.",
           };
         }
+
+        if (userObj.dateofbirth && !isAtLeast18(userObj.dateofbirth)) {
+          return { status: 400, message: "User should be 18 or older." };
+        }
       }
+
       if (userType !== "admin" && userType !== "manager") {
         if (userObj.dateofbirth && !isAtLeast18(userObj.dateofbirth)) {
           return { status: 400, message: "User should be 18 or older." };

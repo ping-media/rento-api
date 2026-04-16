@@ -243,70 +243,87 @@ async function refreshToken({ refreshToken }) {
   };
 
   if (!refreshToken) {
-    return res.status(401).json({ message: "No refresh token" });
+    return { status: 401, message: "No refresh token" };
   }
 
-  const decoded = JWT.verify(refreshToken, BCRYPT_TOKEN);
+  try {
+    const decoded = JWT.verify(refreshToken, BCRYPT_TOKEN);
 
-  // Verify it's a refresh token
-  if (decoded.type !== "refresh") {
-    obj.message = "Invalid refresh token";
-    return res.status(403).json({ message: "Invalid refresh token" });
+    if (decoded.type !== "refresh") {
+      return { status: 403, message: "Invalid refresh token" };
+    }
+
+    const user = await User.findOne({ _id: decoded.id });
+
+    if (!user || user.status !== "active") {
+      return { status: 403, message: "User not found or inactive" };
+    }
+
+    const isValid = await bcrypt.compare(token, user.refreshToken);
+    if (!isValid) {
+      return { status: 403, message: "Invalid refresh token" };
+    }
+
+    const newToken = JWT.sign({ id: user._id }, BCRYPT_TOKEN, {
+      expiresIn: "15m",
+    });
+
+    obj.token = newToken;
+    return obj;
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return { status: 401, message: "Session expired, please login again" };
+    }
+    return { status: 401, message: "Invalid token, please login again" };
   }
-
-  const user = await User.findOne({ _id: decoded.id });
-
-  if (!user || user.status !== "active") {
-    obj.message = "User not found or inactive";
-    return res.status(403).json({ message: "Invalid refresh token" });
-  }
-
-  // Verify against stored hash
-  const isValid = await bcrypt.compare(token, user.refreshToken);
-  if (!isValid)
-    return res.status(403).json({ message: "Invalid refresh token" });
-
-  // Generate new access token
-  const newToken = JWT.sign({ id: user._id }, BCRYPT_TOKEN, {
-    expiresIn: "15m",
-  });
-
-  obj.token = newToken;
-  return obj;
 }
 // async function refreshToken({ refreshToken }) {
 //   const obj = {
 //     status: 200,
 //     message: "Token refreshed successfully",
-//     token: "",
+//     accessToken: "",
 //   };
 
 //   if (!refreshToken) {
-//     return res.status(401).json({ message: "Refresh token is required" });
+//     return res.status(401).json({ message: "No refresh token" });
 //   }
 
-//   const decoded = JWT.verify(refreshToken, BCRYPT_TOKEN);
+//   let decoded;
 
-//   // Verify it's a refresh token
-//   if (decoded.type !== "refresh") {
-//     obj.message = "Invalid refresh token";
+//   try {
+//     decoded = JWT.verify(refreshToken, BCRYPT_TOKEN);
+
+//     // Verify it's a refresh token
+//     if (decoded.type !== "refresh") {
+//       obj.message = "Invalid refresh token";
+//       return res.status(403).json({ message: "Invalid refresh token" });
+//     }
+
+//     const user = await User.findOne({ _id: decoded.id });
+
+//     if (!user || user.status !== "active") {
+//       obj.message = "User not found or inactive";
+//       return res.status(403).json({ message: "Invalid refresh token" });
+//     }
+
+//     // Verify against stored hash
+//     const isValid = await bcrypt.compare(token, user.refreshToken);
+//     if (!isValid)
+//       return res.status(403).json({ message: "Invalid refresh token" });
+
+//     // Generate new access token
+//     const newToken = JWT.sign({ id: user._id }, BCRYPT_TOKEN, {
+//       expiresIn: "15m",
+//     });
+
+//     obj.token = newToken;
 //     return obj;
+//   } catch (err) {
+//     if (err.name === "TokenExpiredError") {
+//       return { status: 401, message: "Session expired, please login again" };
+//     }
+//     return { status: 401, message: "Invalid token, please login again" };
 //   }
-
-//   const user = await User.findOne({ _id: decoded.id });
-
-//   if (!user || user.status !== "active") {
-//     obj.message = "User not found or inactive";
-//     return obj;
-//   }
-
-//   // Generate new access token
-//   const newToken = JWT.sign({ id: user._id }, BCRYPT_TOKEN, {
-//     expiresIn: "10080m", // 7 days
-//   });
-
-//   obj.token = newToken;
-//   return obj;
 // }
 
 async function logout({ refreshToken }) {
