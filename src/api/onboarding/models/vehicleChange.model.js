@@ -866,7 +866,7 @@ const vehicleChangeNew = async (req, res) => {
         _id: booking._id,
         type: "ChangeVehicle",
         typeId: changedId,
-        customBookingId: booking.bookingId,
+        customBookingId: booking?.bookingId,
       });
       if (razorpayOrder?.id) newOrderId = razorpayOrder.id;
     }

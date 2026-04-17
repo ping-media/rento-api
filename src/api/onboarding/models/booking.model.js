@@ -677,6 +677,8 @@ const initiateBooking = async (req, res) => {
 
     const response = await booking(bookingData, { session });
 
+    console.log(response);
+
     if (response?.status === 200) {
       const timeLineData_1 = {
         userId: response?.data?.userId,
@@ -707,7 +709,7 @@ const initiateBooking = async (req, res) => {
         booking_id: response?.data?.bookingId,
         _id: response?.data?._id,
         type: paymentMethod === "partiallyPay" ? "partiallyPay" : "",
-        customBookingId: bookingData?.bookingId,
+        customBookingId: response?.data?.bookingId,
       });
 
       if (razorData?.status === "created") {
