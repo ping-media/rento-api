@@ -451,10 +451,18 @@ router.post(
 );
 
 // using this will update the user last location in there document
-router.put("/updateLastLocation", Authentication, async (req, res) => {
+router.put("/updateLastLocation", async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
-    const _id = req.user.id; // from your Authentication middleware
+    const { latitude, longitude, id } = req.body;
+    // const _id = req.user.id; // from your Authentication middleware
+    const _id = id?.trim();
+
+    if (!id) {
+      return res.json({
+        status: 404,
+        message: "user id not found!",
+      });
+    }
 
     if (!latitude || !longitude) {
       return res.json({
