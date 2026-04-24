@@ -101,6 +101,10 @@ const {
   handleUpdatePayment,
 } = require("../models/stationAddon.model");
 const { getPolicy, savePolicy } = require("../models/policy.model");
+const {
+  sendPushNotificationToMany,
+  sendPushNotificationUsingUserId,
+} = require("../../../utils/pushNotification");
 // const { cancelPendingPayments } = require("../utils/cron.js");
 
 // create messages
@@ -1743,11 +1747,52 @@ router.post("/GeneratePaymentToken", async (req, res) => {
   }
 });
 
+// notification routes
 router.post("/send-notification", async (req, res) => {
   const { bookingId } = req.body;
   return sendMessageAfterBooking(bookingId);
 });
 
+router.post("/notifications/send", async (req, res) => {
+  try {
+    const { userId, userIds, title, message, data } = req.body;
+
+    // Bulk send
+    if (Array.isArray(userIds) && userIds.length > 0) {
+      const result = await sendPushNotificationToMany(
+        userIds,
+        title,
+        message,
+        data,
+      );
+      return res.status(200).json({ success: true, ...result });
+    }
+
+    // Single send
+    if (userId) {
+      const result = await sendPushNotificationUsingUserId(
+        userId,
+        title,
+        message,
+        data,
+      );
+      return res
+        .status(result.success ? 200 : 400)
+        .json({ success: result.success, result });
+    }
+
+    return res
+      .status(400)
+      .json({ success: false, message: "Provide either userId or userIds[]" });
+  } catch (err) {
+    console.error("Notification send error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+});
+
+// log route
 router.post("/log-error", async (req, res) => {
   const { message, functionName, userId, platform, otherInfo } = req.body;
   return Log({ message, functionName, userId, platform, otherInfo });
