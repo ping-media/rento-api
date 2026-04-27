@@ -5293,12 +5293,44 @@ const getStationData = async (query) => {
   try {
     const totalRecords = await station.count(filter);
 
-    const response = await station
-      .find(filter)
-      .skip(skip)
-      .limit(Number(limit))
-      .sort({ createdAt: -1 })
-      .populate("userId", "firstName lastName contact");
+    // const response = await station
+    //   .find(filter)
+    //   .skip(skip)
+    //   .limit(Number(limit))
+    //   // .sort({ createdAt: -1 })
+    //   .collation({ locale: "en", strength: 2 })
+    //   .sort({ stationName: 1 })
+    //   .populate("userId", "firstName lastName contact");
+
+    const response = await station.aggregate([
+      { $match: filter },
+
+      {
+        $addFields: {
+          priority: {
+            $cond: [
+              {
+                $regexMatch: {
+                  input: { $toLower: "$stationName" },
+                  regex: "^hsr layout$",
+                },
+              },
+              0,
+              1,
+            ],
+          },
+        },
+      },
+
+      { $sort: { priority: 1, stationName: 1 } },
+      { $skip: skip },
+      { $limit: Number(limit) },
+    ]);
+
+    await station.populate(response, {
+      path: "userId",
+      select: "firstName lastName contact",
+    });
 
     if (response.length) {
       obj.data = response;
