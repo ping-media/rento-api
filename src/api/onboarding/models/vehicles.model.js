@@ -5017,7 +5017,10 @@ async function getLocation(query) {
       filter.locationStatus = { $ne: "inactive" };
     }
 
-    const result = await Location.find(filter).sort({ createdAt: -1 });
+    // const result = await Location.find(filter).sort({ createdAt: -1 });
+    const result = await Location.find(filter)
+      .collation({ locale: "en", strength: 2 })
+      .sort({ locationName: 1 });
     if (result.length) {
       obj.data = result;
     } else {
