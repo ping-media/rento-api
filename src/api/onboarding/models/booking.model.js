@@ -1333,6 +1333,7 @@ const updateExtendBooking = async (req, res) => {
 };
 
 const initiateExtendBookingAfterPayment = async (req, res) => {
+  const { userType } = req.user;
   let {
     _id,
     bookingId,
@@ -1446,7 +1447,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
             {
               title: isUser
                 ? "Booking Extended by User"
-                : "Booking Extended by Admin",
+                : `Booking Extended by ${userType === "admin" ? "Admin" : "Manager"}`,
               date: Date.now(),
               paymentAmount: amount || 0,
               endDate: data.BookingEndDateAndTime,
@@ -1472,7 +1473,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
               {
                 title: isUser
                   ? "Booking Extended by User"
-                  : "Booking Extended by Admin",
+                  : `Booking Extended by ${userType === "admin" ? "Admin" : "Manager"}`,
                 date: Date.now(),
                 paymentAmount: amount || 0,
                 endDate: data.BookingEndDateAndTime,

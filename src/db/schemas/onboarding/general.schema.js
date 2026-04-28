@@ -61,6 +61,7 @@ const GeneralSchema = new Schema(
       },
       contact: { type: Number, required: true },
       waContact: { type: Number, required: true },
+      altContact: { type: Number, required: false },
       address: { type: String, required: true },
       socialmedia: {
         facebook: { type: String, default: "#" },
@@ -99,7 +100,7 @@ const GeneralSchema = new Schema(
       online: { type: Boolean, default: true },
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const general = mongoose.model("general", GeneralSchema);

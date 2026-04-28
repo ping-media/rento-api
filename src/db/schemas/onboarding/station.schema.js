@@ -74,6 +74,11 @@ const stationSchema = new Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
+    weekendPriceType: {
+      type: String,
+      enum: ["percentage", "fixed"],
+      default: "percentage",
+    },
     weekendPercentage: {
       type: Number,
       default: 0,
@@ -149,6 +154,9 @@ stationSchema.index({ state: 1, status: 1 });
 
 // Admin listing
 stationSchema.index({ status: 1, createdAt: -1 });
+
+// weekendPriceType
+stationSchema.index({ weekendPriceType: 1 });
 
 const station = mongoose.model("station", stationSchema);
 

@@ -65,7 +65,7 @@ const createAndUpdateGeneral = async (req, res) => {
       const updated = await General.findOneAndUpdate(
         {},
         { "GST.status": gstStatus },
-        { new: true }
+        { new: true },
       );
 
       if (!updated) {
@@ -154,6 +154,7 @@ const updateGeneralInfo = async (req, res) => {
       email: updates.email?.trim() || existingInfo.email,
       contact: Number(updates.contact) || existingInfo.contact,
       waContact: Number(updates.waContact) || existingInfo.waContact,
+      altContact: Number(updates.altContact) || existingInfo.altContact,
       address: updates.address?.trim() || existingInfo.address,
       socialmedia: {
         facebook:
@@ -234,7 +235,7 @@ const addAndDeleteTestimonial = async (req, res) => {
       }
 
       general.testimonial = general.testimonial.filter(
-        (item) => item._id.toString() !== data._id
+        (item) => item._id.toString() !== data._id,
       );
     } else {
       return res.status(400).json({
@@ -320,7 +321,7 @@ const addAndDeleteSlides = async (req, res) => {
       }
 
       general.slides = general.slides.filter(
-        (item) => item._id.toString() !== _id
+        (item) => item._id.toString() !== _id,
       );
     } else {
       return res.status(400).json({
@@ -384,7 +385,7 @@ const manageExtraAddOn = async (req, res) => {
 
     if (isDelete) {
       const index = general.extraAddOn.findIndex(
-        (item) => item._id.toString() === id
+        (item) => item._id.toString() === id,
       );
       if (index === -1) {
         return res
@@ -403,7 +404,7 @@ const manageExtraAddOn = async (req, res) => {
 
     if (isUpdate) {
       const addOn = general.extraAddOn.find(
-        (item) => item._id.toString() === id
+        (item) => item._id.toString() === id,
       );
       if (!addOn) {
         return res
@@ -426,7 +427,7 @@ const manageExtraAddOn = async (req, res) => {
 
     if (isCreate) {
       const alreadyExists = general.extraAddOn.some(
-        (item) => item.name === name
+        (item) => item.name === name,
       );
       if (alreadyExists) {
         return res.json({
@@ -507,7 +508,7 @@ const getExtraAddOns = async (req, res) => {
         maintenance: 1,
         testMode: 1,
         payments: 1,
-      }
+      },
     );
 
     if (!general || !general.extraAddOn || !general.GST) {

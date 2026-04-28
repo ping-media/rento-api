@@ -283,9 +283,13 @@ router.post("/confirm-extend-booking", Authentication, async (req, res) => {
   updateExtendBooking(req, res);
 });
 
-router.post("/initiate-extend-admin-booking", async (req, res) => {
-  initiateExtendBookingAfterPayment(req, res);
-});
+router.post(
+  "/initiate-extend-admin-booking",
+  Authentication,
+  async (req, res) => {
+    initiateExtendBookingAfterPayment(req, res);
+  },
+);
 
 router.post("/add-timeline-note", Authentication, async (req, res) => {
   addTimelineNote(req, res);
