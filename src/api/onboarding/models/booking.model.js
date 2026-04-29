@@ -454,6 +454,8 @@ const getBookings = async (query) => {
       .populate("stationMasterUserId", "firstName lastName contact")
       .sort({ createdAt: -1 });
 
+    console.log(filters, bookings);
+
     // If no bookings found
     if (!bookings || bookings.length === 0) {
       await Log({

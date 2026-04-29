@@ -21,7 +21,7 @@ if (
   !AWS_BUCKET_NAME
 ) {
   console.error(
-    "Missing required environment variables for AWS configuration."
+    "Missing required environment variables for AWS configuration.",
   );
   process.exit(1);
 }
@@ -97,7 +97,7 @@ const documentUpload = async (req, res) => {
 
     // Check if a document already exists for the user
     const existingDocument = await Document.findOne({ userId }).maxTimeMS(
-      30000
+      30000,
     ); // 30 seconds timeout
 
     if (existingDocument) {
@@ -145,10 +145,16 @@ const getDocument = async (req, res) => {
       });
     }
 
-    const documents = await Document.find({ userId }).populate("userId");
+    const documents = await Document.find({ userId })
+      // .select("+createdAt +updatedAt")
+      .populate("userId");
     //console.log(documents)
     if (documents.length == 0) {
-      const documents = await User.findOne({ _id: userId });
+      // const documents = await User.findOne({ _id: userId });
+      const documents = await User.findById(userId)
+        .select("+createdAt +updatedAt")
+        .lean();
+      console.log(documents);
       return res.status(200).json({
         status: 200,
         message: "User retrieved successfully.",
