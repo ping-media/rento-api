@@ -203,7 +203,10 @@ const getAllVehiclesData = async (req, res) => {
 
     if (data.length > 0) {
       const vehicleIds = data.map((vehicle) => vehicle._id);
-      const today = new Date().toISOString().split("T")[0];
+      const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+      const nowIST = new Date(new Date().getTime() + IST_OFFSET_MS);
+      const today = nowIST.toISOString().split("T")[0];
+      // const today = new Date().toISOString().split("T")[0];
 
       let maintenanceData = [];
 
@@ -213,18 +216,21 @@ const getAllVehiclesData = async (req, res) => {
 
       if (maintenanceType) {
         if (maintenanceType === "upcoming") {
-          baseFilter.endDate = { $gte: today };
+          baseFilter.endDate = { $gte: nowIST };
+          // baseFilter.endDate = { $gte: today };
         } else if (maintenanceType === "expired") {
-          baseFilter.endDate = { $lt: today };
+          baseFilter.endDate = { $lt: nowIST };
+          // baseFilter.endDate = { $lt: today };
         }
 
         maintenanceData = await MaintenanceVehicle.find(baseFilter).sort({
           createdAt: -1,
         });
       } else {
-        maintenanceData = await MaintenanceVehicle.find(baseFilter)
-          .sort({ createdAt: -1 })
-          .limit(20);
+        maintenanceData = await MaintenanceVehicle.find(baseFilter).sort({
+          createdAt: -1,
+        });
+        // .limit(20);
       }
 
       // Map maintenance data back to vehicles
@@ -243,13 +249,21 @@ const getAllVehiclesData = async (req, res) => {
           const maintenance = maintenanceMap[vehicleId] || [];
           vehicle.maintenance = maintenance;
 
+          vehicle.isUnderMaintenance = maintenance.some((m) => {
+            const start = new Date(m.startDate);
+            const end = new Date(m.endDate);
+            return m.status === "active" && start <= nowIST && end >= nowIST; // active RIGHT NOW
+          });
+
           return vehicle;
         })
         .filter((vehicle) => {
           if (maintenanceType === "upcoming") {
-            return vehicle.maintenance.some((m) => m.endDate >= today);
+            return vehicle.maintenance.some((m) => m.endDate >= nowIST);
+            // return vehicle.maintenance.some((m) => m.endDate >= today);
           } else if (maintenanceType === "expired") {
-            return vehicle.maintenance.some((m) => m.endDate < today);
+            return vehicle.maintenance.some((m) => m.endDate < nowIST);
+            // return vehicle.maintenance.some((m) => m.endDate < today);
           }
           return true;
         });
@@ -293,9 +307,11 @@ const getAllVehiclesData = async (req, res) => {
       };
 
       if (maintenanceType === "upcoming") {
-        allMaintenanceFilter.endDate = { $gte: today };
+        allMaintenanceFilter.endDate = { $gte: nowIST };
+        // allMaintenanceFilter.endDate = { $gte: today };
       } else if (maintenanceType === "expired") {
-        allMaintenanceFilter.endDate = { $lt: today };
+        allMaintenanceFilter.endDate = { $lt: nowIST };
+        // allMaintenanceFilter.endDate = { $lt: today };
       }
 
       const allMaintenance =
@@ -349,6 +365,9 @@ const getVehicleIds = async (req, res) => {
       filter.stationId = stationId;
     }
 
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(new Date().getTime() + IST_OFFSET_MS);
+
     const vehicles = await vehicleTable.aggregate([
       ...(stationId ? [{ $match: filter }] : []), // Apply stationId filter first if exists
       {
@@ -381,9 +400,34 @@ const getVehicleIds = async (req, res) => {
             $filter: {
               input: "$maintenanceData",
               as: "m",
-              cond: { $eq: ["$$m.status", "active"] },
+              cond: {
+                $and: [
+                  { $eq: ["$$m.status", "active"] },
+                  {
+                    $lte: [
+                      { $toString: "$$m.startDate" },
+                      { $toString: nowIST },
+                    ],
+                  },
+                  {
+                    $gte: [{ $toString: "$$m.endDate" }, { $toString: nowIST }],
+                  },
+                ],
+                // $and: [
+                //   { $eq: ["$$m.status", "active"] },
+                //   { $lte: ["$$m.startDate", nowIST] }, // started before or at now
+                //   { $gte: ["$$m.endDate", nowIST] }, // ends after or at now
+                // ],
+              },
             },
           },
+          // activeMaintenance: {
+          //   $filter: {
+          //     input: "$maintenanceData",
+          //     as: "m",
+          //     cond: { $eq: ["$$m.status", "active"] },
+          //   },
+          // },
         },
       },
       {
@@ -425,7 +469,9 @@ const getVehicleIds = async (req, res) => {
           lastMeterReading: 1,
           stationName: "$stationData.stationName",
           isUnderMaintenance: 1,
+          // activeMaintenance: 1,
           maintenanceInfo: {
+            _id: "$maintenanceInfo._id",
             startDate: "$maintenanceInfo.startDate",
             endDate: "$maintenanceInfo.endDate",
             reason: "$maintenanceInfo.reason",
@@ -441,9 +487,11 @@ const getVehicleIds = async (req, res) => {
       stationId: vehicle.stationId,
       stationName: vehicle.stationName,
       OdometerReading: vehicle.lastMeterReading,
+      // isUnderMaintenance: (vehicle.activeMaintenance?.length ?? 0) > 0,
       isUnderMaintenance: vehicle.isUnderMaintenance ?? false,
       maintenanceInfo: vehicle.maintenanceInfo
         ? {
+            _id: vehicle.maintenanceInfo._id,
             startDate: vehicle.maintenanceInfo.startDate,
             endDate: vehicle.maintenanceInfo.endDate,
             reason: vehicle.maintenanceInfo.reason,

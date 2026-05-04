@@ -2515,6 +2515,14 @@ const getVehicleTbl = async (query) => {
     const parsedPage = Math.max(parseInt(page, 10), 1);
     const parsedLimit = Math.max(parseInt(limit, 10), 1);
 
+    // Convert search dates to IST offset for maintenance comparison
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(new Date().getTime() + IST_OFFSET_MS);
+    const startDateIST = new Date(
+      new Date(startDate).getTime() + IST_OFFSET_MS,
+    );
+    const endDateIST = new Date(new Date(endDate).getTime() + IST_OFFSET_MS);
+
     const unavailabilityCheckPipeline = [
       { $match: matchFilter },
       ...(search
@@ -2663,24 +2671,113 @@ const getVehicleTbl = async (query) => {
                       "active",
                     ],
                   },
+                  // Convert stored string dates to Date for proper comparison
+                  {
+                    $gte: [
+                      {
+                        $dateFromString: {
+                          dateString: "$$maintenance.endDate",
+                        },
+                      },
+                      nowIST,
+                    ],
+                  },
                   {
                     $or: [
                       {
                         $and: [
-                          { $gte: ["$$maintenance.startDate", startDate] },
-                          { $lte: ["$$maintenance.startDate", endDate] },
+                          {
+                            $gte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.startDate",
+                                },
+                              },
+                              startDateIST,
+                            ],
+                          },
+                          {
+                            $lt: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.startDate",
+                                },
+                              },
+                              endDateIST,
+                            ],
+                          },
                         ],
                       },
                       {
                         $and: [
-                          { $gte: ["$$maintenance.endDate", startDate] },
-                          { $lte: ["$$maintenance.endDate", endDate] },
+                          {
+                            $gt: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.endDate",
+                                },
+                              },
+                              startDateIST,
+                            ],
+                          },
+                          {
+                            $lte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.endDate",
+                                },
+                              },
+                              endDateIST,
+                            ],
+                          },
                         ],
                       },
                       {
                         $and: [
-                          { $lte: ["$$maintenance.startDate", startDate] },
-                          { $gte: ["$$maintenance.endDate", endDate] },
+                          {
+                            $lte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.startDate",
+                                },
+                              },
+                              startDateIST,
+                            ],
+                          },
+                          {
+                            $gte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.endDate",
+                                },
+                              },
+                              endDateIST,
+                            ],
+                          },
+                        ],
+                      },
+                      {
+                        $and: [
+                          {
+                            $gte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.startDate",
+                                },
+                              },
+                              startDateIST,
+                            ],
+                          },
+                          {
+                            $lte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.endDate",
+                                },
+                              },
+                              endDateIST,
+                            ],
+                          },
                         ],
                       },
                     ],
@@ -2689,6 +2786,45 @@ const getVehicleTbl = async (query) => {
               },
             },
           },
+
+          // conflictingMaintenance: {
+          //   $filter: {
+          //     input: "$maintenanceData",
+          //     as: "maintenance",
+          //     cond: {
+          //       $and: [
+          //         {
+          //           $eq: [
+          //             { $ifNull: ["$$maintenance.status", "active"] },
+          //             "active",
+          //           ],
+          //         },
+          //         {
+          //           $or: [
+          //             {
+          //               $and: [
+          //                 { $gte: ["$$maintenance.startDate", startDate] },
+          //                 { $lte: ["$$maintenance.startDate", endDate] },
+          //               ],
+          //             },
+          //             {
+          //               $and: [
+          //                 { $gte: ["$$maintenance.endDate", startDate] },
+          //                 { $lte: ["$$maintenance.endDate", endDate] },
+          //               ],
+          //             },
+          //             {
+          //               $and: [
+          //                 { $lte: ["$$maintenance.startDate", startDate] },
+          //                 { $gte: ["$$maintenance.endDate", endDate] },
+          //               ],
+          //             },
+          //           ],
+          //         },
+          //       ],
+          //     },
+          //   },
+          // },
         },
       },
       {
@@ -2857,6 +2993,7 @@ const getVehicleTbl = async (query) => {
               },
             },
           },
+
           conflictingMaintenance: {
             $filter: {
               input: "$maintenanceData",
@@ -2869,24 +3006,113 @@ const getVehicleTbl = async (query) => {
                       "active",
                     ],
                   },
+                  // Convert stored string dates to Date for proper comparison
+                  {
+                    $gte: [
+                      {
+                        $dateFromString: {
+                          dateString: "$$maintenance.endDate",
+                        },
+                      },
+                      nowIST,
+                    ],
+                  },
                   {
                     $or: [
                       {
                         $and: [
-                          { $gte: ["$$maintenance.startDate", startDate] },
-                          { $lte: ["$$maintenance.startDate", endDate] },
+                          {
+                            $gte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.startDate",
+                                },
+                              },
+                              startDateIST,
+                            ],
+                          },
+                          {
+                            $lt: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.startDate",
+                                },
+                              },
+                              endDateIST,
+                            ],
+                          },
                         ],
                       },
                       {
                         $and: [
-                          { $gte: ["$$maintenance.endDate", startDate] },
-                          { $lte: ["$$maintenance.endDate", endDate] },
+                          {
+                            $gt: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.endDate",
+                                },
+                              },
+                              startDateIST,
+                            ],
+                          },
+                          {
+                            $lte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.endDate",
+                                },
+                              },
+                              endDateIST,
+                            ],
+                          },
                         ],
                       },
                       {
                         $and: [
-                          { $lte: ["$$maintenance.startDate", startDate] },
-                          { $gte: ["$$maintenance.endDate", endDate] },
+                          {
+                            $lte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.startDate",
+                                },
+                              },
+                              startDateIST,
+                            ],
+                          },
+                          {
+                            $gte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.endDate",
+                                },
+                              },
+                              endDateIST,
+                            ],
+                          },
+                        ],
+                      },
+                      {
+                        $and: [
+                          {
+                            $gte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.startDate",
+                                },
+                              },
+                              startDateIST,
+                            ],
+                          },
+                          {
+                            $lte: [
+                              {
+                                $dateFromString: {
+                                  dateString: "$$maintenance.endDate",
+                                },
+                              },
+                              endDateIST,
+                            ],
+                          },
                         ],
                       },
                     ],
@@ -2895,6 +3121,45 @@ const getVehicleTbl = async (query) => {
               },
             },
           },
+
+          // conflictingMaintenance: {
+          //   $filter: {
+          //     input: "$maintenanceData",
+          //     as: "maintenance",
+          //     cond: {
+          //       $and: [
+          //         {
+          //           $eq: [
+          //             { $ifNull: ["$$maintenance.status", "active"] },
+          //             "active",
+          //           ],
+          //         },
+          //         {
+          //           $or: [
+          //             {
+          //               $and: [
+          //                 { $gte: ["$$maintenance.startDate", startDate] },
+          //                 { $lte: ["$$maintenance.startDate", endDate] },
+          //               ],
+          //             },
+          //             {
+          //               $and: [
+          //                 { $gte: ["$$maintenance.endDate", startDate] },
+          //                 { $lte: ["$$maintenance.endDate", endDate] },
+          //               ],
+          //             },
+          //             {
+          //               $and: [
+          //                 { $lte: ["$$maintenance.startDate", startDate] },
+          //                 { $gte: ["$$maintenance.endDate", endDate] },
+          //               ],
+          //             },
+          //           ],
+          //         },
+          //       ],
+          //     },
+          //   },
+          // },
         },
       },
 
@@ -3386,6 +3651,13 @@ const getVehicleTblData = async (query) => {
     const startDate = BookingStartDateAndTime;
     const endDate = BookingEndDateAndTime;
 
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(new Date().getTime() + IST_OFFSET_MS);
+    const startDateIST = new Date(
+      new Date(startDate).getTime() + IST_OFFSET_MS,
+    );
+    const endDateIST = new Date(new Date(endDate).getTime() + IST_OFFSET_MS);
+
     const matchFilter = {};
 
     if (_id) {
@@ -3615,6 +3887,57 @@ const getVehicleTblData = async (query) => {
               },
             },
           },
+
+          // conflictingMaintenance: {
+          //   $filter: {
+          //     input: "$maintenanceData",
+          //     as: "maintenance",
+          //     cond: {
+          //       $and: [
+          //         {
+          //           $eq: [
+          //             { $ifNull: ["$$maintenance.status", "active"] },
+          //             "active",
+          //           ],
+          //         },
+          //         // Must not have already ended (IST-aware)
+          //         { $gte: ["$$maintenance.endDate", nowIST] },
+          //         {
+          //           $or: [
+          //             // Maintenance starts during search period
+          //             {
+          //               $and: [
+          //                 { $gte: ["$$maintenance.startDate", startDateIST] },
+          //                 { $lt: ["$$maintenance.startDate", endDateIST] },
+          //               ],
+          //             },
+          //             // Maintenance ends during search period
+          //             {
+          //               $and: [
+          //                 { $gt: ["$$maintenance.endDate", startDateIST] },
+          //                 { $lte: ["$$maintenance.endDate", endDateIST] },
+          //               ],
+          //             },
+          //             // Maintenance completely encompasses search period
+          //             {
+          //               $and: [
+          //                 { $lte: ["$$maintenance.startDate", startDateIST] },
+          //                 { $gte: ["$$maintenance.endDate", endDateIST] },
+          //               ],
+          //             },
+          //             // Search period completely encompasses maintenance
+          //             {
+          //               $and: [
+          //                 { $gte: ["$$maintenance.startDate", startDateIST] },
+          //                 { $lte: ["$$maintenance.endDate", endDateIST] },
+          //               ],
+          //             },
+          //           ],
+          //         },
+          //       ],
+          //     },
+          //   },
+          // },
         },
       },
       {

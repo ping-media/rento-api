@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const MaintenanceVehicle = require("../../../db/schemas/onboarding/maintenanceVehicleSchema");
 const { getVehicleTbl } = require("../models/vehicles.model");
 
@@ -6,8 +7,11 @@ const getMaintenanceVehicle = async (req, res) => {
     const { vehicleTableId, page = 1, limit = 20 } = req.query;
     let query = {};
 
+    // if (vehicleTableId) {
+    //   query.vehicleTableId = vehicleTableId;
+    // }
     if (vehicleTableId) {
-      query.vehicleTableId = vehicleTableId;
+      query.vehicleTableId = mongoose.Types.ObjectId(vehicleTableId);
     }
     const skip = (page - 1) * limit;
     const maintenanceData = await MaintenanceVehicle.find(query)
@@ -25,9 +29,27 @@ const getMaintenanceVehicle = async (req, res) => {
       });
     }
 
-    const totalRecords = await MaintenanceVehicle.count({
-      vehicleTableId: vehicleTableId,
+    // IST-aware current time
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(new Date().getTime() + IST_OFFSET_MS);
+    // const now = new Date();
+
+    // Attach isActive flag to each maintenance record
+    const enrichedData = maintenanceData.map((item) => {
+      const doc = item.toObject();
+      const start = new Date(doc.startDate);
+      const end = new Date(doc.endDate);
+      doc.isActive =
+        doc.status === "active" && start <= nowIST && end >= nowIST;
+      return doc;
     });
+
+    const totalRecords = await MaintenanceVehicle.count(
+      vehicleTableId ? { vehicleTableId } : {},
+    );
+    // const totalRecords = await MaintenanceVehicle.count({
+    //   vehicleTableId: vehicleTableId,
+    // });
 
     const pagination = {
       totalPages: Math.ceil(totalRecords / limit),
@@ -39,7 +61,8 @@ const getMaintenanceVehicle = async (req, res) => {
       status: 200,
       success: true,
       message: "Maintenance data retrieved successfully",
-      data: maintenanceData,
+      data: enrichedData,
+      // data: maintenanceData,
       pagination,
     });
   } catch (error) {
