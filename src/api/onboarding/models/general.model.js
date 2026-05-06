@@ -491,6 +491,7 @@ const getGeneral = async (req, res) => {
 };
 
 const getExtraAddOns = async (req, res) => {
+  const { isWeb = false } = req.query;
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
   const skip = (page - 1) * limit;
@@ -507,6 +508,7 @@ const getExtraAddOns = async (req, res) => {
         appInfo: 1,
         maintenance: 1,
         testMode: 1,
+        showVehicleCount: 1,
         payments: 1,
       },
     );
@@ -527,7 +529,9 @@ const getExtraAddOns = async (req, res) => {
     const testimonial = general.testimonial || [];
     const maintenance = general.maintenance || false;
     const appInfo = general.appInfo || {};
-    const testMode = general.testMode || false;
+    const testMode = general.testMode ?? false;
+    const showVehicleCount = general.showVehicleCount ?? true;
+    // const showVehicleCount = general.showVehicleCount || true;
     const payments = general.payments || null;
 
     return res.status(200).json({
@@ -538,16 +542,12 @@ const getExtraAddOns = async (req, res) => {
       info: info,
       slides: slides,
       testimonial: testimonial,
-      appInfo,
+      // appInfo,
+      ...(isWeb === "true" || isWeb === true ? {} : { appInfo }),
       maintenance: maintenance,
-      testMode: testMode,
+      testMode,
+      showVehicleCount,
       payments,
-      // pagination: {
-      //   total,
-      //   page,
-      //   limit,
-      //   totalPages: Math.ceil(total / limit),
-      // },
     });
   } catch (err) {
     return res.status(500).json({
