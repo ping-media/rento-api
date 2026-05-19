@@ -1652,6 +1652,84 @@ const updateBooking = async (req, res) => {
   }
 };
 
+const rescheduleBooking = async (req, res) => {
+  const { BookingStartDateAndTime, BookingEndDateAndTime, _id } = req.body;
+
+  if (!_id || !BookingStartDateAndTime || !BookingEndDateAndTime) {
+    return res.status(200).json({
+      success: false,
+      message: "Missing required fields! try again",
+    });
+  }
+
+  try {
+    const booking = await Booking.findById(_id);
+
+    if (!booking) {
+      return res.status(200).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const oldStart = booking.BookingStartDateAndTime;
+    const oldEnd = booking.BookingEndDateAndTime;
+
+    const newStart = BookingStartDateAndTime;
+    const newEnd = BookingEndDateAndTime;
+
+    const isStartUpdate = oldStart !== newStart;
+    const isEndUpdate = oldEnd !== newEnd;
+
+    if (!isStartUpdate && !isEndUpdate) {
+      return res.status(200).json({
+        success: false,
+        message: "Booking dates are already the same.",
+      });
+    }
+
+    booking.BookingStartDateAndTime = newStart;
+    booking.BookingEndDateAndTime = newEnd;
+
+    await booking.save();
+
+    const timelineData = {
+      currentBooking_id: booking._id,
+      timeLine: [
+        {
+          title: "Booking Rescheduled",
+          date: Date.now(),
+
+          oldDates: {
+            start: isStartUpdate ? oldStart : null,
+            end: isEndUpdate ? oldEnd : null,
+          },
+
+          newDates: {
+            start: isStartUpdate ? newStart : null,
+            end: isEndUpdate ? newEnd : null,
+          },
+        },
+      ],
+    };
+
+    await timelineFunctionServer(timelineData);
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking rescheduled successfully",
+      timeline: timelineData.timeLine[0],
+    });
+  } catch (error) {
+    console.warn("Unable to reschedule booking! try again", error?.message);
+
+    return res.status(200).json({
+      success: false,
+      message: "Unable to reschedule booking! try again.",
+    });
+  }
+};
+
 const editBooking = async (req, res) => {
   const { addOn, totalAddOnPrice, addonTax, _id } = req.body;
 
@@ -1836,5 +1914,6 @@ module.exports = {
   editBooking,
   updateBooking,
   updateExtendBooking,
+  rescheduleBooking,
   deleteBooking,
 };

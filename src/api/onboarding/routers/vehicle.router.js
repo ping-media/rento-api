@@ -90,6 +90,7 @@ const {
   initiateExtensionBooking,
   updateExtendBooking,
   checkAndClearUnpaidExtension,
+  rescheduleBooking,
 } = require("../models/booking.model");
 const {
   uploadImageToBucketForPickupImage,
@@ -264,7 +265,8 @@ router.post("/delete-booking", async (req, res) => {
 });
 
 router.post("/reschedule-booking", Authentication, async (req, res) => {
-  updateBooking(req, res);
+  // updateBooking(req, res);
+  rescheduleBooking(req, res);
 });
 
 router.post("/edit-booking", async (req, res) => {

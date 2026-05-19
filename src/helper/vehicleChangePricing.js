@@ -152,11 +152,69 @@ const calculateVehicleChangePricing = async (
   // const newRemainingCost =
   //   (newVehicleFullPrice / segmentDays) * daysLeft + addonProrated;
 
-  const priceDifference = newRemainingCost - oldRemainingValue;
+  // const priceDifference = newRemainingCost - oldRemainingValue;
 
-  const isExtraPayment = priceDifference > 1;
-  const isRefund = priceDifference < -1;
-  const isFreeSwap = !isExtraPayment && !isRefund;
+  // const isExtraPayment = priceDifference > 1;
+  // const isRefund = priceDifference < -1;
+  // const isFreeSwap = !isExtraPayment && !isRefund;
+
+  const rawPriceDifference = newRemainingCost - oldRemainingValue;
+
+  // --- Check what user has actually paid ---
+  const userPaid = Number(booking.bookingPrice.userPaid || 0);
+  const discountTotalPrice = Number(
+    booking.bookingPrice.discountTotalPrice || 0,
+  );
+  const totalPrice = Number(booking.bookingPrice.totalPrice || 0);
+  const paymentStatus = booking.paymentStatus;
+
+  // Determine effective paid amount
+  let effectivePaid = 0;
+  if (userPaid > 0) {
+    effectivePaid = userPaid;
+  } else if (paymentStatus === "paid") {
+    effectivePaid = discountTotalPrice > 0 ? discountTotalPrice : totalPrice;
+  }
+
+  let priceDifference;
+  let isExtraPayment = false;
+  let isRefund = false;
+  let isFreeSwap = false;
+  let pendingPayment = 0; // amount user still needs to pay
+
+  if (effectivePaid === 0) {
+    // Nothing paid yet — no refund possible, just recalculate what they owe
+    // new vehicle costs less or same → they just owe newRemainingCost
+    // new vehicle costs more → they owe newRemainingCost
+    priceDifference = Math.round(Math.abs(rawPriceDifference));
+    pendingPayment = Math.round(newRemainingCost);
+    isExtraPayment = false;
+    isRefund = false;
+    isFreeSwap = true; // no payment action needed yet since nothing was paid
+  } else {
+    // Something was paid — check against new cost
+    const amountStillOwed = Math.round(newRemainingCost) - effectivePaid;
+
+    if (amountStillOwed > 1) {
+      // User paid less than new vehicle cost → they need to pay more
+      priceDifference = amountStillOwed;
+      pendingPayment = amountStillOwed;
+      isExtraPayment = true;
+      isRefund = false;
+    } else if (amountStillOwed < -1) {
+      // User overpaid compared to new vehicle cost → refund the difference
+      priceDifference = Math.abs(amountStillOwed);
+      pendingPayment = 0;
+      isExtraPayment = false;
+      isRefund = true;
+    } else {
+      priceDifference = 0;
+      pendingPayment = 0;
+      isExtraPayment = false;
+      isRefund = false;
+      isFreeSwap = true;
+    }
+  }
 
   return {
     success: true,
@@ -170,10 +228,16 @@ const calculateVehicleChangePricing = async (
     // pricing
     oldRemainingValue: Math.round(oldRemainingValue),
     newRemainingCost: Math.round(newRemainingCost),
-    priceDifference: Math.round(Math.abs(priceDifference)),
+    priceDifference,
+    pendingPayment,
+    effectivePaid,
     isExtraPayment,
     isRefund,
     isFreeSwap,
+    // priceDifference: Math.round(Math.abs(priceDifference)),
+    // isExtraPayment,
+    // isRefund,
+    // isFreeSwap,
     // new vehicle full data with pricing
     newVehicleData: {
       _id: newVehicleRaw._id,

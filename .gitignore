@@ -54,4 +54,6 @@ Thumbs.db
 *.mov
 *.wmv
 
+cashfree_public_key.pem
+
 .env

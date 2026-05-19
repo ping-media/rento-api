@@ -474,11 +474,22 @@ const vehicleChangeNew = async (req, res) => {
       return res.json({ success: false, message: pricing.message });
     }
 
+    // const {
+    //   newVehicleData,
+    //   oldRemainingValue,
+    //   newRemainingCost,
+    //   priceDifference,
+    //   pendingPayment,
+    //   isExtraPayment,
+    //   isRefund,
+    // } = pricing;
     const {
       newVehicleData,
       oldRemainingValue,
       newRemainingCost,
       priceDifference,
+      pendingPayment,
+      effectivePaid,
       isExtraPayment,
       isRefund,
     } = pricing;
@@ -517,7 +528,8 @@ const vehicleChangeNew = async (req, res) => {
 
     if (isExtraPayment) {
       const razorpayOrder = await createOrderId({
-        amount: priceDifference,
+        // amount: priceDifference,
+        amount: pendingPayment,
         booking_id: booking.bookingId,
         _id: booking._id,
         type: "ChangeVehicle",
@@ -530,8 +542,10 @@ const vehicleChangeNew = async (req, res) => {
     booking.bookingPrice.diffAmount.push({
       id: changedId,
       title: "changedVehicle",
-      amount: isExtraPayment ? priceDifference : 0,
+      amount: isExtraPayment ? pendingPayment : 0,
       refundAmount: isRefund ? priceDifference : 0,
+      // amount: isExtraPayment ? priceDifference : 0,
+      // refundAmount: isRefund ? priceDifference : 0,
       oldAmount: oldRemainingValue,
       newAmount: newRemainingCost,
       paymentMethod: isRefund ? "refund" : "",
@@ -561,7 +575,8 @@ const vehicleChangeNew = async (req, res) => {
     if (isExtraPayment) {
       const paymentData = await createPaymentLinkUtil({
         bookingId: booking._id,
-        amount: priceDifference,
+        // amount: priceDifference,
+        amount: pendingPayment,
         orderId: newOrderId,
         type: "ChangeVehicle",
         typeId: changedId,
@@ -576,7 +591,8 @@ const vehicleChangeNew = async (req, res) => {
               title: "Vehicle Changed",
               changeToVehicle: `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`,
               date: Date.now(),
-              paymentAmount: priceDifference,
+              paymentAmount: pendingPayment,
+              // paymentAmount: priceDifference,
               refundAmount: 0,
               oldAmount: oldRemainingValue,
               newAmount: newRemainingCost,
@@ -684,12 +700,24 @@ const vehicleChangePreview = async (req, res) => {
           oldRemainingValue: pricing.oldRemainingValue,
           newRemainingCost: pricing.newRemainingCost,
           difference: pricing.priceDifference,
+          pendingPayment: pricing.pendingPayment,
+          effectivePaid: pricing.effectivePaid,
           isExtraPayment: pricing.isExtraPayment,
           isRefund: pricing.isRefund,
           isFreeSwap: pricing.isFreeSwap,
           daysLeft: pricing.daysLeft,
           segmentType: pricing.currentSegment.type,
         },
+        // priceSummary: {
+        //   oldRemainingValue: pricing.oldRemainingValue,
+        //   newRemainingCost: pricing.newRemainingCost,
+        //   difference: pricing.priceDifference,
+        //   isExtraPayment: pricing.isExtraPayment,
+        //   isRefund: pricing.isRefund,
+        //   isFreeSwap: pricing.isFreeSwap,
+        //   daysLeft: pricing.daysLeft,
+        //   segmentType: pricing.currentSegment.type,
+        // },
       },
     });
   } catch (error) {

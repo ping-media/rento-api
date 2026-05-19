@@ -6,6 +6,8 @@ const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema")
 const Log = require("../models/Logs.model");
 const { resizeImg } = require("../../../utils/resizeImage");
 const User = require("../../../db/schemas/onboarding/user.schema");
+const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
+
 // Validate required environment variables
 const {
   AWS_REGION,
@@ -35,6 +37,16 @@ const s3 = new S3Client({
   },
 });
 
+// for deleting the image from s3 at time of changing any doc
+const deleteFromS3 = async (fileName) => {
+  await s3.send(
+    new DeleteObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: fileName,
+    }),
+  );
+};
+
 // Configure Multer for Memory Storage
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -47,11 +59,40 @@ const documentUpload = async (req, res) => {
     const { userId, docType, _id, deleteRec } = req.body;
     //  return console.log(req.files)
 
+    // if (_id) {
+    //   if (deleteRec) {
+    //     await Document.deleteOne({ _id });
+    //     await Log({
+    //       message: `Document with ID ${_id} deleted`,
+    //       functionName: "documentUpload",
+    //       userId,
+    //     });
+    //     return res.status(200).json({
+    //       message: "Document deleted successfully",
+    //       status: 200,
+    //       data: _id,
+    //     });
+    //   }
+    // }
+
     if (_id) {
       if (deleteRec) {
-        await Document.deleteOne({ _id });
+        // Find the parent document and locate the specific file by its _id
+        const parentDoc = await Document.findOne({ userId, "files._id": _id });
+        if (parentDoc) {
+          const fileToDelete = parentDoc.files.find(
+            (f) => f._id.toString() === _id.toString(),
+          );
+          if (fileToDelete) {
+            await deleteFromS3(fileToDelete.fileName);
+          }
+          await Document.updateOne(
+            { userId },
+            { $pull: { files: { _id: _id } } },
+          );
+        }
         await Log({
-          message: `Document with ID ${_id} deleted`,
+          message: `Document file with ID ${_id} deleted`,
           functionName: "documentUpload",
           userId,
         });
@@ -66,6 +107,16 @@ const documentUpload = async (req, res) => {
     // Validate userId
     if (!userId || userId.length !== 24) {
       return res.status(400).json({ message: "Invalid user ID provided." });
+    }
+
+    // Early KYC check before wasting S3 upload
+    if (docType === "aadhar" || docType === "license") {
+      const user = await User.findById(userId).select("isKycApproved");
+      if (user?.isKycApproved === "yes") {
+        return res.status(403).json({
+          message: "KYC already approved. Documents cannot be re-uploaded.",
+        });
+      }
     }
 
     const uploadedFiles = [];
@@ -95,7 +146,46 @@ const documentUpload = async (req, res) => {
       uploadedFiles.push({ fileName, imageUrl });
     }
 
-    // Check if a document already exists for the user
+    // Reupload restrictions
+    if (docType === "Selfie") {
+      // Always allow selfie reupload — delete old one first
+      const existingDoc = await Document.findOne({ userId }).maxTimeMS(30000);
+      if (existingDoc) {
+        const oldSelfie = existingDoc.files.find((f) =>
+          f.fileName.endsWith("_Selfie"),
+        );
+        if (oldSelfie) {
+          await deleteFromS3(oldSelfie.fileName);
+          await Document.updateOne(
+            { userId },
+            { $pull: { files: { fileName: oldSelfie.fileName } } },
+          );
+        }
+      }
+    } else if (docType === "aadhar" || docType === "license") {
+      // Delete old files of same docType from S3 and DB
+      const existingDoc = await Document.findOne({ userId }).maxTimeMS(30000);
+      if (existingDoc) {
+        const oldFiles = existingDoc.files.filter((f) =>
+          f.fileName.endsWith(`_${docType}`),
+        );
+        for (const oldFile of oldFiles) {
+          await deleteFromS3(oldFile.fileName);
+        }
+        if (oldFiles.length > 0) {
+          await Document.updateOne(
+            { userId },
+            {
+              $pull: {
+                files: { fileName: { $in: oldFiles.map((f) => f.fileName) } },
+              },
+            },
+          );
+        }
+      }
+    }
+
+    // Re-fetch after potential pull operations above
     const existingDocument = await Document.findOne({ userId }).maxTimeMS(
       30000,
     ); // 30 seconds timeout

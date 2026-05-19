@@ -512,6 +512,7 @@ const updateBookingAfterPayment = async (
     booking.paymentStatus = "paid";
   }
   booking.bookingStatus = "done";
+  booking.rideStatus = "pending";
   booking.paySuccessId = razorpayPaymentId;
 
   await booking.save();
@@ -791,8 +792,9 @@ const handleExtendBookingWebhook = async (
   );
 
   if (!extend) {
+    // Could be deleted by cron before webhook arrived — attempt recovery
     await Log.create({
-      message: `extend amount not found in booking`,
+      message: `extend amount not found — possibly deleted by cron before webhook arrived`,
       functionName: "handleExtendBookingWebhook",
       otherInfo: {
         bookingId,
@@ -801,11 +803,71 @@ const handleExtendBookingWebhook = async (
         existingIds: booking.bookingPrice?.extendAmount?.map((e) => e.id),
       },
     });
-    throw new Error(`Extend amount with ID ${typeId} not found`);
+
+    // Re-push a recovered entry so booking still gets marked extended
+    booking.bookingPrice.extendAmount.push({
+      id: typeIdNum,
+      status: "paid",
+      paymentMethod: "online",
+      transactionId: paymentId,
+      paymentDate: new Date(),
+      razorPayDate: paymentTime || "",
+      paymentInitiatedDate: new Date().getTime(),
+      rrnNumber: rrn || "",
+      amount: amountPaid || 0,
+      recoveredByWebhook: true,
+    });
+
+    booking.bookingStatus = "extended";
+    booking.markModified("bookingPrice.extendAmount");
+    await booking.save();
+
+    await timelineFunctionServer({
+      currentBooking_id: booking._id,
+      timeLine: [
+        {
+          title: "Booking Extended by User",
+          date: Date.now(),
+          paymentAmount: amountPaid || 0,
+          paymentId: paymentId || "",
+          extended: true,
+        },
+      ],
+    });
+
+    if (booking.userId) {
+      sendPushNotificationUsingUserId(
+        booking.userId,
+        "Ride Extended!",
+        "Your ride is successfully extended.",
+      );
+    }
+    return;
   }
+
+  // if (!extend) {
+  //   await Log.create({
+  //     message: `extend amount not found in booking`,
+  //     functionName: "handleExtendBookingWebhook",
+  //     otherInfo: {
+  //       bookingId,
+  //       typeId,
+  //       paymentId,
+  //       existingIds: booking.bookingPrice?.extendAmount?.map((e) => e.id),
+  //     },
+  //   });
+  //   throw new Error(`Extend amount with ID ${typeId} not found`);
+  // }
 
   if (extend.status === "paid") {
     console.log(`Payment for extend amount ID ${typeId} already processed`);
+    return;
+  }
+
+  if (extend.recoveredByCron) {
+    console.log(
+      `Extension ${typeId} already recovered by cron, skipping webhook timeline.`,
+    );
     return;
   }
 

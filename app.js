@@ -41,10 +41,6 @@ const startServer = async () => {
     res.send("Hi there, Welcome to rento bikes");
   });
 
-  app.get("/ping", (_req, res) => {
-    res.status(200).send("Checking ping is ok or not");
-  });
-
   // use routes
   app.use(onboardingRouters);
 
