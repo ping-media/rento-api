@@ -129,6 +129,13 @@ async function softDeleteUser(req, res) {
       return res.json({ status: 404, message: "User not found" });
     }
 
+    if (user.userType !== "customer") {
+      return res.json({
+        status: 403,
+        message: "This account type cannot be deleted",
+      });
+    }
+
     if (user.isDeleted) {
       return res.json({ status: 400, message: "Account is already deleted" });
     }
