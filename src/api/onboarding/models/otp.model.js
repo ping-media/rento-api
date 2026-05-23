@@ -4,6 +4,7 @@ const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema")
 const Otp = require("../../../db/schemas/onboarding/logOtp");
 const Log = require("../../../db/schemas/onboarding/log");
 const { mongoose } = require("mongoose");
+const { updatePushToken } = require("../../../utils/updatePushToken");
 require("dotenv").config();
 
 // const ObjectId = mongoose.Types.ObjectId;
@@ -57,19 +58,27 @@ async function otpGenerat(req, res) {
     // this is for mobile devices when every user login this token will be store in db
     let errorMessage = "";
 
-    if (pushToken && pushToken !== "") {
-      const updateResult = await User.updateOne(
-        { _id: user._id },
-        {
-          $set: {
-            mobileToken: pushToken,
-          },
-        },
-      );
-      if (updateResult.modifiedCount === 0) {
-        errorMessage = "Push token update failed: no document modified";
+    if (pushToken) {
+      const tokenResponse = await updatePushToken(user._id, pushToken);
+
+      if (!tokenResponse.success) {
+        errorMessage = tokenResponse.message || "Push token update failed";
       }
     }
+
+    // if (pushToken && pushToken !== "") {
+    //   const updateResult = await User.updateOne(
+    //     { _id: user._id },
+    //     {
+    //       $set: {
+    //         mobileToken: pushToken,
+    //       },
+    //     },
+    //   );
+    //   if (updateResult.modifiedCount === 0) {
+    //     errorMessage = "Push token update failed: no document modified";
+    //   }
+    // }
 
     if (contact === DEMOACCOUNT) {
       const message = "Login allowed without OTP validation";

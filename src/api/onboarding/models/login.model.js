@@ -117,7 +117,7 @@ async function adminLogin({ email, password }) {
     }
     if (!result) {
       obj.status = 401;
-      obj.message = "Invalid credentials";
+      obj.message = "User Not Found.";
       return obj;
     }
 
@@ -154,86 +154,6 @@ async function adminLogin({ email, password }) {
   }
   return obj;
 }
-
-// async function adminLogin({ email, password }) {
-//   const obj = {
-//     status: 200,
-//     message: "Admin logged in successfully",
-//     data: [],
-//     accessToken: "",
-//     refreshToken: "",
-//     Station: null,
-//   };
-
-//   if (!email || !password) {
-//     obj.status = 400;
-//     obj.message = "Email and password are required";
-//     return obj;
-//   }
-
-//   // Generic message prevents user enumeration attacks
-//   const invalidMsg = "Invalid credentials";
-
-//   const result = await User.findOne({ email: email.toLowerCase().trim() });
-
-//   if (!result) {
-//     obj.status = 401;
-//     obj.message = invalidMsg;
-//     return obj;
-//   }
-
-//   if (result.userType === "customer") {
-//     obj.status = 403;
-//     obj.message = "Access denied";
-//     return obj;
-//   }
-
-//   if (result.status === "inactive") {
-//     obj.status = 403;
-//     obj.message = "Account is inactive. Contact support.";
-//     return obj;
-//   }
-
-//   const isMatch = await bcrypt.compare(password, result.password); // async compare
-//   if (!isMatch) {
-//     obj.status = 401;
-//     obj.message = invalidMsg;
-//     return obj;
-//   }
-
-//   // Short-lived access token
-//   const accessToken = JWT.sign(
-//     { id: result._id, userType: result.userType },
-//     process.env.ACCESS_TOKEN_SECRET,
-//     { expiresIn: "15m" },
-//   );
-
-//   // Long-lived refresh token
-//   const refreshToken = JWT.sign(
-//     { id: result._id },
-//     process.env.REFRESH_TOKEN_SECRET,
-//     { expiresIn: "7d" },
-//   );
-
-//   // Save hashed refresh token in DB
-//   result.refreshToken = await bcrypt.hash(refreshToken, 10);
-//   await result.save();
-
-//   let stationData = null;
-//   if (result.userType === "manager") {
-//     stationData = await Station.findOne({ userId: result._id }).select(
-//       "stationName stationId locationId",
-//     );
-//   }
-
-//   const { password: _, refreshToken: __, ...rest } = result.toObject();
-//   obj.data = rest;
-//   obj.accessToken = accessToken;
-//   obj.refreshToken = refreshToken;
-//   obj.Station = stationData;
-
-//   return obj;
-// }
 
 async function refreshToken({ refreshToken }) {
   const obj = {
@@ -277,54 +197,6 @@ async function refreshToken({ refreshToken }) {
     return { status: 401, message: "Invalid token, please login again" };
   }
 }
-// async function refreshToken({ refreshToken }) {
-//   const obj = {
-//     status: 200,
-//     message: "Token refreshed successfully",
-//     accessToken: "",
-//   };
-
-//   if (!refreshToken) {
-//     return res.status(401).json({ message: "No refresh token" });
-//   }
-
-//   let decoded;
-
-//   try {
-//     decoded = JWT.verify(refreshToken, BCRYPT_TOKEN);
-
-//     // Verify it's a refresh token
-//     if (decoded.type !== "refresh") {
-//       obj.message = "Invalid refresh token";
-//       return res.status(403).json({ message: "Invalid refresh token" });
-//     }
-
-//     const user = await User.findOne({ _id: decoded.id });
-
-//     if (!user || user.status !== "active") {
-//       obj.message = "User not found or inactive";
-//       return res.status(403).json({ message: "Invalid refresh token" });
-//     }
-
-//     // Verify against stored hash
-//     const isValid = await bcrypt.compare(token, user.refreshToken);
-//     if (!isValid)
-//       return res.status(403).json({ message: "Invalid refresh token" });
-
-//     // Generate new access token
-//     const newToken = JWT.sign({ id: user._id }, BCRYPT_TOKEN, {
-//       expiresIn: "15m",
-//     });
-
-//     obj.token = newToken;
-//     return obj;
-//   } catch (err) {
-//     if (err.name === "TokenExpiredError") {
-//       return { status: 401, message: "Session expired, please login again" };
-//     }
-//     return { status: 401, message: "Invalid token, please login again" };
-//   }
-// }
 
 async function logout({ refreshToken }) {
   // const token = req.cookies?.refreshToken;

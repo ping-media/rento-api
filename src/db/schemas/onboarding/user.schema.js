@@ -9,6 +9,23 @@ const userSchema = new mongoose.Schema(
       type: String,
     },
     mobileToken: { type: String },
+    mobileTokens: [
+      {
+        token: {
+          type: String,
+          required: true,
+        },
+        platform: {
+          type: String,
+          enum: ["android", "ios"],
+          required: true,
+        },
+        updatedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     firstName: {
       type: String,
       required: true,
