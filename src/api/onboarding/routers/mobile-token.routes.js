@@ -68,3 +68,5 @@ router.patch("/update-push-token", async (req, res) => {
     });
   }
 });
+
+module.exports = router;

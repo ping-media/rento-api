@@ -1,6 +1,6 @@
-import User from "../db/schemas/onboarding/user.schema";
+const User = require("../db/schemas/onboarding/user.schema");
 
-export async function updatePushToken(userId, pushToken) {
+const updatePushToken = async (userId, pushToken) => {
   try {
     if (!userId || !pushToken || pushToken.trim() === "") {
       return {
@@ -30,4 +30,6 @@ export async function updatePushToken(userId, pushToken) {
       message: error.message,
     };
   }
-}
+};
+
+module.exports = { updatePushToken };
