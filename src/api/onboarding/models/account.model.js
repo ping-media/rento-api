@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 require("dotenv").config();
 const { mongoose } = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
-const { Auth } = require("two-step-auth");
+// const { Auth } = require("two-step-auth");
 const User = require("../../../db/schemas/onboarding/user.schema");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const Vehicle = require("../../../db/schemas/onboarding/vehicle.schema");
@@ -1014,14 +1014,14 @@ async function getUserByContact(body) {
   }
 }
 
-async function login(emailId) {
-  try {
-    const res = await Auth(emailId, "Infoaxon");
-    console.log(res);
-  } catch (error) {
-    throw new Error(error);
-  }
-}
+// async function login(emailId) {
+//   try {
+//     const res = await Auth(emailId, "Infoaxon");
+//     console.log(res);
+//   } catch (error) {
+//     throw new Error(error);
+//   }
+// }
 
 async function searchUser(data) {
   let obj = { status: 200, message: "data fetched successfully", data: [] };

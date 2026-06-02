@@ -18,6 +18,7 @@ const crypto = require("crypto");
 const User = require("../../../db/schemas/onboarding/user.schema.js");
 const Razorpay = require("razorpay");
 const Logs = require("../../../db/schemas/onboarding/log.js");
+const { generateTempId } = require("../../../utils/generateTempId.js");
 require("dotenv").config();
 
 const razorpay = new Razorpay({
@@ -675,11 +676,16 @@ const initiateBooking = async (req, res) => {
       };
     }
 
-    bookingData = { ...bookingData, paymentMethod: paymentMethod };
+    const tempId = generateTempId();
+    bookingData = {
+      ...bookingData,
+      paymentMethod: paymentMethod,
+      tempId,
+      bookingId: null,
+      isConfirmed: false,
+    };
 
     const response = await booking(bookingData, { session });
-
-    console.log(response);
 
     if (response?.status === 200) {
       const timeLineData_1 = {
@@ -708,10 +714,12 @@ const initiateBooking = async (req, res) => {
 
       const razorData = await createOrderId({
         amount: payableAmount,
-        booking_id: response?.data?.bookingId,
+        // booking_id: response?.data?.bookingId,
+        booking_id: response?.data?.tempId,
         _id: response?.data?._id,
         type: paymentMethod === "partiallyPay" ? "partiallyPay" : "",
-        customBookingId: response?.data?.bookingId,
+        customBookingId: response?.data?.tempId,
+        // customBookingId: response?.data?.bookingId,
       });
 
       if (razorData?.status === "created") {

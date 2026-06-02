@@ -11,6 +11,7 @@ const {
 } = require("../../../utils/pushNotification");
 const WebhookLog = require("../../../db/schemas/onboarding/webhook.schema");
 const Log = require("../../../db/schemas/onboarding/log");
+const { generateBookingId } = require("../../../utils/generateBookingId");
 
 const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -260,6 +261,7 @@ const razorpayWebhookAdmin = async (req, res) => {
         type,
         paymentId,
         rrnNumber,
+        orderId,
       );
     } else if (
       type === "extension" &&
@@ -379,13 +381,6 @@ const razorpayWebhook = async (req, res) => {
     const amountPaid = amountInPaise / 100;
     const paymentTime = new Date(payment.created_at * 1000);
 
-    // Extract UTR number from acquirer_data
-    // const utrNumber =
-    //   verifiedPayment.acquirer_data?.utr ||
-    //   verifiedPayment.acquirer_data?.bank_transaction_id ||
-    //   payment.acquirer_data?.utr ||
-    //   payment.acquirer_data?.bank_transaction_id ||
-    //   null;
     const rrn =
       payment.acquirer_data?.rrn ||
       payment.acquirer_data?.bank_transaction_id ||
@@ -414,6 +409,7 @@ const razorpayWebhook = async (req, res) => {
           type,
           rrn,
           paymentTime,
+          payment.order_id, // add this
         );
 
         if (bookingId) {
@@ -495,11 +491,19 @@ const updateBookingAfterPayment = async (
   type,
   rrn,
   paymentTime,
+  orderId,
 ) => {
-  if (!bookingId) throw new Error("Booking ID missing");
+  // if (!bookingId) throw new Error("Booking ID missing");
 
-  const booking = await Booking.findById(bookingId);
-  if (!booking) throw new Error("Booking not found");
+  // const booking = await Booking.findById(bookingId);
+  // if (!booking) throw new Error("Booking not found");
+  const booking = await Booking.findOne({
+    $or: [
+      { _id: bookingId }, // notes.booking_id contains _id
+      { paymentgatewayOrderId: orderId }, // fallback via razorpay orderId
+    ],
+  });
+  if (!booking) throw new Error(`Booking not found for id: ${bookingId}`);
 
   if (rrn) {
     booking.bookingPrice.rrnNumber = rrn;
@@ -514,6 +518,13 @@ const updateBookingAfterPayment = async (
   booking.bookingStatus = "done";
   booking.rideStatus = "pending";
   booking.paySuccessId = razorpayPaymentId;
+
+  // Assign real bookingId and clear tempId
+  if (!booking.bookingId) {
+    booking.bookingId = await generateBookingId();
+    booking.tempId = null;
+    booking.isConfirmed = true;
+  }
 
   await booking.save();
 
@@ -545,11 +556,20 @@ const updateBookingAfterPaymentAdmin = async (
   type,
   paymentId,
   rrnNumber,
+  orderId,
 ) => {
-  if (!bookingId) throw new Error("Booking ID missing");
-  const booking = await Booking.findById(bookingId);
+  // if (!bookingId) throw new Error("Booking ID missing");
+  // const booking = await Booking.findById(bookingId);
 
-  if (!booking) return res.status(200).send("Booking not found");
+  // if (!booking) return res.status(200).send("Booking not found");
+
+  const booking = await Booking.findOne({
+    $or: [
+      { _id: bookingId }, // notes.booking_id contains _id
+      { paymentgatewayOrderId: orderId }, // fallback via razorpay orderId
+    ],
+  });
+  if (!booking) throw new Error(`Booking not found for id: ${bookingId}`);
 
   if (rrnNumber) {
     booking.bookingPrice.rrnNumber = rrnNumber;
@@ -562,7 +582,15 @@ const updateBookingAfterPaymentAdmin = async (
     booking.paymentStatus = "paid";
   }
   booking.bookingStatus = "done";
+  booking.rideStatus = "pending";
   booking.paySuccessId = paymentId || "";
+
+  // Assign real bookingId and clear tempId
+  if (!booking.bookingId) {
+    booking.bookingId = await generateBookingId();
+    booking.tempId = null;
+    booking.isConfirmed = true;
+  }
 
   await booking.save();
 

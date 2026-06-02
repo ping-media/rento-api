@@ -1,5 +1,6 @@
 const { sendEmail } = require("../../../utils/email/index");
-const { v4: uuidv4 } = require("uuid");
+// const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 const moment = require("moment");
 const { mongoose } = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
@@ -7,6 +8,7 @@ const Vehicle = require("../../../db/schemas/onboarding/vehicle.schema");
 const Location = require("../../../db/schemas/onboarding/location.schema");
 const Station = require("../../../db/schemas/onboarding/station.schema");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
+
 // const cron = require("node-cron");
 const BookingDuration = require("../../../db/schemas/onboarding/bookingDuration.schema");
 const User = require("../../../db/schemas/onboarding/user.schema");
@@ -26,6 +28,7 @@ const {
 } = require("../../../utils/emailSend");
 const General = require("../../../db/schemas/onboarding/general.schema");
 const { getDurationInDays, calculateTax } = require("../../../utils");
+const { generateBookingId } = require("../../../utils/generateBookingId");
 
 const logError = async (message, functionName, userId) => {
   await Log({ message, functionName, userId });
@@ -335,6 +338,8 @@ async function booking({
   userType = "",
   paymentgatewayReceiptId,
   session = undefined,
+  tempId,
+  isConfirmed,
 }) {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -376,15 +381,21 @@ async function booking({
         return obj;
       }
 
-      let sequence = 1;
-      const lastBooking = await Booking.findOne({})
-        .sort({ createdAt: -1 })
-        .select("bookingId")
-        .session(session);
-      if (lastBooking && lastBooking.bookingId) {
-        sequence = parseInt(lastBooking.bookingId, 10) + 1;
+      // let sequence = 1;
+      // const lastBooking = await Booking.findOne({})
+      //   .sort({ createdAt: -1 })
+      //   .select("bookingId")
+      //   .session(session);
+      // if (lastBooking && lastBooking.bookingId) {
+      //   sequence = parseInt(lastBooking.bookingId, 10) + 1;
+      // }
+      // var bookingId = sequence.toString().padStart(6, "0");
+
+      // var bookingId = await generateBookingId(session);
+      if (!bookingId && paymentMethod === "cash") {
+        bookingId = await generateBookingId(session);
       }
-      var bookingId = sequence.toString().padStart(6, "0");
+
       const find = await Station.find({ stationName }).session(session);
 
       if (userType != "customer") {
@@ -443,6 +454,8 @@ async function booking({
       stationMasterUserId,
       paymentgatewayReceiptId,
       isCancelled,
+      tempId,
+      isConfirmed: isConfirmed ?? false,
     };
     // console.log(o)
     if (_id && _id.length !== 24) {
@@ -664,7 +677,8 @@ async function booking({
         vehicleImage &&
         vehicleName &&
         stationName &&
-        vehicleBasic
+        vehicleBasic &&
+        (bookingId || tempId)
       ) {
         const SaveBooking = new Booking(o);
 
@@ -707,49 +721,6 @@ async function booking({
     return obj;
   }
 }
-
-// cron.schedule(
-//   "0 * * * *",
-//   async () => {
-//     console.log(
-//       "Running scheduler to cancel pending payments older than 1 hour..."
-//     );
-
-//     try {
-//       const oneHourAgo = new Date();
-//       oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-
-//       // Find and update bookings with paymentStatus "pending" older than 1 hour
-//       const result = await Booking.updateMany(
-//         {
-//           paymentStatus: "pending",
-//           createdAt: { $lte: oneHourAgo },
-//         },
-//         {
-//           $set: {
-//             paymentStatus: "failed",
-//             bookingStatus: "canceled",
-//             rideStatus: "canceled",
-//           },
-//         }
-//       );
-
-//       if (result.modifiedCount > 0) {
-//         console.log(
-//           `Canceled ${result.modifiedCount} bookings with pending payment.`
-//         );
-//       } else {
-//         console.log("No pending payments older than 1 hour to cancel.");
-//       }
-//     } catch (error) {
-//       console.error(
-//         "Error in scheduler for canceling pending payments:",
-//         error.message
-//       );
-//     }
-//   },
-//   { timezone: "UTC" }
-// );
 
 const createOrder = async (o) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };

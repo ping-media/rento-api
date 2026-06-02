@@ -710,7 +710,7 @@ async function sendEmailForBookingToStationMaster(
   BookingStartDateAndTime,
   BookingEndDateAndTime,
   bookingId,
-  stationMasterEmail
+  stationMasterEmail,
 ) {
   try {
     function convertDateString(dateString) {
@@ -731,9 +731,14 @@ async function sendEmailForBookingToStationMaster(
       return date.toLocaleString("en-US", options);
     }
 
+    const isValidEmail = (email) => {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    };
+
     const user = await User.findOne({ _id: userId });
 
     const ccList = ["support@rentobikes.com"];
+
     if (stationMasterEmail && stationMasterEmail !== "") {
       ccList.push(stationMasterEmail);
     }
@@ -741,6 +746,12 @@ async function sendEmailForBookingToStationMaster(
     const { email, firstName, lastName } = await User.findOne({
       _id: stationMasterUserId,
     });
+
+    const isEmailValid = isValidEmail(email);
+
+    if (!isEmailValid) {
+      return { success: false, error: "Invalid email address" };
+    }
 
     const mailOptions = {
       from: "Rento Bikes <support@rentobikes.com>",
@@ -778,9 +789,9 @@ async function sendEmailForBookingToStationMaster(
       <p>You have received a booking from RentoBikes. ${
         user.firstName
       } has booked ${vehicleName} with you. The ride has been scheduled from ${convertDateString(
-        BookingStartDateAndTime
+        BookingStartDateAndTime,
       )} to ${convertDateString(
-        BookingEndDateAndTime
+        BookingEndDateAndTime,
       )}. The Booking ID is ${bookingId} and the customer's contact number is ${
         user.contact
       }.
@@ -909,6 +920,7 @@ async function sendEmailForBookingToStationMaster(
 </body>
 </html>`,
     };
+
     const info = await transporter.sendMail(mailOptions);
     await Log({
       message: `Email Send successfully with message id ${info.messageId}`,
@@ -1181,7 +1193,7 @@ async function sendReminderEmail(body) {
   } = body;
 
   const station = await Station.findOne({ stationName }).select(
-    "latitude longitude"
+    "latitude longitude",
   );
   if (!station) {
     console.error(`Station not found for stationName: ${stationName}`);
@@ -1256,7 +1268,7 @@ async function sendReminderEmail(body) {
            
             <span style="font-size:16px">
               Your ride is scheduled from ${convertDateString(
-                BookingStartDateAndTime
+                BookingStartDateAndTime,
               )}.<br/>
               Booking ID: # ${bookingId}
               
@@ -1489,7 +1501,7 @@ async function sendCancelEmail(
   BookingStartDateAndTime,
   stationName,
   totalPrice,
-  managerContact
+  managerContact,
 ) {
   function convertDateString(dateString) {
     if (!dateString) return "Invalid date";
@@ -1558,8 +1570,8 @@ async function sendCancelEmail(
            
             <span style="font-size:16px">
              Here are the details of your canceled booking: Bike Booked: ${vehicleName} Booking ID: #${bookingId} Scheduled Pickup Date & Time: ${convertDateString(
-      BookingStartDateAndTime
-    )} Pickup Location: Landmark: ${stationName} Booking Amount: ₹${totalPrice}
+               BookingStartDateAndTime,
+             )} Pickup Location: Landmark: ${stationName} Booking Amount: ₹${totalPrice}
 
               
             </span>
@@ -1784,7 +1796,7 @@ async function sendEmailForExtendOrVehicleChange(
   bookingId,
   amount,
   link,
-  managerContact
+  managerContact,
 ) {
   const mailOptions = {
     from: "Rento Bikes <support@rentobikes.com>",

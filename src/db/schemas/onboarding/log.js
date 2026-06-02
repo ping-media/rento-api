@@ -27,7 +27,7 @@ const logSchema = new Schema(
       //required: true,
     },
   },
-  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } },
 );
 
 logSchema.pre("save", function (next) {
@@ -40,6 +40,10 @@ logSchema.pre("save", function (next) {
 
   next();
 });
+
+logSchema.index({ createdAt: -1 });
+logSchema.index({ message: "text", functionName: "text" });
+logSchema.index({ userId: 1 });
 
 const Logs = mongoose.model("Logs", logSchema);
 

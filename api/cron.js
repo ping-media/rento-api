@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Log = require("../src/api/onboarding/models/Logs.model");
 
 // Import your booking schema
 const Booking = require("../src/db/schemas/onboarding/booking.schema");
@@ -66,33 +67,89 @@ module.exports = async (req, res) => {
         paymentStatus: "pending",
         bookingStatus: "pending",
         rideStatus: "pending",
+        isConfirmed: false,
         createdAt: {
-          // $lt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          // change form 24 hour to 10 mins
           $lt: new Date(Date.now() - 10 * 60 * 1000),
         },
-      }).select("_id userId bookingId paymentgatewayOrderId");
+      }).select("_id userId bookingId tempId paymentgatewayOrderId createdAt");
 
       // Filter out bookings where Razorpay already received payment
+      // const verifiedExpired = [];
+      // for (const booking of rawExpiredBookings) {
+      //   if (booking.paymentgatewayOrderId) {
+      //     try {
+      //       const order = await razorpay.orders.fetch(
+      //         booking.paymentgatewayOrderId,
+      //       );
+      //       // if (order?.status === "paid" || order?.status === "attempted") {
+      //       //   console.log(
+      //       //     `Skipping booking ${booking._id} — Razorpay status: ${order.status}`,
+      //       //   );
+      //       //   continue;
+      //       // }
+      //       if (order?.status === "paid") {
+      //         console.log(`Skipping booking ${booking._id} — already paid`);
+      //         continue;
+      //       }
+
+      //       // give attempted payments 15 min window before cancelling
+      //       const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
+      //       if (
+      //         order?.status === "attempted" &&
+      //         booking.createdAt.getTime() > fifteenMinutesAgo
+      //       ) {
+      //         console.log(
+      //           `Skipping booking ${booking._id} — attempted within 15 min window`,
+      //         );
+      //         continue;
+      //       }
+      //     } catch (err) {
+      //       console.error(
+      //         `Razorpay check failed for booking ${booking._id}:`,
+      //         err.message,
+      //       );
+      //       // don't cancel if we can't verify
+      //       continue;
+      //     }
+      //   }
+      //   verifiedExpired.push(booking);
+      // }
+
       const verifiedExpired = [];
+      const recovered = [];
+
       for (const booking of rawExpiredBookings) {
         if (booking.paymentgatewayOrderId) {
           try {
             const order = await razorpay.orders.fetch(
               booking.paymentgatewayOrderId,
             );
-            // if (order?.status === "paid" || order?.status === "attempted") {
-            //   console.log(
-            //     `Skipping booking ${booking._id} — Razorpay status: ${order.status}`,
-            //   );
-            //   continue;
-            // }
+
+            // Payment done but webhook missed — recover it
             if (order?.status === "paid") {
-              console.log(`Skipping booking ${booking._id} — already paid`);
+              // console.log(
+              //   `Recovering booking ${booking._id} — Razorpay paid but webhook missed`,
+              // );
+              await Log({
+                message: `Recovering booking ${booking._id} — Razorpay paid but webhook missed`,
+                functionName: "cancelPendingPaymentsCron",
+              });
+              const newBookingId = await generateBookingId();
+              await Booking.findByIdAndUpdate(booking._id, {
+                $set: {
+                  bookingId: newBookingId,
+                  tempId: null,
+                  isConfirmed: true,
+                  paymentStatus: "paid",
+                  bookingStatus: "done",
+                  rideStatus: "pending",
+                },
+              });
+              recovered.push({ ...booking, bookingId: newBookingId });
               continue;
             }
 
-            // give attempted payments 15 min window before cancelling
+            // Give attempted payments 15 min window
             const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
             if (
               order?.status === "attempted" &&
@@ -103,61 +160,120 @@ module.exports = async (req, res) => {
               );
               continue;
             }
+
+            // Razorpay says failed explicitly — safe to delete
+            if (order?.status === "failed") {
+              console.log(
+                `Booking ${booking._id} — Razorpay failed, marking for deletion`,
+              );
+              verifiedExpired.push(booking);
+              continue;
+            }
           } catch (err) {
-            console.error(
-              `Razorpay check failed for booking ${booking._id}:`,
-              err.message,
-            );
-            // don't cancel if we can't verify
+            await Log({
+              message: `Razorpay check failed for booking ${booking._id}: ${err.message}`,
+              functionName: "cancelPendingPaymentsCron",
+            });
+            // Can't verify — skip, don't delete
             continue;
           }
         }
+
+        // No razorpay order attached — safe to delete
         verifiedExpired.push(booking);
       }
+
       const expiredBookings = verifiedExpired;
 
-      if (expiredBookings.length === 0) {
+      if (verifiedExpired.length === 0 && recovered.length === 0) {
         return res.status(200).json({
           success: true,
-          message: "No pending bookings to cancel",
-          count: 0,
+          message: "No pending bookings to process",
+          recovered: 0,
+          deleted: 0,
         });
       }
 
-      // Cancel all
-      await Booking.updateMany(
-        { _id: { $in: expiredBookings.map((b) => b._id) } },
-        {
-          $set: {
-            paymentStatus: "failed",
-            bookingStatus: "canceled",
-            rideStatus: "canceled",
-          },
-        },
-      );
+      // Hard delete unconfirmed expired bookings
+      if (verifiedExpired.length > 0) {
+        await Booking.deleteMany({
+          _id: { $in: verifiedExpired.map((b) => b._id) },
+          isConfirmed: false, // double safety check
+        });
+        console.log(
+          `Deleted ${verifiedExpired.length} unconfirmed expired bookings`,
+        );
+      }
 
-      // Add timeline for each
-      await Promise.all(
-        expiredBookings.map((booking) =>
-          timelineFunctionServer({
-            currentBooking_id: booking._id,
-            bookingId: booking.bookingId,
-            userId: booking.userId,
-            timeLine: [
-              {
-                title: "Booking Auto Cancelled By System",
-                date: Date.now(),
-              },
-            ],
-          }),
-        ),
-      );
+      // Add timeline only for recovered bookings
+      if (recovered.length > 0) {
+        await Promise.all(
+          recovered.map((booking) =>
+            timelineFunctionServer({
+              currentBooking_id: booking._id,
+              bookingId: booking.bookingId,
+              userId: booking.userId,
+              timeLine: [
+                {
+                  title: "Booking Recovered By System",
+                  date: Date.now(),
+                },
+              ],
+            }),
+          ),
+        );
+        console.log(`Recovered ${recovered.length} bookings`);
+      }
 
       return res.status(200).json({
         success: true,
-        message: `Canceled ${expiredBookings.length} bookings`,
-        count: expiredBookings.length,
+        message: "Cron completed",
+        recovered: recovered.length,
+        deleted: verifiedExpired.length,
       });
+
+      // if (expiredBookings.length === 0) {
+      //   return res.status(200).json({
+      //     success: true,
+      //     message: "No pending bookings to cancel",
+      //     count: 0,
+      //   });
+      // }
+
+      // // Cancel all
+      // await Booking.updateMany(
+      //   { _id: { $in: expiredBookings.map((b) => b._id) } },
+      //   {
+      //     $set: {
+      //       paymentStatus: "failed",
+      //       bookingStatus: "canceled",
+      //       rideStatus: "canceled",
+      //     },
+      //   },
+      // );
+
+      // // Add timeline for each
+      // await Promise.all(
+      //   expiredBookings.map((booking) =>
+      //     timelineFunctionServer({
+      //       currentBooking_id: booking._id,
+      //       bookingId: booking.bookingId,
+      //       userId: booking.userId,
+      //       timeLine: [
+      //         {
+      //           title: "Booking Auto Cancelled By System",
+      //           date: Date.now(),
+      //         },
+      //       ],
+      //     }),
+      //   ),
+      // );
+
+      // return res.status(200).json({
+      //   success: true,
+      //   message: `Canceled ${expiredBookings.length} bookings`,
+      //   count: expiredBookings.length,
+      // });
     } finally {
       await CronLock.findOneAndUpdate(
         { name: "cancelPendingPayments" },
@@ -165,7 +281,10 @@ module.exports = async (req, res) => {
       );
     }
   } catch (error) {
-    console.error("Cron job error:", error);
+    await Log({
+      message: `Cron job error: ${error.message}`,
+      functionName: "cancelPendingPaymentsCron",
+    });
     return res.status(500).json({
       success: false,
       error: error.message,

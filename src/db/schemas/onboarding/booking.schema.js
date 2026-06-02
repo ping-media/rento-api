@@ -13,9 +13,21 @@ const bookingSchema = new Schema(
       ref: "vehicleTable",
       required: true,
     },
+    // bookingId: {
+    //   type: String,
+    //   required: true,
+    // },
     bookingId: {
       type: String,
-      required: true,
+      default: null,
+    },
+    tempId: {
+      type: String,
+      default: null,
+    },
+    isConfirmed: {
+      type: Boolean,
+      default: false,
     },
     vehicleImage: {
       type: String,
@@ -179,7 +191,10 @@ bookingSchema.pre("save", function (next) {
 });
 
 // Unique booking lookup
-bookingSchema.index({ bookingId: 1 }, { unique: true });
+// bookingSchema.index({ bookingId: 1 }, { unique: true });
+bookingSchema.index({ bookingId: 1 }, { unique: true, sparse: true });
+bookingSchema.index({ tempId: 1 }, { sparse: true });
+bookingSchema.index({ isConfirmed: 1, createdAt: -1 });
 
 // User related
 bookingSchema.index({ userId: 1, createdAt: -1 });
