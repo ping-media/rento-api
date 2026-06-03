@@ -18,6 +18,7 @@ const crypto = require("crypto");
 const User = require("../../../db/schemas/onboarding/user.schema.js");
 const Razorpay = require("razorpay");
 const Logs = require("../../../db/schemas/onboarding/log.js");
+const { updateCouponUsage } = require("../../../helper/updateCouponCount.js");
 require("dotenv").config();
 
 const razorpay = new Razorpay({
@@ -588,6 +589,9 @@ const initiateBooking = async (req, res) => {
         await timelineFunctionServer(timeLineData);
       }
 
+      //update the coupon count if discount coupon applied
+      updateCouponUsage(bookingData);
+
       await session.commitTransaction();
       session.endSession();
 
@@ -660,6 +664,9 @@ const initiateBooking = async (req, res) => {
             });
           }
         }
+
+        //update the coupon count if discount coupon applied
+        updateCouponUsage(bookingData);
 
         await session.commitTransaction();
         session.endSession();

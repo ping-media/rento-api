@@ -11,6 +11,7 @@ const {
 } = require("../../../utils/pushNotification");
 const WebhookLog = require("../../../db/schemas/onboarding/webhook.schema");
 const Log = require("../../../db/schemas/onboarding/log");
+const { updateCouponUsage } = require("../../../helper/updateCouponCount");
 
 const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -379,13 +380,6 @@ const razorpayWebhook = async (req, res) => {
     const amountPaid = amountInPaise / 100;
     const paymentTime = new Date(payment.created_at * 1000);
 
-    // Extract UTR number from acquirer_data
-    // const utrNumber =
-    //   verifiedPayment.acquirer_data?.utr ||
-    //   verifiedPayment.acquirer_data?.bank_transaction_id ||
-    //   payment.acquirer_data?.utr ||
-    //   payment.acquirer_data?.bank_transaction_id ||
-    //   null;
     const rrn =
       payment.acquirer_data?.rrn ||
       payment.acquirer_data?.bank_transaction_id ||
@@ -517,6 +511,8 @@ const updateBookingAfterPayment = async (
 
   await booking.save();
 
+  updateCouponUsage(booking);
+
   // Add to timeline
   await timelineFunctionServer({
     currentBooking_id: booking._id,
@@ -565,6 +561,8 @@ const updateBookingAfterPaymentAdmin = async (
   booking.paySuccessId = paymentId || "";
 
   await booking.save();
+
+  updateCouponUsage(booking);
 
   // Add to timeline
   await timelineFunctionServer({

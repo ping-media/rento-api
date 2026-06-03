@@ -71,7 +71,7 @@ module.exports = async (req, res) => {
           // change form 24 hour to 10 mins
           $lt: new Date(Date.now() - 10 * 60 * 1000),
         },
-      }).select("_id userId bookingId paymentgatewayOrderId");
+      }).select("_id userId bookingId paymentgatewayOrderId, createdAt");
 
       // Filter out bookings where Razorpay already received payment
       const verifiedExpired = [];

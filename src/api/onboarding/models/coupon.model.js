@@ -220,7 +220,7 @@ const createCoupon = async (body) => {
     if (err.code === 11000) {
       resObj.status = 400; // Conflict
       resObj.message = `Duplicate key error: ${Object.keys(err.keyValue).join(
-        ", "
+        ", ",
       )} already exists.`;
     } else {
       console.error("Error in createCoupon:", err.message);
@@ -237,7 +237,6 @@ const updateCouponCount = async (query) => {
   try {
     const { _id } = query;
     // Fetch coupon by ID
-    // console.log(_id)
     const coupon = await Coupon.findById(_id);
     if (!coupon) {
       obj.status = 400;
@@ -245,33 +244,52 @@ const updateCouponCount = async (query) => {
       return obj;
     }
 
-    const { allowedUsersCount, couponCount } = coupon;
-    // let allowedUsersCount = couponCount - 1;
-
-    // Ensure allowedUsersCount does not go below 0
+    // const { allowedUsersCount, couponCount } = coupon;
+    const { couponCount } = coupon;
 
     if (couponCount !== -1) {
-      if (allowedUsersCount == 0) {
-        obj.status = 400;
-        obj.message = "Coupon usage limit exceeded";
-        return obj;
-      }
-
-      // Update the coupon document
-      const updatedCoupon = await Coupon.findByIdAndUpdate(
-        _id,
-        { $inc: { allowedUsersCount: -1 } },
-        { new: true }
+      const updatedCoupon = await Coupon.findOneAndUpdate(
+        {
+          _id,
+          allowedUsersCount: { $gt: 0 },
+        },
+        {
+          $inc: { allowedUsersCount: -1 },
+        },
+        {
+          new: true,
+        },
       );
 
       if (!updatedCoupon) {
         obj.status = 400;
-        obj.message = "Failed to update coupon";
+        obj.message = "Coupon usage limit exceeded";
         return obj;
       }
-
-      obj.data = updatedCoupon;
     }
+
+    // if (couponCount !== -1) {
+    //   if (allowedUsersCount == 0) {
+    //     obj.status = 400;
+    //     obj.message = "Coupon usage limit exceeded";
+    //     return obj;
+    //   }
+
+    //   // Update the coupon document
+    //   const updatedCoupon = await Coupon.findByIdAndUpdate(
+    //     _id,
+    //     { $inc: { allowedUsersCount: -1 } },
+    //     { new: true },
+    //   );
+
+    //   if (!updatedCoupon) {
+    //     obj.status = 400;
+    //     obj.message = "Failed to update coupon";
+    //     return obj;
+    //   }
+
+    //   obj.data = updatedCoupon;
+    // }
   } catch (error) {
     console.error("Error updating coupon:", error);
     obj.status = 500;
@@ -314,7 +332,7 @@ const applyCoupon = async (body) => {
 
     // Check coupon usage limits
     if (coupon.couponCount !== -1) {
-      if (coupon.allowedUsersCount == 0) {
+      if (coupon.allowedUsersCount === 0) {
         obj.status = 400;
         obj.message = "Coupon usage limit reached";
         return obj;
