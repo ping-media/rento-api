@@ -32,7 +32,7 @@ const Authentication = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.BCRYPT_TOKEN);
     req.user = decoded;
-    // consele.log(decoded)
+    // console.log(decoded);
     next();
   } catch (error) {
     return res.status(401).json({ message: "Invalid or expired token" });

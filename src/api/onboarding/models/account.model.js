@@ -542,11 +542,16 @@ async function getAllDataCount(query) {
 
         // ─── VEHICLE CHANGE DIFF ──────────────────────────────────────
         const diffTotal = Array.isArray(bp.diffAmount)
-          ? bp.diffAmount.reduce(
-              (sum, d) =>
-                d.status === "paid" ? sum + (Number(d.amount) || 0) : sum,
-              0,
-            )
+          ? bp.diffAmount.reduce((sum, d) => {
+              const rawAmount = d?.amount ? Number(d.amount) : 0;
+              let amount = 0;
+
+              if (rawAmount > 0 && d.status === "paid") {
+                amount = rawAmount;
+              }
+
+              return d.status === "paid" ? sum + rawAmount : sum;
+            }, 0)
           : 0;
 
         // ─── LATE FEES (add if value > 0, no payment method check) ───

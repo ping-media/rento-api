@@ -331,10 +331,6 @@ const savePickupImageLinks = async (req, res) => {
     // updating user altContact and address if send from frontend
     const userUpdate = {};
 
-    // if (altContact && altContact.trim() !== "") {
-    //   userUpdate.altContact = altContact.trim();
-    // }
-
     if (normalizedAltContact) {
       const currentUser = await User.findById(userId).select("contact");
 
@@ -350,13 +346,6 @@ const savePickupImageLinks = async (req, res) => {
         contact: normalizedAltContact,
         _id: { $ne: userId },
       });
-      // const existingUser = await User.findOne({
-      //   $or: [
-      //     { contact: normalizedAltContact },
-      //     { altContact: normalizedAltContact },
-      //   ],
-      //   _id: { $ne: userId },
-      // });
 
       if (existingUser) {
         return res.status(200).json({
@@ -367,10 +356,6 @@ const savePickupImageLinks = async (req, res) => {
 
       userUpdate.altContact = normalizedAltContact;
     }
-
-    // if (address && address?.trim() !== "") {
-    //   userUpdate.address = address.trim();
-    // }
 
     if (address && address.trim() !== "") {
       const trimmedAddress = address.trim();
@@ -423,8 +408,18 @@ const savePickupImageLinks = async (req, res) => {
     const booking = await Booking.findOne({ _id }).populate(
       "userId",
       "kycApproved",
+      "bookingStatus",
     );
+
     const kycStatus = booking?.userId?.kycApproved;
+
+    // before starting the ride, check if booking is canceled or not
+    if ((booking?.bookingStatus ?? "canceled") === "canceled") {
+      return res.json({
+        status: 400,
+        message: "Cannot start ride for a canceled booking",
+      });
+    }
 
     if (kycStatus === "no") {
       return res.json({

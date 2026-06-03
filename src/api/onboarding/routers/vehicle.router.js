@@ -1083,7 +1083,7 @@ router.post(
   },
 );
 
-router.post("/start-ride", async (req, res) => {
+router.post("/start-ride", Authentication, async (req, res) => {
   savePickupImageLinks(req, res);
 });
 

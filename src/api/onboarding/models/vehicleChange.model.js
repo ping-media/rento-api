@@ -474,16 +474,7 @@ const vehicleChangeNew = async (req, res) => {
       return res.json({ success: false, message: pricing.message });
     }
 
-    // const {
-    //   newVehicleData,
-    //   oldRemainingValue,
-    //   newRemainingCost,
-    //   priceDifference,
-    //   pendingPayment,
-    //   isExtraPayment,
-    //   isRefund,
-    // } = pricing;
-    const {
+    let {
       newVehicleData,
       oldRemainingValue,
       newRemainingCost,
@@ -493,6 +484,26 @@ const vehicleChangeNew = async (req, res) => {
       isExtraPayment,
       isRefund,
     } = pricing;
+
+    // Original booking amount not yet collected — don't generate a payment link
+    const isOriginalAmountUnpaid =
+      ((booking.paymentMethod === "partiallyPay" ||
+        booking.paymentMethod === "partially_paid") &&
+        booking.bookingPrice.AmountLeftAfterUserPaid?.status === "unpaid") ||
+      (booking.paymentMethod === "online" &&
+        booking.paymentStatus === "pending");
+
+    if (isOriginalAmountUnpaid) {
+      const leftAmount = Number(
+        booking.bookingPrice.AmountLeftAfterUserPaid?.amount || 0,
+      );
+      if (pendingPayment === leftAmount) {
+        // The pending amount IS the original booking balance, not a vehicle change delta
+        // Station master will collect this at counter — make vehicle change free
+        pendingPayment = 0;
+        isExtraPayment = false;
+      }
+    }
 
     const isSameVehicleMaster =
       booking.vehicleMasterId.toString() ===
