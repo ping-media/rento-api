@@ -801,6 +801,11 @@ router.post("/validedToken", async (req, res) => {
     }
 
     const user = await User.findOne({ _id: userId });
+
+    if ((user?.isDeleted ?? false) === true || user?.status === "inactive") {
+      return res.json({ isUserValid: false });
+    }
+
     const userDocument = await Document.findOne({ userId: userId });
 
     if (!user) {

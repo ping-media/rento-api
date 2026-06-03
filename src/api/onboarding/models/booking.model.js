@@ -537,6 +537,22 @@ const initiateBooking = async (req, res) => {
   try {
     let { bookingData, paymentMethod } = req.body;
 
+    const customerId = bookingData?.userId || null;
+
+    if (!customerId) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ message: "Invalid customer ID", status: 400 });
+    }
+
+    const customer = await User.findById(customerId).session(session);
+
+    if ((customer?.isDeleted ?? false) === true) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ message: "User account is deleted", status: 400 });
+    }
+
     if (!bookingData.vehicleTableId || !bookingData.userId || !paymentMethod) {
       await session.abortTransaction();
       session.endSession();
@@ -803,6 +819,26 @@ const initiateExtensionBooking = async (req, res) => {
     const { _id } = data;
 
     const booking = await Booking.findById(_id).session(session);
+
+    const customerId = booking?.userId || null;
+
+    if (!customerId) {
+      await session.abortTransaction();
+      session.endSession();
+      return res
+        .status(404)
+        .json({ message: "Invalid customer ID", status: 400 });
+    }
+
+    const customer = await User.findById(customerId).session(session);
+
+    if ((customer?.isDeleted ?? false) === true) {
+      await session.abortTransaction();
+      session.endSession();
+      return res
+        .status(404)
+        .json({ message: "User account is deleted", status: 400 });
+    }
 
     if (!booking) {
       await session.abortTransaction();
