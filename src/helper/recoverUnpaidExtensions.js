@@ -58,6 +58,12 @@ const recoverUnpaidExtensions = async () => {
               `Deleting stuck attempted extension ${ext.id} — exceeded 15 min window`,
             );
             shouldDelete = true;
+          } else if (order?.status === "created") {
+            // User opened checkout and left without attempting payment
+            console.log(
+              `Deleting stale unpaid extension ${ext.id} — order never attempted`,
+            );
+            shouldDelete = true;
           } else if (order?.status === "paid") {
             if (ext.recoveredByCron) {
               console.log(

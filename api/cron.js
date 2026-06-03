@@ -24,6 +24,7 @@ async function ensureDBConnection() {
     return;
   }
 
+  mongoose.set("strictQuery", false);
   await mongoose.connect(process.env.DB_URL);
 }
 
@@ -67,9 +68,7 @@ module.exports = async (req, res) => {
         bookingStatus: "pending",
         rideStatus: "pending",
         createdAt: {
-          // $lt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          // change form 24 hour to 10 mins
-          $lt: new Date(Date.now() - 10 * 60 * 1000),
+          $lt: new Date(Date.now() - 10 * 60 * 1000), // 10 minutes
         },
       }).select("_id userId bookingId paymentgatewayOrderId, createdAt");
 
@@ -81,12 +80,6 @@ module.exports = async (req, res) => {
             const order = await razorpay.orders.fetch(
               booking.paymentgatewayOrderId,
             );
-            // if (order?.status === "paid" || order?.status === "attempted") {
-            //   console.log(
-            //     `Skipping booking ${booking._id} — Razorpay status: ${order.status}`,
-            //   );
-            //   continue;
-            // }
             if (order?.status === "paid") {
               console.log(`Skipping booking ${booking._id} — already paid`);
               continue;

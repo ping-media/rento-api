@@ -1,4 +1,5 @@
-const unirest = require("unirest");
+// const unirest = require("unirest");
+const axios = require("axios");
 const User = require("../../../db/schemas/onboarding/user.schema");
 const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 const Otp = require("../../../db/schemas/onboarding/logOtp");
@@ -203,32 +204,61 @@ async function softDeleteUser(req, res) {
   }
 }
 
-function sendOtpViaFast2Sms(contact, otp) {
-  return new Promise((resolve, reject) => {
-    const req = unirest("POST", "https://www.fast2sms.com/dev/bulkV2");
+async function sendOtpViaFast2Sms(contact, otp) {
+  try {
+    const response = await axios.post(
+      "https://www.fast2sms.com/dev/bulkV2",
+      {
+        flash: "0",
+        sender_id: "RNTOBK",
+        message: "178252",
+        route: "dlt",
+        numbers: contact,
+        variables_values: otp,
+      },
+      {
+        headers: {
+          authorization: process.env.FAST2SMS_API_KEY,
+        },
+      },
+    );
 
-    req.headers({
-      authorization: process.env.FAST2SMS_API_KEY, // Store the API key in environment variables
-    });
-
-    req.json({
-      flash: "0",
-      sender_id: "RNTOBK",
-      message: "178252",
-      route: "dlt",
-      numbers: contact,
-      variables_values: otp,
-    });
-
-    req.end((res) => {
-      if (res.error) {
-        console.error("Error sending OTP via Fast2SMS:", res.error.message);
-        return reject(res.error);
-      }
-      return resolve(res.body);
-    });
-  });
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error sending OTP via Fast2SMS:",
+      error.response?.data || error.message,
+    );
+    throw error;
+  }
 }
+
+// function sendOtpViaFast2Sms(contact, otp) {
+//   return new Promise((resolve, reject) => {
+//     const req = unirest("POST", "https://www.fast2sms.com/dev/bulkV2");
+
+//     req.headers({
+//       authorization: process.env.FAST2SMS_API_KEY, // Store the API key in environment variables
+//     });
+
+//     req.json({
+//       flash: "0",
+//       sender_id: "RNTOBK",
+//       message: "178252",
+//       route: "dlt",
+//       numbers: contact,
+//       variables_values: otp,
+//     });
+
+//     req.end((res) => {
+//       if (res.error) {
+//         console.error("Error sending OTP via Fast2SMS:", res.error.message);
+//         return reject(res.error);
+//       }
+//       return resolve(res.body);
+//     });
+//   });
+// }
 
 async function verify(req, res) {
   try {
