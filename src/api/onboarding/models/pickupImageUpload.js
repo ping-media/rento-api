@@ -408,7 +408,6 @@ const savePickupImageLinks = async (req, res) => {
     const booking = await Booking.findOne({ _id }).populate(
       "userId",
       "kycApproved",
-      "bookingStatus",
     );
 
     const kycStatus = booking?.userId?.kycApproved;
