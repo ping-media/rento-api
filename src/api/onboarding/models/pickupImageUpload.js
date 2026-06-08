@@ -430,6 +430,34 @@ const savePickupImageLinks = async (req, res) => {
 
     const { vehicleBasic, paymentMethod, bookingStatus } = booking;
 
+    //  Payment validation before starting ride
+    if (paymentMethod?.toLowerCase() === "online") {
+      const gatewayOrderId = booking.paymentgatewayOrderId;
+      if (gatewayOrderId && gatewayOrderId?.trim() !== "") {
+        return res.json({
+          status: 400,
+          message:
+            "Payment not received yet. This booking has a pending online payment.",
+        });
+      }
+    }
+
+    if (paymentMethod?.toLowerCase() === "partiallyPay") {
+      const hasPaySuccessId =
+        booking.paySuccessId && booking.paySuccessId.trim() !== "";
+      const hasUserPaid =
+        booking.bookingPrice?.userPaid &&
+        String(booking.bookingPrice.userPaid).trim() !== "";
+
+      if (!hasPaySuccessId || !hasUserPaid) {
+        return res.json({
+          status: 400,
+          message:
+            "Partial payment confirmation not found. Please ensure the partial payment was completed before starting the ride.",
+        });
+      }
+    }
+
     const newBookingStatus =
       bookingStatus === "pending" ? "done" : bookingStatus;
 
@@ -465,7 +493,7 @@ const savePickupImageLinks = async (req, res) => {
         ...(pickupData?.data?.updatedData ?? []),
         {
           vehicleNumber: oldVehicleNumber,
-          startMeterReading: pickupData?.startMeterReading,
+          startMeterReading: pickupData?.startMeterReading || 0,
           oldVehicleEndMeterReading: formattedOldVehicleEndMeterReading,
         },
       ];
@@ -475,13 +503,12 @@ const savePickupImageLinks = async (req, res) => {
         {
           $set: {
             files: tempObj,
-            // data: updatedData,
             data: { updatedData: updatedData },
             startMeterReading,
             endMeterReading,
           },
         },
-        { new: true },
+        { new: true, upsert: true },
       );
 
       // updating diff amount flag
@@ -511,7 +538,8 @@ const savePickupImageLinks = async (req, res) => {
       userId,
       bookingId,
       files: tempObj,
-      data,
+      // data,
+      data: { updatedData: [] },
       startMeterReading,
       endMeterReading,
     });
