@@ -537,6 +537,23 @@ const initiateBooking = async (req, res) => {
 
   try {
     let { bookingData, paymentMethod } = req.body;
+    const { vehicleTableId: _stripped, ...restBookingData } = bookingData;
+
+    // if (!bookingData.vehicleTableId || !bookingData.userId || !paymentMethod) {
+    if (!bookingData?.userId || !paymentMethod) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ message: "Required fields missing", status: 400 });
+    }
+
+    bookingData = {
+      ...restBookingData,
+      vehicleAssigned: false,
+      vehicleBasic: {
+        ...bookingData.vehicleBasic,
+        vehicleNumber: "unassigned",
+      },
+    };
 
     const customerId = bookingData?.userId || null;
 
@@ -552,12 +569,6 @@ const initiateBooking = async (req, res) => {
       await session.abortTransaction();
       session.endSession();
       return res.json({ message: "User account is deleted", status: 400 });
-    }
-
-    if (!bookingData.vehicleTableId || !bookingData.userId || !paymentMethod) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.json({ message: "Required fields missing", status: 400 });
     }
 
     // is amount goes to zero after discount
@@ -737,11 +748,11 @@ const initiateBooking = async (req, res) => {
         customBookingId: response?.data?.bookingId,
       });
 
-      console.log("razorData full object:", JSON.stringify(razorData, null, 2));
-      console.log("razorData status check:", razorData?.status);
-      console.log("razorData id:", razorData?.id);
-      console.log("razorData created_at:", razorData?.created_at);
-      console.log("razorData receipt:", razorData?.receipt);
+      // console.log("razorData full object:", JSON.stringify(razorData, null, 2));
+      // console.log("razorData status check:", razorData?.status);
+      // console.log("razorData id:", razorData?.id);
+      // console.log("razorData created_at:", razorData?.created_at);
+      // console.log("razorData receipt:", razorData?.receipt);
 
       if (razorData?.status === "created") {
         await Booking.findByIdAndUpdate(
@@ -757,13 +768,13 @@ const initiateBooking = async (req, res) => {
           { session },
         );
 
-        const updatedDoc = await Booking.findById(response?.data?._id).select(
-          "payInitFrom paymentgatewayOrderId paymentgatewayReceiptId paymentInitiatedDate",
-        );
-        console.log(
-          "Booking after update:",
-          JSON.stringify(updatedDoc, null, 2),
-        );
+        // const updatedDoc = await Booking.findById(response?.data?._id).select(
+        //   "payInitFrom paymentgatewayOrderId paymentgatewayReceiptId paymentInitiatedDate",
+        // );
+        // console.log(
+        //   "Booking after update:",
+        //   JSON.stringify(updatedDoc, null, 2),
+        // );
 
         const timeLineData = {
           currentBooking_id: response.data?._id,
@@ -782,18 +793,18 @@ const initiateBooking = async (req, res) => {
         return res.json({ status: 500, message: "Failed to initiate payment" });
       }
 
-      console.log(
-        "About to commit session, transaction state:",
-        session.inTransaction(),
-      );
+      // console.log(
+      //   "About to commit session, transaction state:",
+      //   session.inTransaction(),
+      // );
       await session.commitTransaction();
-      const afterCommit = await Booking.findById(response?.data?._id).select(
-        "payInitFrom paymentgatewayOrderId paymentgatewayReceiptId paymentInitiatedDate",
-      );
-      console.log(
-        "Booking AFTER commit:",
-        JSON.stringify(afterCommit, null, 2),
-      );
+      // const afterCommit = await Booking.findById(response?.data?._id).select(
+      //   "payInitFrom paymentgatewayOrderId paymentgatewayReceiptId paymentInitiatedDate",
+      // );
+      // console.log(
+      //   "Booking AFTER commit:",
+      //   JSON.stringify(afterCommit, null, 2),
+      // );
       session.endSession();
 
       return res.json({

@@ -4,6 +4,9 @@ const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const { resizeImg } = require("../../../utils/resizeImage");
 const User = require("../../../db/schemas/onboarding/user.schema");
+const {
+  checkVehicleAvailability,
+} = require("../../../utils/booking/checkVehicleAvailability");
 
 // Validate required environment variables
 const {
@@ -289,6 +292,8 @@ const savePickupImageLinks = async (req, res) => {
     let {
       userId,
       bookingId,
+      assignVehicleTableId,
+      assignVehicleNumber,
       data,
       startMeterReading,
       endMeterReading,
@@ -429,6 +434,59 @@ const savePickupImageLinks = async (req, res) => {
     }
 
     const { vehicleBasic, paymentMethod, bookingStatus } = booking;
+
+    if (booking.vehicleAssigned !== true) {
+      // for old booking which are still not started yet
+      if (booking.vehicleTableId !== null) {
+        await Booking.updateOne(
+          { _id },
+          {
+            $set: {
+              vehicleAssigned: true,
+            },
+          },
+        );
+      } else {
+        // Vehicle not yet assigned — validate and assign now
+        if (!assignVehicleTableId || !assignVehicleNumber) {
+          return res.json({
+            status: 400,
+            message:
+              "vehicleTableId and vehicleNumber are required to start the ride",
+          });
+        }
+
+        const availabilityCheck = await checkVehicleAvailability({
+          vehicleTableId: assignVehicleTableId,
+          BookingStartDateAndTime: booking.BookingStartDateAndTime,
+          BookingEndDateAndTime: booking.BookingEndDateAndTime,
+          excludeBookingId: _id,
+        });
+
+        if (!availabilityCheck.available) {
+          return res.json({
+            status: 400,
+            message: availabilityCheck.reason,
+          });
+        }
+
+        await Booking.updateOne(
+          { _id },
+          {
+            $set: {
+              vehicleTableId: assignVehicleTableId,
+              vehicleAssigned: true,
+              "vehicleBasic.vehicleNumber": assignVehicleNumber,
+            },
+          },
+        );
+
+        // sync in-memory so rest of function uses correct vehicleNumber
+        booking.vehicleTableId = assignVehicleTableId;
+        booking.vehicleAssigned = true;
+        booking.vehicleBasic.vehicleNumber = assignVehicleNumber;
+      }
+    }
 
     const newBookingStatus =
       bookingStatus === "pending" ? "done" : bookingStatus;
@@ -600,6 +658,7 @@ const savePickupImageLinks = async (req, res) => {
       status: 200,
       message: "Ride started successfully.",
       newDocument,
+      vehicleNumber: vehicleBasic?.vehicleNumber,
       endOtp: OTP,
     });
   } catch (error) {
