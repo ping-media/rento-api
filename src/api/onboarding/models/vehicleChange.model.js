@@ -594,13 +594,20 @@ const vehicleChangeNew = async (req, res) => {
         isTimeLine: false,
       });
 
+      const changeVehicleMessage =
+        booking.changeVehicle.vehicleNumber !== "unassigned" &&
+        booking.changeVehicle.vehicleTableId !== null
+          ? `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`
+          : `${newVehicleData.vehicleName}(${newVehicleData.vehicleNumber})`;
+
       if (paymentData?.paymentLinkId) {
         timeLineData = {
           currentBooking_id: booking._id,
           timeLine: [
             {
               title: "Vehicle Changed",
-              changeToVehicle: `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`,
+              changeToVehicle: changeVehicleMessage,
+              // changeToVehicle: `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`,
               date: Date.now(),
               paymentAmount: pendingPayment,
               // paymentAmount: priceDifference,
@@ -618,7 +625,8 @@ const vehicleChangeNew = async (req, res) => {
         timeLine: [
           {
             title: "Vehicle Changed",
-            changeToVehicle: `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`,
+            changeToVehicle: changeVehicleMessage,
+            // changeToVehicle: `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`,
             date: Date.now(),
             paymentAmount: 0,
             refundAmount: isRefund ? priceDifference : 0,

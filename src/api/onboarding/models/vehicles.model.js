@@ -2442,6 +2442,7 @@ const getVehicleTbl = async (query) => {
       _id,
       vehicleBrand,
       vehicleType,
+      vehicleName,
       stationId,
       locationId,
       excludeBookingId,
@@ -2450,6 +2451,7 @@ const getVehicleTbl = async (query) => {
       search,
       includeUnavailable = false,
     } = query;
+
     if (!locationId) {
       if (!_id && !BookingStartDateAndTime && !BookingEndDateAndTime) {
         return {
@@ -2606,6 +2608,7 @@ const getVehicleTbl = async (query) => {
               { $arrayElemAt: ["$vehicleMasterData", 0] },
             ],
           },
+
           conflictingBookings: {
             $filter: {
               input: "$bookings",
@@ -2683,6 +2686,7 @@ const getVehicleTbl = async (query) => {
               },
             },
           },
+
           conflictingMaintenance: {
             $filter: {
               input: "$maintenanceData",
@@ -2820,6 +2824,9 @@ const getVehicleTbl = async (query) => {
             : {}),
           ...(vehicleType
             ? { "vehicleMasterData.vehicleType": vehicleType }
+            : {}),
+          ...(vehicleName
+            ? { "vehicleMasterData.vehicleName": vehicleName }
             : {}),
         },
       },
@@ -3239,6 +3246,9 @@ const getVehicleTbl = async (query) => {
           ...(vehicleType
             ? { "vehicleMasterData.vehicleType": vehicleType }
             : {}),
+          ...(vehicleName
+            ? { "vehicleMasterData.vehicleName": vehicleName }
+            : {}),
         },
       },
 
@@ -3360,51 +3370,75 @@ const getVehicleTbl = async (query) => {
     // const adjustedVehicles = [];
     // const pricingRules = await General.findOne({});
 
-    // AFTER:
     const allVehiclesForCheck = await vehicleTable.aggregate(
       unavailabilityCheckPipeline,
     );
     let vehicles = await vehicleTable.aggregate(pipeline);
 
-    // ─── Group-count availability (bookings are pool-based, not per-vehicle) ───
-    const groupSlots = {};
-    vehicles.forEach((v) => {
-      const key = `${v.vehicleModel}-${v.stationId}`;
-      if (!groupSlots[key]) {
-        groupSlots[key] = {
-          conflictingBookings: v.conflictingBookings || [],
-          operationalVehicleIds: [],
-        };
+    // When _id filter is used, only 1 vehicle is in results but conflictingBookings
+    // has the full pool's bookings — fetch full sorted pool for correct slot math
+    const fullPoolByGroup = {};
+    if (_id && vehicles.length > 0) {
+      for (const v of vehicles) {
+        const gKey = `${v.vehicleModel}-${v.stationId}`;
+        if (!fullPoolByGroup[gKey]) {
+          const allPoolVehicles = await vehicleTable
+            .find({
+              vehicleMasterId: v.vehicleMasterId,
+              stationId: v.stationId,
+              vehicleStatus: "active",
+            })
+            .select("_id vehicleNumber")
+            .sort({ vehicleNumber: 1 })
+            .lean();
+          fullPoolByGroup[gKey] = allPoolVehicles.map((pv) =>
+            pv._id.toString(),
+          );
+        }
       }
-      if ((v.conflictingMaintenance?.length || 0) === 0) {
-        groupSlots[key].operationalVehicleIds.push(v._id.toString());
+    }
+
+    // ─── Group-count availability (bookings are pool-based, not per-vehicle) ───
+    // Step 1 — vehicles specifically pinned to assigned bookings
+    const specificAssignedVehicleIds = new Set();
+    vehicles.forEach((v) => {
+      const vid = v._id.toString();
+      const assignedToThis = (v.conflictingBookings || []).filter(
+        (b) =>
+          b.vehicleAssigned === true && b.vehicleTableId?.toString() === vid,
+      );
+      if (assignedToThis.length > 0) {
+        specificAssignedVehicleIds.add(vid);
       }
     });
 
-    const bookedVehicleIds = new Set();
-    Object.values(groupSlots).forEach((group) => {
-      // Assigned bookings pin a specific vehicle — mark that vehicle directly
-      const assignedBookings = group.conflictingBookings.filter(
-        (b) => b.vehicleAssigned === true && b.vehicleTableId,
-      );
-      const unassignedBookings = group.conflictingBookings.filter(
-        (b) => !b.vehicleAssigned,
-      );
+    // Step 2 — per group, check if the entire pool is full
+    // (only then do unassigned bookings cause a vehicle to show as booked)
+    const groupFreeSlots = {};
+    const fullPoolForGroup =
+      Object.keys(fullPoolByGroup).length > 0 ? fullPoolByGroup : null;
 
-      assignedBookings.forEach((b) => {
-        const vid = b.vehicleTableId?.toString();
-        if (vid && group.operationalVehicleIds.includes(vid)) {
-          bookedVehicleIds.add(vid);
-        }
-      });
+    vehicles.forEach((v) => {
+      const key = `${v.vehicleModel}-${v.stationId}`;
+      if (!groupFreeSlots[key]) {
+        const poolIds = fullPoolForGroup?.[key] || null;
 
-      // Unassigned (pool) bookings consume from remaining free vehicles
-      const remainingFreeIds = group.operationalVehicleIds.filter(
-        (id) => !bookedVehicleIds.has(id),
-      );
-      remainingFreeIds
-        .slice(0, unassignedBookings.length)
-        .forEach((id) => bookedVehicleIds.add(id));
+        // operational = pool vehicles not under maintenance and not specifically assigned
+        const operationalCount = poolIds
+          ? poolIds.filter((id) => !specificAssignedVehicleIds.has(id)).length
+          : vehicles.filter(
+              (pv) =>
+                `${pv.vehicleModel}-${pv.stationId}` === key &&
+                (pv.conflictingMaintenance?.length || 0) === 0 &&
+                !specificAssignedVehicleIds.has(pv._id.toString()),
+            ).length;
+
+        const unassignedCount = (v.conflictingBookings || []).filter(
+          (b) => !b.vehicleAssigned,
+        ).length;
+
+        groupFreeSlots[key] = Math.max(0, operationalCount - unassignedCount);
+      }
     });
     // const groupSlots = {};
     // vehicles.forEach((v) => {
@@ -3431,23 +3465,49 @@ const getVehicleTbl = async (query) => {
     //     .forEach((id) => bookedVehicleIds.add(id));
     // });
 
+    // vehicles = vehicles.map((v) => {
+    //   const vid = v._id.toString();
+    //   let computedStatus = v.vehicleStatus;
+    //   if ((v.conflictingMaintenance?.length || 0) > 0) {
+    //     computedStatus = "maintenance";
+    //   } else if (bookedVehicleIds.has(vid)) {
+    //     computedStatus = "booked";
+    //   }
+    //   const conflictingBookingForDisplay = v.conflictingBookings?.[0];
     vehicles = vehicles.map((v) => {
       const vid = v._id.toString();
+      const key = `${v.vehicleModel}-${v.stationId}`;
       let computedStatus = v.vehicleStatus;
+
       if ((v.conflictingMaintenance?.length || 0) > 0) {
         computedStatus = "maintenance";
-      } else if (bookedVehicleIds.has(vid)) {
+      } else if (specificAssignedVehicleIds.has(vid)) {
+        // specifically pinned to another booking
+        computedStatus = "booked";
+      } else if (groupFreeSlots[key] <= 0) {
+        // entire pool is full — no slot available for anyone
         computedStatus = "booked";
       }
-      const conflictingBookingForDisplay = v.conflictingBookings?.[0];
+      const conflictingBookingForDisplay =
+        v.conflictingBookings?.find(
+          (b) =>
+            b.vehicleAssigned === true && b.vehicleTableId?.toString() === vid,
+        ) || v.conflictingBookings?.[0];
       const pendingRide = v.pendingRideBookings?.[0];
 
       const { pendingRideBookings: _removed, ...vClean } = v;
       return {
         ...vClean,
         vehicleStatus: computedStatus,
+        // bookingConflict:
+        //   bookedVehicleIds.has(vid) && conflictingBookingForDisplay
+        //     ? {
+        //         _id: conflictingBookingForDisplay._id,
+        //         bookingId: conflictingBookingForDisplay.bookingId,
+        //       }
+        //     : null,
         bookingConflict:
-          bookedVehicleIds.has(vid) && conflictingBookingForDisplay
+          computedStatus === "booked" && conflictingBookingForDisplay
             ? {
                 _id: conflictingBookingForDisplay._id,
                 bookingId: conflictingBookingForDisplay.bookingId,
@@ -4306,6 +4366,31 @@ const getVehicleTblData = async (query) => {
     // Execute the pipeline to get all vehicles
     const allVehicles = await vehicleTable.aggregate(pipeline);
 
+    // For _id queries, fetch full pool count for accurate slot math
+    // Without this, 1 unassigned booking against 102 vehicles wrongly
+    // excludes the single queried vehicle
+    const fullPoolCountByGroup = {};
+    if (_id && allVehicles.length > 0) {
+      for (const v of allVehicles) {
+        const gKey = `${v.vehicleModel}-${v.vehicleMasterData?.vehicleBrand || ""}-${v.vehicleMasterData?.vehicleName || ""}-${v.perDayCost}`;
+        if (!fullPoolCountByGroup[gKey]) {
+          const assignedVehicleIdsInPool = (v.conflictingBookings || [])
+            .filter((b) => b.vehicleAssigned === true && b.vehicleTableId)
+            .map((b) => new ObjectId(b.vehicleTableId.toString()));
+
+          const poolTrulyFreeCount = await vehicleTable.countDocuments({
+            vehicleMasterId: v.vehicleMasterId,
+            stationId: v.stationId,
+            vehicleStatus: "active",
+            ...(assignedVehicleIdsInPool.length > 0
+              ? { _id: { $nin: assignedVehicleIdsInPool } }
+              : {}),
+          });
+          fullPoolCountByGroup[gKey] = poolTrulyFreeCount;
+        }
+      }
+    }
+
     // Now separate available and excluded vehicles
     // GROUP-FIRST approach: since bookings are now joined at the model+station level,
     // all vehicles in the same model group share the same conflictingBookings list.
@@ -4370,10 +4455,37 @@ const getVehicleTblData = async (query) => {
       );
 
       // Unassigned (pool) bookings consume from trulyFreeVehicles
-      const actualAvailableVehicles = trulyFreeVehicles.slice(
-        unassignedConflictingBookings.length,
-      );
-      const availableSlots = actualAvailableVehicles.length;
+      // const poolTrulyFreeCount =
+      //   fullPoolCountByGroup[groupKey] ?? trulyFreeVehicles.length;
+      // const availableSlots = Math.max(
+      //   0,
+      //   poolTrulyFreeCount - unassignedConflictingBookings.length,
+      // );
+      // const actualAvailableVehicles =
+      //   availableSlots > 0 ? trulyFreeVehicles : [];
+      const poolTrulyFreeCount = fullPoolCountByGroup[groupKey] ?? null;
+
+      let actualAvailableVehicles;
+      let availableSlots;
+
+      if (poolTrulyFreeCount !== null) {
+        // _id query: full pool count known, check if slot exists for this vehicle
+        availableSlots = Math.max(
+          0,
+          poolTrulyFreeCount - unassignedConflictingBookings.length,
+        );
+        actualAvailableVehicles = availableSlots > 0 ? trulyFreeVehicles : [];
+      } else {
+        // browsing query: all vehicles in group are present, slice correctly
+        actualAvailableVehicles = trulyFreeVehicles.slice(
+          unassignedConflictingBookings.length,
+        );
+        availableSlots = actualAvailableVehicles.length;
+      }
+      // const actualAvailableVehicles = trulyFreeVehicles.slice(
+      //   unassignedConflictingBookings.length,
+      // );
+      // const availableSlots = actualAvailableVehicles.length;
 
       // const conflictingBookingCount = conflictingBookings.length;
       // const availableSlots = Math.max(
