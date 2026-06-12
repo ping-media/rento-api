@@ -11,7 +11,11 @@ const bookingSchema = new Schema(
     vehicleTableId: {
       type: Schema.Types.ObjectId,
       ref: "vehicleTable",
-      required: true,
+      default: null,
+    },
+    vehicleAssigned: {
+      type: Boolean,
+      default: false,
     },
     bookingId: {
       type: String,
@@ -177,6 +181,17 @@ bookingSchema.pre("save", function (next) {
 
   next();
 });
+
+bookingSchema.index({ vehicleMasterId: 1, stationId: 1 });
+
+bookingSchema.index({
+  vehicleMasterId: 1,
+  stationId: 1,
+  BookingEndDateAndTime: 1,
+  BookingStartDateAndTime: 1,
+});
+
+bookingSchema.index({ vehicleTableId: 1, status: 1 });
 
 // Unique booking lookup
 bookingSchema.index({ bookingId: 1 }, { unique: true });

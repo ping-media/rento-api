@@ -4,6 +4,12 @@ const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const { resizeImg } = require("../../../utils/resizeImage");
 const User = require("../../../db/schemas/onboarding/user.schema");
+const {
+  checkVehicleAvailability,
+} = require("../../../utils/booking/checkVehicleAvailability");
+const {
+  updateRideStartDetails,
+} = require("../../../helper/updateRideStartDetails");
 
 // Validate required environment variables
 const {
@@ -289,6 +295,8 @@ const savePickupImageLinks = async (req, res) => {
     let {
       userId,
       bookingId,
+      assignVehicleTableId,
+      assignVehicleNumber,
       data,
       startMeterReading,
       endMeterReading,
@@ -366,7 +374,7 @@ const savePickupImageLinks = async (req, res) => {
       if (!currentUser.addressProof || currentUser.addressProof.trim() === "") {
         // addressProof is empty, save here first
         userUpdate.addressProof = trimmedAddress;
-      } else if (currentUser.addresses.length < 5) {
+      } else if ((currentUser?.addresses?.length ?? 0) < 5) {
         // addressProof already has value, push to addresses array
         await User.findByIdAndUpdate(
           userId,
@@ -391,7 +399,6 @@ const savePickupImageLinks = async (req, res) => {
 
       if (typeof imageLinks === "string") {
         try {
-          // imageLinks = JSON.parse(imageLinks);
           parsedImageLinks = JSON.parse(imageLinks);
         } catch {
           return res.status(200).json({ message: "Invalid imageLinks format" });
@@ -409,6 +416,13 @@ const savePickupImageLinks = async (req, res) => {
       "userId",
       "kycApproved",
     );
+
+    if (!booking) {
+      return res.json({
+        status: 404,
+        message: "Booking not found",
+      });
+    }
 
     const kycStatus = booking?.userId?.kycApproved;
 
@@ -458,6 +472,62 @@ const savePickupImageLinks = async (req, res) => {
     //   }
     // }
 
+    if (booking.vehicleAssigned !== true) {
+      if (booking.vehicleTableId !== null && booking.vehicleAssigned !== true) {
+        await Booking.updateOne(
+          { _id },
+          {
+            $set: {
+              vehicleAssigned: true,
+            },
+          },
+        );
+
+        booking.vehicleAssigned = true;
+      }
+
+      if (booking.vehicleTableId === null) {
+        // Vehicle not yet assigned — validate and assign now
+        if (!assignVehicleTableId || !assignVehicleNumber) {
+          return res.json({
+            status: 400,
+            message:
+              "vehicleTableId and vehicleNumber are required to start the ride",
+          });
+        }
+
+        const availabilityCheck = await checkVehicleAvailability({
+          vehicleTableId: assignVehicleTableId,
+          BookingStartDateAndTime: booking.BookingStartDateAndTime,
+          BookingEndDateAndTime: booking.BookingEndDateAndTime,
+          excludeBookingId: _id,
+        });
+
+        if (!availabilityCheck.available) {
+          return res.json({
+            status: 400,
+            message: availabilityCheck.reason,
+          });
+        }
+
+        await Booking.updateOne(
+          { _id },
+          {
+            $set: {
+              vehicleTableId: assignVehicleTableId,
+              vehicleAssigned: true,
+              "vehicleBasic.vehicleNumber": assignVehicleNumber,
+            },
+          },
+        );
+
+        // sync in-memory so rest of function uses correct vehicleNumber
+        booking.vehicleTableId = assignVehicleTableId;
+        booking.vehicleAssigned = true;
+        booking.vehicleBasic.vehicleNumber = assignVehicleNumber;
+      }
+    }
+
     const newBookingStatus =
       bookingStatus === "pending" ? "done" : bookingStatus;
 
@@ -467,7 +537,6 @@ const savePickupImageLinks = async (req, res) => {
 
     const tempObj = {};
     if (!isDev) {
-      // imageLinks.forEach((file, index) => {
       parsedImageLinks.forEach((file, index) => {
         if (!file.fileName || !file.imageUrl) return;
         tempObj[`file_${index}`] = {
@@ -477,26 +546,49 @@ const savePickupImageLinks = async (req, res) => {
       });
     }
 
+    const isFirstVehicleAssignment =
+      booking?.changeVehicle?.vehicleNumber === "unassigned" &&
+      booking?.changeVehicle?.vehicleTableId === null;
+
+    // let newDocument = null;
+
     if (isVehicleUpdate && diffAmountId) {
+      if (
+        isFirstVehicleAssignment === false &&
+        (oldVehicleEndMeterReading === undefined ||
+          oldVehicleEndMeterReading === null ||
+          oldVehicleEndMeterReading === "")
+      ) {
+        return res.json({
+          status: 400,
+          success: false,
+          message: "Old vehicle end meter reading is required.",
+        });
+      }
+
       const pickupData = await pickupImage.findOne({ bookingId });
 
-      const formattedOldVehicleEndMeterReading = isNaN(
-        Number(oldVehicleEndMeterReading),
-      )
-        ? 0
-        : Number(oldVehicleEndMeterReading);
+      let updatedData = [];
 
-      const oldVehicleNumber =
-        booking?.changeVehicle?.vehicleNumber || vehicleNumber; // fallback to sent value
+      if (isFirstVehicleAssignment === false) {
+        const formattedOldVehicleEndMeterReading = isNaN(
+          Number(oldVehicleEndMeterReading),
+        )
+          ? 0
+          : Number(oldVehicleEndMeterReading);
 
-      const updatedData = [
-        ...(pickupData?.data?.updatedData ?? []),
-        {
-          vehicleNumber: oldVehicleNumber,
-          startMeterReading: pickupData?.startMeterReading || 0,
-          oldVehicleEndMeterReading: formattedOldVehicleEndMeterReading,
-        },
-      ];
+        const oldVehicleNumber =
+          booking?.changeVehicle?.vehicleNumber || vehicleNumber; // fallback to sent value
+
+        updatedData = [
+          ...(pickupData?.data?.updatedData ?? []),
+          {
+            vehicleNumber: oldVehicleNumber,
+            startMeterReading: pickupData?.startMeterReading || 0,
+            oldVehicleEndMeterReading: formattedOldVehicleEndMeterReading,
+          },
+        ];
+      }
 
       const newDocument = await pickupImage.findOneAndUpdate(
         { userId, bookingId },
@@ -525,15 +617,32 @@ const savePickupImageLinks = async (req, res) => {
         },
       );
 
+      if (isFirstVehicleAssignment === true) {
+        const OTP = Math.floor(1000 + Math.random() * 9000);
+
+        await updateRideStartDetails({
+          booking,
+          _id,
+          OTP,
+          PaymentMode,
+          paymentStatus,
+          startDateAndTime,
+          newBookingStatus,
+          paymentMethod,
+        });
+      }
+
       if (newDocument) {
         return res.json({
           status: 200,
-          message: "Vehicle changed successfully.",
+          message: "Ride updated successfully.",
           newDocument: newDocument.toObject({ flattenMaps: true }),
+          vehicleNumber: vehicleBasic?.vehicleNumber,
         });
       }
     }
 
+    // if (isFirstVehicleAssignment === false) {
     const newDocument = new pickupImage({
       userId,
       bookingId,
@@ -545,89 +654,103 @@ const savePickupImageLinks = async (req, res) => {
     });
 
     await newDocument.save();
+    // }
+
     const OTP = Math.floor(1000 + Math.random() * 9000);
 
-    if (
-      paymentStatus === "partially_paid" ||
-      paymentStatus === "partiallyPay"
-    ) {
-      const AmountLeftAfterUserPaid =
-        booking?.bookingPrice?.AmountLeftAfterUserPaid ||
-        booking?.bookingPrice?.AmountLeftAfterUserPaid?.amount;
+    await updateRideStartDetails({
+      booking,
+      _id,
+      OTP,
+      PaymentMode,
+      paymentStatus,
+      startDateAndTime,
+      newBookingStatus,
+      paymentMethod,
+    });
 
-      let updatedAmountLeft = {};
-      if (
-        AmountLeftAfterUserPaid &&
-        typeof AmountLeftAfterUserPaid === "object" &&
-        !Array.isArray(AmountLeftAfterUserPaid)
-      ) {
-        updatedAmountLeft = {
-          ...AmountLeftAfterUserPaid,
-          status: "paid",
-          paymentMethod: PaymentMode,
-        };
-      } else {
-        updatedAmountLeft = {
-          status: "paid",
-          paymentMethod: PaymentMode,
-          ...AmountLeftAfterUserPaid,
-        };
-      }
+    // if (
+    //   paymentStatus === "partially_paid" ||
+    //   paymentStatus === "partiallyPay"
+    // ) {
+    //   const AmountLeftAfterUserPaid =
+    //     booking?.bookingPrice?.AmountLeftAfterUserPaid ||
+    //     booking?.bookingPrice?.AmountLeftAfterUserPaid?.amount;
 
-      await Booking.updateOne(
-        { _id },
-        {
-          $set: {
-            bookingStatus: newBookingStatus,
-            "bookingPrice.isPickupImageAdded": true,
-            rideStatus: "ongoing",
-            "vehicleBasic.endRide": OTP,
-            "bookingPrice.AmountLeftAfterUserPaid": updatedAmountLeft,
-            "vehicleBasic.RideStart": Number(startDateAndTime) || "",
-            paymentStatus: "paid",
-          },
-        },
-        { new: true },
-      );
-    } else if (
-      paymentMethod?.toLowerCase() === "cash" &&
-      paymentStatus === "pending"
-    ) {
-      await Booking.updateOne(
-        { _id },
-        {
-          $set: {
-            bookingStatus: newBookingStatus,
-            "bookingPrice.isPickupImageAdded": true,
-            rideStatus: "ongoing",
-            "vehicleBasic.endRide": OTP,
-            "bookingPrice.payOnPickupMethod": PaymentMode,
-            "vehicleBasic.RideStart": Number(startDateAndTime) || "",
-            paymentStatus: "paid",
-          },
-        },
-        { new: true },
-      );
-    } else {
-      await Booking.updateOne(
-        { _id },
-        {
-          $set: {
-            bookingStatus: newBookingStatus,
-            "bookingPrice.isPickupImageAdded": true,
-            rideStatus: "ongoing",
-            "vehicleBasic.endRide": OTP,
-            "vehicleBasic.RideStart": Number(startDateAndTime) || "",
-          },
-        },
-        { new: true },
-      );
-    }
+    //   let updatedAmountLeft = {};
+    //   if (
+    //     AmountLeftAfterUserPaid &&
+    //     typeof AmountLeftAfterUserPaid === "object" &&
+    //     !Array.isArray(AmountLeftAfterUserPaid)
+    //   ) {
+    //     updatedAmountLeft = {
+    //       ...AmountLeftAfterUserPaid,
+    //       status: "paid",
+    //       paymentMethod: PaymentMode,
+    //     };
+    //   } else {
+    //     updatedAmountLeft = {
+    //       status: "paid",
+    //       paymentMethod: PaymentMode,
+    //       ...AmountLeftAfterUserPaid,
+    //     };
+    //   }
+
+    //   await Booking.updateOne(
+    //     { _id },
+    //     {
+    //       $set: {
+    //         bookingStatus: newBookingStatus,
+    //         "bookingPrice.isPickupImageAdded": true,
+    //         rideStatus: "ongoing",
+    //         "vehicleBasic.endRide": OTP,
+    //         "bookingPrice.AmountLeftAfterUserPaid": updatedAmountLeft,
+    //         "vehicleBasic.RideStart": Number(startDateAndTime) || "",
+    //         paymentStatus: "paid",
+    //       },
+    //     },
+    //     { new: true },
+    //   );
+    // } else if (
+    //   paymentMethod?.toLowerCase() === "cash" &&
+    //   paymentStatus === "pending"
+    // ) {
+    //   await Booking.updateOne(
+    //     { _id },
+    //     {
+    //       $set: {
+    //         bookingStatus: newBookingStatus,
+    //         "bookingPrice.isPickupImageAdded": true,
+    //         rideStatus: "ongoing",
+    //         "vehicleBasic.endRide": OTP,
+    //         "bookingPrice.payOnPickupMethod": PaymentMode,
+    //         "vehicleBasic.RideStart": Number(startDateAndTime) || "",
+    //         paymentStatus: "paid",
+    //       },
+    //     },
+    //     { new: true },
+    //   );
+    // } else {
+    //   await Booking.updateOne(
+    //     { _id },
+    //     {
+    //       $set: {
+    //         bookingStatus: newBookingStatus,
+    //         "bookingPrice.isPickupImageAdded": true,
+    //         rideStatus: "ongoing",
+    //         "vehicleBasic.endRide": OTP,
+    //         "vehicleBasic.RideStart": Number(startDateAndTime) || "",
+    //       },
+    //     },
+    //     { new: true },
+    //   );
+    // }
 
     return res.json({
       status: 200,
       message: "Ride started successfully.",
       newDocument,
+      vehicleNumber: vehicleBasic?.vehicleNumber,
       endOtp: OTP,
     });
   } catch (error) {
