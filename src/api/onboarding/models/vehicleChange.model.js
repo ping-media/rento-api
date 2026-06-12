@@ -582,6 +582,12 @@ const vehicleChangeNew = async (req, res) => {
     booking.markModified("vehicleBasic");
     booking.markModified("changeVehicle");
 
+    const changeVehicleMessage =
+      booking.changeVehicle.vehicleNumber !== "unassigned" &&
+      booking.changeVehicle.vehicleTableId !== null
+        ? `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`
+        : `${newVehicleData.vehicleName}(${newVehicleData.vehicleNumber})`;
+
     // --- Payment link if extra payment ---
     if (isExtraPayment) {
       const paymentData = await createPaymentLinkUtil({
@@ -594,11 +600,11 @@ const vehicleChangeNew = async (req, res) => {
         isTimeLine: false,
       });
 
-      const changeVehicleMessage =
-        booking.changeVehicle.vehicleNumber !== "unassigned" &&
-        booking.changeVehicle.vehicleTableId !== null
-          ? `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`
-          : `${newVehicleData.vehicleName}(${newVehicleData.vehicleNumber})`;
+      // const changeVehicleMessage =
+      //   booking.changeVehicle.vehicleNumber !== "unassigned" &&
+      //   booking.changeVehicle.vehicleTableId !== null
+      //     ? `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`
+      //     : `${newVehicleData.vehicleName}(${newVehicleData.vehicleNumber})`;
 
       if (paymentData?.paymentLinkId) {
         timeLineData = {
