@@ -31,6 +31,10 @@ const logError = async (message, functionName, userId) => {
   await Log({ message, functionName, userId });
 };
 
+let cachedPricingRules = null;
+let pricingRulesCachedAt = null;
+const PRICING_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 const createBookingDuration = async ({
   bookingDuration,
   attachedVehicles,
@@ -4128,13 +4132,15 @@ const getVehicleTblData = async (query) => {
             },
           ]
         : []),
+      // {
+      //   $match: {
+      //     vehicleStatus: "active",
+      //   },
+      // },
       {
         $lookup: {
           from: "bookings",
-          let: {
-            masterId: "$vehicleMasterId",
-            sid: "$stationId",
-          },
+          let: { masterId: "$vehicleMasterId", sid: "$stationId" },
           pipeline: [
             {
               $match: {
@@ -4144,6 +4150,30 @@ const getVehicleTblData = async (query) => {
                     { $eq: ["$stationId", "$$sid"] },
                   ],
                 },
+                // Pre-filter at DB level — don't load completed/canceled bookings
+                bookingStatus: { $ne: "canceled" },
+                rideStatus: { $ne: "completed" },
+                paymentStatus: {
+                  $in: ["paid", "partially_paid", "partiallyPay", "pending"],
+                },
+                // Only load bookings that could possibly overlap
+                // (end date is after our search start)
+                BookingEndDateAndTime: { $gt: startDate },
+                BookingStartDateAndTime: { $lt: endDate },
+              },
+            },
+            // Only project fields we actually use — don't load entire booking documents
+            {
+              $project: {
+                _id: 1,
+                bookingId: 1,
+                bookingStatus: 1,
+                rideStatus: 1,
+                paymentStatus: 1,
+                vehicleAssigned: 1,
+                vehicleTableId: 1,
+                BookingStartDateAndTime: 1,
+                BookingEndDateAndTime: 1,
               },
             },
           ],
@@ -4153,8 +4183,22 @@ const getVehicleTblData = async (query) => {
       // {
       //   $lookup: {
       //     from: "bookings",
-      //     localField: "_id",
-      //     foreignField: "vehicleTableId",
+      //     let: {
+      //       masterId: "$vehicleMasterId",
+      //       sid: "$stationId",
+      //     },
+      //     pipeline: [
+      //       {
+      //         $match: {
+      //           $expr: {
+      //             $and: [
+      //               { $eq: ["$vehicleMasterId", "$$masterId"] },
+      //               { $eq: ["$stationId", "$$sid"] },
+      //             ],
+      //           },
+      //         },
+      //       },
+      //     ],
       //     as: "bookings",
       //   },
       // },
@@ -4801,7 +4845,16 @@ const getVehicleTblData = async (query) => {
     }
 
     // Apply pricing rules to available vehicles
-    const pricingRules = await General.findOne({});
+    // const pricingRules = await General.findOne({});
+    const now = Date.now();
+    if (
+      !cachedPricingRules ||
+      now - pricingRulesCachedAt > PRICING_CACHE_TTL_MS
+    ) {
+      cachedPricingRules = await General.findOne({});
+      pricingRulesCachedAt = now;
+    }
+    const pricingRules = cachedPricingRules;
 
     if (pricingRules) {
       paginatedAvailable = paginatedAvailable.map((groupedVehicle) => {

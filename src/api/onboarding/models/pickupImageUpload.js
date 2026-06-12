@@ -445,32 +445,32 @@ const savePickupImageLinks = async (req, res) => {
     const { vehicleBasic, paymentMethod, bookingStatus } = booking;
 
     //  Payment validation before starting ride
-    if (paymentMethod?.toLowerCase() === "online") {
-      const gatewayOrderId = booking.paymentgatewayOrderId;
-      if (gatewayOrderId && gatewayOrderId?.trim() !== "") {
-        return res.json({
-          status: 400,
-          message:
-            "Payment not received yet. This booking has a pending online payment.",
-        });
-      }
-    }
+    // if (paymentMethod?.toLowerCase() === "online") {
+    //   const gatewayOrderId = booking.paymentgatewayOrderId;
+    //   if (gatewayOrderId && gatewayOrderId?.trim() !== "") {
+    //     return res.json({
+    //       status: 400,
+    //       message:
+    //         "Payment not received yet. This booking has a pending online payment.",
+    //     });
+    //   }
+    // }
 
-    if (paymentMethod?.toLowerCase() === "partiallyPay") {
-      const hasPaySuccessId =
-        booking.paySuccessId && booking.paySuccessId.trim() !== "";
-      const hasUserPaid =
-        booking.bookingPrice?.userPaid &&
-        String(booking.bookingPrice.userPaid).trim() !== "";
+    // if (paymentMethod?.toLowerCase() === "partiallyPay") {
+    //   const hasPaySuccessId =
+    //     booking.paySuccessId && booking.paySuccessId.trim() !== "";
+    //   const hasUserPaid =
+    //     booking.bookingPrice?.userPaid &&
+    //     String(booking.bookingPrice.userPaid).trim() !== "";
 
-      if (!hasPaySuccessId || !hasUserPaid) {
-        return res.json({
-          status: 400,
-          message:
-            "Partial payment confirmation not found. Please ensure the partial payment was completed before starting the ride.",
-        });
-      }
-    }
+    //   if (!hasPaySuccessId || !hasUserPaid) {
+    //     return res.json({
+    //       status: 400,
+    //       message:
+    //         "Partial payment confirmation not found. Please ensure the partial payment was completed before starting the ride.",
+    //     });
+    //   }
+    // }
 
     if (booking.vehicleAssigned !== true) {
       if (booking.vehicleTableId !== null && booking.vehicleAssigned !== true) {

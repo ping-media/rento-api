@@ -184,6 +184,15 @@ bookingSchema.pre("save", function (next) {
 
 bookingSchema.index({ vehicleMasterId: 1, stationId: 1 });
 
+bookingSchema.index({
+  vehicleMasterId: 1,
+  stationId: 1,
+  BookingEndDateAndTime: 1,
+  BookingStartDateAndTime: 1,
+});
+
+bookingSchema.index({ vehicleTableId: 1, status: 1 });
+
 // Unique booking lookup
 bookingSchema.index({ bookingId: 1 }, { unique: true });
 
