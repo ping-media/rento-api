@@ -165,6 +165,8 @@ const calculateVehicleChangePricing = async (
   const discountTotalPrice = Number(
     booking.bookingPrice.discountTotalPrice || 0,
   );
+  const AmountLeftAfterUserPaid =
+    booking.bookingPrice.AmountLeftAfterUserPaid ?? null;
   const totalPrice = Number(booking.bookingPrice.totalPrice || 0);
   const paymentStatus = booking.paymentStatus;
 
@@ -172,6 +174,10 @@ const calculateVehicleChangePricing = async (
   let effectivePaid = 0;
   if (userPaid > 0) {
     effectivePaid = userPaid;
+    // If partial pay and remaining amount has also been collected, add it
+    if (AmountLeftAfterUserPaid && AmountLeftAfterUserPaid.status === "paid") {
+      effectivePaid += Number(AmountLeftAfterUserPaid.amount || 0);
+    }
   } else if (paymentStatus === "paid") {
     effectivePaid = discountTotalPrice > 0 ? discountTotalPrice : totalPrice;
   }

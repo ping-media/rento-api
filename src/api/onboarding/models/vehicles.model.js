@@ -26,6 +26,7 @@ const {
 } = require("../../../utils/emailSend");
 const General = require("../../../db/schemas/onboarding/general.schema");
 const { getDurationInDays, calculateTax } = require("../../../utils");
+const { generateBookingId } = require("../../../utils/generateBookingId");
 
 const logError = async (message, functionName, userId) => {
   await Log({ message, functionName, userId });
@@ -384,15 +385,17 @@ async function booking({
         }
       }
 
-      let sequence = 1;
-      const lastBooking = await Booking.findOne({})
-        .sort({ createdAt: -1 })
-        .select("bookingId")
-        .session(session);
-      if (lastBooking && lastBooking.bookingId) {
-        sequence = parseInt(lastBooking.bookingId, 10) + 1;
-      }
-      var bookingId = sequence.toString().padStart(6, "0");
+      // let sequence = 1;
+      // const lastBooking = await Booking.findOne({})
+      //   .sort({ createdAt: -1 })
+      //   .select("bookingId")
+      //   .session(session);
+      // if (lastBooking && lastBooking.bookingId) {
+      //   sequence = parseInt(lastBooking.bookingId, 10) + 1;
+      // }
+      // var bookingId = sequence.toString().padStart(6, "0");
+      var bookingId = await generateBookingId(session);
+
       const find = await Station.find({ stationName }).session(session);
 
       if (userType != "customer") {
@@ -2561,14 +2564,6 @@ const getVehicleTbl = async (query) => {
             },
           ]
         : []),
-      // {
-      //   $lookup: {
-      //     from: "bookings",
-      //     localField: "_id",
-      //     foreignField: "vehicleTableId",
-      //     as: "bookings",
-      //   },
-      // },
       {
         $lookup: {
           from: "bookings",
@@ -2582,12 +2577,48 @@ const getVehicleTbl = async (query) => {
                     { $eq: ["$stationId", "$$sid"] },
                   ],
                 },
+                bookingStatus: { $ne: "canceled" },
+                rideStatus: { $nin: ["completed", "canceled"] },
+                BookingEndDateAndTime: { $gt: startDate },
+                BookingStartDateAndTime: { $lt: endDate },
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                bookingId: 1,
+                bookingStatus: 1,
+                rideStatus: 1,
+                paymentStatus: 1,
+                vehicleAssigned: 1,
+                vehicleTableId: 1,
+                BookingStartDateAndTime: 1,
+                BookingEndDateAndTime: 1,
               },
             },
           ],
           as: "bookings",
         },
       },
+      // {
+      //   $lookup: {
+      //     from: "bookings",
+      //     let: { masterId: "$vehicleMasterId", sid: "$stationId" },
+      //     pipeline: [
+      //       {
+      //         $match: {
+      //           $expr: {
+      //             $and: [
+      //               { $eq: ["$vehicleMasterId", "$$masterId"] },
+      //               { $eq: ["$stationId", "$$sid"] },
+      //             ],
+      //           },
+      //         },
+      //       },
+      //     ],
+      //     as: "bookings",
+      //   },
+      // },
       {
         $lookup: {
           from: "maintenancevehicles",
@@ -2887,6 +2918,23 @@ const getVehicleTbl = async (query) => {
                     { $eq: ["$stationId", "$$sid"] },
                   ],
                 },
+                bookingStatus: { $ne: "canceled" },
+                rideStatus: { $nin: ["completed", "canceled"] },
+                BookingEndDateAndTime: { $gt: startDate },
+                BookingStartDateAndTime: { $lt: endDate },
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                bookingId: 1,
+                bookingStatus: 1,
+                rideStatus: 1,
+                paymentStatus: 1,
+                vehicleAssigned: 1,
+                vehicleTableId: 1,
+                BookingStartDateAndTime: 1,
+                BookingEndDateAndTime: 1,
               },
             },
           ],
@@ -2896,8 +2944,19 @@ const getVehicleTbl = async (query) => {
       // {
       //   $lookup: {
       //     from: "bookings",
-      //     localField: "_id",
-      //     foreignField: "vehicleTableId",
+      //     let: { masterId: "$vehicleMasterId", sid: "$stationId" },
+      //     pipeline: [
+      //       {
+      //         $match: {
+      //           $expr: {
+      //             $and: [
+      //               { $eq: ["$vehicleMasterId", "$$masterId"] },
+      //               { $eq: ["$stationId", "$$sid"] },
+      //             ],
+      //           },
+      //         },
+      //       },
+      //     ],
       //     as: "bookings",
       //   },
       // },
@@ -3303,77 +3362,6 @@ const getVehicleTbl = async (query) => {
       // },
     ];
 
-    // const allVehiclesForCheck = await vehicleTable.aggregate(
-    //   unavailabilityCheckPipeline,
-    // );
-    // let vehicles = await vehicleTable.aggregate(pipeline);
-
-    // if (!vehicles.length || !vehicles[0].totalCount.length) {
-    //   if (allVehiclesForCheck.length === 0) {
-    //     response.status = 404;
-    //     response.message = "No vehicles found matching the search criteria";
-    //     response.data = [];
-    //     response.pagination = {
-    //       totalPages: 0,
-    //       currentPage: parsedPage,
-    //       limit: parsedLimit,
-    //     };
-    //     return response;
-    //   }
-
-    //   // Check why vehicles are unavailable
-    //   const unavailabilityReasons = [];
-    //   allVehiclesForCheck.forEach((vehicle) => {
-    //     if (vehicle.vehicleStatus !== "active") {
-    //       unavailabilityReasons.push({
-    //         vehicleId: vehicle._id,
-    //         vehicleNumber: vehicle.vehicleNumber,
-    //         // reason: "Vehicle is not active",
-    //         reason: "Vehicle is blocked. Unblock it to proceed",
-    //       });
-    //     } else if (vehicle.vehicleMasterData?.status === "inactive") {
-    //       unavailabilityReasons.push({
-    //         vehicleId: vehicle._id,
-    //         vehicleNumber: vehicle.vehicleNumber,
-    //         reason: "Vehicle master is inactive",
-    //       });
-    //     } else if (vehicle.conflictingBookings.length > 0) {
-    //       const bookingId = vehicle.conflictingBookings[0].bookingId;
-    //       unavailabilityReasons.push({
-    //         vehicleId: vehicle._id,
-    //         vehicleNumber: vehicle.vehicleNumber,
-    //         // reason: "Vehicle is already booked",
-    //         reason: bookingId
-    //           ? `Vehicle is already booked and booking id is ${bookingId}`
-    //           : "Vehicle is already booked",
-    //         bookingId: vehicle.conflictingBookings[0].bookingId,
-    //       });
-    //     } else if (vehicle.conflictingMaintenance.length > 0) {
-    //       unavailabilityReasons.push({
-    //         vehicleId: vehicle._id,
-    //         vehicleNumber: vehicle.vehicleNumber,
-    //         reason: "Vehicle is under maintenance",
-    //         maintenanceId: vehicle.conflictingMaintenance[0]._id,
-    //       });
-    //     }
-    //   });
-
-    //   response.status = 404;
-    //   response.message = `Found ${allVehiclesForCheck.length} vehicle(s) but none are available for the selected time period`;
-    //   response.data = [];
-    //   response.unavailabilityReasons = unavailabilityReasons;
-    //   response.pagination = {
-    //     totalPages: 0,
-    //     currentPage: parsedPage,
-    //     limit: parsedLimit,
-    //   };
-    //   return response;
-    // }
-
-    // const vehicleData = vehicles[0].data || [];
-    // const adjustedVehicles = [];
-    // const pricingRules = await General.findOne({});
-
     const allVehiclesForCheck = await vehicleTable.aggregate(
       unavailabilityCheckPipeline,
     );
@@ -3604,7 +3592,16 @@ const getVehicleTbl = async (query) => {
     );
 
     const adjustedVehicles = [];
-    const pricingRules = await General.findOne({});
+    // const pricingRules = await General.findOne({});
+    const now = Date.now();
+    if (
+      !cachedPricingRules ||
+      now - pricingRulesCachedAt > PRICING_CACHE_TTL_MS
+    ) {
+      cachedPricingRules = await General.findOne({});
+      pricingRulesCachedAt = now;
+    }
+    const pricingRules = cachedPricingRules;
 
     for (const vehicle of vehicleData) {
       const adjustedVehicle = { ...vehicle };

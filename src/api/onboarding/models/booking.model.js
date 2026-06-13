@@ -536,8 +536,7 @@ const initiateBooking = async (req, res) => {
   session.startTransaction();
 
   try {
-    let { bookingData, paymentMethod } = req.body;
-    const { vehicleTableId: _stripped, ...restBookingData } = bookingData;
+    let { bookingData, paymentMethod, isAdminBooking = false } = req.body;
 
     // if (!bookingData.vehicleTableId || !bookingData.userId || !paymentMethod) {
     if (!bookingData?.userId || !paymentMethod) {
@@ -546,14 +545,25 @@ const initiateBooking = async (req, res) => {
       return res.json({ message: "Required fields missing", status: 400 });
     }
 
-    bookingData = {
-      ...restBookingData,
-      vehicleAssigned: false,
-      vehicleBasic: {
-        ...bookingData.vehicleBasic,
-        vehicleNumber: "unassigned",
-      },
-    };
+    if (isAdminBooking && bookingData.vehicleTableId) {
+      // Admin explicitly chose a vehicle — keep it and mark as assigned
+      bookingData = {
+        ...bookingData,
+        vehicleAssigned: true,
+      };
+    } else {
+      // Customer/app booking — defer vehicle assignment to station arrival
+      const { vehicleTableId: _stripped, ...restBookingData } = bookingData;
+
+      bookingData = {
+        ...restBookingData,
+        vehicleAssigned: false,
+        vehicleBasic: {
+          ...bookingData.vehicleBasic,
+          vehicleNumber: "unassigned",
+        },
+      };
+    }
 
     const customerId = bookingData?.userId || null;
 

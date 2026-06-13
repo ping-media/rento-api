@@ -443,37 +443,14 @@ const savePickupImageLinks = async (req, res) => {
     }
 
     const { vehicleBasic, paymentMethod, bookingStatus } = booking;
+    // const wasUnassigned =
+    //   (booking.changeVehicle.vehicleTableId ?? null) === null;
 
-    //  Payment validation before starting ride
-    // if (paymentMethod?.toLowerCase() === "online") {
-    //   const gatewayOrderId = booking.paymentgatewayOrderId;
-    //   if (gatewayOrderId && gatewayOrderId?.trim() !== "") {
-    //     return res.json({
-    //       status: 400,
-    //       message:
-    //         "Payment not received yet. This booking has a pending online payment.",
-    //     });
-    //   }
-    // }
-
-    // if (paymentMethod?.toLowerCase() === "partiallyPay") {
-    //   const hasPaySuccessId =
-    //     booking.paySuccessId && booking.paySuccessId.trim() !== "";
-    //   const hasUserPaid =
-    //     booking.bookingPrice?.userPaid &&
-    //     String(booking.bookingPrice.userPaid).trim() !== "";
-
-    //   if (!hasPaySuccessId || !hasUserPaid) {
-    //     return res.json({
-    //       status: 400,
-    //       message:
-    //         "Partial payment confirmation not found. Please ensure the partial payment was completed before starting the ride.",
-    //     });
-    //   }
-    // }
-
-    if (booking.vehicleAssigned !== true) {
-      if (booking.vehicleTableId !== null && booking.vehicleAssigned !== true) {
+    if (booking.vehicleAssigned === false) {
+      if (
+        booking.vehicleTableId !== null &&
+        booking.vehicleAssigned === false
+      ) {
         await Booking.updateOne(
           { _id },
           {
@@ -546,15 +523,15 @@ const savePickupImageLinks = async (req, res) => {
       });
     }
 
-    const isFirstVehicleAssignment =
-      booking?.changeVehicle?.vehicleNumber === "unassigned" &&
-      booking?.changeVehicle?.vehicleTableId === null;
-
-    // let newDocument = null;
+    // const isFirstVehicleAssignment =
+    //   booking?.changeVehicle?.vehicleNumber === "unassigned" &&
+    //   booking?.changeVehicle?.vehicleTableId === null;
+    // const isFirstVehicleAssignment = wasUnassigned;
 
     if (isVehicleUpdate && diffAmountId) {
       if (
-        isFirstVehicleAssignment === false &&
+        // isFirstVehicleAssignment === false &&
+        booking.rideStatus !== "pending" &&
         (oldVehicleEndMeterReading === undefined ||
           oldVehicleEndMeterReading === null ||
           oldVehicleEndMeterReading === "")
@@ -570,7 +547,8 @@ const savePickupImageLinks = async (req, res) => {
 
       let updatedData = [];
 
-      if (isFirstVehicleAssignment === false) {
+      // if (isFirstVehicleAssignment === false) {
+      if (booking.rideStatus !== "pending") {
         const formattedOldVehicleEndMeterReading = isNaN(
           Number(oldVehicleEndMeterReading),
         )
@@ -617,7 +595,8 @@ const savePickupImageLinks = async (req, res) => {
         },
       );
 
-      if (isFirstVehicleAssignment === true) {
+      // if (isFirstVehicleAssignment === true) {
+      if (booking.rideStatus === "pending") {
         const OTP = Math.floor(1000 + Math.random() * 9000);
 
         await updateRideStartDetails({
@@ -642,7 +621,6 @@ const savePickupImageLinks = async (req, res) => {
       }
     }
 
-    // if (isFirstVehicleAssignment === false) {
     const newDocument = new pickupImage({
       userId,
       bookingId,
@@ -654,7 +632,6 @@ const savePickupImageLinks = async (req, res) => {
     });
 
     await newDocument.save();
-    // }
 
     const OTP = Math.floor(1000 + Math.random() * 9000);
 
