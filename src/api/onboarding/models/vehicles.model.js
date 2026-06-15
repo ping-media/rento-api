@@ -3370,7 +3370,10 @@ const getVehicleTbl = async (query) => {
     // When _id filter is used, only 1 vehicle is in results but conflictingBookings
     // has the full pool's bookings — fetch full sorted pool for correct slot math
     const fullPoolByGroup = {};
-    if (_id && vehicles.length > 0) {
+    // _id, search, and excludeBookingId can all reduce the per-group vehicle
+    // count below the true pool size — fetch the real pool for correct slot math
+    if ((_id || search || excludeBookingId) && vehicles.length > 0) {
+      // if (_id && vehicles.length > 0) {
       for (const v of vehicles) {
         const gKey = `${v.vehicleModel}-${v.stationId}`;
         if (!fullPoolByGroup[gKey]) {
