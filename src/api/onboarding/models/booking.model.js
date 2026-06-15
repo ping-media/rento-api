@@ -426,6 +426,11 @@ const getBookings = async (query) => {
         return obj;
       }
 
+      const bookingObj = {
+        ...booking.toObject(),
+        stationData,
+        pickupImage: pickupImageData,
+      };
       obj.data = [booking];
       return obj;
     }
@@ -455,7 +460,7 @@ const getBookings = async (query) => {
       .populate("stationMasterUserId", "firstName lastName contact")
       .sort({ createdAt: -1 });
 
-    console.log(filters, bookings);
+    // console.log(filters, bookings);
 
     // If no bookings found
     if (!bookings || bookings.length === 0) {
