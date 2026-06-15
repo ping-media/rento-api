@@ -431,7 +431,7 @@ const getBookings = async (query) => {
         stationData,
         pickupImage: pickupImageData,
       };
-      obj.data = [booking];
+      obj.data = [bookingObj];
       return obj;
     }
 
