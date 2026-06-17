@@ -101,11 +101,57 @@ const getAllUsers = async (query) => {
     status: 200,
     message: "Data fetched successfully",
     data: [],
+  };
+
+  const { _id } = query;
+
+  if (!_id) {
+    obj.status = 400;
+    obj.message = "User ID is required";
+    return obj;
+  }
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(_id)) {
+      obj.status = 400;
+      obj.message = "Invalid User ID";
+      return obj;
+    }
+
+    const user = await User.findById(_id).select("-otp -password");
+
+    if (!user) {
+      obj.status = 404;
+      obj.message = "User not found";
+      return obj;
+    }
+
+    if (user.userType !== "customer") {
+      obj.status = 403;
+      obj.message = "Unauthorized";
+      return obj;
+    }
+
+    obj.data = [user];
+    return obj;
+  } catch (error) {
+    console.error("Error fetching users:", error.message);
+    obj.status = 500;
+    obj.message = `Server error: ${error.message}`;
+  }
+
+  return obj;
+};
+
+const getAllUsersAdmin = async (query) => {
+  const obj = {
+    status: 200,
+    message: "Data fetched successfully",
+    data: [],
     pagination: {},
   };
 
   try {
-    // Destructure query parameters with defaults
     const {
       _id,
       userType,
@@ -1058,6 +1104,7 @@ module.exports = {
   getAllDataCount,
   //verify,
   getAllUsers,
+  getAllUsersAdmin,
   updateUser,
   saveUser,
   getUserProfile,

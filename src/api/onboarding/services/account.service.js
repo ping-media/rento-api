@@ -2,6 +2,7 @@ const {
   getTokens,
   verify,
   getAllUsers,
+  getAllUsersAdmin,
   getAllDataCount,
   sendOtps,
   getUserPeersData,
@@ -55,6 +56,20 @@ exports.addOrUpdateMobileToken = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const result = await getAllUsers(req.query);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
+exports.getAllUsersAdmin = async (req, res) => {
+  try {
+    const result = await getAllUsersAdmin(req.query);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({

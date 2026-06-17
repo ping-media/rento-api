@@ -6,6 +6,7 @@ const Otp = require("../../../db/schemas/onboarding/logOtp");
 const Log = require("../../../db/schemas/onboarding/log");
 const { mongoose } = require("mongoose");
 const { updatePushToken } = require("../../../utils/updatePushToken");
+const Booking = require("../../../db/schemas/onboarding/booking.schema");
 require("dotenv").config();
 
 // const ObjectId = mongoose.Types.ObjectId;
@@ -139,6 +140,27 @@ async function softDeleteUser(req, res) {
       return res.json({ status: 404, message: "User not found" });
     }
 
+    const blockingBooking = await Booking.exists({
+      userId,
+      $or: [
+        { rideStatus: { $in: ["pending", "ongoing"] } },
+        {
+          paymentStatus: {
+            $in: ["pending", "partiallyPay", "partially_paid"],
+          },
+        },
+      ],
+    });
+
+    if (activeBooking) {
+      return res.json({
+        status: 400,
+        success: false,
+        message:
+          "Account cannot be deleted due to an active booking. Please contact support.",
+      });
+    }
+
     if (user.userType !== "customer") {
       return res.json({
         status: 403,
@@ -232,33 +254,6 @@ async function sendOtpViaFast2Sms(contact, otp) {
     throw error;
   }
 }
-
-// function sendOtpViaFast2Sms(contact, otp) {
-//   return new Promise((resolve, reject) => {
-//     const req = unirest("POST", "https://www.fast2sms.com/dev/bulkV2");
-
-//     req.headers({
-//       authorization: process.env.FAST2SMS_API_KEY, // Store the API key in environment variables
-//     });
-
-//     req.json({
-//       flash: "0",
-//       sender_id: "RNTOBK",
-//       message: "178252",
-//       route: "dlt",
-//       numbers: contact,
-//       variables_values: otp,
-//     });
-
-//     req.end((res) => {
-//       if (res.error) {
-//         console.error("Error sending OTP via Fast2SMS:", res.error.message);
-//         return reject(res.error);
-//       }
-//       return resolve(res.body);
-//     });
-//   });
-// }
 
 async function verify(req, res) {
   try {

@@ -19,6 +19,10 @@ router.get("/getAllUsers", async (req, res) => {
   accountService.getAllUsers(req, res);
 });
 
+router.get("/admin/getAllUsers", Authentication, async (req, res) => {
+  accountService.getAllUsersAdmin(req, res);
+});
+
 router.post("/manager-station", Authentication, async (req, res) => {
   accountService.updateStationInfo(req, res);
 });
