@@ -37,12 +37,24 @@ const startServer = async () => {
 
   app.use("/assets", express.static(path.join(__dirname, "assets")));
 
+  app.get("/favicon.ico", (_, res) => res.status(204).end());
+  app.get("/favicon.png", (_, res) => res.status(204).end());
+
   app.get("/", (req, res) => {
     res.send("Hi there, Welcome to rento bikes");
   });
 
   // use routes
   app.use(onboardingRouters);
+
+  app.use((err, req, res, next) => {
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  });
 
   if (process.env.NODE_ENV !== "production") {
     app.get("/api/cron", async (req, res) => {
@@ -60,9 +72,16 @@ const startServer = async () => {
     });
   }
 
+  app.use((req, res) => {
+    res.status(404).json({
+      success: false,
+      message: "Route not found",
+    });
+  });
+
   // database connection
   try {
-    mongoose.connect(process.env.DB_URL);
+    await mongoose.connect(process.env.DB_URL);
     console.log("MongoDB is connected...");
   } catch (err) {
     console.log("Error connecting to MongoDB:", err);

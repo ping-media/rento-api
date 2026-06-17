@@ -47,10 +47,24 @@ module.exports = async (req, res) => {
     // Prevent overlapping cron runs
     const lock = await CronLock.findOne({ name: "cancelPendingPayments" });
     if (lock?.isRunning) {
-      console.log("Cron already running, skipping this run.");
-      return res
-        .status(200)
-        .json({ success: true, message: "Cron already running, skipped." });
+      const lockAge = Date.now() - new Date(lock.startedAt).getTime();
+      const STALE_THRESHOLD = 30 * 60 * 1000; // 30 minutes
+
+      if (lockAge < STALE_THRESHOLD) {
+        console.log("Cron already running, skipping this run.");
+        return res
+          .status(200)
+          .json({ success: true, message: "Cron already running, skipped." });
+      }
+
+      // Lock is stale — previous run likely crashed before releasing it
+      console.warn(
+        `Stale lock detected (age: ${Math.round(lockAge / 60000)} min). Force releasing...`,
+      );
+      await CronLock.findOneAndUpdate(
+        { name: "cancelPendingPayments" },
+        { isRunning: false },
+      );
     }
     await CronLock.findOneAndUpdate(
       { name: "cancelPendingPayments" },
