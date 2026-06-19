@@ -19,6 +19,7 @@ const User = require("../../../db/schemas/onboarding/user.schema.js");
 const Razorpay = require("razorpay");
 const Logs = require("../../../db/schemas/onboarding/log.js");
 const { updateCouponUsage } = require("../../../helper/updateCouponCount.js");
+const { generateTempId } = require("../../../utils/generateBookingId.js");
 require("dotenv").config();
 
 const razorpay = new Razorpay({
@@ -724,11 +725,20 @@ const initiateBooking = async (req, res) => {
       };
     }
 
-    bookingData = { ...bookingData, paymentMethod: paymentMethod };
+    const tempId = await generateTempId(session);
+    bookingData = {
+      ...bookingData,
+      paymentMethod: paymentMethod,
+      bookingId: tempId,
+      bookingPrice: {
+        ...bookingData.bookingPrice,
+        tempId,
+        isRealAssigned: false,
+      },
+    };
+    // bookingData = { ...bookingData,  paymentMethod: paymentMethod };
 
     const response = await booking(bookingData, { session });
-
-    // console.log(response);
 
     if (response?.status === 200) {
       const timeLineData_1 = {

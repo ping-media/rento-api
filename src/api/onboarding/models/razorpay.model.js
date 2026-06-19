@@ -12,6 +12,7 @@ const {
 const WebhookLog = require("../../../db/schemas/onboarding/webhook.schema");
 const Log = require("../../../db/schemas/onboarding/log");
 const { updateCouponUsage } = require("../../../helper/updateCouponCount");
+const { generateBookingId } = require("../../../utils/generateBookingId");
 
 const RAZORPAY_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -509,6 +510,14 @@ const updateBookingAfterPayment = async (
   booking.rideStatus = "pending";
   booking.paySuccessId = razorpayPaymentId;
 
+  // assign real sequential bookingId if this was a temp booking
+  if (booking.bookingPrice?.tempId && !booking.bookingPrice?.isRealAssigned) {
+    const realBookingId = await generateBookingId(null);
+    booking.bookingId = realBookingId;
+    booking.bookingPrice.isRealAssigned = true;
+    booking.markModified("bookingPrice");
+  }
+
   await booking.save();
 
   updateCouponUsage(booking);
@@ -559,6 +568,14 @@ const updateBookingAfterPaymentAdmin = async (
   }
   booking.bookingStatus = "done";
   booking.paySuccessId = paymentId || "";
+
+  // assign real sequential bookingId if this was a temp booking
+  if (booking.bookingPrice?.tempId && !booking.bookingPrice?.isRealAssigned) {
+    const realBookingId = await generateBookingId(null);
+    booking.bookingId = realBookingId;
+    booking.bookingPrice.isRealAssigned = true;
+    booking.markModified("bookingPrice");
+  }
 
   await booking.save();
 

@@ -367,7 +367,6 @@ async function booking({
           })
           .session(session);
 
-        //   console.log(vehicleRecord)
         if (
           vehicleRecord &&
           vehicleRecord.bookingStatus != "canceled" &&
@@ -385,22 +384,14 @@ async function booking({
         }
       }
 
-      // let sequence = 1;
-      // const lastBooking = await Booking.findOne({})
-      //   .sort({ createdAt: -1 })
-      //   .select("bookingId")
-      //   .session(session);
-      // if (lastBooking && lastBooking.bookingId) {
-      //   sequence = parseInt(lastBooking.bookingId, 10) + 1;
-      // }
-      // var bookingId = sequence.toString().padStart(6, "0");
-      var bookingId = await generateBookingId(session);
+      // var bookingId = await generateBookingId(session);
+      if (!bookingId) {
+        bookingId = await generateBookingId(session);
+      }
 
       const find = await Station.find({ stationName }).session(session);
 
       if (userType != "customer") {
-        // console.log(find);
-
         if (!find || find.length === 0) {
           // Check if array is empty
           console.error(`Station not found for stationName: ${stationName}`);
@@ -456,7 +447,7 @@ async function booking({
       paymentgatewayReceiptId,
       isCancelled,
     };
-    // console.log(o)
+
     if (_id && _id.length !== 24) {
       obj.status = 401;
       obj.message = "Invalid booking id";
@@ -556,6 +547,7 @@ async function booking({
 
           return date.toLocaleString("en-US", options);
         }
+
         if (userId && stationMasterUserId) {
           var user = await User.findById(userId);
           if (!user) {
@@ -2594,6 +2586,8 @@ const getVehicleTbl = async (query) => {
                 vehicleTableId: 1,
                 BookingStartDateAndTime: 1,
                 BookingEndDateAndTime: 1,
+                // changeVehicle: 1,
+                // vehicleBasicVehicleNumber: "$vehicleBasic.vehicleNumber",
               },
             },
           ],
@@ -2935,6 +2929,8 @@ const getVehicleTbl = async (query) => {
                 vehicleTableId: 1,
                 BookingStartDateAndTime: 1,
                 BookingEndDateAndTime: 1,
+                // changeVehicle: 1,
+                // vehicleBasicVehicleNumber: "$vehicleBasic.vehicleNumber",
               },
             },
           ],
@@ -3365,6 +3361,25 @@ const getVehicleTbl = async (query) => {
     const allVehiclesForCheck = await vehicleTable.aggregate(
       unavailabilityCheckPipeline,
     );
+    // console.log(
+    //   JSON.stringify(
+    //     allVehiclesForCheck.map((v) => ({
+    //       vehicleNumber: v.vehicleNumber,
+    //       conflictingBookings: v.conflictingBookings?.map((b) => ({
+    //         bookingId: b.bookingId,
+    //         _id: b._id,
+    //         vehicleAssigned: b.vehicleAssigned,
+    //         vehicleTableId: b.vehicleTableId,
+    //         start: b.BookingStartDateAndTime,
+    //         end: b.BookingEndDateAndTime,
+    //         rideStatus: b.rideStatus,
+    //         bookingStatus: b.bookingStatus,
+    //       })),
+    //     })),
+    //     null,
+    //     2,
+    //   ),
+    // );
     let vehicles = await vehicleTable.aggregate(pipeline);
 
     // When _id filter is used, only 1 vehicle is in results but conflictingBookings
@@ -3395,6 +3410,33 @@ const getVehicleTbl = async (query) => {
 
     // ─── Group-count availability (bookings are pool-based, not per-vehicle) ───
     // Step 1 — vehicles specifically pinned to assigned bookings
+    // const specificAssignedVehicleIds = new Set();
+    // vehicles.forEach((v) => {
+    //   const vid = v._id.toString();
+    //   const assignedToThis = (v.conflictingBookings || []).filter((b) => {
+    //     if (!b.vehicleAssigned || !b.vehicleTableId) return false;
+    //     if (b.vehicleTableId?.toString() !== vid) return false;
+
+    //     // Permanent fix for stale vehicleTableId (old changeVehicle flow
+    //     // didn't update top-level vehicleTableId, only vehicleBasic.vehicleNumber).
+    //     // If booking's current vehicleNumber doesn't match this vehicle's number,
+    //     // the vehicleTableId is stale — don't pin this vehicle.
+    //     if (
+    //       b.vehicleBasicVehicleNumber &&
+    //       b.vehicleBasicVehicleNumber !== "unassigned" &&
+    //       v.vehicleNumber &&
+    //       b.vehicleBasicVehicleNumber !== v.vehicleNumber
+    //     ) {
+    //       return false;
+    //     }
+
+    //     return true;
+    //   });
+    //   if (assignedToThis.length > 0) {
+    //     specificAssignedVehicleIds.add(vid);
+    //   }
+    // });
+
     const specificAssignedVehicleIds = new Set();
     vehicles.forEach((v) => {
       const vid = v._id.toString();
@@ -3435,40 +3477,7 @@ const getVehicleTbl = async (query) => {
         groupFreeSlots[key] = Math.max(0, operationalCount - unassignedCount);
       }
     });
-    // const groupSlots = {};
-    // vehicles.forEach((v) => {
-    //   const key = `${v.vehicleModel}-${v.stationId}`;
-    //   if (!groupSlots[key]) {
-    //     groupSlots[key] = {
-    //       conflictingBookingsCount: v.conflictingBookings?.length || 0,
-    //       operationalVehicleIds: [],
-    //     };
-    //   }
-    //   if ((v.conflictingMaintenance?.length || 0) === 0) {
-    //     groupSlots[key].operationalVehicleIds.push(v._id.toString());
-    //   }
-    // });
 
-    // const bookedVehicleIds = new Set();
-    // Object.values(groupSlots).forEach((group) => {
-    //   const slotsToMark = Math.min(
-    //     group.conflictingBookingsCount,
-    //     group.operationalVehicleIds.length,
-    //   );
-    //   group.operationalVehicleIds
-    //     .slice(0, slotsToMark)
-    //     .forEach((id) => bookedVehicleIds.add(id));
-    // });
-
-    // vehicles = vehicles.map((v) => {
-    //   const vid = v._id.toString();
-    //   let computedStatus = v.vehicleStatus;
-    //   if ((v.conflictingMaintenance?.length || 0) > 0) {
-    //     computedStatus = "maintenance";
-    //   } else if (bookedVehicleIds.has(vid)) {
-    //     computedStatus = "booked";
-    //   }
-    //   const conflictingBookingForDisplay = v.conflictingBookings?.[0];
     vehicles = vehicles.map((v) => {
       const vid = v._id.toString();
       const key = `${v.vehicleModel}-${v.stationId}`;
@@ -3491,6 +3500,17 @@ const getVehicleTbl = async (query) => {
       const pendingRide = v.pendingRideBookings?.[0];
 
       const { pendingRideBookings: _removed, ...vClean } = v;
+
+      // console.log({
+      //   vehicle: v.vehicleNumber,
+      //   vehicleId: vid,
+      //   specificAssigned: specificAssignedVehicleIds.has(vid),
+      //   groupFreeSlots: groupFreeSlots[key],
+      //   conflictingBookingCount: v.conflictingBookings.length,
+      //   computedStatus,
+      //   bookingShown: conflictingBookingForDisplay?.bookingId,
+      // });
+
       return {
         ...vClean,
         vehicleStatus: computedStatus,
@@ -3554,14 +3574,22 @@ const getVehicleTbl = async (query) => {
             reason: "Vehicle master is inactive",
           });
         } else if (vehicle.conflictingBookings.length > 0) {
-          const bookingId = vehicle.conflictingBookings[0].bookingId;
+          // const bookingId = vehicle.conflictingBookings[0].bookingId;
+          const blockingBooking =
+            vehicle.conflictingBookings.find(
+              (b) =>
+                b.vehicleAssigned &&
+                b.vehicleTableId?.toString() === vehicle._id.toString(),
+            ) || vehicle.conflictingBookings[0];
+          const bookingId = blockingBooking?.bookingId;
           unavailabilityReasons.push({
             vehicleId: vehicle._id,
             vehicleNumber: vehicle.vehicleNumber,
             reason: bookingId
-              ? `Vehicle is already booked and booking id is ${bookingId}`
+              ? `Vehicle ${vehicle.vehicleNumber} is already in booking ${bookingId}`
               : "Vehicle is already booked",
-            bookingId: vehicle.conflictingBookings[0].bookingId,
+            bookingId: blockingBooking?.bookingId,
+            // bookingId: vehicle.conflictingBookings[0].bookingId,
           });
         } else if (vehicle.conflictingMaintenance.length > 0) {
           unavailabilityReasons.push({
