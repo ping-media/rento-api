@@ -196,7 +196,8 @@ const calculateVehicleChangePricing = async (
     pendingPayment = Math.round(newRemainingCost);
     isExtraPayment = false;
     isRefund = false;
-    isFreeSwap = true; // no payment action needed yet since nothing was paid
+    isFreeSwap = false; // no payment action needed yet since nothing was paid
+    isPendingOriginalPayment = true; // ← new flag: "change is free, but original balance is still outstanding"
   } else {
     // Something was paid — check against new cost
     const amountStillOwed = Math.round(newRemainingCost) - effectivePaid;
@@ -237,13 +238,10 @@ const calculateVehicleChangePricing = async (
     priceDifference,
     pendingPayment,
     effectivePaid,
+    isPendingOriginalPayment,
     isExtraPayment,
     isRefund,
     isFreeSwap,
-    // priceDifference: Math.round(Math.abs(priceDifference)),
-    // isExtraPayment,
-    // isRefund,
-    // isFreeSwap,
     // new vehicle full data with pricing
     newVehicleData: {
       _id: newVehicleRaw._id,
@@ -259,21 +257,6 @@ const calculateVehicleChangePricing = async (
       _daysBreakdown: newVehiclePriced._daysBreakdown,
       tax: newVehiclePriced.tax || 0,
     },
-    // newVehicleData: {
-    //   _id: newVehicleRaw._id,
-    //   vehicleMasterId:
-    //     newVehicleRaw.vehicleMasterId?._id || newVehicleRaw.vehicleMasterId,
-    //   vehicleNumber: newVehicleRaw.vehicleNumber,
-    //   vehicleName: newVehicleRaw.vehicleMasterId?.vehicleName,
-    //   vehicleBrand: newVehicleRaw.vehicleMasterId?.vehicleBrand,
-    //   vehicleImage: newVehicleRaw.vehicleMasterId?.vehicleImage,
-    //   vehiclePlan: newVehicleRaw.vehiclePlan,
-    //   perDayCost: newVehicleRaw.perDayCost,
-    //   totalRentalCost: newVehiclePriced.totalRentalCost,
-    //   appliedPlans: newVehiclePriced.appliedPlans,
-    //   _daysBreakdown: newVehiclePriced._daysBreakdown,
-    //   tax: newVehiclePriced.tax || 0,
-    // },
   };
 };
 

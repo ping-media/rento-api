@@ -109,7 +109,12 @@ const getBooking = async (query) => {
       };
     }
     if (stationName) matchFilters.stationName = stationName;
-    if (bookingStatus) matchFilters.bookingStatus = bookingStatus;
+    // if (bookingStatus) matchFilters.bookingStatus = bookingStatus;
+    if (bookingStatus) {
+      matchFilters.bookingStatus = bookingStatus;
+    } else {
+      matchFilters.bookingStatus = { $ne: "canceled" };
+    }
     if (paymentStatus) matchFilters.paymentStatus = paymentStatus;
     if (userId) matchFilters.userId = userId;
     if (rideStatus) matchFilters.rideStatus = rideStatus;

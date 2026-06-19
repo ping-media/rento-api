@@ -1,11 +1,9 @@
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const Log = require("../../../db/schemas/onboarding/log");
-// const VehicleMaster = require("../../../db/schemas/onboarding/vehicle-master.schema");
 const Station = require("../../../db/schemas/onboarding/station.schema");
 const {
   calculateVehicleChangePricing,
 } = require("../../../helper/vehicleChangePricing");
-// const Otp = require("../../../db/schemas/onboarding/logOtp");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
 const { createOrderId } = require("./booking.model");
 const { createPaymentLinkUtil } = require("./razorpay.model");
@@ -493,6 +491,8 @@ const vehicleChangeNew = async (req, res) => {
       (booking.paymentMethod === "online" &&
         booking.paymentStatus === "pending");
 
+    let skipAmountLeftUpdate = false;
+
     if (isOriginalAmountUnpaid) {
       const leftAmount = Number(
         booking.bookingPrice.AmountLeftAfterUserPaid?.amount || 0,
@@ -502,6 +502,7 @@ const vehicleChangeNew = async (req, res) => {
         // Station master will collect this at counter — make vehicle change free
         pendingPayment = 0;
         isExtraPayment = false;
+        skipAmountLeftUpdate = true;
       }
     }
 
@@ -535,11 +536,47 @@ const vehicleChangeNew = async (req, res) => {
     }
 
     const changedId = booking.bookingPrice.diffAmount.length + 1;
+
+    let oldPendingAmount = 0;
+
+    const hasUnpaidOriginalBalance =
+      booking.bookingPrice?.AmountLeftAfterUserPaid?.status === "unpaid";
+
+    if (
+      hasUnpaidOriginalBalance &&
+      booking.bookingPrice?.AmountLeftAfterUserPaid &&
+      !skipAmountLeftUpdate
+    ) {
+      oldPendingAmount = Number(
+        booking.bookingPrice.AmountLeftAfterUserPaid.amount || 0,
+      );
+
+      // Update pending balance instead of creating separate payment
+      booking.bookingPrice.AmountLeftAfterUserPaid.amount = pendingPayment;
+
+      if (
+        !Array.isArray(
+          booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory,
+        )
+      ) {
+        booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory = [];
+      }
+
+      booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory.push({
+        type: "vehicle_change",
+        oldAmount: oldPendingAmount,
+        newAmount: pendingPayment,
+        date: Date.now(),
+      });
+
+      // Prevent separate payment flow
+      isExtraPayment = false;
+    }
+
     let newOrderId = "";
 
     if (isExtraPayment) {
       const razorpayOrder = await createOrderId({
-        // amount: priceDifference,
         amount: pendingPayment,
         booking_id: booking.bookingId,
         _id: booking._id,
@@ -553,10 +590,11 @@ const vehicleChangeNew = async (req, res) => {
     booking.bookingPrice.diffAmount.push({
       id: changedId,
       title: "changedVehicle",
+      mergedIntoBookingBalance: hasUnpaidOriginalBalance,
+      oldPendingAmount: hasUnpaidOriginalBalance ? oldPendingAmount : 0,
+      newPendingAmount: hasUnpaidOriginalBalance ? pendingPayment : 0,
       amount: isExtraPayment ? pendingPayment : 0,
       refundAmount: isRefund ? priceDifference : 0,
-      // amount: isExtraPayment ? priceDifference : 0,
-      // refundAmount: isRefund ? priceDifference : 0,
       oldAmount: oldRemainingValue,
       newAmount: newRemainingCost,
       paymentMethod: isRefund ? "refund" : "",
@@ -578,6 +616,7 @@ const vehicleChangeNew = async (req, res) => {
     });
 
     booking.markModified("bookingPrice.diffAmount");
+    booking.markModified("bookingPrice.AmountLeftAfterUserPaid");
     booking.markModified("bookingPrice");
     booking.markModified("vehicleBasic");
     booking.markModified("changeVehicle");
@@ -592,19 +631,12 @@ const vehicleChangeNew = async (req, res) => {
     if (isExtraPayment) {
       const paymentData = await createPaymentLinkUtil({
         bookingId: booking._id,
-        // amount: priceDifference,
         amount: pendingPayment,
         orderId: newOrderId,
         type: "ChangeVehicle",
         typeId: changedId,
         isTimeLine: false,
       });
-
-      // const changeVehicleMessage =
-      //   booking.changeVehicle.vehicleNumber !== "unassigned" &&
-      //   booking.changeVehicle.vehicleTableId !== null
-      //     ? `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`
-      //     : `${newVehicleData.vehicleName}(${newVehicleData.vehicleNumber})`;
 
       if (paymentData?.paymentLinkId) {
         timeLineData = {
@@ -613,10 +645,12 @@ const vehicleChangeNew = async (req, res) => {
             {
               title: "Vehicle Changed",
               changeToVehicle: changeVehicleMessage,
-              // changeToVehicle: `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`,
               date: Date.now(),
-              paymentAmount: pendingPayment,
-              // paymentAmount: priceDifference,
+              paymentAmount: hasUnpaidOriginalBalance ? 0 : pendingPayment,
+              // paymentAmount: pendingPayment,
+              updatedPendingAmount: hasUnpaidOriginalBalance
+                ? pendingPayment
+                : undefined,
               refundAmount: 0,
               oldAmount: oldRemainingValue,
               newAmount: newRemainingCost,
@@ -632,12 +666,18 @@ const vehicleChangeNew = async (req, res) => {
           {
             title: "Vehicle Changed",
             changeToVehicle: changeVehicleMessage,
-            // changeToVehicle: `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`,
             date: Date.now(),
             paymentAmount: 0,
             refundAmount: isRefund ? priceDifference : 0,
             oldAmount: oldRemainingValue,
             newAmount: newRemainingCost,
+            oldPendingAmount: hasUnpaidOriginalBalance
+              ? oldPendingAmount
+              : undefined,
+
+            updatedPendingAmount: hasUnpaidOriginalBalance
+              ? pendingPayment
+              : undefined,
           },
         ],
       };
@@ -682,6 +722,13 @@ const vehicleChangePreview = async (req, res) => {
     const booking = await Booking.findById(booking_id);
     if (!booking) {
       return res.json({ success: false, message: "Booking not found." });
+    }
+
+    if (booking.vehicleTableId.toString() === newVehicleTableId) {
+      return res.json({
+        success: false,
+        message: "This vehicle is already assigned to the booking.",
+      });
     }
 
     // Block if there's already an unpaid vehicle change
@@ -729,24 +776,19 @@ const vehicleChangePreview = async (req, res) => {
           effectivePaid: pricing.effectivePaid,
           isExtraPayment: pricing.isExtraPayment,
           isRefund: pricing.isRefund,
+          isPendingOriginalPayment: pricing.isPendingOriginalPayment,
           isFreeSwap: pricing.isFreeSwap,
           daysLeft: pricing.daysLeft,
           segmentType: pricing.currentSegment.type,
         },
-        // priceSummary: {
-        //   oldRemainingValue: pricing.oldRemainingValue,
-        //   newRemainingCost: pricing.newRemainingCost,
-        //   difference: pricing.priceDifference,
-        //   isExtraPayment: pricing.isExtraPayment,
-        //   isRefund: pricing.isRefund,
-        //   isFreeSwap: pricing.isFreeSwap,
-        //   daysLeft: pricing.daysLeft,
-        //   segmentType: pricing.currentSegment.type,
-        // },
       },
     });
   } catch (error) {
     console.log("vehicleChangePreview error", error);
+    await Log({
+      message: `vehicleChangePreview failed: ${error?.message}`,
+      functionName: "vehicleChangePreview",
+    });
     return res.status(200).json({
       success: false,
       message: "Unable to calculate preview.",
