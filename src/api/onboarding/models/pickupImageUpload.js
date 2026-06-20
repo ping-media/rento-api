@@ -443,8 +443,21 @@ const savePickupImageLinks = async (req, res) => {
     }
 
     const { vehicleBasic, paymentMethod, bookingStatus } = booking;
-    // const wasUnassigned =
-    //   (booking.changeVehicle.vehicleTableId ?? null) === null;
+
+    if (paymentMethod === "partiallyPay" || paymentMethod === "online") {
+      const isRrnNumberFound =
+        (booking?.bookingPrice?.rrnNumber || "")?.trim() !== "";
+
+      if (!isRrnNumberFound) {
+        return res.json({
+          status: 400,
+          message:
+            paymentMethod === "partiallyPay"
+              ? "Initial payment for this booking has not been completed yet. Please collect the initial amount before starting the ride."
+              : "Online payment for this booking has not been completed yet. Please complete the payment before starting the ride.",
+        });
+      }
+    }
 
     if (booking.vehicleAssigned === false) {
       if (
