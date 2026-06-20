@@ -730,18 +730,18 @@ const initiateBooking = async (req, res) => {
       };
     }
 
-    const tempId = await generateTempId(session);
-    bookingData = {
-      ...bookingData,
-      paymentMethod: paymentMethod,
-      bookingId: tempId,
-      bookingPrice: {
-        ...bookingData.bookingPrice,
-        tempId,
-        isRealAssigned: false,
-      },
-    };
-    // bookingData = { ...bookingData,  paymentMethod: paymentMethod };
+    // const tempId = await generateTempId(session);
+    // bookingData = {
+    //   ...bookingData,
+    //   paymentMethod: paymentMethod,
+    //   bookingId: tempId,
+    //   bookingPrice: {
+    //     ...bookingData.bookingPrice,
+    //     tempId,
+    //     isRealAssigned: false,
+    //   },
+    // };
+    bookingData = { ...bookingData, paymentMethod: paymentMethod };
 
     const response = await booking(bookingData, { session });
 
@@ -785,7 +785,7 @@ const initiateBooking = async (req, res) => {
       // console.log("razorData receipt:", razorData?.receipt);
 
       if (razorData?.status === "created") {
-        await Booking.findByIdAndUpdate(
+        const updateResult = await Booking.findByIdAndUpdate(
           response?.data?._id,
           {
             $set: {
@@ -797,14 +797,6 @@ const initiateBooking = async (req, res) => {
           },
           { session },
         );
-
-        // const updatedDoc = await Booking.findById(response?.data?._id).select(
-        //   "payInitFrom paymentgatewayOrderId paymentgatewayReceiptId paymentInitiatedDate",
-        // );
-        // console.log(
-        //   "Booking after update:",
-        //   JSON.stringify(updatedDoc, null, 2),
-        // );
 
         const timeLineData = {
           currentBooking_id: response.data?._id,
@@ -823,18 +815,7 @@ const initiateBooking = async (req, res) => {
         return res.json({ status: 500, message: "Failed to initiate payment" });
       }
 
-      // console.log(
-      //   "About to commit session, transaction state:",
-      //   session.inTransaction(),
-      // );
       await session.commitTransaction();
-      // const afterCommit = await Booking.findById(response?.data?._id).select(
-      //   "payInitFrom paymentgatewayOrderId paymentgatewayReceiptId paymentInitiatedDate",
-      // );
-      // console.log(
-      //   "Booking AFTER commit:",
-      //   JSON.stringify(afterCommit, null, 2),
-      // );
       session.endSession();
 
       return res.json({

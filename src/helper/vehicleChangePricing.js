@@ -77,7 +77,6 @@ const calculateVehicleChangePricing = async (
     Math.ceil(rawDaysLeft), // rounds up remaining time
     segmentDays, // but never more than total segment
   );
-  // const daysLeft = Math.ceil((segmentEnd - now) / (1000 * 60 * 60 * 24));
 
   const totalBookingDuration = Math.ceil(
     (new Date(booking.BookingEndDateAndTime) -
@@ -86,22 +85,26 @@ const calculateVehicleChangePricing = async (
   );
 
   if (daysLeft <= 0) {
-    if (!isAdmin) {
-      // only block non-admins
-      return {
-        success: false,
-        message: "No remaining days left in the booking.",
-      };
-    }
-
-    daysLeft = 0;
+    return {
+      success: false,
+      message:
+        "No remaining days left in this booking. Please extend the ride first before changing the vehicle.",
+    };
   }
+  // if (daysLeft <= 0) {
+  //   if (!isAdmin) {
+  //     // only block non-admins
+  //     return {
+  //       success: false,
+  //       message: "No remaining days left in the booking.",
+  //     };
+  //   }
+
+  //   daysLeft = 0;
+  // }
 
   // --- Fetch new vehicle with pricing for this segment ---
-  const newVehicleRaw = await vehicleTable
-    .findById(newVehicleTableId)
-    // .populate("vehicleMasterId")
-    .lean();
+  const newVehicleRaw = await vehicleTable.findById(newVehicleTableId).lean();
 
   if (!newVehicleRaw) {
     return { success: false, message: "New vehicle not found." };
@@ -149,14 +152,6 @@ const calculateVehicleChangePricing = async (
 
   const newRemainingCost =
     (newVehicleFullPrice / segmentDays) * daysLeft + addonForNew;
-  // const newRemainingCost =
-  //   (newVehicleFullPrice / segmentDays) * daysLeft + addonProrated;
-
-  // const priceDifference = newRemainingCost - oldRemainingValue;
-
-  // const isExtraPayment = priceDifference > 1;
-  // const isRefund = priceDifference < -1;
-  // const isFreeSwap = !isExtraPayment && !isRefund;
 
   const rawPriceDifference = newRemainingCost - oldRemainingValue;
 
@@ -186,6 +181,7 @@ const calculateVehicleChangePricing = async (
   let isExtraPayment = false;
   let isRefund = false;
   let isFreeSwap = false;
+  let isPendingOriginalPayment = false;
   let pendingPayment = 0; // amount user still needs to pay
 
   if (effectivePaid === 0) {

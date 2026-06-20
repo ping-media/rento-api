@@ -1,26 +1,7 @@
 const Booking = require("../db/schemas/onboarding/booking.schema");
 
-// const generateBookingId = async (session) => {
-//   const lastBooking = await Booking.findOne({})
-//     .sort({ createdAt: -1 })
-//     .select("bookingId")
-//     .session(session);
-
-//   const sequence =
-//     lastBooking && lastBooking.bookingId
-//       ? parseInt(lastBooking.bookingId, 10) + 1
-//       : 1;
-
-//   return sequence.toString().padStart(6, "0");
-// };
-
 const generateBookingId = async (session) => {
-  const lastBooking = await Booking.findOne({
-    $or: [
-      { "bookingPrice.tempId": { $exists: false } },
-      { "bookingPrice.isRealAssigned": true },
-    ],
-  })
+  const lastBooking = await Booking.findOne({})
     .sort({ createdAt: -1 })
     .select("bookingId")
     .session(session);
@@ -32,6 +13,25 @@ const generateBookingId = async (session) => {
 
   return sequence.toString().padStart(6, "0");
 };
+
+// const generateBookingId = async (session) => {
+//   const lastBooking = await Booking.findOne({
+//     $or: [
+//       { "bookingPrice.tempId": { $exists: false } },
+//       { "bookingPrice.isRealAssigned": true },
+//     ],
+//   })
+//     .sort({ createdAt: -1 })
+//     .select("bookingId")
+//     .session(session);
+
+//   const sequence =
+//     lastBooking && lastBooking.bookingId
+//       ? parseInt(lastBooking.bookingId, 10) + 1
+//       : 1;
+
+//   return sequence.toString().padStart(6, "0");
+// };
 
 // const generateTempId = async (session) => {
 //   const lastBooking = await Booking.findOne({ bookingId: /^9/ })

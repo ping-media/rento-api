@@ -494,7 +494,15 @@ const updateBookingAfterPayment = async (
   if (!bookingId) throw new Error("Booking ID missing");
 
   const booking = await Booking.findById(bookingId);
-  if (!booking) throw new Error("Booking not found");
+  if (!booking) {
+    await WebhookLog.create({
+      razorpayPaymentId,
+      eventType: type || "payment_webhook",
+      status: "error",
+      error: `Booking not found for id ${bookingId} at ${new Date().toISOString()} — likely a commit-timing race with initiateBooking`,
+    }).catch((err) => console.error("Failed to log webhook error:", err));
+    throw new Error("Booking not found");
+  }
 
   if (rrn) {
     booking.bookingPrice.rrnNumber = rrn;
@@ -511,14 +519,24 @@ const updateBookingAfterPayment = async (
   booking.paySuccessId = razorpayPaymentId;
 
   // assign real sequential bookingId if this was a temp booking
-  if (booking.bookingPrice?.tempId && !booking.bookingPrice?.isRealAssigned) {
-    const realBookingId = await generateBookingId(null);
-    booking.bookingId = realBookingId;
-    booking.bookingPrice.isRealAssigned = true;
-    booking.markModified("bookingPrice");
-  }
+  // if (booking.bookingPrice?.tempId && !booking.bookingPrice?.isRealAssigned) {
+  //   const realBookingId = await generateBookingId(null);
+  //   booking.bookingId = realBookingId;
+  //   booking.bookingPrice.isRealAssigned = true;
+  //   booking.markModified("bookingPrice");
+  // }
 
-  await booking.save();
+  try {
+    await booking.save();
+  } catch (saveErr) {
+    await WebhookLog.create({
+      razorpayPaymentId,
+      eventType: type || "payment_webhook",
+      status: "error",
+      error: `booking.save() failed for ${bookingId}: ${saveErr.name} - ${saveErr.message}`,
+    }).catch((err) => console.error("Failed to log webhook error:", err));
+    throw saveErr;
+  }
 
   updateCouponUsage(booking);
 
@@ -570,12 +588,12 @@ const updateBookingAfterPaymentAdmin = async (
   booking.paySuccessId = paymentId || "";
 
   // assign real sequential bookingId if this was a temp booking
-  if (booking.bookingPrice?.tempId && !booking.bookingPrice?.isRealAssigned) {
-    const realBookingId = await generateBookingId(null);
-    booking.bookingId = realBookingId;
-    booking.bookingPrice.isRealAssigned = true;
-    booking.markModified("bookingPrice");
-  }
+  // if (booking.bookingPrice?.tempId && !booking.bookingPrice?.isRealAssigned) {
+  //   const realBookingId = await generateBookingId(null);
+  //   booking.bookingId = realBookingId;
+  //   booking.bookingPrice.isRealAssigned = true;
+  //   booking.markModified("bookingPrice");
+  // }
 
   await booking.save();
 

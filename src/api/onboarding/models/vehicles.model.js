@@ -384,10 +384,10 @@ async function booking({
         }
       }
 
-      // var bookingId = await generateBookingId(session);
-      if (!bookingId) {
-        bookingId = await generateBookingId(session);
-      }
+      var bookingId = await generateBookingId(session);
+      // if (!bookingId) {
+      //   bookingId = await generateBookingId(session);
+      // }
 
       const find = await Station.find({ stationName }).session(session);
 
