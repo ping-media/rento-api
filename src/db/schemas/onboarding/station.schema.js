@@ -115,6 +115,12 @@ const stationSchema = new Schema(
         type: Boolean,
         default: true,
       },
+      partiallyPayPercentage: {
+        type: Number,
+        default: 20,
+        min: 1,
+        max: 100,
+      },
       cash: {
         type: Boolean,
         default: false,

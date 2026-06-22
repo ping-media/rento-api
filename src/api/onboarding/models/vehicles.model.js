@@ -6071,7 +6071,6 @@ const getStationData = async (query) => {
       { stationName: { $regex: search, $options: "i" } },
       { city: { $regex: search, $options: "i" } },
       { state: { $regex: search, $options: "i" } },
-      // { pinCode: { $regex: search, $options: "i" } },
       { country: { $regex: search, $options: "i" } },
     ];
   }
@@ -6080,15 +6079,6 @@ const getStationData = async (query) => {
 
   try {
     const totalRecords = await station.count(filter);
-
-    // const response = await station
-    //   .find(filter)
-    //   .skip(skip)
-    //   .limit(Number(limit))
-    //   // .sort({ createdAt: -1 })
-    //   .collation({ locale: "en", strength: 2 })
-    //   .sort({ stationName: 1 })
-    //   .populate("userId", "firstName lastName contact");
 
     const response = await station.aggregate([
       { $match: filter },

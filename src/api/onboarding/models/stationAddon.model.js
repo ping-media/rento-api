@@ -129,7 +129,8 @@ const handleStationAddon = async (req, res) => {
 const handleUpdatePayment = async (req, res) => {
   const { _id, key, value } = req.body;
 
-  if (!_id || !key || typeof value !== "boolean") {
+  // if (!_id || !key || typeof value !== "boolean") {
+  if (!_id || !key || value === undefined || value === null) {
     return res.status(400).json({
       success: false,
       message: "station id, key, and value are required",
@@ -137,7 +138,12 @@ const handleUpdatePayment = async (req, res) => {
   }
 
   try {
-    const validKeys = ["online", "cash", "partiallyPay"];
+    const validKeys = [
+      "online",
+      "cash",
+      "partiallyPay",
+      "partiallyPayPercentage",
+    ];
     if (!validKeys.includes(key)) {
       return res.status(400).json({
         success: false,
@@ -145,12 +151,40 @@ const handleUpdatePayment = async (req, res) => {
       });
     }
 
+    if (
+      ["online", "cash", "partiallyPay"].includes(key) &&
+      typeof value !== "boolean"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: `${key} must be a boolean value`,
+      });
+    }
+
+    if (key === "partiallyPayPercentage") {
+      const percentage = Number(value);
+
+      if (Number.isNaN(percentage) || percentage < 1 || percentage > 100) {
+        return res.status(400).json({
+          success: false,
+          message: "Partial payment percentage must be between 1 and 100",
+        });
+      }
+
+      if (!Number.isInteger(percentage)) {
+        return res.status(400).json({
+          success: false,
+          message: "decimal value not support",
+        });
+      }
+    }
+
     const updateField = `payments.${key}`;
 
     const updatedStation = await Station.findByIdAndUpdate(
       _id,
       { $set: { [updateField]: value } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!updatedStation) {

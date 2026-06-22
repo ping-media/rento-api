@@ -724,7 +724,10 @@ const vehicleChangePreview = async (req, res) => {
       return res.json({ success: false, message: "Booking not found." });
     }
 
-    if (booking.vehicleTableId.toString() === newVehicleTableId) {
+    if (
+      (booking.vehicleTableId !== null && booking.vehicleTableId.toString()) ===
+      newVehicleTableId
+    ) {
       return res.json({
         success: false,
         message: "This vehicle is already assigned to the booking.",
