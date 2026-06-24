@@ -23,6 +23,7 @@ const stationSchema = new Schema(
       type: String,
       required: true,
       lowercase: true,
+      unique: true,
     },
     address: {
       type: String,
@@ -140,11 +141,11 @@ const stationSchema = new Schema(
   { timestamps: true },
 );
 
-// Unique station lookup
-// (already created via unique: true on stationId)
-
 // Location-based
 stationSchema.index({ locationId: 1 });
+
+// stationName
+stationSchema.index({ stationName: 1 });
 
 // Status filtering
 stationSchema.index({ status: 1 });

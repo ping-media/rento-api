@@ -1838,16 +1838,44 @@ async function createStation({
 
       return response;
     }
-    const stationExists = await Station.findOne({ stationId });
-    console.log(stationExists);
+
+    // const stationExists = await Station.findOne({ stationId });
+    // console.log(stationExists);
+    // if (stationExists) {
+    //   response.status = 401;
+    //   response.message = "Station already exists";
+    //   logError(
+    //     "Station already exists found during the creating station",
+    //     "createStation",
+    //     userId,
+    //   );
+
+    //   return response;
+    // }
+    const stationExists = await Station.findOne({
+      $or: [{ stationId }, { stationName }],
+    });
+
     if (stationExists) {
       response.status = 401;
-      response.message = "Station already exists";
-      logError(
-        "Station already exists found during the creating station",
-        "createStation",
-        userId,
-      );
+
+      if (stationExists.stationId === stationId) {
+        response.message = "Station ID already exists";
+
+        logError(
+          "Station ID already exists during station creation",
+          "createStation",
+          userId,
+        );
+      } else {
+        response.message = "Station name already exists";
+
+        logError(
+          "Station name already exists during station creation",
+          "createStation",
+          userId,
+        );
+      }
 
       return response;
     }

@@ -20,6 +20,7 @@ const Razorpay = require("razorpay");
 const Logs = require("../../../db/schemas/onboarding/log.js");
 const { updateCouponUsage } = require("../../../helper/updateCouponCount.js");
 const { generateTempId } = require("../../../utils/generateBookingId.js");
+const Station = require("../../../db/schemas/onboarding/station.schema.js");
 require("dotenv").config();
 
 const razorpay = new Razorpay({
@@ -549,7 +550,6 @@ const initiateBooking = async (req, res) => {
   try {
     let { bookingData, paymentMethod, isAdminBooking = false } = req.body;
 
-    // if (!bookingData.vehicleTableId || !bookingData.userId || !paymentMethod) {
     if (!bookingData?.userId || !paymentMethod) {
       await session.abortTransaction();
       session.endSession();
@@ -563,7 +563,6 @@ const initiateBooking = async (req, res) => {
         vehicleAssigned: true,
       };
     } else {
-      // Customer/app booking — defer vehicle assignment to station arrival
       const { vehicleTableId: _stripped, ...restBookingData } = bookingData;
 
       bookingData = {
@@ -590,6 +589,144 @@ const initiateBooking = async (req, res) => {
       await session.abortTransaction();
       session.endSession();
       return res.json({ message: "User account is deleted", status: 400 });
+    }
+
+    // Check for existing pending booking to avoid duplicates
+    if (
+      paymentMethod !== "cash" &&
+      bookingData?.paymentgatewayOrderId?.toLowerCase() !== "na"
+    ) {
+      const existingBooking = await Booking.findOne({
+        userId: customerId,
+        vehicleMasterId: bookingData?.vehicleMasterId,
+        stationName: bookingData?.stationName,
+        BookingStartDateAndTime: bookingData?.BookingStartDateAndTime,
+        BookingEndDateAndTime: bookingData?.BookingEndDateAndTime,
+        bookingStatus: "pending",
+        paymentStatus: "pending",
+        paymentgatewayOrderId: { $exists: true, $ne: null },
+      }).session(session);
+
+      if (existingBooking) {
+        // same payment method — reuse existing order
+        if (existingBooking.paymentMethod === paymentMethod) {
+          await session.abortTransaction();
+          session.endSession();
+          return res.json({
+            status: 200,
+            message: "Existing booking found",
+            data: {
+              orderId: existingBooking.paymentgatewayOrderId,
+              booking_id: existingBooking._id,
+              bookingId: existingBooking.bookingId,
+              payableAmount:
+                existingBooking.bookingPrice?.userPaid ||
+                existingBooking.bookingPrice?.discountTotalPrice ||
+                existingBooking.bookingPrice?.totalPrice,
+            },
+          });
+        }
+
+        // payment method changed — recalculate and create new Razorpay order
+        let updatedPrice = { ...existingBooking.bookingPrice };
+
+        if (paymentMethod === "partiallyPay") {
+          const station = await Station.findOne({
+            stationName: bookingData?.stationName,
+          })
+            .select("payments")
+            .session(session);
+
+          const isPartiallyPay = station?.payments?.partiallyPay === true;
+          if (!isPartiallyPay) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.json({
+              message:
+                "Station does not accept partial payment! Try selecting different payment mode.",
+              status: 400,
+            });
+          }
+
+          const partiallyPayPercentage =
+            station?.payments?.partiallyPayPercentage ?? 20;
+          const percentage = partiallyPayPercentage / 100;
+          const totalAmount = Math.round(
+            updatedPrice?.discountTotalPrice || updatedPrice?.totalPrice,
+          );
+          const userPaid = Math.round(totalAmount * percentage);
+
+          updatedPrice = {
+            ...updatedPrice,
+            userPaid,
+            AmountLeftAfterUserPaid: {
+              amount: Math.round(totalAmount - userPaid),
+              status: "unpaid",
+            },
+          };
+        } else {
+          // switching to online — clear partial pay fields
+          updatedPrice = {
+            ...updatedPrice,
+            userPaid: 0,
+            AmountLeftAfterUserPaid: { amount: 0, status: "unpaid" },
+          };
+        }
+
+        const payableAmount =
+          paymentMethod === "partiallyPay"
+            ? updatedPrice.userPaid
+            : updatedPrice.discountTotalPrice &&
+                updatedPrice.discountTotalPrice > 0
+              ? updatedPrice.discountTotalPrice
+              : updatedPrice.totalPrice;
+
+        const razorData = await createOrderId({
+          amount: payableAmount,
+          booking_id: existingBooking.bookingId,
+          _id: existingBooking._id,
+          type: paymentMethod === "partiallyPay" ? "partiallyPay" : "",
+          customBookingId: existingBooking.bookingId,
+        });
+
+        if (razorData?.status !== "created") {
+          await session.abortTransaction();
+          session.endSession();
+          return res.json({
+            status: 500,
+            message: "Failed to initiate payment",
+          });
+        }
+
+        await Booking.findByIdAndUpdate(
+          existingBooking._id,
+          {
+            $set: {
+              paymentMethod,
+              bookingPrice: updatedPrice,
+              payInitFrom: "Razorpay",
+              paymentInitiatedDate: razorData?.created_at,
+              paymentgatewayOrderId: razorData?.id,
+              paymentgatewayReceiptId: razorData?.receipt,
+            },
+          },
+          { new: true },
+        );
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.json({
+          status: 200,
+          message: "Booking updated with new payment method",
+          data: {
+            orderId: razorData?.id,
+            booking_id: existingBooking._id,
+            bookingId: existingBooking.bookingId,
+            payableAmount,
+          },
+        });
+      }
     }
 
     // is amount goes to zero after discount
@@ -709,12 +846,32 @@ const initiateBooking = async (req, res) => {
 
     // for other payment modes
     if (paymentMethod === "partiallyPay") {
+      const station = await Station.findOne({
+        stationName: bookingData?.stationName,
+      })
+        .select("payments")
+        .session(session);
+      const isPartiallyPay = station?.payments?.partiallyPay === true;
+
+      if (!isPartiallyPay) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.json({
+          message:
+            "station do not accept partial payment! Try selecting different payment mode.",
+          status: 400,
+        });
+      }
+      const partiallyPayPercentage =
+        station?.payments?.partiallyPayPercentage ?? 20;
+      const percentage = partiallyPayPercentage / 100;
+
       const totalAmount = Math.round(
         bookingData?.bookingPrice?.discountTotalPrice ||
           bookingData?.bookingPrice?.totalPrice,
       );
 
-      const userPaid = Math.round(totalAmount * 0.2);
+      const userPaid = Math.round(totalAmount * percentage);
       const AmountLeftAfterUserPaid = totalAmount - userPaid;
 
       bookingData = {
@@ -778,13 +935,20 @@ const initiateBooking = async (req, res) => {
         customBookingId: response?.data?.bookingId,
       });
 
-      // console.log("razorData full object:", JSON.stringify(razorData, null, 2));
-      // console.log("razorData status check:", razorData?.status);
-      // console.log("razorData id:", razorData?.id);
-      // console.log("razorData created_at:", razorData?.created_at);
-      // console.log("razorData receipt:", razorData?.receipt);
+      // console.log(
+      //   "[initiateBooking] razorData:",
+      //   JSON.stringify(razorData, null, 2),
+      // );
+      // console.log("[initiateBooking] response.data._id:", response?.data?._id);
 
       if (razorData?.status === "created") {
+        // console.log("[initiateBooking] Entering update block");
+        // console.log("[initiateBooking] Values to set:", {
+        //   payInitFrom: "Razorpay",
+        //   paymentInitiatedDate: razorData?.created_at,
+        //   paymentgatewayOrderId: razorData?.id,
+        //   paymentgatewayReceiptId: razorData?.receipt,
+        // });
         const updateResult = await Booking.findByIdAndUpdate(
           response?.data?._id,
           {
@@ -795,8 +959,13 @@ const initiateBooking = async (req, res) => {
               paymentgatewayReceiptId: razorData?.receipt,
             },
           },
-          { session },
+          // { session },
+          { new: true },
         );
+        // console.log(
+        //   "[initiateBooking] updateResult after fix:",
+        //   updateResult?.paymentgatewayOrderId,
+        // );
 
         const timeLineData = {
           currentBooking_id: response.data?._id,
@@ -810,6 +979,10 @@ const initiateBooking = async (req, res) => {
 
         await timelineFunctionServer(timeLineData);
       } else {
+        console.log(
+          "[initiateBooking] razorData.status was NOT created:",
+          razorData?.status,
+        );
         await session.abortTransaction();
         session.endSession();
         return res.json({ status: 500, message: "Failed to initiate payment" });
