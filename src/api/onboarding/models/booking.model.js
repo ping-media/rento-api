@@ -55,6 +55,7 @@ const getBooking = async (query) => {
       dateCheck,
       page = 1,
       limit = 10,
+      includeCanceled = false,
     } = query;
 
     if (_id) {
@@ -113,7 +114,7 @@ const getBooking = async (query) => {
     // if (bookingStatus) matchFilters.bookingStatus = bookingStatus;
     if (bookingStatus) {
       matchFilters.bookingStatus = bookingStatus;
-    } else {
+    } else if (!includeCanceled) {
       matchFilters.bookingStatus = { $ne: "canceled" };
     }
     if (paymentStatus) matchFilters.paymentStatus = paymentStatus;
@@ -1104,11 +1105,23 @@ const initiateExtensionBooking = async (req, res) => {
       const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
 
       if (!existingIds.includes(data.extendAmount.id)) {
-        booking.bookingPrice.extendAmount.push({
+        const extendEntry = {
           ...data.extendAmount,
           paymentInitiatedDate: razorData?.created_at,
           orderId: razorData?.id || "",
-        });
+        };
+        booking.bookingPrice.extendAmount.push(extendEntry);
+
+        // Backup snapshot so webhook can recover full metadata if cron deletes the entry
+        if (!booking.bookingPrice.extendAmountBackup) {
+          booking.bookingPrice.extendAmountBackup = [];
+        }
+        const backupExists = booking.bookingPrice.extendAmountBackup.some(
+          (e) => e.id === data.extendAmount.id,
+        );
+        if (!backupExists) {
+          booking.bookingPrice.extendAmountBackup.push(extendEntry);
+        }
       }
 
       if (!booking.extendBooking) {
@@ -1126,6 +1139,7 @@ const initiateExtensionBooking = async (req, res) => {
       // booking.bookingStatus = "extended";
 
       // Mark nested objects as modified
+      booking.markModified("bookingPrice.extendAmountBackup");
       booking.markModified("bookingPrice.extendAmount");
       booking.markModified("bookingPrice");
       booking.markModified("extendBooking");
@@ -1390,41 +1404,6 @@ const extendBooking = async (req, res) => {
         "Invalid payment signature. Payment verification failed! try contact admin for support",
     });
   }
-  // const isValidSignature = verifyRazorpaySignature(body, razorpay_signature);
-
-  // if (!isValidSignature) {
-  //   return res.status(200).json({
-  //     success: false,
-  //     message:
-  //       "Invalid payment signature. Payment verification failed! try contact admin for support",
-  //   });
-  // }
-
-  // let paymentDetails;
-  // try {
-  //   paymentDetails = await axios.get(
-  //     `https://api.razorpay.com/v1/payments/${data?.extendAmount?.transactionId}`,
-  //     {
-  //       auth: {
-  //         username: process.env.VITE_RAZOR_KEY_ID,
-  //         password: process.env.VITE_RAZOR_KEY_SECRET,
-  //       },
-  //     }
-  //   );
-  // } catch (err) {
-  //   console.error("Razorpay API error:", err?.response?.data || err.message);
-  //   return res.status(400).json({
-  //     success: false,
-  //     message: "Unable to verify payment with Razorpay. Please try again.",
-  //   });
-  // }
-
-  // if (paymentDetails.data?.status !== "captured") {
-  //   return res.status(400).json({
-  //     success: false,
-  //     message: "Payment not captured! Contact Admin for support.",
-  //   });
-  // }
 
   try {
     const booking = await Booking.findById(_id);

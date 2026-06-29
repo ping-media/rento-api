@@ -737,16 +737,42 @@ const updateBookingAdminExtension = async (
   if (!noteOrderId) throw new Error("Extend booking id not found.");
   const temp = await TempExtension.findOne({ razorpayOrderId: noteOrderId });
 
-  if (!temp || temp.isCompleted) {
-    return res.status(200).json({ message: "Invalid or already processed" });
+  // if (!temp || temp.isCompleted) {
+  //   return res.status(200).json({ message: "Invalid or already processed" });
+  // }
+
+  if (!temp) {
+    throw new Error("TempExtension not found for orderId: " + noteOrderId);
+  }
+
+  if (temp.isCompleted) {
+    console.log(`Admin extension ${noteOrderId} already processed, skipping.`);
+    return;
   }
 
   const booking = await Booking.findById(temp.bookingId);
   if (!booking) {
-    return res.status(200).json({ message: "Booking not found" });
+    throw new Error("Booking not found for id: " + temp.bookingId);
+    // return res.status(200).json({ message: "Booking not found" });
   }
 
   const data = temp.extendData;
+
+  if (!Array.isArray(booking.bookingPrice.extendAmount)) {
+    booking.bookingPrice.extendAmount = [];
+  }
+
+  const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
+  if (!existingIds.includes(data.extendAmount.id)) {
+    booking.bookingPrice.extendAmount.push({
+      ...data.extendAmount,
+      transactionId: paymentId || "",
+      paymentMethod: "online",
+      paymentDate: new Date(),
+      rrnNumber: rrnNumber ?? null,
+      status: "paid",
+    });
+  }
 
   booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
   booking.bookingStatus = "extended";
@@ -768,6 +794,11 @@ const updateBookingAdminExtension = async (
   booking.markModified("extendBooking");
 
   await booking.save();
+
+  await TempExtension.findOneAndUpdate(
+    { razorpayOrderId: noteOrderId },
+    { isCompleted: true },
+  );
 
   if (typeId !== "") {
     await TempExtension.deleteMany({ extendId: typeId });
@@ -837,8 +868,14 @@ const handleExtendBookingWebhook = async (
       },
     });
 
+    // Try to recover full metadata from backup
+    const backup = booking.bookingPrice?.extendAmountBackup?.find(
+      (item) => item.id === typeIdNum || item.id === typeId,
+    );
+
     // Re-push a recovered entry so booking still gets marked extended
     booking.bookingPrice.extendAmount.push({
+      ...(backup || {}),
       id: typeIdNum,
       status: "paid",
       paymentMethod: "online",
@@ -851,8 +888,24 @@ const handleExtendBookingWebhook = async (
       recoveredByWebhook: true,
     });
 
+    // Also update BookingEndDateAndTime from backup if available
+    if (backup?.bookingEndDateAndTime || backup?.BookingEndDateAndTime) {
+      booking.BookingEndDateAndTime =
+        backup.bookingEndDateAndTime || backup.BookingEndDateAndTime;
+    }
+
     booking.bookingStatus = "extended";
     booking.markModified("bookingPrice.extendAmount");
+
+    // Clean up backup entry after successful recovery
+    if (booking.bookingPrice?.extendAmountBackup?.length) {
+      booking.bookingPrice.extendAmountBackup =
+        booking.bookingPrice.extendAmountBackup.filter(
+          (e) => e.id !== typeIdNum && e.id !== typeId,
+        );
+      booking.markModified("bookingPrice.extendAmountBackup");
+    }
+
     await booking.save();
 
     await timelineFunctionServer({
@@ -877,20 +930,6 @@ const handleExtendBookingWebhook = async (
     }
     return;
   }
-
-  // if (!extend) {
-  //   await Log.create({
-  //     message: `extend amount not found in booking`,
-  //     functionName: "handleExtendBookingWebhook",
-  //     otherInfo: {
-  //       bookingId,
-  //       typeId,
-  //       paymentId,
-  //       existingIds: booking.bookingPrice?.extendAmount?.map((e) => e.id),
-  //     },
-  //   });
-  //   throw new Error(`Extend amount with ID ${typeId} not found`);
-  // }
 
   if (extend.status === "paid") {
     console.log(`Payment for extend amount ID ${typeId} already processed`);
@@ -921,7 +960,14 @@ const handleExtendBookingWebhook = async (
   booking.bookingStatus = "extended";
 
   booking.markModified("bookingPrice.extendAmount");
-  // booking.markModified("bookingPrice");
+  // Clean up backup entry after successful normal payment
+  if (booking.bookingPrice?.extendAmountBackup?.length) {
+    booking.bookingPrice.extendAmountBackup =
+      booking.bookingPrice.extendAmountBackup.filter(
+        (e) => e.id !== typeIdNum && e.id !== typeId,
+      );
+    booking.markModified("bookingPrice.extendAmountBackup");
+  }
 
   await booking.save();
 
