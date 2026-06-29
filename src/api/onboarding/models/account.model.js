@@ -132,7 +132,13 @@ const getAllUsers = async (query) => {
       return obj;
     }
 
-    obj.data = [user];
+    const documents = await Document.find({ userId: user._id });
+    let userWithDocs = {
+      ...user.toObject(),
+      documents: documents[0]?.files || [],
+    };
+
+    obj.data = [userWithDocs];
     return obj;
   } catch (error) {
     console.error("Error fetching users:", error.message);
