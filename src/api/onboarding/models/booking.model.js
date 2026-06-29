@@ -111,12 +111,32 @@ const getBooking = async (query) => {
       };
     }
     if (stationName) matchFilters.stationName = stationName;
-    // if (bookingStatus) matchFilters.bookingStatus = bookingStatus;
     if (bookingStatus) {
       matchFilters.bookingStatus = bookingStatus;
-    } else if (!includeCanceled) {
+    } else if (
+      !includeCanceled &&
+      !search &&
+      !bookingId &&
+      !vehicleNumber &&
+      !vehicleName &&
+      !vehicleBrand &&
+      !stationName &&
+      !stationId &&
+      !userId &&
+      !rideStatus &&
+      !paymentStatus &&
+      !paymentMethod &&
+      !payInitFrom &&
+      !fullName &&
+      !contact
+    ) {
+      // Only exclude canceled when NO filters are applied at all — pure listing call
       matchFilters.bookingStatus = { $ne: "canceled" };
     }
+
+    // else if (!includeCanceled && !search) {
+    //   matchFilters.bookingStatus = { $ne: "canceled" };
+    // }
     if (paymentStatus) matchFilters.paymentStatus = paymentStatus;
     if (userId) matchFilters.userId = userId;
     if (rideStatus) matchFilters.rideStatus = rideStatus;
@@ -1047,6 +1067,14 @@ const initiateExtensionBooking = async (req, res) => {
     const { _id } = data;
 
     const booking = await Booking.findById(_id);
+
+    if (booking.rideStatus === "completed") {
+      await session.abortTransaction();
+      session.endSession();
+      return res
+        .status(400)
+        .json({ message: "Booking already marked completed!", status: 400 });
+    }
 
     const customerId = booking?.userId || null;
 
