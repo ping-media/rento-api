@@ -140,6 +140,13 @@ async function softDeleteUser(req, res) {
       return res.json({ status: 404, message: "User not found" });
     }
 
+    if (user.contact === process.env.ENVIRONMENT) {
+      return res.json({
+        status: 400,
+        message: "Demo customer can't be deleted.",
+      });
+    }
+
     const blockingBooking = await Booking.exists({
       userId,
       $or: [
@@ -152,7 +159,7 @@ async function softDeleteUser(req, res) {
       ],
     });
 
-    if (activeBooking) {
+    if (blockingBooking) {
       return res.json({
         status: 400,
         success: false,
