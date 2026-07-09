@@ -45,7 +45,10 @@ const {
 const jwt = require("jsonwebtoken");
 const Station = require("../../../db/schemas/onboarding/station.schema");
 const { sendInvoiceByEmail } = require("../../../utils/emailSend");
-const { kycApprovalFunction } = require("../models/kycapproval.model");
+const {
+  kycApprovalFunction,
+  getKycData,
+} = require("../models/kycapproval.model");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const {
   maintenanceVehicleFunction,
@@ -1161,6 +1164,10 @@ router.post("/sendEmailForBookingDetails", async (req, res) => {
 
 router.post("/kycApproval", Authentication, async (req, res) => {
   kycApprovalFunction(req, res);
+});
+
+router.get("/get-kyc-data", Authentication, async (req, res) => {
+  getKycData(req, res);
 });
 
 router.post("/forgetPassword", async (req, res) => {

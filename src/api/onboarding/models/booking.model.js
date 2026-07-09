@@ -1081,9 +1081,7 @@ const initiateExtensionBooking = async (req, res) => {
     if (!customerId) {
       await session.abortTransaction();
       session.endSession();
-      return res
-        .status(404)
-        .json({ message: "Invalid customer ID", status: 400 });
+      return res.json({ message: "Invalid customer ID", status: 400 });
     }
 
     const customer = await User.findById(customerId);
@@ -1091,16 +1089,55 @@ const initiateExtensionBooking = async (req, res) => {
     if ((customer?.isDeleted ?? false) === true) {
       await session.abortTransaction();
       session.endSession();
-      return res
-        .status(404)
-        .json({ message: "User account is deleted", status: 400 });
+      return res.json({ message: "User account is deleted", status: 400 });
     }
 
     if (!booking) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(404).json({ message: "Booking not found" });
+      return res
+        .status(200)
+        .json({ status: 404, message: "Booking not found" });
     }
+
+    // ─── Extend Duration Validations ───────────────────────────────────────
+    const extendDuration = data?.extendAmount?.extendDuration;
+
+    // 1. Must be whole number
+    if (!Number.isInteger(extendDuration) || extendDuration <= 0) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(200).json({
+        status: 400,
+        message:
+          "Extension duration must be a whole number (e.g. 1, 2, 3) and greater than 0.",
+      });
+    }
+
+    // 2. Must be at least 24 hours
+    const extendStart = new Date(data?.extendAmount?.BookingStartDateAndTime);
+    const extendEnd = new Date(data?.extendAmount?.bookingEndDateAndTime);
+
+    if (isNaN(extendStart.getTime()) || isNaN(extendEnd.getTime())) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(200).json({
+        status: 400,
+        message: "Invalid extension start or end date.",
+      });
+    }
+
+    const durationInHours = (extendEnd - extendStart) / (1000 * 60 * 60);
+
+    if (durationInHours < 24) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(200).json({
+        status: 400,
+        message: "Extension duration must be at least 24 hours.",
+      });
+    }
+    // ───────────────────────────────────────────────────────────────────────
 
     const user = await User.findById(booking.userId).session(session);
     let finalAmount = amount;

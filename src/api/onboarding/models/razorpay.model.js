@@ -915,6 +915,7 @@ const handleExtendBookingWebhook = async (
           title: "Booking Extended by User",
           date: Date.now(),
           paymentAmount: amountPaid || 0,
+          endDate: backup.bookingEndDateAndTime,
           paymentId: paymentId || "",
           extended: true,
         },

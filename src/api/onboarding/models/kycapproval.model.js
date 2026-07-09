@@ -1,4 +1,5 @@
 const kycApproval = require("../../../db/schemas/onboarding/kycApproval.schema");
+const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema");
 const User = require("../../../db/schemas/onboarding/user.schema");
 
 const kycApprovalFunction = async (req, res) => {
@@ -19,6 +20,15 @@ const kycApprovalFunction = async (req, res) => {
       return res.json({
         status: 404,
         message: "User not found",
+      });
+    }
+
+    const userDocument = await Document.findOne({ userId });
+
+    if (!userDocument?.files?.length) {
+      return res.status(200).json({
+        status: 400,
+        message: "Please upload KYC documents before approval.",
       });
     }
 
@@ -61,7 +71,7 @@ const kycApprovalFunction = async (req, res) => {
         kycApproved: "yes",
         isDocumentVerified: "yes",
         drivingLicence: licenseNumber,
-      }
+      },
     );
 
     return res.status(200).json({
@@ -77,4 +87,38 @@ const kycApprovalFunction = async (req, res) => {
   }
 };
 
-module.exports = { kycApprovalFunction };
+const getKycData = async (req, res) => {
+  const { userId } = req.query;
+
+  if (!userId) {
+    return res.json({
+      status: 400,
+      message: "Missing required fields: userId",
+    });
+  }
+
+  try {
+    const response = await kycApproval.findOne({ userId });
+
+    if (!response) {
+      return res.status(200).json({
+        status: 404,
+        message: "No data found",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      message: "KYC data fetched successfully",
+      data: response,
+    });
+  } catch (error) {
+    console.error("Error during KYC approval:", error);
+    return res.json({
+      status: 500,
+      message: "Internal server error",
+    });
+  }
+};
+
+module.exports = { kycApprovalFunction, getKycData };
