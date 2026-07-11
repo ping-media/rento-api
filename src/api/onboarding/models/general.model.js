@@ -510,6 +510,7 @@ const getExtraAddOns = async (req, res) => {
         testMode: 1,
         showVehicleCount: 1,
         payments: 1,
+        vehicleLevelWeekendPrice: 1,
       },
     );
 
@@ -533,6 +534,7 @@ const getExtraAddOns = async (req, res) => {
     const showVehicleCount = general.showVehicleCount ?? true;
     // const showVehicleCount = general.showVehicleCount || true;
     const payments = general.payments || null;
+    const vehicleLevelWeekendPrice = general.vehicleLevelWeekendPrice || null;
 
     return res.status(200).json({
       status: 200,
@@ -548,6 +550,7 @@ const getExtraAddOns = async (req, res) => {
       testMode,
       showVehicleCount,
       payments,
+      vehicleLevelWeekendPrice,
     });
   } catch (err) {
     return res.status(500).json({
