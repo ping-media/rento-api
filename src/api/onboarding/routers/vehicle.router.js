@@ -412,9 +412,7 @@ router.get("/getOrders", async (req, res) => {
   vehiclesService.getOrders(req, res);
 });
 
-//getCoupons bookingAvailability
-
-router.get("/getCoupons", async (req, res) => {
+router.get("/getCoupons", Authentication, async (req, res) => {
   vehiclesService.getCoupons(req, res);
 });
 
