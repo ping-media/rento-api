@@ -629,8 +629,15 @@ const initiateBooking = async (req, res) => {
       }).session(session);
 
       if (existingBooking) {
+        const isAmountSame =
+          existingBooking.bookingPrice.totalPrice ===
+            bookingData.bookingPrice.totalPrice &&
+          existingBooking.bookingPrice.discountTotalPrice ===
+            bookingData.bookingPrice.discountTotalPrice;
+
         // same payment method — reuse existing order
-        if (existingBooking.paymentMethod === paymentMethod) {
+        if (isAmountSame && existingBooking.paymentMethod === paymentMethod) {
+          // if (existingBooking.paymentMethod === paymentMethod) {
           await session.abortTransaction();
           session.endSession();
           return res.json({
@@ -649,7 +656,8 @@ const initiateBooking = async (req, res) => {
         }
 
         // payment method changed — recalculate and create new Razorpay order
-        let updatedPrice = { ...existingBooking.bookingPrice };
+        let updatedPrice = { ...bookingData.bookingPrice };
+        // let updatedPrice = { ...existingBooking.bookingPrice };
 
         if (paymentMethod === "partiallyPay") {
           const station = await Station.findOne({
@@ -688,7 +696,8 @@ const initiateBooking = async (req, res) => {
         } else {
           // switching to online — clear partial pay fields
           updatedPrice = {
-            ...updatedPrice,
+            // ...updatedPrice,
+            ...bookingData.bookingPrice,
             userPaid: 0,
             AmountLeftAfterUserPaid: { amount: 0, status: "unpaid" },
           };
@@ -709,6 +718,18 @@ const initiateBooking = async (req, res) => {
           type: paymentMethod === "partiallyPay" ? "partiallyPay" : "",
           customBookingId: existingBooking.bookingId,
         });
+
+        await Booking.findByIdAndUpdate(
+          existingBooking._id,
+          {
+            $set: {
+              bookingStatus: "canceled",
+              paymentStatus: "failed",
+              rideStatus: "canceled",
+            },
+          },
+          { new: true },
+        );
 
         if (razorData?.status !== "created") {
           await session.abortTransaction();

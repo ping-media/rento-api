@@ -109,7 +109,7 @@ async function createVehicle({
   vehicleModel,
   locationId,
   perDayCost,
-  // perHourCost,
+  weekendCost,
   lastServiceDate,
   kmsRun,
   condition,
@@ -140,7 +140,7 @@ async function createVehicle({
         extraKmsCharges &&
         vehicleModel &&
         perDayCost &&
-        // perHourCost &&
+        weekendCost &&
         lastServiceDate &&
         lastMeterReading &&
         kmsRun &&
@@ -186,7 +186,7 @@ async function createVehicle({
         extraKmsCharges,
         vehicleModel,
         perDayCost,
-        // perHourCost,
+        weekendCost,
         lastServiceDate,
         kmsRun,
         condition,
@@ -243,6 +243,26 @@ async function createVehicle({
             userId: stationId,
           });
           return response;
+        }
+
+        if (vehicleNumber) {
+          const duplicateVehicle = await VehicleTable.findOne({
+            vehicleNumber,
+            _id: { $ne: ObjectId(_id) },
+          });
+
+          if (duplicateVehicle) {
+            response.status = 401;
+            response.message = "Vehicle number already exists";
+
+            await Log({
+              message: `Duplicate vehicle number attempted: ${vehicleNumber}`,
+              functionName: "createVehicle",
+              userId: stationId,
+            });
+
+            return response;
+          }
         }
 
         await VehicleTable.updateOne({ _id: ObjectId(_id) }, { $set: o });

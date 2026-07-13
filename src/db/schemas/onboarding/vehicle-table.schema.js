@@ -33,6 +33,8 @@ const vehicleTableSchema = new Schema(
     vehicleNumber: {
       type: String,
       required: true,
+      unique: true,
+      trim: true,
     },
     freeKms: {
       type: Number,
@@ -118,6 +120,9 @@ const vehicleTableSchema = new Schema(
   },
   { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } },
 );
+
+// Unique vehicle number
+vehiclePlanSchema.index({ vehicleNumber: 1 });
 
 // Core relations
 vehicleTableSchema.index({ vehicleMasterId: 1 });

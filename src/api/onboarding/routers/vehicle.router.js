@@ -116,7 +116,7 @@ router.post("/sendBookingDetailesTosocial", async (req, res) => {
   vehiclesService.sendBookingDetailesTosocial(req, res);
 });
 
-router.post("/createVehicle", async (req, res) => {
+router.post("/createVehicle", Authentication, async (req, res) => {
   vehiclesService.createVehicle(req, res);
 });
 
