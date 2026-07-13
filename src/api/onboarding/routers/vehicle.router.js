@@ -116,7 +116,7 @@ router.post("/sendBookingDetailesTosocial", async (req, res) => {
   vehiclesService.sendBookingDetailesTosocial(req, res);
 });
 
-router.post("/createVehicle", async (req, res) => {
+router.post("/createVehicle", Authentication, async (req, res) => {
   vehiclesService.createVehicle(req, res);
 });
 
@@ -411,6 +411,8 @@ router.post("/createOrder", async (req, res) => {
 router.get("/getOrders", async (req, res) => {
   vehiclesService.getOrders(req, res);
 });
+
+//getCoupons bookingAvailability
 
 router.get("/getCoupons", Authentication, async (req, res) => {
   vehiclesService.getCoupons(req, res);

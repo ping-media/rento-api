@@ -109,7 +109,7 @@ async function createVehicle({
   vehicleModel,
   locationId,
   perDayCost,
-  // perHourCost,
+  weekendCost,
   lastServiceDate,
   kmsRun,
   condition,
@@ -140,7 +140,7 @@ async function createVehicle({
         extraKmsCharges &&
         vehicleModel &&
         perDayCost &&
-        // perHourCost &&
+        weekendCost &&
         lastServiceDate &&
         lastMeterReading &&
         kmsRun &&
@@ -186,7 +186,7 @@ async function createVehicle({
         extraKmsCharges,
         vehicleModel,
         perDayCost,
-        // perHourCost,
+        weekendCost,
         lastServiceDate,
         kmsRun,
         condition,
@@ -243,6 +243,26 @@ async function createVehicle({
             userId: stationId,
           });
           return response;
+        }
+
+        if (vehicleNumber) {
+          const duplicateVehicle = await VehicleTable.findOne({
+            vehicleNumber,
+            _id: { $ne: ObjectId(_id) },
+          });
+
+          if (duplicateVehicle) {
+            response.status = 401;
+            response.message = "Vehicle number already exists";
+
+            await Log({
+              message: `Duplicate vehicle number attempted: ${vehicleNumber}`,
+              functionName: "createVehicle",
+              userId: stationId,
+            });
+
+            return response;
+          }
         }
 
         await VehicleTable.updateOne({ _id: ObjectId(_id) }, { $set: o });
@@ -3525,10 +3545,10 @@ const getVehicleTbl = async (query) => {
         const stationWeekendEnabled =
           adjustedVehicle.stationData?.weekendPriceIncrease === "active";
 
-        // const weekendCost =
-        //   adjustedVehicle?.weekendCost != null
-        //     ? adjustedVehicle.weekendCost
-        //     : originalPerDayCost;
+        // NEW: check global flag to decide pricing source (vehicle-level vs station-level)
+        const useVehicleLevelWeekendPrice =
+          pricingRules?.vehicleLevelWeekendPrice === true;
+        const vehicleWeekendCost = adjustedVehicle?.weekendCost;
 
         if (
           adjustedVehicle.vehiclePlan &&
@@ -3574,18 +3594,32 @@ const getVehicleTbl = async (query) => {
 
           let dailyRate = originalPerDayCost;
 
-          if (isWeekend && stationWeekendEnabled && weekendPercentage !== 0) {
-            const weekendPriceType =
-              adjustedVehicle?.stationData?.weekendPriceType || "percentage";
-            if (weekendPriceType === "fixed") {
-              dailyRate += weekendPercentage;
-            } else {
-              dailyRate += (originalPerDayCost * weekendPercentage) / 100;
+          // if (isWeekend && stationWeekendEnabled && weekendPercentage !== 0) {
+          //   const weekendPriceType =
+          //     adjustedVehicle?.stationData?.weekendPriceType || "percentage";
+          //   if (weekendPriceType === "fixed") {
+          //     dailyRate += weekendPercentage;
+          //   } else {
+          //     dailyRate += (originalPerDayCost * weekendPercentage) / 100;
+          //   }
+          // }
+          if (isWeekend) {
+            if (useVehicleLevelWeekendPrice) {
+              // Vehicle-level: use vehicle's own weekendCost directly if set
+              if (vehicleWeekendCost != null && vehicleWeekendCost > 0) {
+                dailyRate = vehicleWeekendCost;
+              }
+            } else if (stationWeekendEnabled && weekendPercentage !== 0) {
+              // Station-level: existing percentage/fixed logic
+              const weekendPriceType =
+                adjustedVehicle?.stationData?.weekendPriceType || "percentage";
+              if (weekendPriceType === "fixed") {
+                dailyRate += weekendPercentage;
+              } else {
+                dailyRate += (originalPerDayCost * weekendPercentage) / 100;
+              }
             }
           }
-          // if (isWeekend && weekendCost > 0) {
-          //   dailyRate = weekendCost;
-          // }
 
           // Apply special day pricing
           if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
@@ -3614,11 +3648,18 @@ const getVehicleTbl = async (query) => {
             date: new Date(currentDate),
             isWeekend,
             dailyRate: Math.round(dailyRate),
-            weekendPriceApplied:
-              isWeekend && stationWeekendEnabled && weekendPercentage !== 0,
-            weekendPriceType:
-              adjustedVehicle?.stationData?.weekendPriceType || "percentage",
-            // weekendPriceApplied: isWeekend && weekendCost > 0,
+            weekendPriceApplied: isWeekend
+              ? useVehicleLevelWeekendPrice
+                ? vehicleWeekendCost != null && vehicleWeekendCost > 0
+                : stationWeekendEnabled && weekendPercentage !== 0
+              : false,
+            weekendPriceType: useVehicleLevelWeekendPrice
+              ? "vehicleLevel"
+              : adjustedVehicle?.stationData?.weekendPriceType || "percentage",
+            // weekendPriceApplied:
+            //   isWeekend && stationWeekendEnabled && weekendPercentage !== 0,
+            // weekendPriceType:
+            //   adjustedVehicle?.stationData?.weekendPriceType || "percentage",
           });
 
           currentDate.setDate(currentDate.getDate() + 1);
@@ -3647,7 +3688,14 @@ const getVehicleTbl = async (query) => {
         const startDay = startDateObj.getDay();
         const isStartWeekend = startDay === 0 || startDay === 6;
 
-        if (
+        if (useVehicleLevelWeekendPrice) {
+          adjustedVehicle.perDayCost =
+            isStartWeekend &&
+            vehicleWeekendCost != null &&
+            vehicleWeekendCost > 0
+              ? Math.round(vehicleWeekendCost)
+              : originalPerDayCost;
+        } else if (
           isStartWeekend &&
           stationWeekendEnabled &&
           weekendPercentage !== 0
@@ -3663,12 +3711,23 @@ const getVehicleTbl = async (query) => {
         } else {
           adjustedVehicle.perDayCost = originalPerDayCost;
         }
-        // adjustedVehicle.perDayCost = originalPerDayCost;
-        // adjustedVehicle.weekendCost = weekendCost;
-        // adjustedVehicle.effectivePerDayCost =
-        //   isStartWeekend && weekendCost > 0
-        //     ? Math.round(weekendCost)
-        //     : originalPerDayCost;
+
+        // if (
+        //   isStartWeekend &&
+        //   stationWeekendEnabled &&
+        //   weekendPercentage !== 0
+        // ) {
+        //   const weekendPriceType =
+        //     adjustedVehicle?.stationData?.weekendPriceType || "percentage";
+        //   adjustedVehicle.perDayCost = Math.round(
+        //     weekendPriceType === "fixed"
+        //       ? originalPerDayCost + weekendPercentage
+        //       : originalPerDayCost +
+        //           (originalPerDayCost * weekendPercentage) / 100,
+        //   );
+        // } else {
+        //   adjustedVehicle.perDayCost = originalPerDayCost;
+        // }
       }
 
       adjustedVehicles.push(adjustedVehicle);
@@ -4403,6 +4462,11 @@ const getVehicleTblData = async (query) => {
         const stationWeekendEnabled =
           adjustedVehicle?.stationData?.weekendPriceIncrease === "active";
 
+        // NEW: check global flag to decide pricing source (vehicle-level vs station-level)
+        const useVehicleLevelWeekendPrice =
+          pricingRules?.vehicleLevelWeekendPrice === true;
+        const vehicleWeekendCost = adjustedVehicle?.weekendCost;
+
         // STEP 1: Apply Plan Pricing (e.g. 7-day, 15-day, etc.)
         if (
           adjustedVehicle.vehiclePlan &&
@@ -4452,13 +4516,30 @@ const getVehicleTblData = async (query) => {
           // if (isWeekend && weekendCost > 0) {
           //   dailyRate = weekendCost;
           // }
-          if (isWeekend && stationWeekendEnabled && weekendPercentage !== 0) {
-            const weekendPriceType =
-              adjustedVehicle?.stationData?.weekendPriceType || "percentage";
-            if (weekendPriceType === "fixed") {
-              dailyRate += weekendPercentage;
-            } else {
-              dailyRate += (originalPerDayCost * weekendPercentage) / 100;
+          // if (isWeekend && stationWeekendEnabled && weekendPercentage !== 0) {
+          //   const weekendPriceType =
+          //     adjustedVehicle?.stationData?.weekendPriceType || "percentage";
+          //   if (weekendPriceType === "fixed") {
+          //     dailyRate += weekendPercentage;
+          //   } else {
+          //     dailyRate += (originalPerDayCost * weekendPercentage) / 100;
+          //   }
+          // }
+          if (isWeekend) {
+            if (useVehicleLevelWeekendPrice) {
+              // Vehicle-level: use vehicle's own weekendCost directly if set
+              if (vehicleWeekendCost != null && vehicleWeekendCost > 0) {
+                dailyRate = vehicleWeekendCost;
+              }
+            } else if (stationWeekendEnabled && weekendPercentage !== 0) {
+              // Station-level: existing percentage/fixed logic
+              const weekendPriceType =
+                adjustedVehicle?.stationData?.weekendPriceType || "percentage";
+              if (weekendPriceType === "fixed") {
+                dailyRate += weekendPercentage;
+              } else {
+                dailyRate += (originalPerDayCost * weekendPercentage) / 100;
+              }
             }
           }
 
@@ -4488,9 +4569,13 @@ const getVehicleTblData = async (query) => {
             date: new Date(currentDate),
             isWeekend,
             dailyRate: Math.round(dailyRate),
-            // weekendPriceApplied: isWeekend,
-            weekendPriceApplied:
-              isWeekend && stationWeekendEnabled && weekendPercentage !== 0,
+            weekendPriceApplied: isWeekend
+              ? useVehicleLevelWeekendPrice
+                ? vehicleWeekendCost != null && vehicleWeekendCost > 0
+                : stationWeekendEnabled && weekendPercentage !== 0
+              : false,
+            // weekendPriceApplied:
+            //   isWeekend && stationWeekendEnabled && weekendPercentage !== 0,
           });
 
           currentDate.setDate(currentDate.getDate() + 1);
@@ -4519,7 +4604,14 @@ const getVehicleTblData = async (query) => {
         const startDay = startDateObj.getDay();
         const isStartWeekend = startDay === 0 || startDay === 6;
 
-        if (
+        if (useVehicleLevelWeekendPrice) {
+          adjustedVehicle.perDayCost =
+            isStartWeekend &&
+            vehicleWeekendCost != null &&
+            vehicleWeekendCost > 0
+              ? Math.round(vehicleWeekendCost)
+              : originalPerDayCost;
+        } else if (
           isStartWeekend &&
           stationWeekendEnabled &&
           weekendPercentage !== 0
@@ -4536,11 +4628,22 @@ const getVehicleTblData = async (query) => {
           adjustedVehicle.perDayCost = originalPerDayCost;
         }
 
-        // adjustedVehicle.perDayCost = originalPerDayCost;
-        // adjustedVehicle.weekendCost = weekendCost;
-        // adjustedVehicle.effectivePerDayCost = isStartWeekend
-        //   ? Math.round(weekendCost)
-        //   : originalPerDayCost;
+        // if (
+        //   isStartWeekend &&
+        //   stationWeekendEnabled &&
+        //   weekendPercentage !== 0
+        // ) {
+        //   const weekendPriceType =
+        //     adjustedVehicle?.stationData?.weekendPriceType || "percentage";
+        //   adjustedVehicle.perDayCost = Math.round(
+        //     weekendPriceType === "fixed"
+        //       ? originalPerDayCost + weekendPercentage
+        //       : originalPerDayCost +
+        //           (originalPerDayCost * weekendPercentage) / 100,
+        //   );
+        // } else {
+        //   adjustedVehicle.perDayCost = originalPerDayCost;
+        // }
 
         return adjustedVehicle;
       });
