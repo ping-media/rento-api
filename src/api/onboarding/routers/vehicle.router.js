@@ -777,11 +777,11 @@ router.get("/getAllVehiclesData", async (req, res) => {
   getAllVehiclesData(req, res);
 });
 
-router.get("/getAllVehiclesIdsData", async (req, res) => {
+router.get("/getAllVehiclesIdsData", Authentication, async (req, res) => {
   getVehicleIds(req, res);
 });
 
-router.get("/getAllInvoice", async (req, res) => {
+router.get("/getAllInvoice", Authentication, async (req, res) => {
   vehiclesService.getAllInvoice(req, res);
 });
 
