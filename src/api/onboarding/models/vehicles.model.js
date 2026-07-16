@@ -32,6 +32,8 @@ const logError = async (message, functionName, userId) => {
   await Log({ message, functionName, userId });
 };
 
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 let cachedPricingRules = null;
 let pricingRulesCachedAt = null;
 const PRICING_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -2884,7 +2886,12 @@ const getVehicleTbl = async (query) => {
             ? { "vehicleMasterData.vehicleType": vehicleType }
             : {}),
           ...(vehicleName
-            ? { "vehicleMasterData.vehicleName": vehicleName }
+            ? {
+                "vehicleMasterData.vehicleName": {
+                  $regex: escapeRegex(vehicleName),
+                  $options: "i",
+                },
+              }
             : {}),
         },
       },
@@ -2943,8 +2950,20 @@ const getVehicleTbl = async (query) => {
                 },
                 bookingStatus: { $ne: "canceled" },
                 rideStatus: { $nin: ["completed", "canceled"] },
-                BookingEndDateAndTime: { $gt: startDate },
-                BookingStartDateAndTime: { $lt: endDate },
+                $or: [
+                  // overlapping with search period — for conflictingBookings
+                  {
+                    BookingEndDateAndTime: { $gt: startDate },
+                    BookingStartDateAndTime: { $lt: endDate },
+                  },
+                  // past-ended but ride still not completed — for pendingRideBookings
+                  {
+                    BookingEndDateAndTime: { $lt: startDate },
+                    vehicleAssigned: true,
+                  },
+                ],
+                // BookingEndDateAndTime: { $gt: startDate },
+                // BookingStartDateAndTime: { $lt: endDate },
               },
             },
             {
@@ -3263,7 +3282,12 @@ const getVehicleTbl = async (query) => {
             ? { "vehicleMasterData.vehicleType": vehicleType }
             : {}),
           ...(vehicleName
-            ? { "vehicleMasterData.vehicleName": vehicleName }
+            ? {
+                "vehicleMasterData.vehicleName": {
+                  $regex: escapeRegex(vehicleName),
+                  $options: "i",
+                },
+              }
             : {}),
         },
       },
@@ -3306,11 +3330,224 @@ const getVehicleTbl = async (query) => {
       { $sort: { vehicleNumber: 1 } },
     ];
 
+    const debugIds = [
+      "67f91a8f15d6dc9093779ac5",
+      "67f91ac74a2e982217d904e8",
+      "67f919e42e53e9fa3d435870",
+      "67f91a4c4a2e982217d904ca",
+      "67f91a2415d6dc9093779a9a",
+    ].map((id) => new mongoose.Types.ObjectId(id));
+
+    // Stage 1 — after match
+    const dbg1 = await vehicleTable.aggregate([
+      { $match: matchFilter },
+      { $match: { _id: { $in: debugIds } } },
+      { $project: { _id: 1, vehicleNumber: 1 } },
+    ]);
+    console.log("🔍 DBG1 after matchFilter:", dbg1.length);
+
+    // Stage 2 — after bookings lookup
+    const dbg2 = await vehicleTable.aggregate([
+      { $match: matchFilter },
+      { $match: { _id: { $in: debugIds } } },
+      {
+        $lookup: {
+          from: "bookings",
+          let: { masterId: "$vehicleMasterId", sid: "$stationId" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$vehicleMasterId", "$$masterId"] },
+                    { $eq: ["$stationId", "$$sid"] },
+                  ],
+                },
+                bookingStatus: { $ne: "canceled" },
+                rideStatus: { $nin: ["completed", "canceled"] },
+                BookingEndDateAndTime: { $gt: startDate },
+                BookingStartDateAndTime: { $lt: endDate },
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                bookingId: 1,
+                rideStatus: 1,
+                vehicleAssigned: 1,
+                vehicleTableId: 1,
+                BookingStartDateAndTime: 1,
+                BookingEndDateAndTime: 1,
+              },
+            },
+          ],
+          as: "bookings",
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          vehicleNumber: 1,
+          bookingsCount: { $size: "$bookings" },
+          bookings: 1,
+        },
+      },
+    ]);
+    console.log(
+      "🔍 DBG2 after bookings lookup:",
+      JSON.stringify(dbg2, null, 2),
+    );
+
+    // Stage 3 — after all lookups + addFields
+    const dbg3 = await vehicleTable.aggregate([
+      { $match: matchFilter },
+      { $match: { _id: { $in: debugIds } } },
+      {
+        $lookup: {
+          from: "bookings",
+          let: { masterId: "$vehicleMasterId", sid: "$stationId" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$vehicleMasterId", "$$masterId"] },
+                    { $eq: ["$stationId", "$$sid"] },
+                  ],
+                },
+                bookingStatus: { $ne: "canceled" },
+                rideStatus: { $nin: ["completed", "canceled"] },
+                BookingEndDateAndTime: { $gt: startDate },
+                BookingStartDateAndTime: { $lt: endDate },
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                bookingId: 1,
+                rideStatus: 1,
+                vehicleAssigned: 1,
+                vehicleTableId: 1,
+                BookingStartDateAndTime: 1,
+                BookingEndDateAndTime: 1,
+              },
+            },
+          ],
+          as: "bookings",
+        },
+      },
+      {
+        $lookup: {
+          from: "maintenancevehicles",
+          localField: "_id",
+          foreignField: "vehicleTableId",
+          as: "maintenanceData",
+        },
+      },
+      {
+        $lookup: {
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
+        },
+      },
+      {
+        $addFields: {
+          vehicleMasterData: {
+            $mergeObjects: [
+              { vehicleCategory: "two-wheeler", gstPercentage: 0 },
+              { $arrayElemAt: ["$vehicleMasterData", 0] },
+            ],
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          vehicleNumber: 1,
+          vehicleStatus: 1,
+          vehicleMasterName: "$vehicleMasterData.vehicleName",
+          vehicleMasterStatus: "$vehicleMasterData.status",
+          bookingsCount: { $size: "$bookings" },
+          maintenanceCount: { $size: "$maintenanceData" },
+        },
+      },
+    ]);
+    console.log("🔍 DBG3 after all lookups:", JSON.stringify(dbg3, null, 2));
+
+    // Stage 4 — after vehicleName match
+    const dbg4 = await vehicleTable.aggregate([
+      { $match: matchFilter },
+      { $match: { _id: { $in: debugIds } } },
+      {
+        $lookup: {
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
+        },
+      },
+      {
+        $addFields: {
+          vehicleMasterData: {
+            $mergeObjects: [
+              { vehicleCategory: "two-wheeler", gstPercentage: 0 },
+              { $arrayElemAt: ["$vehicleMasterData", 0] },
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          "vehicleMasterData.vehicleName": {
+            $regex: vehicleName,
+            $options: "i",
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          vehicleNumber: 1,
+          vehicleMasterName: "$vehicleMasterData.vehicleName",
+        },
+      },
+    ]);
+    console.log(
+      "🔍 DBG4 after vehicleName match:",
+      dbg4.length,
+      JSON.stringify(dbg4, null, 2),
+    );
+
     const allVehiclesForCheck = await vehicleTable.aggregate(
       unavailabilityCheckPipeline,
     );
+    console.log("🔍 matchFilter:", JSON.stringify(matchFilter, null, 2));
+    console.log("🔍 vehicleName query param:", vehicleName);
+    console.log("🔍 allVehiclesForCheck count:", allVehiclesForCheck.length);
+    console.log(
+      "🔍 allVehiclesForCheck:",
+      JSON.stringify(allVehiclesForCheck, null, 2),
+    );
 
     let vehicles = await vehicleTable.aggregate(pipeline);
+    console.log("🔍 main pipeline vehicles count:", vehicles.length);
+    console.log(
+      "🔍 main pipeline vehicles:",
+      JSON.stringify(
+        vehicles.map((v) => ({
+          _id: v._id,
+          vehicleNumber: v.vehicleNumber,
+          vehicleStatus: v.vehicleStatus,
+          vehicleName: v.vehicleMasterData?.vehicleName,
+          conflictingBookings: v.conflictingBookings?.length,
+          conflictingMaintenance: v.conflictingMaintenance?.length,
+        })),
+        null,
+        2,
+      ),
+    );
 
     // When _id filter is used, only 1 vehicle is in results but conflictingBookings
     // has the full pool's bookings — fetch full sorted pool for correct slot math
@@ -3424,10 +3661,25 @@ const getVehicleTbl = async (query) => {
           : null,
       };
     });
+    console.log(
+      "🔍 after status computation:",
+      JSON.stringify(
+        vehicles.map((v) => ({
+          _id: v._id,
+          vehicleNumber: v.vehicleNumber,
+          vehicleStatus: v.vehicleStatus,
+        })),
+        null,
+        2,
+      ),
+    );
 
     const filteredVehicles = includeUnavailable
       ? vehicles
       : vehicles.filter((v) => v.vehicleStatus === "active");
+
+    console.log("🔍 filteredVehicles count:", filteredVehicles.length);
+    console.log("🔍 includeUnavailable:", includeUnavailable);
 
     if (!filteredVehicles.length) {
       if (allVehiclesForCheck.length === 0) {
