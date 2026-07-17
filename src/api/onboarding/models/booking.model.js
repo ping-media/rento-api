@@ -1068,7 +1068,12 @@ const initiateExtensionBooking = async (req, res) => {
   session.startTransaction();
 
   try {
-    let { data, extendId, amount } = req.body;
+    // let { data, extendId, amount } = req.body;
+    let { data, extendId } = req.body;
+    const amount =
+      (data?.extendAmount?.amount || 0) +
+      (data?.extendAmount?.tax || 0) +
+      (data?.extendAmount?.addonTax || 0);
 
     if (!data?._id || !amount || !data?.extendAmount?.id) {
       await session.abortTransaction();
@@ -1163,11 +1168,11 @@ const initiateExtensionBooking = async (req, res) => {
     const user = await User.findById(booking.userId).session(session);
     let finalAmount = amount;
 
-    if (user) {
-      if (user?.contact === process.env.ENVIRONMENT) {
-        finalAmount = 1;
-      }
-    }
+    // if (user) {
+    //   if (user?.contact === process.env.ENVIRONMENT) {
+    //     finalAmount = 1;
+    //   }
+    // }
 
     const razorData = await createOrderId({
       amount: finalAmount,
