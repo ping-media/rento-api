@@ -577,7 +577,12 @@ const initiateBooking = async (req, res) => {
       return res.json({ message: "Required fields missing", status: 400 });
     }
 
-    if (isAdminBooking && bookingData.vehicleTableId) {
+    // if (isAdminBooking && bookingData.vehicleTableId) {
+    if (
+      isAdminBooking &&
+      bookingData.vehicleTableId != null &&
+      bookingData?.vehicleTableId?.trim() !== ""
+    ) {
       // Admin explicitly chose a vehicle — keep it and mark as assigned
       bookingData = {
         ...bookingData,
