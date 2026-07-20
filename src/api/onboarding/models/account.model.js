@@ -921,11 +921,29 @@ async function saveUser(userData) {
         }
       });
 
-      const data = await User.findByIdAndUpdate(
-        _id,
-        { $set: userObj },
-        { new: true },
-      );
+      const updateQuery = {
+        $set: userObj,
+      };
+
+      if (
+        userObj.addressProof &&
+        existingUser.addressProof &&
+        userObj.addressProof !== existingUser.addressProof
+      ) {
+        updateQuery.$push = {
+          addresses: existingUser.addressProof,
+        };
+      }
+
+      // const data = await User.findByIdAndUpdate(
+      //   _id,
+      //   { $set: userObj },
+      //   { new: true },
+      // );
+      const data = await User.findByIdAndUpdate(_id, updateQuery, {
+        new: true,
+      });
+
       return { status: 200, message: "User updated successfully", data: data };
     } else {
       if (!firstName || !lastName || !contact || !email) {

@@ -52,12 +52,12 @@ const userSchema = new mongoose.Schema(
     addresses: {
       type: [{ type: String, trim: true }],
       default: [],
-      validate: {
-        validator: function (arr) {
-          return arr.length <= 5;
-        },
-        message: "Maximum 5 addresses allowed",
-      },
+      // validate: {
+      //   validator: function (arr) {
+      //     return arr.length <= 5;
+      //   },
+      //   message: "Maximum 5 addresses allowed",
+      // },
     },
 
     lastLocation: {

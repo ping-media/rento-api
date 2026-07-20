@@ -392,25 +392,25 @@ const savePickupImageLinks = async (req, res) => {
     // continue with rest of the code
     let parsedImageLinks = [];
 
-    if (!isDev) {
-      if (!imageLinks) {
-        return res.status(400).json({ message: "imageLinks required" });
-      }
+    // if (!isDev) {
+    // if (!imageLinks) {
+    //   return res.status(400).json({ message: "imageLinks required" });
+    // }
 
+    if (imageLinks) {
       if (typeof imageLinks === "string") {
         try {
           parsedImageLinks = JSON.parse(imageLinks);
         } catch {
-          return res.status(200).json({ message: "Invalid imageLinks format" });
+          return res.status(400).json({ message: "Invalid imageLinks format" });
         }
       } else if (Array.isArray(imageLinks)) {
         parsedImageLinks = imageLinks;
       } else {
-        return res
-          .status(200)
-          .json({ message: "imageLinks should be an array" });
+        return res.status(400).json({ message: "Invalid imageLinks format" });
       }
     }
+    // }
 
     const booking = await Booking.findOne({ _id }).populate(
       "userId",
@@ -526,7 +526,8 @@ const savePickupImageLinks = async (req, res) => {
     }
 
     const tempObj = {};
-    if (!isDev) {
+    // if (!isDev) {
+    if (parsedImageLinks?.length > 0) {
       parsedImageLinks.forEach((file, index) => {
         if (!file.fileName || !file.imageUrl) return;
         tempObj[`file_${index}`] = {
@@ -658,83 +659,6 @@ const savePickupImageLinks = async (req, res) => {
       newBookingStatus,
       paymentMethod,
     });
-
-    // if (
-    //   paymentStatus === "partially_paid" ||
-    //   paymentStatus === "partiallyPay"
-    // ) {
-    //   const AmountLeftAfterUserPaid =
-    //     booking?.bookingPrice?.AmountLeftAfterUserPaid ||
-    //     booking?.bookingPrice?.AmountLeftAfterUserPaid?.amount;
-
-    //   let updatedAmountLeft = {};
-    //   if (
-    //     AmountLeftAfterUserPaid &&
-    //     typeof AmountLeftAfterUserPaid === "object" &&
-    //     !Array.isArray(AmountLeftAfterUserPaid)
-    //   ) {
-    //     updatedAmountLeft = {
-    //       ...AmountLeftAfterUserPaid,
-    //       status: "paid",
-    //       paymentMethod: PaymentMode,
-    //     };
-    //   } else {
-    //     updatedAmountLeft = {
-    //       status: "paid",
-    //       paymentMethod: PaymentMode,
-    //       ...AmountLeftAfterUserPaid,
-    //     };
-    //   }
-
-    //   await Booking.updateOne(
-    //     { _id },
-    //     {
-    //       $set: {
-    //         bookingStatus: newBookingStatus,
-    //         "bookingPrice.isPickupImageAdded": true,
-    //         rideStatus: "ongoing",
-    //         "vehicleBasic.endRide": OTP,
-    //         "bookingPrice.AmountLeftAfterUserPaid": updatedAmountLeft,
-    //         "vehicleBasic.RideStart": Number(startDateAndTime) || "",
-    //         paymentStatus: "paid",
-    //       },
-    //     },
-    //     { new: true },
-    //   );
-    // } else if (
-    //   paymentMethod?.toLowerCase() === "cash" &&
-    //   paymentStatus === "pending"
-    // ) {
-    //   await Booking.updateOne(
-    //     { _id },
-    //     {
-    //       $set: {
-    //         bookingStatus: newBookingStatus,
-    //         "bookingPrice.isPickupImageAdded": true,
-    //         rideStatus: "ongoing",
-    //         "vehicleBasic.endRide": OTP,
-    //         "bookingPrice.payOnPickupMethod": PaymentMode,
-    //         "vehicleBasic.RideStart": Number(startDateAndTime) || "",
-    //         paymentStatus: "paid",
-    //       },
-    //     },
-    //     { new: true },
-    //   );
-    // } else {
-    //   await Booking.updateOne(
-    //     { _id },
-    //     {
-    //       $set: {
-    //         bookingStatus: newBookingStatus,
-    //         "bookingPrice.isPickupImageAdded": true,
-    //         rideStatus: "ongoing",
-    //         "vehicleBasic.endRide": OTP,
-    //         "vehicleBasic.RideStart": Number(startDateAndTime) || "",
-    //       },
-    //     },
-    //     { new: true },
-    //   );
-    // }
 
     return res.json({
       status: 200,

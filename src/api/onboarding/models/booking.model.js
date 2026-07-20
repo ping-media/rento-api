@@ -1107,6 +1107,14 @@ const initiateExtensionBooking = async (req, res) => {
         .json({ message: "Booking already marked completed!", status: 400 });
     }
 
+    if (booking.rideStatus === "canceled") {
+      await session.abortTransaction();
+      session.endSession();
+      return res
+        .status(400)
+        .json({ message: "Booking already marked canceled!", status: 400 });
+    }
+
     const customerId = booking?.userId || null;
 
     if (!customerId) {
