@@ -3314,6 +3314,7 @@ const getVehicleTbl = async (query) => {
           vehicleModel: 1,
           vehiclePlan: 1,
           perDayCost: 1,
+          weekendCost: 1,
           lastServiceDate: 1,
           kmsRun: 1,
           condition: 1,

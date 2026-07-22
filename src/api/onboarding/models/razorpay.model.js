@@ -39,6 +39,7 @@ const createPaymentLinkUtil = async ({
   endDate = "",
   requestFrom = "",
   isTimeLine = true,
+  extensionNote = null,
 }) => {
   if (!bookingId || !amount) {
     throw new Error("Missing required fields: bookingId or amount");
@@ -90,6 +91,7 @@ const createPaymentLinkUtil = async ({
           title: "Payment Link Created",
           date: Date.now(),
           paymentAmount: amount,
+          ...(extensionNote && { notes: [extensionNote] }),
           PaymentLink: response.short_url,
           paymentLinkId: response.id,
           endDate,

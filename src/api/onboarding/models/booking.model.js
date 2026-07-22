@@ -1740,17 +1740,6 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
         },
       };
 
-      // const existingExtension = booking.bookingPrice.extendAmount.find(
-      //   (ext) => ext.orderId === orderId,
-      // );
-
-      // if (existingExtension) {
-      //   return res.json({
-      //     success: true,
-      //     message: "Extension already processed",
-      //   });
-      // }
-
       if (data.BookingEndDateAndTime) {
         booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
       }
@@ -1776,9 +1765,9 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
         booking.extendBooking.oldBooking.push(data.oldBookings);
       }
 
-      if (extensionNote !== null) {
-        booking.notes.push(extensionNote);
-      }
+      // if (extensionNote !== null) {
+      //   booking.notes.push(extensionNote);
+      // }
 
       booking.bookingStatus = "extended";
 
@@ -1797,6 +1786,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
                 ? "Booking Extended by User"
                 : `Booking Extended by ${userType === "admin" ? "Admin" : "Manager"}`,
               date: Date.now(),
+              ...(extensionNote && { notes: [extensionNote] }),
               paymentAmount: amount || 0,
               endDate: data.BookingEndDateAndTime,
               extended: true,
@@ -1823,6 +1813,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
                   ? "Booking Extended by User"
                   : `Booking Extended by ${userType === "admin" ? "Admin" : "Manager"}`,
                 date: Date.now(),
+                ...(extensionNote && { notes: [extensionNote] }),
                 paymentAmount: amount || 0,
                 endDate: data.BookingEndDateAndTime,
                 extended: true,
@@ -1890,6 +1881,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
       typeId: extendId,
       endDate: data.extendAmount.bookingEndDateAndTime,
       requestFrom: "admin",
+      extensionNote,
     });
 
     if (paymentLink?.paymentLinkId) {
