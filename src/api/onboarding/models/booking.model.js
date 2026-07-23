@@ -873,7 +873,7 @@ const initiateBooking = async (req, res) => {
             response?.data?.bookingId,
           );
 
-          if (!notificationSend.success) {
+          if (!notificationSend?.success) {
             await Log({
               message: notificationSend?.message,
               functionName: "initiateBooking",

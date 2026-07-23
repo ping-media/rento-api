@@ -436,313 +436,6 @@ const vehicleChange = async (req, res) => {
   }
 };
 
-// const vehicleChangeNew = async (req, res) => {
-//   const { booking_id, newVehicleTableId } = req.body;
-//   const isAdmin =
-//     req.user?.userType === "admin" || req.user?.userType === "manager";
-
-//   try {
-//     if (!booking_id || !newVehicleTableId) {
-//       return res.json({
-//         success: false,
-//         message: "booking_id and newVehicleTableId are required.",
-//       });
-//     }
-
-//     const booking = await Booking.findById(booking_id);
-//     if (!booking) {
-//       return res.json({ success: false, message: "Booking not found." });
-//     }
-
-//     const lastDiff = booking.bookingPrice.diffAmount?.at(-1);
-//     if (lastDiff?.status === "unpaid") {
-//       return res.json({
-//         success: false,
-//         message: "Settle the pending payment before changing vehicle.",
-//       });
-//     }
-
-//     // Reuse same pricing logic
-//     const pricing = await calculateVehicleChangePricing(
-//       booking,
-//       newVehicleTableId,
-//       isAdmin,
-//     );
-//     if (!pricing.success) {
-//       return res.json({ success: false, message: pricing.message });
-//     }
-
-//     let {
-//       newVehicleData,
-//       oldRemainingValue,
-//       newRemainingCost,
-//       priceDifference,
-//       pendingPayment,
-//       effectivePaid,
-//       isExtraPayment,
-//       isRefund,
-//       isSameMasterSwap,
-//     } = pricing;
-
-//     // Original booking amount not yet collected — don't generate a payment link
-//     const isOriginalAmountUnpaid =
-//       ((booking.paymentMethod === "partiallyPay" ||
-//         booking.paymentMethod === "partially_paid") &&
-//         booking.bookingPrice.AmountLeftAfterUserPaid?.status === "unpaid") ||
-//       (booking.paymentMethod === "online" &&
-//         booking.paymentStatus === "pending");
-
-//     let skipAmountLeftUpdate = false;
-
-//     if (isOriginalAmountUnpaid) {
-//       const leftAmount = Number(
-//         booking.bookingPrice.AmountLeftAfterUserPaid?.amount || 0,
-//       );
-//       if (pendingPayment === leftAmount) {
-//         // The pending amount IS the original booking balance, not a vehicle change delta
-//         // Station master will collect this at counter — make vehicle change free
-//         pendingPayment = 0;
-//         isExtraPayment = false;
-//         skipAmountLeftUpdate = true;
-//       }
-//     }
-
-//     // const isSameVehicleMaster =
-//     //   booking.vehicleMasterId.toString() ===
-//     //   newVehicleData.vehicleMasterId.toString();
-
-//     let timeLineData = null;
-
-//     // --- Store old vehicle snapshot ---
-//     booking.changeVehicle = {
-//       vehicleMasterId: booking.vehicleMasterId,
-//       vehicleTableId: booking.vehicleTableId,
-//       bookingPrice: booking.bookingPrice,
-//       vehicleName: booking.vehicleName,
-//       vehicleNumber: booking.vehicleBasic?.vehicleNumber,
-//     };
-
-//     // --- Update booking with new vehicle ---
-//     booking.vehicleTableId = newVehicleData._id;
-//     booking.vehicleMasterId = newVehicleData.vehicleMasterId;
-//     booking.vehicleImage = newVehicleData.vehicleImage;
-//     booking.vehicleBrand = newVehicleData.vehicleBrand;
-//     booking.vehicleName = newVehicleData.vehicleName;
-//     booking.vehicleBasic.vehicleNumber = newVehicleData.vehicleNumber;
-//     booking.vehicleBasic.isChanged = true;
-
-//     // bookingPrice stays untouched — only diffAmount updated
-//     if (!Array.isArray(booking.bookingPrice.diffAmount)) {
-//       booking.bookingPrice.diffAmount = [];
-//     }
-
-//     const changedId = booking.bookingPrice.diffAmount.length + 1;
-
-//     let oldPendingAmount = 0;
-
-//     const hasUnpaidOriginalBalance =
-//       booking.bookingPrice?.AmountLeftAfterUserPaid?.status === "unpaid";
-
-//     // Same model swap or period fully consumed — don't touch pending balance
-//     if (isSameMasterSwap || pricing.daysLeft <= 0) skipAmountLeftUpdate = true;
-
-//     if (
-//       hasUnpaidOriginalBalance &&
-//       booking.bookingPrice?.AmountLeftAfterUserPaid &&
-//       !skipAmountLeftUpdate
-//     ) {
-//       oldPendingAmount = Number(
-//         booking.bookingPrice.AmountLeftAfterUserPaid.amount || 0,
-//       );
-
-//       // Never reduce the original pending balance if new vehicle is cheaper
-//       // Customer committed to the original booking price
-//       const updatedPendingAmount = Math.max(pendingPayment, oldPendingAmount);
-
-//       if (updatedPendingAmount !== oldPendingAmount) {
-//         booking.bookingPrice.AmountLeftAfterUserPaid.amount =
-//           updatedPendingAmount;
-
-//         if (
-//           !Array.isArray(
-//             booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory,
-//           )
-//         ) {
-//           booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory = [];
-//         }
-
-//         booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory.push({
-//           type: "vehicle_change",
-//           oldAmount: oldPendingAmount,
-//           newAmount: updatedPendingAmount,
-//           date: Date.now(),
-//         });
-//       }
-
-//       pendingPayment = updatedPendingAmount;
-//       isExtraPayment = false;
-//     }
-
-//     let newOrderId = "";
-
-//     if (isExtraPayment) {
-//       const razorpayOrder = await createOrderId({
-//         amount: pendingPayment,
-//         booking_id: booking.bookingId,
-//         _id: booking._id,
-//         type: "ChangeVehicle",
-//         typeId: changedId,
-//         customBookingId: booking?.bookingId,
-//       });
-//       if (razorpayOrder?.id) newOrderId = razorpayOrder.id;
-//     }
-
-//     // For same model swap, snapshot cost should carry forward actual current cost
-//     // not zero — otherwise next swap reads 0 as the baseline
-//     const lastChangeSnapshot = booking.bookingPrice.diffAmount
-//       ?.filter((d) => d.title === "changedVehicle" && d.newVehicleSnapshot)
-//       ?.at(-1);
-
-//     const snapshotRentalCost = isSameMasterSwap
-//       ? lastChangeSnapshot
-//         ? Number(lastChangeSnapshot.newVehicleSnapshot.rentalCost || 0)
-//         : Number(booking.bookingPrice.totalPrice || 0)
-//       : newVehicleData.totalRentalCost;
-
-//     const snapshotTax = isSameMasterSwap
-//       ? lastChangeSnapshot
-//         ? Number(lastChangeSnapshot.newVehicleSnapshot.tax || 0)
-//         : Number(booking.bookingPrice.tax || 0)
-//       : newVehicleData.tax;
-
-//     booking.bookingPrice.diffAmount.push({
-//       id: changedId,
-//       title: "changedVehicle",
-//       isSameMasterSwap: isSameMasterSwap || false,
-//       mergedIntoBookingBalance: hasUnpaidOriginalBalance,
-//       oldPendingAmount: hasUnpaidOriginalBalance ? oldPendingAmount : 0,
-//       newPendingAmount: hasUnpaidOriginalBalance ? pendingPayment : 0,
-//       amount: isExtraPayment ? pendingPayment : 0,
-//       refundAmount: isRefund ? priceDifference : 0,
-//       oldAmount: oldRemainingValue,
-//       newAmount: newRemainingCost,
-//       paymentMethod: isRefund ? "refund" : "",
-//       orderId: newOrderId,
-//       paymentInitiatedDate: new Date().getTime(),
-//       transactionId: "",
-//       status: isExtraPayment ? "unpaid" : "paid",
-//       rideStatus: false,
-//       // New vehicle pricing snapshot preserved here
-//       newVehicleSnapshot: {
-//         vehicleTableId: newVehicleData._id,
-//         vehicleMasterId: newVehicleData.vehicleMasterId,
-//         vehicleName: newVehicleData.vehicleName,
-//         vehicleNumber: newVehicleData.vehicleNumber,
-//         rentalCost: snapshotRentalCost,
-//         appliedPlans: newVehicleData.appliedPlans,
-//         tax: snapshotTax,
-//       },
-//       // newVehicleSnapshot: {
-//       //   vehicleTableId: newVehicleData._id,
-//       //   vehicleMasterId: newVehicleData.vehicleMasterId,
-//       //   vehicleName: newVehicleData.vehicleName,
-//       //   vehicleNumber: newVehicleData.vehicleNumber,
-//       //   rentalCost: newVehicleData.totalRentalCost,
-//       //   appliedPlans: newVehicleData.appliedPlans,
-//       //   tax: newVehicleData.tax,
-//       // },
-//     });
-
-//     booking.markModified("bookingPrice.diffAmount");
-//     booking.markModified("bookingPrice.AmountLeftAfterUserPaid");
-//     booking.markModified("bookingPrice");
-//     booking.markModified("vehicleBasic");
-//     booking.markModified("changeVehicle");
-
-//     const changeVehicleMessage =
-//       booking.changeVehicle.vehicleNumber !== "unassigned" &&
-//       booking.changeVehicle.vehicleTableId !== null
-//         ? `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`
-//         : `${newVehicleData.vehicleName}(${newVehicleData.vehicleNumber})`;
-
-//     // --- Payment link if extra payment ---
-//     if (isExtraPayment) {
-//       const paymentData = await createPaymentLinkUtil({
-//         bookingId: booking._id,
-//         amount: pendingPayment,
-//         orderId: newOrderId,
-//         type: "ChangeVehicle",
-//         typeId: changedId,
-//         isTimeLine: false,
-//       });
-
-//       if (paymentData?.paymentLinkId) {
-//         timeLineData = {
-//           currentBooking_id: booking._id,
-//           timeLine: [
-//             {
-//               title: "Vehicle Changed",
-//               changeToVehicle: changeVehicleMessage,
-//               date: Date.now(),
-//               paymentAmount: hasUnpaidOriginalBalance ? 0 : pendingPayment,
-//               // paymentAmount: pendingPayment,
-//               updatedPendingAmount: hasUnpaidOriginalBalance
-//                 ? pendingPayment
-//                 : undefined,
-//               refundAmount: 0,
-//               oldAmount: oldRemainingValue,
-//               newAmount: newRemainingCost,
-//               PaymentLink: paymentData.paymentLink,
-//             },
-//           ],
-//         };
-//       }
-//     } else {
-//       timeLineData = {
-//         currentBooking_id: booking._id,
-//         timeLine: [
-//           {
-//             title: "Vehicle Changed",
-//             changeToVehicle: changeVehicleMessage,
-//             date: Date.now(),
-//             paymentAmount: 0,
-//             refundAmount: isRefund ? priceDifference : 0,
-//             oldAmount: oldRemainingValue,
-//             newAmount: newRemainingCost,
-//             oldPendingAmount: hasUnpaidOriginalBalance
-//               ? oldPendingAmount
-//               : undefined,
-
-//             updatedPendingAmount: hasUnpaidOriginalBalance
-//               ? pendingPayment
-//               : undefined,
-//           },
-//         ],
-//       };
-//     }
-
-//     if (timeLineData) await timelineFunctionServer(timeLineData);
-
-//     await booking.save();
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Vehicle updated successfully",
-//       data: booking,
-//       timeLine: timeLineData,
-//     });
-//   } catch (error) {
-//     console.log("vehicleChangeNew error", error);
-//     await Log({
-//       message: `Unable to update booking with new vehicle! ${error?.message}`,
-//       functionName: "vehicleChangeNew",
-//     });
-//     return res.status(200).json({
-//       success: false,
-//       message: "Unable to update the vehicle! try after sometime",
-//     });
-//   }
-// };
 const vehicleChangeNew = async (req, res) => {
   const { booking_id, newVehicleTableId } = req.body;
   const isAdmin =
@@ -850,7 +543,8 @@ const vehicleChangeNew = async (req, res) => {
     const hasUnpaidOriginalBalance =
       booking.bookingPrice?.AmountLeftAfterUserPaid?.status === "unpaid";
 
-    if (isSameMasterSwap) skipAmountLeftUpdate = true;
+    // Same model swap or period fully consumed — don't touch pending balance
+    if (isSameMasterSwap || pricing.daysLeft <= 0) skipAmountLeftUpdate = true;
 
     if (
       hasUnpaidOriginalBalance &&
@@ -861,25 +555,31 @@ const vehicleChangeNew = async (req, res) => {
         booking.bookingPrice.AmountLeftAfterUserPaid.amount || 0,
       );
 
-      // Update pending balance instead of creating separate payment
-      booking.bookingPrice.AmountLeftAfterUserPaid.amount = pendingPayment;
+      // Never reduce the original pending balance if new vehicle is cheaper
+      // Customer committed to the original booking price
+      const updatedPendingAmount = Math.max(pendingPayment, oldPendingAmount);
 
-      if (
-        !Array.isArray(
-          booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory,
-        )
-      ) {
-        booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory = [];
+      if (updatedPendingAmount !== oldPendingAmount) {
+        booking.bookingPrice.AmountLeftAfterUserPaid.amount =
+          updatedPendingAmount;
+
+        if (
+          !Array.isArray(
+            booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory,
+          )
+        ) {
+          booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory = [];
+        }
+
+        booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory.push({
+          type: "vehicle_change",
+          oldAmount: oldPendingAmount,
+          newAmount: updatedPendingAmount,
+          date: Date.now(),
+        });
       }
 
-      booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory.push({
-        type: "vehicle_change",
-        oldAmount: oldPendingAmount,
-        newAmount: pendingPayment,
-        date: Date.now(),
-      });
-
-      // Prevent separate payment flow
+      pendingPayment = updatedPendingAmount;
       isExtraPayment = false;
     }
 
@@ -918,6 +618,7 @@ const vehicleChangeNew = async (req, res) => {
     booking.bookingPrice.diffAmount.push({
       id: changedId,
       title: "changedVehicle",
+      isSameMasterSwap: isSameMasterSwap || false,
       mergedIntoBookingBalance: hasUnpaidOriginalBalance,
       oldPendingAmount: hasUnpaidOriginalBalance ? oldPendingAmount : 0,
       newPendingAmount: hasUnpaidOriginalBalance ? pendingPayment : 0,
@@ -1043,7 +744,7 @@ const vehicleChangeNew = async (req, res) => {
   }
 };
 
-// const vehicleChangePreview = async (req, res) => {
+// const vehicleChangeNew = async (req, res) => {
 //   const { booking_id, newVehicleTableId } = req.body;
 //   const isAdmin =
 //     req.user?.userType === "admin" || req.user?.userType === "manager";
@@ -1061,17 +762,6 @@ const vehicleChangeNew = async (req, res) => {
 //       return res.json({ success: false, message: "Booking not found." });
 //     }
 
-//     if (
-//       (booking.vehicleTableId !== null && booking.vehicleTableId.toString()) ===
-//       newVehicleTableId
-//     ) {
-//       return res.json({
-//         success: false,
-//         message: "This vehicle is already assigned to the booking.",
-//       });
-//     }
-
-//     // Block if there's already an unpaid vehicle change
 //     const lastDiff = booking.bookingPrice.diffAmount?.at(-1);
 //     if (lastDiff?.status === "unpaid") {
 //       return res.json({
@@ -1080,92 +770,280 @@ const vehicleChangeNew = async (req, res) => {
 //       });
 //     }
 
+//     // Reuse same pricing logic
 //     const pricing = await calculateVehicleChangePricing(
 //       booking,
 //       newVehicleTableId,
 //       isAdmin,
 //     );
-
 //     if (!pricing.success) {
 //       return res.json({ success: false, message: pricing.message });
 //     }
 
-//     const lastVehicleChangeSnapshot = booking.bookingPrice.diffAmount
+//     let {
+//       newVehicleData,
+//       oldRemainingValue,
+//       newRemainingCost,
+//       priceDifference,
+//       pendingPayment,
+//       effectivePaid,
+//       isExtraPayment,
+//       isRefund,
+//       isSameMasterSwap,
+//     } = pricing;
+
+//     // Original booking amount not yet collected — don't generate a payment link
+//     const isOriginalAmountUnpaid =
+//       ((booking.paymentMethod === "partiallyPay" ||
+//         booking.paymentMethod === "partially_paid") &&
+//         booking.bookingPrice.AmountLeftAfterUserPaid?.status === "unpaid") ||
+//       (booking.paymentMethod === "online" &&
+//         booking.paymentStatus === "pending");
+
+//     let skipAmountLeftUpdate = false;
+
+//     if (isOriginalAmountUnpaid) {
+//       const leftAmount = Number(
+//         booking.bookingPrice.AmountLeftAfterUserPaid?.amount || 0,
+//       );
+//       if (pendingPayment === leftAmount) {
+//         // The pending amount IS the original booking balance, not a vehicle change delta
+//         // Station master will collect this at counter — make vehicle change free
+//         pendingPayment = 0;
+//         isExtraPayment = false;
+//         skipAmountLeftUpdate = true;
+//       }
+//     }
+
+//     // const isSameVehicleMaster =
+//     //   booking.vehicleMasterId.toString() ===
+//     //   newVehicleData.vehicleMasterId.toString();
+
+//     let timeLineData = null;
+
+//     // --- Store old vehicle snapshot ---
+//     booking.changeVehicle = {
+//       vehicleMasterId: booking.vehicleMasterId,
+//       vehicleTableId: booking.vehicleTableId,
+//       bookingPrice: booking.bookingPrice,
+//       vehicleName: booking.vehicleName,
+//       vehicleNumber: booking.vehicleBasic?.vehicleNumber,
+//     };
+
+//     // --- Update booking with new vehicle ---
+//     booking.vehicleTableId = newVehicleData._id;
+//     booking.vehicleMasterId = newVehicleData.vehicleMasterId;
+//     booking.vehicleImage = newVehicleData.vehicleImage;
+//     booking.vehicleBrand = newVehicleData.vehicleBrand;
+//     booking.vehicleName = newVehicleData.vehicleName;
+//     booking.vehicleBasic.vehicleNumber = newVehicleData.vehicleNumber;
+//     booking.vehicleBasic.isChanged = true;
+
+//     // bookingPrice stays untouched — only diffAmount updated
+//     if (!Array.isArray(booking.bookingPrice.diffAmount)) {
+//       booking.bookingPrice.diffAmount = [];
+//     }
+
+//     const changedId = booking.bookingPrice.diffAmount.length + 1;
+
+//     let oldPendingAmount = 0;
+
+//     const hasUnpaidOriginalBalance =
+//       booking.bookingPrice?.AmountLeftAfterUserPaid?.status === "unpaid";
+
+//     if (isSameMasterSwap) skipAmountLeftUpdate = true;
+
+//     if (
+//       hasUnpaidOriginalBalance &&
+//       booking.bookingPrice?.AmountLeftAfterUserPaid &&
+//       !skipAmountLeftUpdate
+//     ) {
+//       oldPendingAmount = Number(
+//         booking.bookingPrice.AmountLeftAfterUserPaid.amount || 0,
+//       );
+
+//       // Update pending balance instead of creating separate payment
+//       booking.bookingPrice.AmountLeftAfterUserPaid.amount = pendingPayment;
+
+//       if (
+//         !Array.isArray(
+//           booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory,
+//         )
+//       ) {
+//         booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory = [];
+//       }
+
+//       booking.bookingPrice.AmountLeftAfterUserPaid.adjustmentHistory.push({
+//         type: "vehicle_change",
+//         oldAmount: oldPendingAmount,
+//         newAmount: pendingPayment,
+//         date: Date.now(),
+//       });
+
+//       // Prevent separate payment flow
+//       isExtraPayment = false;
+//     }
+
+//     let newOrderId = "";
+
+//     if (isExtraPayment) {
+//       const razorpayOrder = await createOrderId({
+//         amount: pendingPayment,
+//         booking_id: booking.bookingId,
+//         _id: booking._id,
+//         type: "ChangeVehicle",
+//         typeId: changedId,
+//         customBookingId: booking?.bookingId,
+//       });
+//       if (razorpayOrder?.id) newOrderId = razorpayOrder.id;
+//     }
+
+//     // For same model swap, snapshot cost should carry forward actual current cost
+//     // not zero — otherwise next swap reads 0 as the baseline
+//     const lastChangeSnapshot = booking.bookingPrice.diffAmount
 //       ?.filter((d) => d.title === "changedVehicle" && d.newVehicleSnapshot)
 //       ?.at(-1);
 
-//     const actualCurrentCost = lastVehicleChangeSnapshot
-//       ? Number(lastVehicleChangeSnapshot.newVehicleSnapshot.rentalCost || 0) +
-//         Number(lastVehicleChangeSnapshot.newVehicleSnapshot.tax || 0)
-//       : Number(booking.bookingPrice.totalPrice || 0);
+//     const snapshotRentalCost = isSameMasterSwap
+//       ? lastChangeSnapshot
+//         ? Number(lastChangeSnapshot.newVehicleSnapshot.rentalCost || 0)
+//         : Number(booking.bookingPrice.totalPrice || 0)
+//       : newVehicleData.totalRentalCost;
 
-//     const isSameMasterSwap = pricing.isSameMasterSwap ?? false;
-//     const isZeroDaysLeft = pricing.daysLeft <= 0;
+//     const snapshotTax = isSameMasterSwap
+//       ? lastChangeSnapshot
+//         ? Number(lastChangeSnapshot.newVehicleSnapshot.tax || 0)
+//         : Number(booking.bookingPrice.tax || 0)
+//       : newVehicleData.tax;
 
-//     // For same model swap or fully consumed period — show actual current cost
-//     // not zero, since no recalculation means the price is unchanged
-//     const displayOldRemaining =
-//       isSameMasterSwap || isZeroDaysLeft
-//         ? actualCurrentCost
-//         : pricing.oldRemainingValue;
+//     booking.bookingPrice.diffAmount.push({
+//       id: changedId,
+//       title: "changedVehicle",
+//       mergedIntoBookingBalance: hasUnpaidOriginalBalance,
+//       oldPendingAmount: hasUnpaidOriginalBalance ? oldPendingAmount : 0,
+//       newPendingAmount: hasUnpaidOriginalBalance ? pendingPayment : 0,
+//       amount: isExtraPayment ? pendingPayment : 0,
+//       refundAmount: isRefund ? priceDifference : 0,
+//       oldAmount: oldRemainingValue,
+//       newAmount: newRemainingCost,
+//       paymentMethod: isRefund ? "refund" : "",
+//       orderId: newOrderId,
+//       paymentInitiatedDate: new Date().getTime(),
+//       transactionId: "",
+//       status: isExtraPayment ? "unpaid" : "paid",
+//       rideStatus: false,
+//       // New vehicle pricing snapshot preserved here
+//       newVehicleSnapshot: {
+//         vehicleTableId: newVehicleData._id,
+//         vehicleMasterId: newVehicleData.vehicleMasterId,
+//         vehicleName: newVehicleData.vehicleName,
+//         vehicleNumber: newVehicleData.vehicleNumber,
+//         rentalCost: snapshotRentalCost,
+//         appliedPlans: newVehicleData.appliedPlans,
+//         tax: snapshotTax,
+//       },
+//       // newVehicleSnapshot: {
+//       //   vehicleTableId: newVehicleData._id,
+//       //   vehicleMasterId: newVehicleData.vehicleMasterId,
+//       //   vehicleName: newVehicleData.vehicleName,
+//       //   vehicleNumber: newVehicleData.vehicleNumber,
+//       //   rentalCost: newVehicleData.totalRentalCost,
+//       //   appliedPlans: newVehicleData.appliedPlans,
+//       //   tax: newVehicleData.tax,
+//       // },
+//     });
 
-//     const displayNewRemaining =
-//       isSameMasterSwap || isZeroDaysLeft
-//         ? actualCurrentCost
-//         : pricing.newRemainingCost;
+//     booking.markModified("bookingPrice.diffAmount");
+//     booking.markModified("bookingPrice.AmountLeftAfterUserPaid");
+//     booking.markModified("bookingPrice");
+//     booking.markModified("vehicleBasic");
+//     booking.markModified("changeVehicle");
 
-//     const displayNewVehicleCost =
-//       isSameMasterSwap || isZeroDaysLeft
-//         ? actualCurrentCost
-//         : pricing.newVehicleData.totalRentalCost;
+//     const changeVehicleMessage =
+//       booking.changeVehicle.vehicleNumber !== "unassigned" &&
+//       booking.changeVehicle.vehicleTableId !== null
+//         ? `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`
+//         : `${newVehicleData.vehicleName}(${newVehicleData.vehicleNumber})`;
+
+//     // --- Payment link if extra payment ---
+//     if (isExtraPayment) {
+//       const paymentData = await createPaymentLinkUtil({
+//         bookingId: booking._id,
+//         amount: pendingPayment,
+//         orderId: newOrderId,
+//         type: "ChangeVehicle",
+//         typeId: changedId,
+//         isTimeLine: false,
+//       });
+
+//       if (paymentData?.paymentLinkId) {
+//         timeLineData = {
+//           currentBooking_id: booking._id,
+//           timeLine: [
+//             {
+//               title: "Vehicle Changed",
+//               changeToVehicle: changeVehicleMessage,
+//               date: Date.now(),
+//               paymentAmount: hasUnpaidOriginalBalance ? 0 : pendingPayment,
+//               // paymentAmount: pendingPayment,
+//               updatedPendingAmount: hasUnpaidOriginalBalance
+//                 ? pendingPayment
+//                 : undefined,
+//               refundAmount: 0,
+//               oldAmount: oldRemainingValue,
+//               newAmount: newRemainingCost,
+//               PaymentLink: paymentData.paymentLink,
+//             },
+//           ],
+//         };
+//       }
+//     } else {
+//       timeLineData = {
+//         currentBooking_id: booking._id,
+//         timeLine: [
+//           {
+//             title: "Vehicle Changed",
+//             changeToVehicle: changeVehicleMessage,
+//             date: Date.now(),
+//             paymentAmount: 0,
+//             refundAmount: isRefund ? priceDifference : 0,
+//             oldAmount: oldRemainingValue,
+//             newAmount: newRemainingCost,
+//             oldPendingAmount: hasUnpaidOriginalBalance
+//               ? oldPendingAmount
+//               : undefined,
+
+//             updatedPendingAmount: hasUnpaidOriginalBalance
+//               ? pendingPayment
+//               : undefined,
+//           },
+//         ],
+//       };
+//     }
+
+//     if (timeLineData) await timelineFunctionServer(timeLineData);
+
+//     await booking.save();
 
 //     return res.status(200).json({
 //       success: true,
-//       message: "Vehicle change preview calculated.",
-//       data: {
-//         isSameMasterSwap,
-//         isZeroDaysLeft,
-//         currentVehicle: {
-//           vehicleNumber: booking.vehicleBasic?.vehicleNumber,
-//           vehicleName: booking.vehicleName,
-//           vehicleBrand: booking.vehicleBrand,
-//         },
-//         newVehicle: {
-//           vehicleNumber: pricing.newVehicleData.vehicleNumber,
-//           vehicleName: pricing.newVehicleData.vehicleName,
-//           vehicleBrand: pricing.newVehicleData.vehicleBrand,
-//           totalRentalCost: displayNewVehicleCost,
-//           appliedPlans: pricing.newVehicleData.appliedPlans,
-//           _daysBreakdown: pricing.newVehicleData._daysBreakdown,
-//           tax: pricing.newVehicleData.tax,
-//         },
-//         priceSummary: {
-//           oldRemainingValue: displayOldRemaining,
-//           newRemainingCost: displayNewRemaining,
-//           difference: pricing.priceDifference,
-//           pendingPayment: pricing.pendingPayment,
-//           effectivePaid: pricing.effectivePaid,
-//           isExtraPayment: pricing.isExtraPayment,
-//           isRefund: pricing.isRefund,
-//           isPendingOriginalPayment: pricing.isPendingOriginalPayment,
-//           isFreeSwap: pricing.isFreeSwap,
-//           daysLeft: pricing.daysLeft,
-//           segmentType: pricing.currentSegment?.type ?? "same_model_swap",
-//         },
-//       },
+//       message: "Vehicle updated successfully",
+//       data: booking,
+//       timeLine: timeLineData,
 //     });
 //   } catch (error) {
-//     console.log("vehicleChangePreview error", error);
+//     console.log("vehicleChangeNew error", error);
 //     await Log({
-//       message: `vehicleChangePreview failed: ${error?.message}`,
-//       functionName: "vehicleChangePreview",
+//       message: `Unable to update booking with new vehicle! ${error?.message}`,
+//       functionName: "vehicleChangeNew",
 //     });
 //     return res.status(200).json({
 //       success: false,
-//       message: "Unable to calculate preview.",
+//       message: "Unable to update the vehicle! try after sometime",
 //     });
 //   }
 // };
+
 const vehicleChangePreview = async (req, res) => {
   const { booking_id, newVehicleTableId } = req.body;
   const isAdmin =
@@ -1213,7 +1091,6 @@ const vehicleChangePreview = async (req, res) => {
       return res.json({ success: false, message: pricing.message });
     }
 
-    // Compute actual current cost for same model swap display
     const lastVehicleChangeSnapshot = booking.bookingPrice.diffAmount
       ?.filter((d) => d.title === "changedVehicle" && d.newVehicleSnapshot)
       ?.at(-1);
@@ -1224,12 +1101,31 @@ const vehicleChangePreview = async (req, res) => {
       : Number(booking.bookingPrice.totalPrice || 0);
 
     const isSameMasterSwap = pricing.isSameMasterSwap ?? false;
+    const isZeroDaysLeft = pricing.daysLeft <= 0;
+
+    // For same model swap or fully consumed period — show actual current cost
+    // not zero, since no recalculation means the price is unchanged
+    const displayOldRemaining =
+      isSameMasterSwap || isZeroDaysLeft
+        ? actualCurrentCost
+        : pricing.oldRemainingValue;
+
+    const displayNewRemaining =
+      isSameMasterSwap || isZeroDaysLeft
+        ? actualCurrentCost
+        : pricing.newRemainingCost;
+
+    const displayNewVehicleCost =
+      isSameMasterSwap || isZeroDaysLeft
+        ? actualCurrentCost
+        : pricing.newVehicleData.totalRentalCost;
 
     return res.status(200).json({
       success: true,
       message: "Vehicle change preview calculated.",
       data: {
         isSameMasterSwap,
+        isZeroDaysLeft,
         currentVehicle: {
           vehicleNumber: booking.vehicleBasic?.vehicleNumber,
           vehicleName: booking.vehicleName,
@@ -1239,20 +1135,14 @@ const vehicleChangePreview = async (req, res) => {
           vehicleNumber: pricing.newVehicleData.vehicleNumber,
           vehicleName: pricing.newVehicleData.vehicleName,
           vehicleBrand: pricing.newVehicleData.vehicleBrand,
-          totalRentalCost: isSameMasterSwap
-            ? actualCurrentCost
-            : pricing.newVehicleData.totalRentalCost,
+          totalRentalCost: displayNewVehicleCost,
           appliedPlans: pricing.newVehicleData.appliedPlans,
           _daysBreakdown: pricing.newVehicleData._daysBreakdown,
           tax: pricing.newVehicleData.tax,
         },
         priceSummary: {
-          oldRemainingValue: isSameMasterSwap
-            ? actualCurrentCost
-            : pricing.oldRemainingValue,
-          newRemainingCost: isSameMasterSwap
-            ? actualCurrentCost
-            : pricing.newRemainingCost,
+          oldRemainingValue: displayOldRemaining,
+          newRemainingCost: displayNewRemaining,
           difference: pricing.priceDifference,
           pendingPayment: pricing.pendingPayment,
           effectivePaid: pricing.effectivePaid,
@@ -1265,40 +1155,6 @@ const vehicleChangePreview = async (req, res) => {
         },
       },
     });
-
-    // return res.status(200).json({
-    //   success: true,
-    //   message: "Vehicle change preview calculated.",
-    //   data: {
-    //     currentVehicle: {
-    //       vehicleNumber: booking.vehicleBasic?.vehicleNumber,
-    //       vehicleName: booking.vehicleName,
-    //       vehicleBrand: booking.vehicleBrand,
-    //     },
-    //     newVehicle: {
-    //       vehicleNumber: pricing.newVehicleData.vehicleNumber,
-    //       vehicleName: pricing.newVehicleData.vehicleName,
-    //       vehicleBrand: pricing.newVehicleData.vehicleBrand,
-    //       totalRentalCost: pricing.newVehicleData.totalRentalCost,
-    //       appliedPlans: pricing.newVehicleData.appliedPlans,
-    //       _daysBreakdown: pricing.newVehicleData._daysBreakdown,
-    //       tax: pricing.newVehicleData.tax,
-    //     },
-    //     priceSummary: {
-    //       oldRemainingValue: pricing.oldRemainingValue,
-    //       newRemainingCost: pricing.newRemainingCost,
-    //       difference: pricing.priceDifference,
-    //       pendingPayment: pricing.pendingPayment,
-    //       effectivePaid: pricing.effectivePaid,
-    //       isExtraPayment: pricing.isExtraPayment,
-    //       isRefund: pricing.isRefund,
-    //       isPendingOriginalPayment: pricing.isPendingOriginalPayment,
-    //       isFreeSwap: pricing.isFreeSwap,
-    //       daysLeft: pricing.daysLeft,
-    //       segmentType: pricing.currentSegment?.type ?? "same_model_swap",
-    //     },
-    //   },
-    // });
   } catch (error) {
     console.log("vehicleChangePreview error", error);
     await Log({
@@ -1311,6 +1167,152 @@ const vehicleChangePreview = async (req, res) => {
     });
   }
 };
+
+// const vehicleChangePreview = async (req, res) => {
+//   const { booking_id, newVehicleTableId } = req.body;
+//   const isAdmin =
+//     req.user?.userType === "admin" || req.user?.userType === "manager";
+
+//   try {
+//     if (!booking_id || !newVehicleTableId) {
+//       return res.json({
+//         success: false,
+//         message: "booking_id and newVehicleTableId are required.",
+//       });
+//     }
+
+//     const booking = await Booking.findById(booking_id);
+//     if (!booking) {
+//       return res.json({ success: false, message: "Booking not found." });
+//     }
+
+//     if (
+//       (booking.vehicleTableId !== null && booking.vehicleTableId.toString()) ===
+//       newVehicleTableId
+//     ) {
+//       return res.json({
+//         success: false,
+//         message: "This vehicle is already assigned to the booking.",
+//       });
+//     }
+
+//     // Block if there's already an unpaid vehicle change
+//     const lastDiff = booking.bookingPrice.diffAmount?.at(-1);
+//     if (lastDiff?.status === "unpaid") {
+//       return res.json({
+//         success: false,
+//         message: "Settle the pending payment before changing vehicle.",
+//       });
+//     }
+
+//     const pricing = await calculateVehicleChangePricing(
+//       booking,
+//       newVehicleTableId,
+//       isAdmin,
+//     );
+
+//     if (!pricing.success) {
+//       return res.json({ success: false, message: pricing.message });
+//     }
+
+//     // Compute actual current cost for same model swap display
+//     const lastVehicleChangeSnapshot = booking.bookingPrice.diffAmount
+//       ?.filter((d) => d.title === "changedVehicle" && d.newVehicleSnapshot)
+//       ?.at(-1);
+
+//     const actualCurrentCost = lastVehicleChangeSnapshot
+//       ? Number(lastVehicleChangeSnapshot.newVehicleSnapshot.rentalCost || 0) +
+//         Number(lastVehicleChangeSnapshot.newVehicleSnapshot.tax || 0)
+//       : Number(booking.bookingPrice.totalPrice || 0);
+
+//     const isSameMasterSwap = pricing.isSameMasterSwap ?? false;
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Vehicle change preview calculated.",
+//       data: {
+//         isSameMasterSwap,
+//         currentVehicle: {
+//           vehicleNumber: booking.vehicleBasic?.vehicleNumber,
+//           vehicleName: booking.vehicleName,
+//           vehicleBrand: booking.vehicleBrand,
+//         },
+//         newVehicle: {
+//           vehicleNumber: pricing.newVehicleData.vehicleNumber,
+//           vehicleName: pricing.newVehicleData.vehicleName,
+//           vehicleBrand: pricing.newVehicleData.vehicleBrand,
+//           totalRentalCost: isSameMasterSwap
+//             ? actualCurrentCost
+//             : pricing.newVehicleData.totalRentalCost,
+//           appliedPlans: pricing.newVehicleData.appliedPlans,
+//           _daysBreakdown: pricing.newVehicleData._daysBreakdown,
+//           tax: pricing.newVehicleData.tax,
+//         },
+//         priceSummary: {
+//           oldRemainingValue: isSameMasterSwap
+//             ? actualCurrentCost
+//             : pricing.oldRemainingValue,
+//           newRemainingCost: isSameMasterSwap
+//             ? actualCurrentCost
+//             : pricing.newRemainingCost,
+//           difference: pricing.priceDifference,
+//           pendingPayment: pricing.pendingPayment,
+//           effectivePaid: pricing.effectivePaid,
+//           isExtraPayment: pricing.isExtraPayment,
+//           isRefund: pricing.isRefund,
+//           isPendingOriginalPayment: pricing.isPendingOriginalPayment,
+//           isFreeSwap: pricing.isFreeSwap,
+//           daysLeft: pricing.daysLeft,
+//           segmentType: pricing.currentSegment?.type ?? "same_model_swap",
+//         },
+//       },
+//     });
+
+//     // return res.status(200).json({
+//     //   success: true,
+//     //   message: "Vehicle change preview calculated.",
+//     //   data: {
+//     //     currentVehicle: {
+//     //       vehicleNumber: booking.vehicleBasic?.vehicleNumber,
+//     //       vehicleName: booking.vehicleName,
+//     //       vehicleBrand: booking.vehicleBrand,
+//     //     },
+//     //     newVehicle: {
+//     //       vehicleNumber: pricing.newVehicleData.vehicleNumber,
+//     //       vehicleName: pricing.newVehicleData.vehicleName,
+//     //       vehicleBrand: pricing.newVehicleData.vehicleBrand,
+//     //       totalRentalCost: pricing.newVehicleData.totalRentalCost,
+//     //       appliedPlans: pricing.newVehicleData.appliedPlans,
+//     //       _daysBreakdown: pricing.newVehicleData._daysBreakdown,
+//     //       tax: pricing.newVehicleData.tax,
+//     //     },
+//     //     priceSummary: {
+//     //       oldRemainingValue: pricing.oldRemainingValue,
+//     //       newRemainingCost: pricing.newRemainingCost,
+//     //       difference: pricing.priceDifference,
+//     //       pendingPayment: pricing.pendingPayment,
+//     //       effectivePaid: pricing.effectivePaid,
+//     //       isExtraPayment: pricing.isExtraPayment,
+//     //       isRefund: pricing.isRefund,
+//     //       isPendingOriginalPayment: pricing.isPendingOriginalPayment,
+//     //       isFreeSwap: pricing.isFreeSwap,
+//     //       daysLeft: pricing.daysLeft,
+//     //       segmentType: pricing.currentSegment?.type ?? "same_model_swap",
+//     //     },
+//     //   },
+//     // });
+//   } catch (error) {
+//     console.log("vehicleChangePreview error", error);
+//     await Log({
+//       message: `vehicleChangePreview failed: ${error?.message}`,
+//       functionName: "vehicleChangePreview",
+//     });
+//     return res.status(200).json({
+//       success: false,
+//       message: "Unable to calculate preview.",
+//     });
+//   }
+// };
 
 module.exports = {
   vehicleChangeInBooking,
