@@ -154,6 +154,7 @@ const getAllVehiclesData = async (req, res) => {
           vehicleColor: 1,
           perDayCost: 1,
           weekendCost: 1,
+          weekendFreeKms: 1,
           lastServiceDate: 1,
           kmsRun: 1,
           condition: 1,

@@ -65,6 +65,12 @@ const vehicleTableSchema = new Schema(
       required: [true, "Weekend cost is required"],
       min: [0, "Weekend cost must be a positive value"],
     },
+    weekendFreeKms: {
+      type: Number,
+      required: false,
+      min: [0, "Weekend km limit must be a positive value"],
+      default: null,
+    },
     refundableDeposit: {
       type: Number,
       default: 1000,

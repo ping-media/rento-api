@@ -107,6 +107,7 @@ async function createVehicle({
   stationId,
   vehicleNumber,
   freeKms,
+  weekendFreeKms,
   extraKmsCharges,
   vehicleModel,
   locationId,
@@ -139,6 +140,7 @@ async function createVehicle({
         stationId &&
         vehicleNumber &&
         freeKms &&
+        weekendFreeKms &&
         extraKmsCharges &&
         vehicleModel &&
         perDayCost &&
@@ -185,6 +187,7 @@ async function createVehicle({
         stationId,
         vehicleNumber,
         freeKms,
+        weekendFreeKms,
         extraKmsCharges,
         vehicleModel,
         perDayCost,
@@ -3318,6 +3321,7 @@ const getVehicleTbl = async (query) => {
           vehiclePlan: 1,
           perDayCost: 1,
           weekendCost: 1,
+          weekendFreeKms: 1,
           lastServiceDate: 1,
           kmsRun: 1,
           condition: 1,
@@ -3577,6 +3581,7 @@ const getVehicleTbl = async (query) => {
         const useVehicleLevelWeekendPrice =
           pricingRules?.vehicleLevelWeekendPrice === true;
         const vehicleWeekendCost = adjustedVehicle?.weekendCost;
+        const vehicleWeekendKmLimit = adjustedVehicle?.weekendFreeKms ?? null;
 
         if (
           adjustedVehicle.vehiclePlan &&
@@ -3672,6 +3677,12 @@ const getVehicleTbl = async (query) => {
 
           totalRentalCost += dailyRate;
 
+          const isWeekendKmApplied =
+            isWeekend &&
+            useVehicleLevelWeekendPrice &&
+            vehicleWeekendKmLimit != null &&
+            vehicleWeekendKmLimit > 0;
+
           daysBreakdown.push({
             date: new Date(currentDate),
             isWeekend,
@@ -3684,10 +3695,9 @@ const getVehicleTbl = async (query) => {
             weekendPriceType: useVehicleLevelWeekendPrice
               ? "vehicleLevel"
               : adjustedVehicle?.stationData?.weekendPriceType || "percentage",
-            // weekendPriceApplied:
-            //   isWeekend && stationWeekendEnabled && weekendPercentage !== 0,
-            // weekendPriceType:
-            //   adjustedVehicle?.stationData?.weekendPriceType || "percentage",
+            kmLimit: isWeekendKmApplied
+              ? vehicleWeekendKmLimit
+              : adjustedVehicle.freeKms,
           });
 
           currentDate.setDate(currentDate.getDate() + 1);
@@ -3740,22 +3750,16 @@ const getVehicleTbl = async (query) => {
           adjustedVehicle.perDayCost = originalPerDayCost;
         }
 
-        // if (
-        //   isStartWeekend &&
-        //   stationWeekendEnabled &&
-        //   weekendPercentage !== 0
-        // ) {
-        //   const weekendPriceType =
-        //     adjustedVehicle?.stationData?.weekendPriceType || "percentage";
-        //   adjustedVehicle.perDayCost = Math.round(
-        //     weekendPriceType === "fixed"
-        //       ? originalPerDayCost + weekendPercentage
-        //       : originalPerDayCost +
-        //           (originalPerDayCost * weekendPercentage) / 100,
-        //   );
-        // } else {
-        //   adjustedVehicle.perDayCost = originalPerDayCost;
-        // }
+        const isStartWeekendKmApplied =
+          isStartWeekend &&
+          useVehicleLevelWeekendPrice &&
+          vehicleWeekendKmLimit != null &&
+          vehicleWeekendKmLimit > 0;
+
+        adjustedVehicle.weekdayFreeKms = adjustedVehicle.freeKms;
+        adjustedVehicle.freeKms = isStartWeekendKmApplied
+          ? vehicleWeekendKmLimit
+          : adjustedVehicle.freeKms;
       }
 
       adjustedVehicles.push(adjustedVehicle);
@@ -4494,6 +4498,7 @@ const getVehicleTblData = async (query) => {
         const useVehicleLevelWeekendPrice =
           pricingRules?.vehicleLevelWeekendPrice === true;
         const vehicleWeekendCost = adjustedVehicle?.weekendCost;
+        const vehicleWeekendKmLimit = adjustedVehicle?.weekendFreeKms ?? null;
 
         // STEP 1: Apply Plan Pricing (e.g. 7-day, 15-day, etc.)
         if (
@@ -4593,6 +4598,12 @@ const getVehicleTblData = async (query) => {
 
           totalRentalCost += dailyRate;
 
+          const isWeekendKmApplied =
+            isWeekend &&
+            useVehicleLevelWeekendPrice &&
+            vehicleWeekendKmLimit != null &&
+            vehicleWeekendKmLimit > 0;
+
           daysBreakdown.push({
             date: new Date(currentDate),
             isWeekend,
@@ -4602,8 +4613,9 @@ const getVehicleTblData = async (query) => {
                 ? vehicleWeekendCost != null && vehicleWeekendCost > 0
                 : stationWeekendEnabled && weekendPercentage !== 0
               : false,
-            // weekendPriceApplied:
-            //   isWeekend && stationWeekendEnabled && weekendPercentage !== 0,
+            kmLimit: isWeekendKmApplied
+              ? vehicleWeekendKmLimit
+              : adjustedVehicle.freeKms,
           });
 
           currentDate.setDate(currentDate.getDate() + 1);
@@ -4656,22 +4668,18 @@ const getVehicleTblData = async (query) => {
           adjustedVehicle.perDayCost = originalPerDayCost;
         }
 
-        // if (
-        //   isStartWeekend &&
-        //   stationWeekendEnabled &&
-        //   weekendPercentage !== 0
-        // ) {
-        //   const weekendPriceType =
-        //     adjustedVehicle?.stationData?.weekendPriceType || "percentage";
-        //   adjustedVehicle.perDayCost = Math.round(
-        //     weekendPriceType === "fixed"
-        //       ? originalPerDayCost + weekendPercentage
-        //       : originalPerDayCost +
-        //           (originalPerDayCost * weekendPercentage) / 100,
-        //   );
-        // } else {
-        //   adjustedVehicle.perDayCost = originalPerDayCost;
-        // }
+        // Effective km limit for booking start day
+        const isStartWeekendKmApplied =
+          isStartWeekend &&
+          useVehicleLevelWeekendPrice &&
+          vehicleWeekendKmLimit != null &&
+          vehicleWeekendKmLimit > 0;
+
+        adjustedVehicle.weekdayFreeKms = adjustedVehicle.freeKms;
+
+        adjustedVehicle.freeKms = isStartWeekendKmApplied
+          ? vehicleWeekendKmLimit
+          : adjustedVehicle.freeKms;
 
         return adjustedVehicle;
       });

@@ -776,6 +776,34 @@ const initiateBooking = async (req, res) => {
       }
     }
 
+    // Recalculate freeLimit using per-day kmLimit from daysBreakdown
+    // Frontend calculates using start-day freeKms for all days which is wrong
+    // for multi-day bookings spanning weekdays and weekends
+    const planKmLimit =
+      bookingData.bookingPrice?.appliedPlan?.reduce(
+        (sum, plan) =>
+          sum + Number(plan.kmLimit || 0) * Number(plan.count || 1),
+        0,
+      ) || 0;
+
+    const dayKmLimit =
+      bookingData.bookingPrice?.daysBreakdown?.reduce(
+        (sum, day) => sum + Number(day.kmLimit || 0),
+        0,
+      ) || 0;
+
+    const correctedFreeLimit = planKmLimit + dayKmLimit;
+
+    if (correctedFreeLimit > 0) {
+      bookingData = {
+        ...bookingData,
+        vehicleBasic: {
+          ...bookingData.vehicleBasic,
+          freeLimit: correctedFreeLimit,
+        },
+      };
+    }
+
     // is amount goes to zero after discount
     if (bookingData?.bookingPrice?.isDiscountZero) {
       bookingData = {
@@ -1180,6 +1208,32 @@ const initiateExtensionBooking = async (req, res) => {
 
     const user = await User.findById(booking.userId).session(session);
     let finalAmount = amount;
+
+    // Recalculate freeLimit using per-day kmLimit from daysBreakdown
+    const extPlanKmLimit =
+      data.extendAmount?.appliedPlans?.reduce(
+        (sum, plan) =>
+          sum + Number(plan.kmLimit || 0) * Number(plan.count || 1),
+        0,
+      ) || 0;
+
+    const extDayKmLimit =
+      data.extendAmount?.daysBreakdown?.reduce(
+        (sum, day) => sum + Number(day.kmLimit || 0),
+        0,
+      ) || 0;
+
+    const correctedExtFreeLimit = extPlanKmLimit + extDayKmLimit;
+
+    if (correctedExtFreeLimit > 0) {
+      data = {
+        ...data,
+        extendAmount: {
+          ...data.extendAmount,
+          freeLimit: correctedExtFreeLimit,
+        },
+      };
+    }
 
     // if (user) {
     //   if (user?.contact === process.env.ENVIRONMENT) {
