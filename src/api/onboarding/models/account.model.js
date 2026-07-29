@@ -762,10 +762,10 @@ async function saveUser(userData) {
         return { status: 400, message: "Invalid phone number" };
       }
       if (!_id) {
-        // const existingUser = await User.findOne({ contact });
-        const existingUser = await User.findOne({
-          $or: [{ contact }, { altContact: contact }],
-        });
+        const existingUser = await User.findOne({ contact });
+        // const existingUser = await User.findOne({
+        //   $or: [{ contact }, { altContact: contact }],
+        // });
         if (existingUser) {
           return { status: 409, message: "This contact number already exists" };
         }
