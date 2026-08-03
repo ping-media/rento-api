@@ -431,6 +431,7 @@ const razorpayWebhook = async (req, res) => {
       verifiedPayment.status === "failed"
     ) {
       if (type === "extension") {
+        // if (type === "user-extension" && typeId) {
         await markExtendBookingAsFailed(
           bookingId,
           razorpayPaymentId,
@@ -496,6 +497,13 @@ const updateBookingAfterPayment = async (
   if (!bookingId) throw new Error("Booking ID missing");
 
   const booking = await Booking.findById(bookingId);
+
+  // Prevent duplicate processing
+  if (booking.paySuccessId === razorpayPaymentId) {
+    console.log(`Payment ${razorpayPaymentId} already processed.`);
+    return;
+  }
+
   if (!booking) {
     await WebhookLog.create({
       razorpayPaymentId,

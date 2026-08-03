@@ -1260,27 +1260,56 @@ const initiateExtensionBooking = async (req, res) => {
       //   booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
       // }
 
-      const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
+      const extendEntry = {
+        ...data.extendAmount,
+        paymentInitiatedDate: razorData?.created_at,
+        orderId: razorData?.id || "",
+      };
 
-      if (!existingIds.includes(data.extendAmount.id)) {
-        const extendEntry = {
-          ...data.extendAmount,
-          paymentInitiatedDate: razorData?.created_at,
-          orderId: razorData?.id || "",
-        };
-        booking.bookingPrice.extendAmount.push(extendEntry);
+      // Atomic: only pushes if id doesn't already exist — prevents race condition
+      const updateResult = await Booking.findOneAndUpdate(
+        {
+          _id: booking._id,
+          "bookingPrice.extendAmount.id": { $ne: data.extendAmount.id },
+        },
+        {
+          $push: {
+            "bookingPrice.extendAmount": extendEntry,
+            "bookingPrice.extendAmountBackup": extendEntry,
+          },
+        },
+        { session, new: true },
+      );
 
-        // Backup snapshot so webhook can recover full metadata if cron deletes the entry
-        if (!booking.bookingPrice.extendAmountBackup) {
-          booking.bookingPrice.extendAmountBackup = [];
-        }
-        const backupExists = booking.bookingPrice.extendAmountBackup.some(
-          (e) => e.id === data.extendAmount.id,
-        );
-        if (!backupExists) {
-          booking.bookingPrice.extendAmountBackup.push(extendEntry);
-        }
+      if (!updateResult) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.json({
+          status: 409,
+          message: "Extension already initiated, please wait.",
+        });
       }
+
+      // const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
+      // if (!existingIds.includes(data.extendAmount.id)) {
+      //   const extendEntry = {
+      //     ...data.extendAmount,
+      //     paymentInitiatedDate: razorData?.created_at,
+      //     orderId: razorData?.id || "",
+      //   };
+      //   booking.bookingPrice.extendAmount.push(extendEntry);
+
+      //   // Backup snapshot so webhook can recover full metadata if cron deletes the entry
+      //   if (!booking.bookingPrice.extendAmountBackup) {
+      //     booking.bookingPrice.extendAmountBackup = [];
+      //   }
+      //   const backupExists = booking.bookingPrice.extendAmountBackup.some(
+      //     (e) => e.id === data.extendAmount.id,
+      //   );
+      //   if (!backupExists) {
+      //     booking.bookingPrice.extendAmountBackup.push(extendEntry);
+      //   }
+      // }
 
       if (!booking.extendBooking) {
         booking.extendBooking = {};
