@@ -121,7 +121,7 @@ const getBooking = async (query) => {
       !vehicleName &&
       !vehicleBrand &&
       !stationName &&
-      !stationId &&
+      // !stationId &&
       !userId &&
       !rideStatus &&
       !paymentStatus &&
@@ -1326,9 +1326,9 @@ const initiateExtensionBooking = async (req, res) => {
       // booking.bookingStatus = "extended";
 
       // Mark nested objects as modified
-      booking.markModified("bookingPrice.extendAmountBackup");
-      booking.markModified("bookingPrice.extendAmount");
-      booking.markModified("bookingPrice");
+      // booking.markModified("bookingPrice.extendAmountBackup");
+      // booking.markModified("bookingPrice.extendAmount");
+      // booking.markModified("bookingPrice");
       booking.markModified("extendBooking");
 
       await booking.save({ session });

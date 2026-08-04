@@ -351,34 +351,6 @@ async function getAllDataCount(query) {
     // Apply stationId if present
     if (stationId) matchFilter.stationId = stationId;
 
-    // Parse month name to number
-    // if (month && year) {
-    //   const monthMap = {
-    //     january: 1,
-    //     february: 2,
-    //     march: 3,
-    //     april: 4,
-    //     may: 5,
-    //     june: 6,
-    //     july: 7,
-    //     august: 8,
-    //     september: 9,
-    //     october: 10,
-    //     november: 11,
-    //     december: 12,
-    //   };
-    //   const monthNum = monthMap[month.toLowerCase()];
-    //   const yearNum = parseInt(year);
-
-    //   if (monthNum && !isNaN(yearNum)) {
-    //     matchFilter.$expr = {
-    //       $and: [
-    //         { $eq: [{ $month: "$createdAt" }, monthNum] },
-    //         { $eq: [{ $year: "$createdAt" }, yearNum] },
-    //       ],
-    //     };
-    //   }
-    // }
     let dateRange = null;
 
     if (month && year) {
@@ -417,50 +389,81 @@ async function getAllDataCount(query) {
     // OR extended this period, OR had a vehicle-change diff paid this period.
     const revenueFilter = { ...matchFilter };
     if (dateRange) {
-      revenueFilter.$or = [
-        { createdAt: { $gte: dateRange.start, $lt: dateRange.end } },
+      revenueFilter.$and = [
+        { ...matchFilter },
         {
-          "bookingPrice.extendAmount": {
-            $elemMatch: {
-              status: "paid",
-              paymentDate: { $gte: dateRange.start, $lt: dateRange.end },
+          $or: [
+            {
+              $or: [
+                {
+                  paymentInitiatedDate: {
+                    $gte: dateRange.start.getTime(),
+                    $lt: dateRange.end.getTime(),
+                  },
+                },
+                {
+                  paymentInitiatedDate: {
+                    $gte: Math.floor(dateRange.start.getTime() / 1000),
+                    $lt: Math.floor(dateRange.end.getTime() / 1000),
+                  },
+                },
+              ],
             },
-          },
-        },
-        {
-          "bookingPrice.diffAmount": {
-            $elemMatch: {
-              status: "paid",
-              paymentInitiatedDate: {
-                $gte: dateRange.start.getTime(),
-                $lt: dateRange.end.getTime(),
+            {
+              "bookingPrice.extendAmount": {
+                $elemMatch: {
+                  status: "paid",
+                  paymentDate: { $gte: dateRange.start, $lt: dateRange.end },
+                },
               },
             },
-          },
+            {
+              "bookingPrice.extendAmount": {
+                $elemMatch: {
+                  status: "paid",
+                  paymentSuccessDate: {
+                    $gte: dateRange.start.getTime(),
+                    $lt: dateRange.end.getTime(),
+                  },
+                },
+              },
+            },
+            {
+              "bookingPrice.extendAmount": {
+                $elemMatch: {
+                  status: "paid",
+                  paymentInitiatedDate: {
+                    $gte: dateRange.start.getTime(),
+                    $lt: dateRange.end.getTime(),
+                  },
+                },
+              },
+            },
+            {
+              "bookingPrice.diffAmount": {
+                $elemMatch: {
+                  status: "paid",
+                  paymentInitiatedDate: {
+                    $gte: dateRange.start.getTime(),
+                    $lt: dateRange.end.getTime(),
+                  },
+                },
+              },
+            },
+          ],
         },
       ];
     }
 
     const createdBookings = await Booking.find(createdFilter);
     const revenueBookings = await Booking.find(revenueFilter);
-    // const bookings = await Booking.find({
-    //   ...matchFilter,
-    // });
 
-    const cancelBookings = createdBookings.filter(
-      (booking) => booking.bookingStatus === "canceled",
+    const cancelBookings = createdBookings.filter((booking) =>
+      booking.bookingStatus?.toLowerCase().includes("cancel"),
     );
-
     const nonCancelledBookings = createdBookings.filter(
-      (booking) => booking.bookingStatus !== "canceled",
+      (booking) => !booking.bookingStatus?.toLowerCase().includes("cancel"),
     );
-    // const cancelBookings = bookings.filter(
-    //   (booking) => booking.bookingStatus === "canceled",
-    // );
-
-    // const nonCancelledBookings = bookings.filter(
-    //   (booking) => booking.bookingStatus !== "canceled",
-    // );
 
     const payOnPickupCount = nonCancelledBookings.filter(
       (b) =>
@@ -480,31 +483,58 @@ async function getAllDataCount(query) {
     const amount = revenueBookings.reduce(
       (acc, item) => {
         if (
-          item.bookingStatus === "canceled" ||
+          item.bookingStatus?.toLowerCase().includes("cancel") ||
           item.bookingStatus === "pending"
         )
           return acc;
 
         const bp = item.bookingPrice;
-        const createdInRange =
+        const rawPaymentDate = item.paymentInitiatedDate || null;
+        let paymentInitiatedDateMs = null;
+        if (rawPaymentDate) {
+          const ts = Number(rawPaymentDate);
+          if (!isNaN(ts)) {
+            paymentInitiatedDateMs = ts < 1e12 ? ts * 1000 : ts; // normalize seconds → ms
+          }
+        }
+        const paidInRange =
           !dateRange ||
-          (item.createdAt >= dateRange.start && item.createdAt < dateRange.end);
+          (paymentInitiatedDateMs &&
+            paymentInitiatedDateMs >= dateRange.start.getTime() &&
+            paymentInitiatedDateMs < dateRange.end.getTime());
 
         // ─── BASE PRICE — only counts if the booking was actually created in this period
         let basePrice = 0;
-        if (createdInRange) {
-          const fullPrice =
-            bp.isDiscountZero === true ||
-            (bp.discountTotalPrice && bp.discountTotalPrice > 0)
-              ? Number(bp.discountTotalPrice) || 0
-              : Number(bp.totalPrice) || 0;
+        if (paidInRange) {
+          const payInitFrom = item.payInitFrom || "";
+          const paySuccessId = item.paySuccessId || "";
 
-          if (bp.AmountLeftAfterUserPaid?.status === "paid") {
-            basePrice = fullPrice;
-          } else if (bp.userPaid && Number(bp.userPaid) > 0) {
-            basePrice = Number(bp.userPaid);
-          } else {
-            basePrice = fullPrice;
+          const rideStatus = item.rideStatus || "";
+
+          const isPaymentVerified =
+            payInitFrom?.toLowerCase() === "cash"
+              ? ["ongoing", "completed"].includes(rideStatus?.toLowerCase()) // cash only if ride actually started or done
+              : paySuccessId !== "" && paySuccessId?.toLowerCase() !== "na";
+
+          if (isPaymentVerified) {
+            const fullPrice =
+              bp.isDiscountZero === true ||
+              (bp.discountTotalPrice && bp.discountTotalPrice > 0)
+                ? Number(bp.discountTotalPrice) || 0
+                : Number(bp.totalPrice) || 0;
+
+            if (item.paymentStatus === "paid") {
+              basePrice = fullPrice;
+            } else if (
+              item.paymentStatus === "partiallyPay" ||
+              item.paymentStatus === "partially_paid"
+            ) {
+              if (bp.AmountLeftAfterUserPaid?.status === "paid") {
+                basePrice = fullPrice;
+              } else {
+                basePrice = Number(bp.userPaid) || 0;
+              }
+            }
           }
         }
 
@@ -515,15 +545,25 @@ async function getAllDataCount(query) {
           bp.extendAmount.forEach((extend) => {
             if (extend.status !== "paid") return;
 
+            // fallback to paymentInitiatedDate (unix ms) or paymentSuccessDate if paymentDate missing
+            const extendPaymentDate = extend.paymentDate
+              ? new Date(extend.paymentDate)
+              : extend.paymentSuccessDate
+                ? new Date(extend.paymentSuccessDate)
+                : extend.paymentInitiatedDate
+                  ? new Date(extend.paymentInitiatedDate)
+                  : null;
+
             const paidInRange =
               !dateRange ||
-              (new Date(extend.paymentDate) >= dateRange.start &&
-                new Date(extend.paymentDate) < dateRange.end);
+              (extendPaymentDate &&
+                extendPaymentDate >= dateRange.start &&
+                extendPaymentDate < dateRange.end);
 
             if (paidInRange) {
               extendTotal +=
                 (Number(extend.amount) || 0) +
-                (Number(extend.addOnAmount) || 0) +
+                // (Number(extend.addOnAmount) || 0) +
                 (Number(extend.tax) || 0) +
                 (Number(extend.addonTax) || 0);
               extendCount += 1;
@@ -540,14 +580,17 @@ async function getAllDataCount(query) {
                 (d.paymentInitiatedDate &&
                   d.paymentInitiatedDate >= dateRange.start.getTime() &&
                   d.paymentInitiatedDate < dateRange.end.getTime());
-              const rawAmount = d?.amount ? Number(d.amount) : 0;
-              return paidInRange ? sum + rawAmount : sum;
+              // const rawAmount = d?.amount ? Number(d.amount) : 0;
+              // return paidInRange ? sum + rawAmount : sum;
+              const rawAmount = Number(d?.amount) || 0;
+              const rawRefund = Number(d?.refundAmount) || 0;
+              return paidInRange ? sum + rawAmount - rawRefund : sum;
             }, 0)
           : 0;
 
         // ─── LATE FEES — no independent payment date exists on this field today,
         // so it's still tied to the booking's createdAt window (see note below).
-        const lateFeeTotal = createdInRange
+        const lateFeeTotal = paidInRange
           ? (Number(bp.lateFeeBasedOnHour) > 0
               ? Number(bp.lateFeeBasedOnHour)
               : 0) +
@@ -556,7 +599,7 @@ async function getAllDataCount(query) {
 
         // ─── ADDITIONAL FEES — same caveat as late fees
         const additionalFeeTotal =
-          createdInRange &&
+          paidInRange &&
           bp.additionFeePaymentMethod &&
           bp.additionFeePaymentMethod !== "NA"
             ? Number(bp.additionalPrice) || 0
@@ -575,103 +618,11 @@ async function getAllDataCount(query) {
       },
       { total: 0, extendCount: 0 },
     );
-    // const amount = bookings.reduce(
-    //   (acc, item) => {
-    //     // Skip canceled, pending, or refunded bookings
-    //     if (
-    //       item.bookingStatus === "canceled" ||
-    //       item.bookingStatus === "pending"
-    //     )
-    //       return acc;
-
-    //     const bp = item.bookingPrice;
-
-    //     // ─── BASE PRICE
-    //     // Resolve full price (discount takes priority if present)
-    //     const fullPrice =
-    //       bp.isDiscountZero === true ||
-    //       (bp.discountTotalPrice && bp.discountTotalPrice > 0)
-    //         ? Number(bp.discountTotalPrice) || 0
-    //         : Number(bp.totalPrice) || 0;
-
-    //     let basePrice = 0;
-
-    //     if (bp.AmountLeftAfterUserPaid?.status === "paid") {
-    //       // Both parts collected → use full price directly, skip userPaid
-    //       basePrice = fullPrice;
-    //     } else if (bp.userPaid && Number(bp.userPaid) > 0) {
-    //       // Partial payment only — take what was actually paid
-    //       basePrice = Number(bp.userPaid);
-    //     } else {
-    //       // Full upfront payment (no partial split)
-    //       basePrice = fullPrice;
-    //     }
-
-    //     // ─── EXTEND BOOKING
-    //     let extendTotal = 0;
-    //     let extendCount = 0;
-
-    //     if (Array.isArray(bp.extendAmount)) {
-    //       bp.extendAmount.forEach((extend) => {
-    //         if (extend.status === "paid") {
-    //           extendTotal +=
-    //             (Number(extend.amount) || 0) +
-    //             (Number(extend.addOnAmount) || 0) +
-    //             (Number(extend.tax) || 0) +
-    //             (Number(extend.addonTax) || 0);
-    //           extendCount += 1;
-    //         }
-    //       });
-    //     }
-
-    //     // ─── VEHICLE CHANGE DIFF
-    //     const diffTotal = Array.isArray(bp.diffAmount)
-    //       ? bp.diffAmount.reduce((sum, d) => {
-    //           const rawAmount = d?.amount ? Number(d.amount) : 0;
-    //           let amount = 0;
-
-    //           if (rawAmount > 0 && d.status === "paid") {
-    //             amount = rawAmount;
-    //           }
-
-    //           return d.status === "paid" ? sum + rawAmount : sum;
-    //         }, 0)
-    //       : 0;
-
-    //     // ─── LATE FEES (add if value > 0, no payment method check) ───
-    //     const lateFeeTotal =
-    //       (Number(bp.lateFeeBasedOnHour) > 0
-    //         ? Number(bp.lateFeeBasedOnHour)
-    //         : 0) +
-    //       (Number(bp.lateFeeBasedOnKM) > 0 ? Number(bp.lateFeeBasedOnKM) : 0);
-
-    //     // ─── ADDITIONAL FEES
-    //     const additionalFeeTotal =
-    //       bp.additionFeePaymentMethod && bp.additionFeePaymentMethod !== "NA"
-    //         ? Number(bp.additionalPrice) || 0
-    //         : 0;
-
-    //     return {
-    //       total:
-    //         acc.total +
-    //         basePrice +
-    //         extendTotal +
-    //         diffTotal +
-    //         lateFeeTotal +
-    //         additionalFeeTotal,
-    //       extendCount: acc.extendCount + extendCount,
-    //     };
-    //   },
-    //   { total: 0, extendCount: 0 },
-    // );
 
     const extendBookingCount = amount.extendCount;
     const Amount = amount.total;
     const cancelBookingsCount = cancelBookings.length;
 
-    // const bookingsCount = await Booking.countDocuments({
-    //   ...matchFilter,
-    // });
     const bookingsCount = await Booking.countDocuments(createdFilter);
 
     obj.data = {
@@ -691,6 +642,284 @@ async function getAllDataCount(query) {
     };
   }
 }
+
+// async function getAllDataCount(query) {
+//   try {
+//     const obj = { status: 200, message: "Data fetched successfully", data: {} };
+//     const { stationId, month, year } = query;
+//     const matchFilter = {};
+
+//     // Apply stationId if present
+//     if (stationId) matchFilter.stationId = stationId;
+
+//     let dateRange = null;
+
+//     if (month && year) {
+//       const monthMap = {
+//         january: 1,
+//         february: 2,
+//         march: 3,
+//         april: 4,
+//         may: 5,
+//         june: 6,
+//         july: 7,
+//         august: 8,
+//         september: 9,
+//         october: 10,
+//         november: 11,
+//         december: 12,
+//       };
+//       const monthNum = monthMap[month.toLowerCase()];
+//       const yearNum = parseInt(year);
+
+//       if (monthNum && !isNaN(yearNum)) {
+//         dateRange = {
+//           start: new Date(Date.UTC(yearNum, monthNum - 1, 1, 0, 0, 0)),
+//           end: new Date(Date.UTC(yearNum, monthNum, 1, 0, 0, 0)), // exclusive upper bound
+//         };
+//       }
+//     }
+
+//     // Filter 1: bookings actually CREATED in this period (for bookingsCount, cancelBookingsCount)
+//     const createdFilter = { ...matchFilter };
+//     if (dateRange) {
+//       createdFilter.createdAt = { $gte: dateRange.start, $lt: dateRange.end };
+//     }
+
+//     // Filter 2: bookings with MONEY MOVEMENT in this period — created this period,
+//     // OR extended this period, OR had a vehicle-change diff paid this period.
+//     // const revenueFilter = { ...matchFilter };
+//     // if (dateRange) {
+//     //   revenueFilter.$or = [
+//     //     { createdAt: { $gte: dateRange.start, $lt: dateRange.end } },
+//     //     {
+//     //       "bookingPrice.extendAmount": {
+//     //         $elemMatch: {
+//     //           status: "paid",
+//     //           paymentDate: { $gte: dateRange.start, $lt: dateRange.end },
+//     //         },
+//     //       },
+//     //     },
+//     //     {
+//     //       "bookingPrice.diffAmount": {
+//     //         $elemMatch: {
+//     //           status: "paid",
+//     //           paymentInitiatedDate: {
+//     //             $gte: dateRange.start.getTime(),
+//     //             $lt: dateRange.end.getTime(),
+//     //           },
+//     //         },
+//     //       },
+//     //     },
+//     //   ];
+//     // }
+
+//     const createdBookings = await Booking.find(createdFilter);
+//     // const revenueBookings = await Booking.find(revenueFilter);
+//     const revenueBookings = createdBookings;
+
+//     // const cancelBookings = createdBookings.filter(
+//     //   (booking) => booking.bookingStatus === "canceled",
+//     // );
+//     // const nonCancelledBookings = createdBookings.filter(
+//     //   (booking) => booking.bookingStatus !== "canceled",
+//     // );
+//     const cancelBookings = createdBookings.filter((booking) =>
+//       booking.bookingStatus?.toLowerCase().includes("cancel"),
+//     );
+//     const nonCancelledBookings = createdBookings.filter(
+//       (booking) => !booking.bookingStatus?.toLowerCase().includes("cancel"),
+//     );
+
+//     const payOnPickupCount = nonCancelledBookings.filter(
+//       (b) =>
+//         b.bookingPrice?.payOnPickupMethod !== undefined &&
+//         b.bookingPrice?.payOnPickupMethod !== null,
+//     ).length;
+
+//     const amountLeftObjectCount = nonCancelledBookings.filter(
+//       (b) =>
+//         b.bookingPrice?.AmountLeftAfterUserPaid &&
+//         typeof b.bookingPrice.AmountLeftAfterUserPaid === "object" &&
+//         !Array.isArray(b.bookingPrice.AmountLeftAfterUserPaid) &&
+//         b.bookingPrice.AmountLeftAfterUserPaid?.status === "paid",
+//     ).length;
+
+//     // FIXED: Calculate total amount including extend bookings properly
+//     const amount = revenueBookings.reduce(
+//       (acc, item) => {
+//         // if (
+//         //   item.bookingStatus === "canceled" ||
+//         //   item.bookingStatus === "pending"
+//         // )
+//         //   return acc;
+//         if (
+//           item.bookingStatus?.toLowerCase().includes("cancel") ||
+//           item.bookingStatus === "pending"
+//         )
+//           return acc;
+
+//         const bp = item.bookingPrice;
+//         const createdInRange =
+//           !dateRange ||
+//           (item.createdAt >= dateRange.start && item.createdAt < dateRange.end);
+
+//         // ─── BASE PRICE — only counts if the booking was actually created in this period
+//         let basePrice = 0;
+//         if (createdInRange) {
+//           const payInitFrom = item.payInitFrom || "";
+//           const paySuccessId = item.paySuccessId || "";
+
+//           const rideStatus = item.rideStatus || "";
+
+//           const isPaymentVerified =
+//             payInitFrom?.toLowerCase() === "cash"
+//               ? ["ongoing", "completed"].includes(rideStatus?.toLowerCase()) // cash only if ride actually started or done
+//               : paySuccessId !== "" && paySuccessId?.toLowerCase() !== "na";
+
+//           if (isPaymentVerified) {
+//             const fullPrice =
+//               bp.isDiscountZero === true ||
+//               (bp.discountTotalPrice && bp.discountTotalPrice > 0)
+//                 ? Number(bp.discountTotalPrice) || 0
+//                 : Number(bp.totalPrice) || 0;
+
+//             if (item.paymentStatus === "paid") {
+//               // fully paid — use full price
+//               basePrice = fullPrice;
+//             } else if (item.paymentStatus === "partiallyPay") {
+//               if (bp.AmountLeftAfterUserPaid?.status === "paid") {
+//                 // both parts collected — use full price
+//                 basePrice = fullPrice;
+//               } else {
+//                 // only first part paid — use userPaid amount
+//                 basePrice = Number(bp.userPaid) || 0;
+//               }
+//             }
+//           }
+//         }
+//         // let basePrice = 0;
+//         // if (createdInRange) {
+//         //   const fullPrice =
+//         //     bp.isDiscountZero === true ||
+//         //     (bp.discountTotalPrice && bp.discountTotalPrice > 0)
+//         //       ? Number(bp.discountTotalPrice) || 0
+//         //       : Number(bp.totalPrice) || 0;
+
+//         //   if (bp.AmountLeftAfterUserPaid?.status === "paid") {
+//         //     basePrice = fullPrice;
+//         //   } else if (bp.userPaid && Number(bp.userPaid) > 0) {
+//         //     basePrice = Number(bp.userPaid);
+//         //   } else {
+//         //     basePrice = fullPrice;
+//         //   }
+//         // }
+
+//         // ─── EXTEND BOOKING — only count entries actually paid within this period
+//         let extendTotal = 0;
+//         let extendCount = 0;
+//         if (Array.isArray(bp.extendAmount)) {
+//           bp.extendAmount.forEach((extend) => {
+//             if (extend.status !== "paid") return;
+
+//             // const paidInRange =
+//             //   !dateRange ||
+//             //   (new Date(extend.paymentDate) >= dateRange.start &&
+//             //     new Date(extend.paymentDate) < dateRange.end);
+//             // fallback to paymentInitiatedDate (unix ms) or paymentSuccessDate if paymentDate missing
+//             const extendPaymentDate = extend.paymentDate
+//               ? new Date(extend.paymentDate)
+//               : extend.paymentSuccessDate
+//                 ? new Date(extend.paymentSuccessDate)
+//                 : extend.paymentInitiatedDate
+//                   ? new Date(extend.paymentInitiatedDate)
+//                   : null;
+
+//             const paidInRange =
+//               !dateRange ||
+//               (extendPaymentDate &&
+//                 extendPaymentDate >= dateRange.start &&
+//                 extendPaymentDate < dateRange.end);
+
+//             if (paidInRange) {
+//               extendTotal +=
+//                 (Number(extend.amount) || 0) +
+//                 // (Number(extend.addOnAmount) || 0) +
+//                 (Number(extend.tax) || 0) +
+//                 (Number(extend.addonTax) || 0);
+//               extendCount += 1;
+//             }
+//           });
+//         }
+
+//         // ─── VEHICLE CHANGE DIFF — only count entries paid within this period
+//         const diffTotal = Array.isArray(bp.diffAmount)
+//           ? bp.diffAmount.reduce((sum, d) => {
+//               if (d.status !== "paid") return sum;
+//               const paidInRange =
+//                 !dateRange ||
+//                 (d.paymentInitiatedDate &&
+//                   d.paymentInitiatedDate >= dateRange.start.getTime() &&
+//                   d.paymentInitiatedDate < dateRange.end.getTime());
+//               const rawAmount = d?.amount ? Number(d.amount) : 0;
+//               return paidInRange ? sum + rawAmount : sum;
+//             }, 0)
+//           : 0;
+
+//         // ─── LATE FEES — no independent payment date exists on this field today,
+//         // so it's still tied to the booking's createdAt window (see note below).
+//         const lateFeeTotal = createdInRange
+//           ? (Number(bp.lateFeeBasedOnHour) > 0
+//               ? Number(bp.lateFeeBasedOnHour)
+//               : 0) +
+//             (Number(bp.lateFeeBasedOnKM) > 0 ? Number(bp.lateFeeBasedOnKM) : 0)
+//           : 0;
+
+//         // ─── ADDITIONAL FEES — same caveat as late fees
+//         const additionalFeeTotal =
+//           createdInRange &&
+//           bp.additionFeePaymentMethod &&
+//           bp.additionFeePaymentMethod !== "NA"
+//             ? Number(bp.additionalPrice) || 0
+//             : 0;
+
+//         return {
+//           total:
+//             acc.total +
+//             basePrice +
+//             extendTotal +
+//             diffTotal +
+//             lateFeeTotal +
+//             additionalFeeTotal,
+//           extendCount: acc.extendCount + extendCount,
+//         };
+//       },
+//       { total: 0, extendCount: 0 },
+//     );
+
+//     const extendBookingCount = amount.extendCount;
+//     const Amount = amount.total;
+//     const cancelBookingsCount = cancelBookings.length;
+
+//     const bookingsCount = await Booking.countDocuments(createdFilter);
+
+//     obj.data = {
+//       bookingsCount,
+//       cancelBookingsCount,
+//       extendBookingCount,
+//       CashPaymentReceivedCount: payOnPickupCount + amountLeftObjectCount,
+//       Amount,
+//     };
+
+//     return obj;
+//   } catch (error) {
+//     return {
+//       status: 500,
+//       message: "An error occurred",
+//       error: error.message,
+//     };
+//   }
+// }
 
 async function saveUser(userData) {
   const {

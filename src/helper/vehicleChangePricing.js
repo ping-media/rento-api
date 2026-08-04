@@ -870,9 +870,12 @@ const calculateVehicleChangePricing = async (
   // For extension segments, the relevant "paid" amount is the prorated
   // value of the extension payment for remaining days — not the initial
   // booking payment. oldRemainingValue already represents this correctly.
-  if (currentSegment.type === "extension") {
+  if (effectivePaid > 0) {
     effectivePaid = Math.round(oldRemainingValue);
   }
+  // if (currentSegment.type === "extension") {
+  //   effectivePaid = Math.round(oldRemainingValue);
+  // }
 
   let priceDifference;
   let isExtraPayment = false;

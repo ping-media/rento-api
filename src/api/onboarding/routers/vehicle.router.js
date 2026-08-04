@@ -36,7 +36,10 @@ const Document = require("../../../db/schemas/onboarding/DocumentUpload.Schema")
 const { paymentRec } = require("../models/payment.modol");
 const Authentication = require("../../../middlewares/Authentication");
 const { deleteS3Bucket } = require("../models/deleteS3Bucket");
-const { getBookingGraphData } = require("../models/graphData");
+const {
+  getBookingGraphData,
+  getGraphDayDetail,
+} = require("../models/graphData");
 const {
   razorpayWebhook,
   createPaymentLink,
@@ -1113,6 +1116,10 @@ router.get("/getAllLogs", Authentication, async (req, res) => {
 
 router.get("/getGraphData", Authentication, async (req, res) => {
   getBookingGraphData(req, res);
+});
+
+router.get("/getGraphDayDetail", Authentication, async (req, res) => {
+  getGraphDayDetail(req, res);
 });
 
 router.post("/createOrderId", async (req, res) => {
