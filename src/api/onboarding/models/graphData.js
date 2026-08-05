@@ -114,7 +114,13 @@ async function getBookingGraphData(req, res) {
 
     const dayMap = {}; // { "2026-07-01": { totalPrice, bookingCount } }
 
-    const toDayKey = (date) => new Date(date).toISOString().slice(0, 10);
+    // const toDayKey = (date) => new Date(date).toISOString().slice(0, 10);
+    const toDayKey = (date) => {
+      const d = new Date(date);
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const istDate = new Date(d.getTime() + istOffset);
+      return istDate.toISOString().slice(0, 10);
+    };
 
     const addToDay = (dayKey, price, isNewBooking) => {
       if (!dayMap[dayKey]) dayMap[dayKey] = { totalPrice: 0, bookingCount: 0 };
@@ -268,12 +274,20 @@ async function getGraphDayDetail(req, res) {
     return res.json({ status: 400, message: "date or startDate is required" });
 
   try {
-    const dayStart = startDate
-      ? new Date(startDate + "T00:00:00.000Z")
-      : new Date(date + "T00:00:00.000Z");
-    const dayEnd = endDate
-      ? new Date(endDate + "T23:59:59.999Z")
-      : new Date(date + "T23:59:59.999Z");
+    // const dayStart = startDate
+    //   ? new Date(startDate + "T00:00:00.000Z")
+    //   : new Date(date + "T00:00:00.000Z");
+    // const dayEnd = endDate
+    //   ? new Date(endDate + "T23:59:59.999Z")
+    //   : new Date(date + "T23:59:59.999Z");
+
+    // Use IST midnight (UTC+5:30 = subtract 5:30 from midnight IST to get UTC equivalent)
+    const toISTDayStart = (dateStr) =>
+      new Date(dateStr + "T00:00:00.000+05:30");
+    const toISTDayEnd = (dateStr) => new Date(dateStr + "T23:59:59.999+05:30");
+
+    const dayStart = startDate ? toISTDayStart(startDate) : toISTDayStart(date);
+    const dayEnd = endDate ? toISTDayEnd(endDate) : toISTDayEnd(date);
 
     const filter = {};
     if (stationId) filter.stationId = stationId;
