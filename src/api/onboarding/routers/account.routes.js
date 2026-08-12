@@ -5,6 +5,7 @@ const upload = require("../../../utils/file-upload/file-upload");
 const { otpGenerat, verify, softDeleteUser } = require("../models/otp.model");
 const { emailOtp } = require("../models/otpSendByEmail");
 const Authentication = require("../../../middlewares/Authentication");
+const { getTransactionReport } = require("../models/account.model");
 
 // Update User
 router.post("/profile", async (req, res) => {
@@ -38,6 +39,11 @@ router.post("/signup", async (req, res) => {
 router.get("/getAllDataCount", Authentication, async (req, res) => {
   accountService.getAllDataCount(req, res);
 });
+
+router.get("/getTransactionReport", Authentication, async (req, res) => {
+  getTransactionReport(req, res);
+});
+
 // Update image
 router.post("/getUsersByContact", async (req, res) => {
   accountService.getUserByContact(req, res);

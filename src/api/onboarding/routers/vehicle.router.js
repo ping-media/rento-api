@@ -112,6 +112,7 @@ const {
   sendPushNotificationToMany,
   sendPushNotificationUsingUserId,
 } = require("../../../utils/pushNotification");
+const { getStationMap } = require("../models/vehicles.model");
 // const { cancelPendingPayments } = require("../utils/cron.js");
 
 // create messages
@@ -241,6 +242,8 @@ router.get("/getAllVehiclesAvailable", async (req, res) => {
 router.get("/getStationData", async (req, res) => {
   vehiclesService.getStationData(req, res);
 });
+
+router.get("/station-map/:stationId", getStationMap);
 
 router.get("/getAllBookingDuration", async (req, res) => {
   vehiclesService.getAllBookingDuration(req, res);

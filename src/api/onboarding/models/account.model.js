@@ -643,283 +643,297 @@ async function getAllDataCount(query) {
   }
 }
 
-// async function getAllDataCount(query) {
-//   try {
-//     const obj = { status: 200, message: "Data fetched successfully", data: {} };
-//     const { stationId, month, year } = query;
-//     const matchFilter = {};
+async function getTransactionReport(req, res) {
+  const { userType } = req.user;
 
-//     // Apply stationId if present
-//     if (stationId) matchFilter.stationId = stationId;
+  if (userType !== "admin")
+    return res.json({ status: 401, message: "Not authorized" });
 
-//     let dateRange = null;
+  const { stationId, date, startDate, endDate } = req.query;
 
-//     if (month && year) {
-//       const monthMap = {
-//         january: 1,
-//         february: 2,
-//         march: 3,
-//         april: 4,
-//         may: 5,
-//         june: 6,
-//         july: 7,
-//         august: 8,
-//         september: 9,
-//         october: 10,
-//         november: 11,
-//         december: 12,
-//       };
-//       const monthNum = monthMap[month.toLowerCase()];
-//       const yearNum = parseInt(year);
+  if (!date && !startDate)
+    return res.json({ status: 400, message: "date or startDate is required" });
 
-//       if (monthNum && !isNaN(yearNum)) {
-//         dateRange = {
-//           start: new Date(Date.UTC(yearNum, monthNum - 1, 1, 0, 0, 0)),
-//           end: new Date(Date.UTC(yearNum, monthNum, 1, 0, 0, 0)), // exclusive upper bound
-//         };
-//       }
-//     }
+  try {
+    const toISTDayStart = (dateStr) =>
+      new Date(dateStr + "T00:00:00.000+05:30");
+    const toISTDayEnd = (dateStr) => new Date(dateStr + "T23:59:59.999+05:30");
 
-//     // Filter 1: bookings actually CREATED in this period (for bookingsCount, cancelBookingsCount)
-//     const createdFilter = { ...matchFilter };
-//     if (dateRange) {
-//       createdFilter.createdAt = { $gte: dateRange.start, $lt: dateRange.end };
-//     }
+    const dayStart = startDate ? toISTDayStart(startDate) : toISTDayStart(date);
+    const dayEnd = endDate ? toISTDayEnd(endDate) : toISTDayEnd(date);
 
-//     // Filter 2: bookings with MONEY MOVEMENT in this period — created this period,
-//     // OR extended this period, OR had a vehicle-change diff paid this period.
-//     // const revenueFilter = { ...matchFilter };
-//     // if (dateRange) {
-//     //   revenueFilter.$or = [
-//     //     { createdAt: { $gte: dateRange.start, $lt: dateRange.end } },
-//     //     {
-//     //       "bookingPrice.extendAmount": {
-//     //         $elemMatch: {
-//     //           status: "paid",
-//     //           paymentDate: { $gte: dateRange.start, $lt: dateRange.end },
-//     //         },
-//     //       },
-//     //     },
-//     //     {
-//     //       "bookingPrice.diffAmount": {
-//     //         $elemMatch: {
-//     //           status: "paid",
-//     //           paymentInitiatedDate: {
-//     //             $gte: dateRange.start.getTime(),
-//     //             $lt: dateRange.end.getTime(),
-//     //           },
-//     //         },
-//     //       },
-//     //     },
-//     //   ];
-//     // }
+    const filter = {};
+    if (stationId) filter.stationId = stationId;
 
-//     const createdBookings = await Booking.find(createdFilter);
-//     // const revenueBookings = await Booking.find(revenueFilter);
-//     const revenueBookings = createdBookings;
+    filter.$and = [
+      { ...(stationId ? { stationId } : {}) },
+      {
+        $or: [
+          { createdAt: { $gte: dayStart, $lt: dayEnd } },
+          {
+            "bookingPrice.extendAmount": {
+              $elemMatch: {
+                status: "paid",
+                paymentDate: { $gte: dayStart, $lt: dayEnd },
+              },
+            },
+          },
+          {
+            "bookingPrice.extendAmount": {
+              $elemMatch: {
+                status: "paid",
+                paymentSuccessDate: {
+                  $gte: dayStart.getTime(),
+                  $lt: dayEnd.getTime(),
+                },
+              },
+            },
+          },
+          {
+            "bookingPrice.extendAmount": {
+              $elemMatch: {
+                status: "paid",
+                paymentInitiatedDate: {
+                  $gte: dayStart.getTime(),
+                  $lt: dayEnd.getTime(),
+                },
+              },
+            },
+          },
+          {
+            "bookingPrice.diffAmount": {
+              $elemMatch: {
+                status: "paid",
+                paymentInitiatedDate: {
+                  $gte: dayStart.getTime(),
+                  $lt: dayEnd.getTime(),
+                },
+              },
+            },
+          },
+        ],
+      },
+    ];
 
-//     // const cancelBookings = createdBookings.filter(
-//     //   (booking) => booking.bookingStatus === "canceled",
-//     // );
-//     // const nonCancelledBookings = createdBookings.filter(
-//     //   (booking) => booking.bookingStatus !== "canceled",
-//     // );
-//     const cancelBookings = createdBookings.filter((booking) =>
-//       booking.bookingStatus?.toLowerCase().includes("cancel"),
-//     );
-//     const nonCancelledBookings = createdBookings.filter(
-//       (booking) => !booking.bookingStatus?.toLowerCase().includes("cancel"),
-//     );
+    filter.bookingStatus = { $not: /cancel/i };
 
-//     const payOnPickupCount = nonCancelledBookings.filter(
-//       (b) =>
-//         b.bookingPrice?.payOnPickupMethod !== undefined &&
-//         b.bookingPrice?.payOnPickupMethod !== null,
-//     ).length;
+    const bookings = await Booking.find(filter).populate(
+      "userId",
+      "firstName lastName contact email",
+    );
 
-//     const amountLeftObjectCount = nonCancelledBookings.filter(
-//       (b) =>
-//         b.bookingPrice?.AmountLeftAfterUserPaid &&
-//         typeof b.bookingPrice.AmountLeftAfterUserPaid === "object" &&
-//         !Array.isArray(b.bookingPrice.AmountLeftAfterUserPaid) &&
-//         b.bookingPrice.AmountLeftAfterUserPaid?.status === "paid",
-//     ).length;
+    const rows = [];
 
-//     // FIXED: Calculate total amount including extend bookings properly
-//     const amount = revenueBookings.reduce(
-//       (acc, item) => {
-//         // if (
-//         //   item.bookingStatus === "canceled" ||
-//         //   item.bookingStatus === "pending"
-//         // )
-//         //   return acc;
-//         if (
-//           item.bookingStatus?.toLowerCase().includes("cancel") ||
-//           item.bookingStatus === "pending"
-//         )
-//           return acc;
+    bookings.forEach((item) => {
+      const bp = item.bookingPrice;
+      const customer = item.userId;
+      const customerName = customer
+        ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim()
+        : "N/A";
 
-//         const bp = item.bookingPrice;
-//         const createdInRange =
-//           !dateRange ||
-//           (item.createdAt >= dateRange.start && item.createdAt < dateRange.end);
+      const commonFields = {
+        stationName: item.stationName || "",
+        stationId: item.stationId || "",
+        vehicleName: item.vehicleName || "",
+        vehicleBrand: item.vehicleBrand || "",
+        vehicleNumber: item.vehicleBasic?.vehicleNumber || "",
+        bookingStartDate: item.BookingStartDateAndTime
+          ? new Date(item.BookingStartDateAndTime).toLocaleString("en-GB", {
+              timeZone: "UTC",
+            })
+          : "",
+        bookingEndDate: item.BookingEndDateAndTime
+          ? new Date(item.BookingEndDateAndTime).toLocaleString("en-GB", {
+              timeZone: "UTC",
+            })
+          : "",
+        customerName,
+        customerEmail: customer?.email || "",
+        customerPhone: customer?.contact || "",
+      };
 
-//         // ─── BASE PRICE — only counts if the booking was actually created in this period
-//         let basePrice = 0;
-//         if (createdInRange) {
-//           const payInitFrom = item.payInitFrom || "";
-//           const paySuccessId = item.paySuccessId || "";
+      // base booking
+      const createdInRange =
+        item.createdAt >= dayStart && item.createdAt < dayEnd;
 
-//           const rideStatus = item.rideStatus || "";
+      if (createdInRange) {
+        const payInitFrom = item.payInitFrom || "";
+        const paySuccessId = item.paySuccessId || "";
+        const rideStatus = item.rideStatus || "";
 
-//           const isPaymentVerified =
-//             payInitFrom?.toLowerCase() === "cash"
-//               ? ["ongoing", "completed"].includes(rideStatus?.toLowerCase()) // cash only if ride actually started or done
-//               : paySuccessId !== "" && paySuccessId?.toLowerCase() !== "na";
+        const isPaymentVerified =
+          payInitFrom?.toLowerCase() === "cash"
+            ? ["ongoing", "completed"].includes(rideStatus?.toLowerCase())
+            : paySuccessId !== "" && paySuccessId?.toLowerCase() !== "na";
 
-//           if (isPaymentVerified) {
-//             const fullPrice =
-//               bp.isDiscountZero === true ||
-//               (bp.discountTotalPrice && bp.discountTotalPrice > 0)
-//                 ? Number(bp.discountTotalPrice) || 0
-//                 : Number(bp.totalPrice) || 0;
+        if (isPaymentVerified) {
+          const fullPrice =
+            bp.isDiscountZero === true ||
+            (bp.discountTotalPrice && bp.discountTotalPrice > 0)
+              ? Number(bp.discountTotalPrice) || 0
+              : Number(bp.totalPrice) || 0;
 
-//             if (item.paymentStatus === "paid") {
-//               // fully paid — use full price
-//               basePrice = fullPrice;
-//             } else if (item.paymentStatus === "partiallyPay") {
-//               if (bp.AmountLeftAfterUserPaid?.status === "paid") {
-//                 // both parts collected — use full price
-//                 basePrice = fullPrice;
-//               } else {
-//                 // only first part paid — use userPaid amount
-//                 basePrice = Number(bp.userPaid) || 0;
-//               }
-//             }
-//           }
-//         }
-//         // let basePrice = 0;
-//         // if (createdInRange) {
-//         //   const fullPrice =
-//         //     bp.isDiscountZero === true ||
-//         //     (bp.discountTotalPrice && bp.discountTotalPrice > 0)
-//         //       ? Number(bp.discountTotalPrice) || 0
-//         //       : Number(bp.totalPrice) || 0;
+          let amount = 0;
+          if (item.paymentStatus === "paid") {
+            amount = fullPrice;
+          } else if (
+            item.paymentStatus === "partiallyPay" ||
+            item.paymentStatus === "partially_paid"
+          ) {
+            amount =
+              bp.AmountLeftAfterUserPaid?.status === "paid"
+                ? fullPrice
+                : Number(bp.userPaid) || 0;
+          }
 
-//         //   if (bp.AmountLeftAfterUserPaid?.status === "paid") {
-//         //     basePrice = fullPrice;
-//         //   } else if (bp.userPaid && Number(bp.userPaid) > 0) {
-//         //     basePrice = Number(bp.userPaid);
-//         //   } else {
-//         //     basePrice = fullPrice;
-//         //   }
-//         // }
+          const lateFee =
+            bp.lateFeePaymentMethod && bp.lateFeePaymentMethod !== "NA"
+              ? (Number(bp.lateFeeBasedOnHour) || 0) +
+                (Number(bp.lateFeeBasedOnKM) || 0)
+              : 0;
 
-//         // ─── EXTEND BOOKING — only count entries actually paid within this period
-//         let extendTotal = 0;
-//         let extendCount = 0;
-//         if (Array.isArray(bp.extendAmount)) {
-//           bp.extendAmount.forEach((extend) => {
-//             if (extend.status !== "paid") return;
+          const additionalFee =
+            bp.additionFeePaymentMethod && bp.additionFeePaymentMethod !== "NA"
+              ? Number(bp.additionalPrice) || 0
+              : 0;
 
-//             // const paidInRange =
-//             //   !dateRange ||
-//             //   (new Date(extend.paymentDate) >= dateRange.start &&
-//             //     new Date(extend.paymentDate) < dateRange.end);
-//             // fallback to paymentInitiatedDate (unix ms) or paymentSuccessDate if paymentDate missing
-//             const extendPaymentDate = extend.paymentDate
-//               ? new Date(extend.paymentDate)
-//               : extend.paymentSuccessDate
-//                 ? new Date(extend.paymentSuccessDate)
-//                 : extend.paymentInitiatedDate
-//                   ? new Date(extend.paymentInitiatedDate)
-//                   : null;
+          const totalAmount = amount + lateFee + additionalFee;
 
-//             const paidInRange =
-//               !dateRange ||
-//               (extendPaymentDate &&
-//                 extendPaymentDate >= dateRange.start &&
-//                 extendPaymentDate < dateRange.end);
+          if (totalAmount > 0) {
+            rows.push({
+              ...commonFields,
+              bookingId: item.bookingId,
+              transactionType: "Main Booking",
+              amount: totalAmount,
+              lateFee,
+              additionalFee,
+              paymentMethod: payInitFrom,
+              paymentStatus: item.paymentStatus,
+              paySuccessId: item.paySuccessId || "",
+              orderId: item.payment_order_id || "",
+              rrnNumber: item.bookingPrice?.rrnNumber || "",
+              transactionDate: new Date(item.createdAt).toLocaleString(
+                "en-GB",
+                { timeZone: "Asia/Kolkata" },
+              ),
+            });
+          }
+        }
+      }
 
-//             if (paidInRange) {
-//               extendTotal +=
-//                 (Number(extend.amount) || 0) +
-//                 // (Number(extend.addOnAmount) || 0) +
-//                 (Number(extend.tax) || 0) +
-//                 (Number(extend.addonTax) || 0);
-//               extendCount += 1;
-//             }
-//           });
-//         }
+      // extensions
+      if (Array.isArray(bp.extendAmount)) {
+        bp.extendAmount.forEach((extend) => {
+          if (extend.status !== "paid") return;
 
-//         // ─── VEHICLE CHANGE DIFF — only count entries paid within this period
-//         const diffTotal = Array.isArray(bp.diffAmount)
-//           ? bp.diffAmount.reduce((sum, d) => {
-//               if (d.status !== "paid") return sum;
-//               const paidInRange =
-//                 !dateRange ||
-//                 (d.paymentInitiatedDate &&
-//                   d.paymentInitiatedDate >= dateRange.start.getTime() &&
-//                   d.paymentInitiatedDate < dateRange.end.getTime());
-//               const rawAmount = d?.amount ? Number(d.amount) : 0;
-//               return paidInRange ? sum + rawAmount : sum;
-//             }, 0)
-//           : 0;
+          const extendDateRaw = extend.paymentDate
+            ? new Date(extend.paymentDate)
+            : extend.paymentSuccessDate
+              ? new Date(extend.paymentSuccessDate)
+              : extend.paymentInitiatedDate
+                ? new Date(extend.paymentInitiatedDate)
+                : null;
 
-//         // ─── LATE FEES — no independent payment date exists on this field today,
-//         // so it's still tied to the booking's createdAt window (see note below).
-//         const lateFeeTotal = createdInRange
-//           ? (Number(bp.lateFeeBasedOnHour) > 0
-//               ? Number(bp.lateFeeBasedOnHour)
-//               : 0) +
-//             (Number(bp.lateFeeBasedOnKM) > 0 ? Number(bp.lateFeeBasedOnKM) : 0)
-//           : 0;
+          if (!extendDateRaw) return;
 
-//         // ─── ADDITIONAL FEES — same caveat as late fees
-//         const additionalFeeTotal =
-//           createdInRange &&
-//           bp.additionFeePaymentMethod &&
-//           bp.additionFeePaymentMethod !== "NA"
-//             ? Number(bp.additionalPrice) || 0
-//             : 0;
+          const inRange = extendDateRaw >= dayStart && extendDateRaw < dayEnd;
+          if (!inRange) return;
 
-//         return {
-//           total:
-//             acc.total +
-//             basePrice +
-//             extendTotal +
-//             diffTotal +
-//             lateFeeTotal +
-//             additionalFeeTotal,
-//           extendCount: acc.extendCount + extendCount,
-//         };
-//       },
-//       { total: 0, extendCount: 0 },
-//     );
+          rows.push({
+            ...commonFields,
+            bookingStartDate: extend.BookingStartDateAndTime
+              ? new Date(extend.BookingStartDateAndTime).toLocaleString(
+                  "en-GB",
+                  { timeZone: "UTC" },
+                )
+              : commonFields.bookingStartDate,
+            bookingEndDate: extend.bookingEndDateAndTime
+              ? new Date(extend.bookingEndDateAndTime).toLocaleString("en-GB", {
+                  timeZone: "UTC",
+                })
+              : commonFields.bookingEndDate,
+            bookingId: `${item.bookingId}_ext_${extend.id}`,
+            transactionType: "Extension",
+            amount:
+              (Number(extend.amount) || 0) +
+              (Number(extend.tax) || 0) +
+              (Number(extend.addonTax) || 0),
+            lateFee: 0,
+            additionalFee: 0,
+            paymentMethod: extend.paymentMethod || "online",
+            paymentStatus: extend.status,
+            paySuccessId: extend.transactionId || "",
+            orderId: extend.orderId || "",
+            rrnNumber: extend.rrnNumber || "",
+            transactionDate: extendDateRaw.toLocaleString("en-GB", {
+              timeZone: "Asia/Kolkata",
+            }),
+          });
+        });
+      }
 
-//     const extendBookingCount = amount.extendCount;
-//     const Amount = amount.total;
-//     const cancelBookingsCount = cancelBookings.length;
+      // diff
+      if (Array.isArray(bp.diffAmount)) {
+        bp.diffAmount.forEach((diff) => {
+          if (diff.status !== "paid" || !diff.paymentInitiatedDate) return;
 
-//     const bookingsCount = await Booking.countDocuments(createdFilter);
+          const paidDate = new Date(diff.paymentInitiatedDate);
+          const inRange = paidDate >= dayStart && paidDate < dayEnd;
+          if (!inRange) return;
 
-//     obj.data = {
-//       bookingsCount,
-//       cancelBookingsCount,
-//       extendBookingCount,
-//       CashPaymentReceivedCount: payOnPickupCount + amountLeftObjectCount,
-//       Amount,
-//     };
+          const netAmount =
+            (Number(diff.amount) || 0) - (Number(diff.refundAmount) || 0);
 
-//     return obj;
-//   } catch (error) {
-//     return {
-//       status: 500,
-//       message: "An error occurred",
-//       error: error.message,
-//     };
-//   }
-// }
+          rows.push({
+            ...commonFields,
+            bookingId: `${item.bookingId}_chan_${diff.id}`,
+            transactionType: "Vehicle Change",
+            amount: netAmount,
+            lateFee: 0,
+            additionalFee: 0,
+            paymentMethod: diff.paymentMethod || "online",
+            paymentStatus: diff.status,
+            paySuccessId: diff.transactionId || "",
+            orderId: diff.orderId || "",
+            rrnNumber: diff.rrnNumber || "",
+            transactionDate: paidDate.toLocaleString("en-GB", {
+              timeZone: "Asia/Kolkata",
+            }),
+          });
+        });
+      }
+    });
+
+    // sort by transaction date desc
+    rows.sort(
+      (a, b) => new Date(b.transactionDate) - new Date(a.transactionDate),
+    );
+
+    const totalAmount = rows.reduce((sum, r) => sum + r.amount, 0);
+
+    return res.json({
+      status: 200,
+      message: "Report data fetched successfully",
+      data: {
+        startDate: dayStart.toLocaleDateString("en-GB", {
+          timeZone: "Asia/Kolkata",
+        }),
+        endDate: dayEnd.toLocaleDateString("en-GB", {
+          timeZone: "Asia/Kolkata",
+        }),
+        totalTransactions: rows.length,
+        totalAmount,
+        rows,
+      },
+    });
+  } catch (error) {
+    return res.json({
+      status: 500,
+      message: "An error occurred",
+      error: error.message,
+    });
+  }
+}
 
 async function saveUser(userData) {
   const {
@@ -1265,15 +1279,6 @@ async function getUserByContact(body) {
   }
 }
 
-// async function login(emailId) {
-//   try {
-//     const res = await Auth(emailId, "Infoaxon");
-//     console.log(res);
-//   } catch (error) {
-//     throw new Error(error);
-//   }
-// }
-
 async function searchUser(data) {
   let obj = { status: 200, message: "data fetched successfully", data: [] };
   try {
@@ -1301,6 +1306,7 @@ async function searchUser(data) {
 
 module.exports = {
   getAllDataCount,
+  getTransactionReport,
   getAllUsers,
   getAllUsersAdmin,
   updateUser,

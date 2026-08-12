@@ -1,6 +1,7 @@
 const { sendEmail } = require("../../../utils/email/index");
 const { v4: uuidv4 } = require("uuid");
 const moment = require("moment");
+const axios = require("axios");
 const { mongoose } = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const Vehicle = require("../../../db/schemas/onboarding/vehicle.schema");
@@ -5752,6 +5753,43 @@ const getStationData = async (query) => {
   return obj;
 };
 
+const getStationMap = async (req, res) => {
+  try {
+    const { stationId } = req.params;
+
+    const stationData = await station.findOne({ stationId });
+
+    if (!stationData) {
+      return res.status(404).json({
+        message: "Station not found",
+      });
+    }
+
+    const mapUrl =
+      `https://maps.googleapis.com/maps/api/staticmap` +
+      `?center=${encodeURIComponent(
+        stationData.address || stationData.city || "",
+      )}` +
+      `&zoom=10` +
+      `&size=600x400` +
+      `&markers=color:red|label:A|${stationData.latitude},${stationData.longitude}` +
+      `&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+
+    const response = await axios.get(mapUrl, {
+      responseType: "arraybuffer",
+    });
+
+    res.set("Content-Type", "image/png");
+    res.send(response.data);
+  } catch (error) {
+    console.error("Error fetching station map:", error.message);
+
+    res.status(500).json({
+      message: "Failed to fetch station map",
+    });
+  }
+};
+
 async function getAllVehicles({ page, limit }) {
   const obj = { status: 200, message: "data fetched successfully", data: [] };
   const offset = (page - 1) * limit;
@@ -5845,6 +5883,7 @@ module.exports = {
   getVehicleMasterData,
   getVehicleTblData,
   getStationData,
+  getStationMap,
   getLocationData,
   getLocation,
   getPlanData,
