@@ -180,14 +180,17 @@ const maintenanceVehicleFunction = async (req, res) => {
             $in: maintenanceIds.map((id) => new mongoose.Types.ObjectId(id)),
           },
         },
-        {
-          $set: {
-            endDate,
-            status: "inactive",
-            finishDate: new Date().getTime(),
-            unblockedBy: userType,
+        [
+          {
+            $set: {
+              actualEndDate: "$endDate",
+              endDate,
+              status: "inactive",
+              finishDate: new Date().getTime(),
+              unblockedBy: userType,
+            },
           },
-        },
+        ],
       );
       return res.json({
         status: 200,
