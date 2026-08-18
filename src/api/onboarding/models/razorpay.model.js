@@ -773,6 +773,7 @@ const updateBookingAdminExtension = async (
   }
 
   const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
+
   if (!existingIds.includes(data.extendAmount.id)) {
     booking.bookingPrice.extendAmount.push({
       ...data.extendAmount,
@@ -787,14 +788,14 @@ const updateBookingAdminExtension = async (
   booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
   booking.bookingStatus = "extended";
 
-  booking.bookingPrice.extendAmount = booking.bookingPrice.extendAmount || [];
-  booking.bookingPrice.extendAmount.push({
-    ...data.extendAmount,
-    transactionId: paymentId || "",
-    paymentMethod: "online",
-    rrnNumber: rrnNumber ?? null,
-    status: "paid",
-  });
+  // booking.bookingPrice.extendAmount = booking.bookingPrice.extendAmount || [];
+  // booking.bookingPrice.extendAmount.push({
+  //   ...data.extendAmount,
+  //   transactionId: paymentId || "",
+  //   paymentMethod: "online",
+  //   rrnNumber: rrnNumber ?? null,
+  //   status: "paid",
+  // });
 
   booking.extendBooking = booking.extendBooking || {};
   booking.extendBooking.oldBooking = booking.extendBooking.oldBooking || [];

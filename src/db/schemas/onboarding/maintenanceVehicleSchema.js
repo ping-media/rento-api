@@ -12,10 +12,18 @@ const maintenanceVehicleSchema = new Schema(
       type: String,
       require: true,
     },
-
+    createDate: {
+      type: Number,
+    },
     endDate: {
       type: String,
       require: true,
+    },
+    actualEndDate: {
+      type: String,
+    },
+    finishDate: {
+      type: Number,
     },
     reason: {
       type: String,
@@ -23,13 +31,23 @@ const maintenanceVehicleSchema = new Schema(
       require: true,
       lowercase: true,
     },
+    createdBy: {
+      type: String,
+      enum: ["admin", "manager"],
+      default: "admin",
+    },
+    unblockedBy: {
+      type: String,
+      enum: ["admin", "manager"],
+      default: "admin",
+    },
     status: {
       type: String,
       enum: ["active", "inactive"],
       default: "active",
     },
   },
-  { timestamps: { createsdAt: "createdAt", updatedAt: "updatedAt" } },
+  { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } },
 );
 
 // indexing

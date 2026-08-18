@@ -858,6 +858,7 @@ const getVehicleIds = async (req, res) => {
       currentBooking: currentBookingMap[vehicle._id.toString()]
         ? {
             bookingId: currentBookingMap[vehicle._id.toString()].bookingId,
+            _id: currentBookingMap[vehicle._id.toString()]._id,
           }
         : null,
     }));

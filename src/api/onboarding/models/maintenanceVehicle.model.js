@@ -77,6 +77,8 @@ const getMaintenanceVehicle = async (req, res) => {
 };
 
 const maintenanceVehicleFunction = async (req, res) => {
+  const { userType } = req.user;
+
   const {
     vehicleTableId,
     vehicleTableIds,
@@ -90,7 +92,6 @@ const maintenanceVehicleFunction = async (req, res) => {
 
   // Validate input for new or edit operations
   if (maintenanceIds?.length === 0) {
-    // if (action !== "delete" && (!vehicleTableId || !startDate || !endDate)) {
     if (
       action !== "delete" &&
       (!startDate || !endDate || (!vehicleTableId && !vehicleTableIds?.length))
@@ -130,12 +131,14 @@ const maintenanceVehicleFunction = async (req, res) => {
     if (action === "delete") {
       if (maintenanceIds?.length > 0) {
         const deleted = await MaintenanceVehicle.deleteMany({
-          _id: { $in: maintenanceIds.map((id) => mongoose.Types.ObjectId(id)) },
+          _id: {
+            $in: maintenanceIds.map((id) => new mongoose.Types.ObjectId(id)),
+          },
         });
         return res.status(200).json({
           status: 200,
           message: `${deleted.deletedCount} vehicle(s) deleted successfully.`,
-          data: result,
+          // data: result,
         });
       }
       if (!maintenanceId) {
@@ -171,8 +174,20 @@ const maintenanceVehicleFunction = async (req, res) => {
         });
       }
       const existingMaintenance = await MaintenanceVehicle.updateMany(
-        { _id: { $in: maintenanceIds } },
-        { $set: { endDate, status: "inactive" } },
+        // { _id: { $in: maintenanceIds } },
+        {
+          _id: {
+            $in: maintenanceIds.map((id) => new mongoose.Types.ObjectId(id)),
+          },
+        },
+        {
+          $set: {
+            endDate,
+            status: "inactive",
+            finishDate: new Date().getTime(),
+            unblockedBy: userType,
+          },
+        },
       );
       return res.json({
         status: 200,
@@ -200,10 +215,12 @@ const maintenanceVehicleFunction = async (req, res) => {
         });
       }
 
+      existingMaintenance.actualEndDate = existingMaintenance.endDate;
       existingMaintenance.endDate = endDate;
-      await existingMaintenance.save();
-
       existingMaintenance.status = "inactive";
+      existingMaintenance.finishDate = new Date().getTime();
+      existingMaintenance.unblockedBy = userType;
+
       await existingMaintenance.save();
 
       return res.json({
@@ -245,6 +262,8 @@ const maintenanceVehicleFunction = async (req, res) => {
             startDate,
             endDate,
             reason,
+            createDate: new Date().getTime(),
+            createdBy: userType,
             status: "active",
           });
         }
@@ -266,69 +285,6 @@ const maintenanceVehicleFunction = async (req, res) => {
         message: `${bulkData.length} vehicle(s) added to maintenance`,
       });
     }
-    // else {
-    //   // Check for overlapping maintenance schedules
-    //   const overlappingMaintenance = await MaintenanceVehicle.findOne({
-    //     vehicleTableId: vehicleTableId,
-    //     status: "active",
-    //     $or: [
-    //       // Case 1: New schedule starts during an existing schedule
-    //       {
-    //         startDate: { $lte: startDate },
-    //         endDate: { $gte: startDate },
-    //       },
-    //       // Case 2: New schedule ends during an existing schedule
-    //       {
-    //         startDate: { $lte: endDate },
-    //         endDate: { $gte: endDate },
-    //       },
-    //       // Case 3: New schedule completely contains an existing schedule
-    //       {
-    //         startDate: { $gte: startDate },
-    //         endDate: { $lte: endDate },
-    //       },
-    //     ],
-    //   });
-
-    //   if (overlappingMaintenance) {
-    //     return res.json({
-    //       status: 400,
-    //       success: false,
-    //       message:
-    //         "Vehicle already has a maintenance schedule that overlaps with these dates and time",
-    //     });
-    //   }
-
-    //   const vehicleData = await getVehicleTbl(req.query);
-
-    //   const data = vehicleData?.data?.filter((item) => {
-    //     return item._id.toString() === vehicleTableId;
-    //   });
-
-    //   if (data.length === 0) {
-    //     const maintenanceData = {
-    //       vehicleTableId,
-    //       startDate,
-    //       endDate,
-    //       reason,
-    //       status: "active",
-    //     };
-    //     const newMaintenanceData = new MaintenanceVehicle(maintenanceData);
-    //     await newMaintenanceData.save();
-
-    //     return res.status(200).json({
-    //       status: 200,
-    //       success: true,
-    //       message: "Vehicle successfully added to maintenance",
-    //     });
-    //   }
-
-    //   return res.json({
-    //     status: 404,
-    //     success: false,
-    //     message: "Vehicle is not available",
-    //   });
-    // }
   } catch (error) {
     console.error("Error during maintenance vehicle process:", error);
     return res.json({

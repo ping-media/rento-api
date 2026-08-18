@@ -1608,18 +1608,21 @@ router.post("/cancelledBooking", Authentication, async (req, res) => {
       managerContact,
     ];
 
-    whatsappMessage([contact], "booking_cancel", messageData);
+    // only send the email and notification in production
+    if (process.env.NODE_ENV === "production") {
+      whatsappMessage([contact], "booking_cancel", messageData);
 
-    sendCancelEmail(
-      email,
-      userId.firstName,
-      vehicleName,
-      bookingId,
-      BookingStartDateAndTime,
-      stationName,
-      totalPrice,
-      managerContact,
-    );
+      sendCancelEmail(
+        email,
+        userId.firstName,
+        vehicleName,
+        bookingId,
+        BookingStartDateAndTime,
+        stationName,
+        totalPrice,
+        managerContact,
+      );
+    }
 
     return res.json(obj);
   } catch (error) {
