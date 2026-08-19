@@ -2629,8 +2629,17 @@ const getVehicleTbl = async (query) => {
                 },
                 bookingStatus: { $ne: "canceled" },
                 rideStatus: { $nin: ["completed", "canceled"] },
-                BookingEndDateAndTime: { $gt: startDate },
-                BookingStartDateAndTime: { $lt: endDate },
+                $or: [
+                  { rideStatus: "ongoing" },
+                  {
+                    $and: [
+                      { BookingEndDateAndTime: { $gt: startDate } },
+                      { BookingStartDateAndTime: { $lt: endDate } },
+                    ],
+                  },
+                ],
+                // BookingEndDateAndTime: { $gt: startDate },
+                // BookingStartDateAndTime: { $lt: endDate },
               },
             },
             {
@@ -2709,6 +2718,7 @@ const getVehicleTbl = async (query) => {
                   // Check for time overlap (any of these conditions means conflict)
                   {
                     $or: [
+                      { $eq: ["$$booking.rideStatus", "ongoing"] },
                       // Booking starts during search period
                       {
                         $and: [
@@ -2959,6 +2969,7 @@ const getVehicleTbl = async (query) => {
                 bookingStatus: { $ne: "canceled" },
                 rideStatus: { $nin: ["completed", "canceled"] },
                 $or: [
+                  { rideStatus: "ongoing" }, // always load ongoing regardless of dates
                   // overlapping with search period — for conflictingBookings
                   {
                     BookingEndDateAndTime: { $gt: startDate },
@@ -2970,8 +2981,6 @@ const getVehicleTbl = async (query) => {
                     vehicleAssigned: true,
                   },
                 ],
-                // BookingEndDateAndTime: { $gt: startDate },
-                // BookingStartDateAndTime: { $lt: endDate },
               },
             },
             {
@@ -2985,8 +2994,6 @@ const getVehicleTbl = async (query) => {
                 vehicleTableId: 1,
                 BookingStartDateAndTime: 1,
                 BookingEndDateAndTime: 1,
-                // changeVehicle: 1,
-                // vehicleBasicVehicleNumber: "$vehicleBasic.vehicleNumber",
               },
             },
           ],
@@ -3055,6 +3062,7 @@ const getVehicleTbl = async (query) => {
                   // Check for time overlap (any of these conditions means conflict)
                   {
                     $or: [
+                      { $eq: ["$$booking.rideStatus", "ongoing"] }, // overdue ongoing always blocks
                       // Booking starts during search period
                       {
                         $and: [
@@ -3944,19 +3952,17 @@ const getVehicleTblData = async (query) => {
                 paymentStatus: {
                   $in: ["paid", "partially_paid", "partiallyPay", "pending"],
                 },
-                // Only load bookings that could possibly overlap
-                // (end date is after our search start)
-                // $or: [
-                //   { rideStatus: "ongoing" }, // always include ongoing regardless of dates
-                //   {
-                //     $and: [
-                //       { BookingEndDateAndTime: { $gt: startDate } },
-                //       { BookingStartDateAndTime: { $lt: endDate } },
-                //     ],
-                //   },
-                // ],
-                BookingEndDateAndTime: { $gt: startDate },
-                BookingStartDateAndTime: { $lt: endDate },
+                $or: [
+                  { rideStatus: "ongoing" }, // always include ongoing regardless of dates
+                  {
+                    $and: [
+                      { BookingEndDateAndTime: { $gt: startDate } },
+                      { BookingStartDateAndTime: { $lt: endDate } },
+                    ],
+                  },
+                ],
+                // BookingEndDateAndTime: { $gt: startDate },
+                // BookingStartDateAndTime: { $lt: endDate },
               },
             },
             // Only project fields we actually use — don't load entire booking documents
@@ -4029,7 +4035,7 @@ const getVehicleTblData = async (query) => {
                   // Check for time overlap with search period
                   {
                     $or: [
-                      // { $eq: ["$$booking.rideStatus", "ongoing"] },
+                      { $eq: ["$$booking.rideStatus", "ongoing"] },
                       // Booking starts during search period
                       {
                         $and: [

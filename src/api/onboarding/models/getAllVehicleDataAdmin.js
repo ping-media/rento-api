@@ -825,6 +825,15 @@ const getVehicleIds = async (req, res) => {
 
     const vehicleIds = vehicles.map((v) => v._id);
 
+    // const currentBookings = await Booking.find(
+    //   {
+    //     vehicleTableId: { $in: vehicleIds },
+    //     vehicleAssigned: true,
+    //     rideStatus: { $in: ["ongoing", "pending"] },
+    //   },
+    //   { bookingId: 1, vehicleTableId: 1 },
+    // );
+
     const currentBookings = await Booking.find(
       {
         vehicleTableId: { $in: vehicleIds },
@@ -833,6 +842,25 @@ const getVehicleIds = async (req, res) => {
       },
       { bookingId: 1, vehicleTableId: 1 },
     );
+
+    const nowISO = new Date().toISOString();
+    const vehicleMasterIds = [
+      ...new Set(vehicles.map((v) => v.vehicleMasterId.toString())),
+    ];
+
+    const unassignedPendingCount = await Booking.countDocuments({
+      vehicleAssigned: false,
+      rideStatus: "pending",
+      bookingStatus: { $ne: "canceled" },
+      paymentStatus: {
+        $in: ["paid", "partially_paid", "partiallyPay", "pending"],
+      },
+      BookingEndDateAndTime: { $gt: nowISO }, // not already expired
+      vehicleMasterId: {
+        $in: vehicleMasterIds.map((id) => new mongoose.Types.ObjectId(id)),
+      },
+      ...(stationId ? { stationId } : {}),
+    });
 
     const currentBookingMap = {};
     currentBookings.forEach((b) => {
@@ -863,10 +891,21 @@ const getVehicleIds = async (req, res) => {
         : null,
     }));
 
+    const freeVehicles = vehicleData.filter(
+      (v) => !v.currentBooking && !v.isUnderMaintenance,
+    );
+    const actualFreeCount = Math.max(
+      0,
+      freeVehicles.length - unassignedPendingCount,
+    );
+
     return res.json({
       status: 200,
       message: "Vehicle data fetched successfully",
       count: vehicleData.length,
+      freeCount: freeVehicles.length,
+      actualFreeCount,
+      reservedByPendingBookings: unassignedPendingCount,
       data: vehicleData,
     });
   } catch (error) {
