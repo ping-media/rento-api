@@ -21,6 +21,7 @@ const {
   getUserByContact,
   addOrUpdateMobileToken,
   updateStationInfo,
+  getCustomerKycStatus,
 } = require("../models/account.model");
 
 exports.updateUser = async (req, res) => {
@@ -56,6 +57,20 @@ exports.addOrUpdateMobileToken = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const result = await getAllUsers(req.query);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
+exports.customerKycStatus = async (req, res) => {
+  try {
+    const result = await getCustomerKycStatus(req.query);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({

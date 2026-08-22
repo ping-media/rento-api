@@ -20,6 +20,10 @@ router.get("/getAllUsers", async (req, res) => {
   accountService.getAllUsers(req, res);
 });
 
+router.get("/kyc-status", async (req, res) => {
+  accountService.customerKycStatus(req, res);
+});
+
 router.get("/admin/getAllUsers", Authentication, async (req, res) => {
   accountService.getAllUsersAdmin(req, res);
 });

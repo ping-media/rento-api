@@ -96,6 +96,78 @@ async function addOrUpdateMobileToken({ _id, token }) {
   }
 }
 
+const getCustomerKycStatus = async (query) => {
+  const obj = {
+    status: 200,
+    message: "Kyc status fetched successfully",
+    data: null,
+  };
+
+  const { userId } = query;
+
+  if (!userId) {
+    obj.status = 400;
+    obj.message = "User ID is required";
+    return obj;
+  }
+
+  try {
+    const [user, document] = await Promise.all([
+      User.findById(userId).select("kycApproved isDocumentVerified").lean(),
+      Document.findOne({ userId }).select("files").lean(),
+    ]);
+
+    if (!user) {
+      obj.status = 404;
+      obj.message = "User not found";
+      return obj;
+    }
+
+    const files = document?.files || [];
+
+    // extract docType from last segment of fileName
+    const uploadedTypes = new Set(
+      files.map((f) => f.fileName.split("_").pop()),
+    );
+
+    const docStatus = {
+      profile: uploadedTypes.has("Selfie"),
+      licenceFront: files.some((f) => {
+        const parts = f.fileName.split("_");
+        return parts.at(-1) === "license" && parts.at(-2) === "0";
+      }),
+      licenceBack: files.some((f) => {
+        const parts = f.fileName.split("_");
+        return parts.at(-1) === "license" && parts.at(-2) === "1";
+      }),
+      aadharFront: files.some((f) => {
+        const parts = f.fileName.split("_");
+        return parts.at(-1) === "aadhar" && parts.at(-2) === "0";
+      }),
+      aadharBack: files.some((f) => {
+        const parts = f.fileName.split("_");
+        return parts.at(-1) === "aadhar" && parts.at(-2) === "1";
+      }),
+    };
+
+    // minimum required: license front + aadhar front
+    const isDocumentUploaded = docStatus.licenceFront && docStatus.aadharFront;
+
+    obj.data = {
+      kycApproved: user.kycApproved,
+      isDocumentUploaded,
+      docStatus,
+    };
+    return obj;
+  } catch (error) {
+    console.error("Error fetching KYC status:", error.message);
+    obj.status = 500;
+    obj.message = `Server error: ${error.message}`;
+  }
+
+  return obj;
+};
+
 const getAllUsers = async (query) => {
   const obj = {
     status: 200,
@@ -1308,6 +1380,7 @@ module.exports = {
   getAllDataCount,
   getTransactionReport,
   getAllUsers,
+  getCustomerKycStatus,
   getAllUsersAdmin,
   updateUser,
   saveUser,

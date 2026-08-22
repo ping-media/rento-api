@@ -4201,12 +4201,6 @@ const getVehicleTblData = async (query) => {
         const gKey = `${v.vehicleModel}-${v.vehicleMasterData?.vehicleBrand || ""}-${v.vehicleMasterData?.vehicleName || ""}-${v.perDayCost}`;
         if (!fullPoolCountByGroup[gKey]) {
           const assignedVehicleIdsInPool = (v.conflictingBookings || [])
-            // .filter(
-            //   (b) =>
-            //     b.vehicleAssigned === true &&
-            //     b.vehicleTableId &&
-            //     b.rideStatus === "ongoing",
-            // )
             .filter((b) => b.vehicleAssigned === true && b.vehicleTableId)
             .map((b) => new ObjectId(b.vehicleTableId.toString()));
 
@@ -4218,26 +4212,6 @@ const getVehicleTblData = async (query) => {
               ? { _id: { $nin: assignedVehicleIdsInPool } }
               : {}),
           });
-
-          // const maintenanceBlockedIds = await mongoose.connection
-          //   .collection("maintenancevehicles")
-          //   .distinct("vehicleTableId", {
-          //     status: "active",
-          //     startDate: { $lte: endDate },
-          //     endDate: { $gte: startDate },
-          //   });
-
-          // const excludedIds = [
-          //   ...assignedVehicleIdsInPool,
-          //   ...maintenanceBlockedIds.map((id) => new ObjectId(id.toString())),
-          // ];
-
-          // const poolTrulyFreeCount = await vehicleTable.countDocuments({
-          //   vehicleMasterId: v.vehicleMasterId,
-          //   stationId: v.stationId,
-          //   vehicleStatus: "active",
-          //   ...(excludedIds.length > 0 ? { _id: { $nin: excludedIds } } : {}),
-          // });
           fullPoolCountByGroup[gKey] = poolTrulyFreeCount;
         }
       }
@@ -4291,10 +4265,6 @@ const getVehicleTblData = async (query) => {
       // Assigned bookings pin a specific vehicle — don't count against other vehicles
       const assignedConflictingBookings = conflictingBookings.filter(
         (b) => b.vehicleAssigned === true && b.vehicleTableId,
-        // (b) =>
-        //   b.vehicleAssigned === true &&
-        //   b.vehicleTableId &&
-        //   b.rideStatus === "ongoing",
       );
       const unassignedConflictingBookings = conflictingBookings.filter(
         (b) => !b.vehicleAssigned,
@@ -4327,13 +4297,6 @@ const getVehicleTblData = async (query) => {
           unassignedConflictingBookings.length,
         );
         availableSlots = actualAvailableVehicles.length;
-
-        // const unassignedCount = Math.min(
-        //   unassignedConflictingBookings.length,
-        //   trulyFreeVehicles.length,
-        // );
-        // actualAvailableVehicles = trulyFreeVehicles.slice(unassignedCount);
-        // availableSlots = actualAvailableVehicles.length;
       }
 
       // Latest booking date info for the excluded display
