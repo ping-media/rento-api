@@ -444,7 +444,12 @@ const savePickupImageLinks = async (req, res) => {
 
     const { vehicleBasic, paymentMethod, bookingStatus } = booking;
 
-    if (paymentMethod === "partiallyPay" || paymentMethod === "online") {
+    const RRN_CHECK_START_DATE = new Date("2026-04-01");
+
+    if (
+      (paymentMethod === "partiallyPay" || paymentMethod === "online") &&
+      booking.createdAt >= RRN_CHECK_START_DATE
+    ) {
       const isRrnNumberFound =
         (booking?.bookingPrice?.rrnNumber || "")?.trim() !== "";
 
