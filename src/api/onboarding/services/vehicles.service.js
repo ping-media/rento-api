@@ -32,7 +32,12 @@ const {
   updateCouponCount,
   applyCoupon,
 } = require("../models/coupon.model");
-const { getBookings, getBooking } = require("../models/booking.model");
+const {
+  getBookings,
+  getBooking,
+  getActiveBannerBooking,
+  getVehiclesByStation,
+} = require("../models/booking.model");
 const {
   getVehicleBookrecode,
   VehicleBookrecode,
@@ -358,6 +363,34 @@ exports.getBookings = async (req, res) => {
 exports.getBooking = async (req, res) => {
   try {
     const result = await getBooking(req.query, req.headers);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
+exports.getActiveBannerBooking = async (req, res) => {
+  try {
+    const result = await getActiveBannerBooking(req.params);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
+exports.getVehiclesByStation = async (req, res) => {
+  try {
+    const result = await getVehiclesByStation(req.params, req.query);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({

@@ -1,4 +1,5 @@
 const Booking = require("../../../db/schemas/onboarding/booking.schema.js");
+const VehicleTable = require("../../../db/schemas/onboarding/vehicle-table.schema.js");
 const General = require("../../../db/schemas/onboarding/general.schema.js");
 const Log = require("../../../api/onboarding/models/Logs.model.js");
 const station = require("../../../db/schemas/onboarding/station.schema.js");
@@ -19,7 +20,7 @@ const User = require("../../../db/schemas/onboarding/user.schema.js");
 const Razorpay = require("razorpay");
 const Logs = require("../../../db/schemas/onboarding/log.js");
 const { updateCouponUsage } = require("../../../helper/updateCouponCount.js");
-const { generateTempId } = require("../../../utils/generateBookingId.js");
+// const { generateTempId } = require("../../../utils/generateBookingId.js");
 const Station = require("../../../db/schemas/onboarding/station.schema.js");
 require("dotenv").config();
 
@@ -325,6 +326,185 @@ const getBooking = async (query) => {
       functionName: "booking",
     });
     obj.status = 500;
+    obj.message = "Internal server error";
+  }
+
+  return obj;
+};
+
+const getActiveBannerBooking = async (query) => {
+  const obj = {
+    status: 200,
+    success: true,
+    message: "Active booking fetched successfully",
+    data: null,
+  };
+
+  try {
+    const { userId } = query;
+
+    console.log(userId);
+
+    const now = new Date().toISOString();
+
+    const booking = await Booking.findOne({
+      userId: userId,
+      bookingStatus: "done",
+      rideStatus: { $in: ["pending", "ongoing"] },
+      BookingEndDateAndTime: { $gt: now },
+    })
+      .select(
+        "bookingId vehicleImage vehicleName vehicleBrand BookingStartDateAndTime BookingEndDateAndTime rideStatus stationMasterUserId",
+      )
+      .populate("stationMasterUserId", "contact firstName lastName")
+      .sort({ BookingStartDateAndTime: 1 })
+      .lean();
+
+    if (!booking) {
+      obj.success = false;
+      obj.message = "No active booking found";
+      return obj;
+    }
+
+    // Determine banner label based on current time vs booking window
+    const rideStatusToBannerStatus = {
+      pending: "upcoming",
+      ongoing: "ongoing",
+    };
+    const bannerStatus =
+      rideStatusToBannerStatus[booking.rideStatus] ?? "upcoming";
+
+    obj.data = {
+      _id: booking._id,
+      bookingId: booking.bookingId,
+      vehicleImage: booking.vehicleImage,
+      vehicleName: booking.vehicleName,
+      vehicleBrand: booking.vehicleBrand,
+      BookingStartDateAndTime: booking.BookingStartDateAndTime,
+      BookingEndDateAndTime: booking.BookingEndDateAndTime,
+      bannerStatus: bannerStatus,
+      stationManagerContact: {
+        name: `${booking.stationMasterUserId?.firstName} ${booking.stationMasterUserId?.lastName}`,
+        contact: booking.stationMasterUserId?.contact,
+      },
+    };
+    return obj;
+  } catch (error) {
+    obj.status = 500;
+    obj.success = false;
+    obj.message = "Internal server error";
+  }
+
+  return obj;
+};
+
+const getVehiclesByStation = async (parms, query) => {
+  const obj = {
+    status: 200,
+    success: true,
+    message: "Vehicles fetched successfully",
+    pagination: null,
+    data: null,
+  };
+
+  try {
+    const { stationId } = parms;
+
+    const page = parseInt(query.page) || 1;
+    const limit = parseInt(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Deduplicate at DB level using aggregation, then paginate
+    const [result] = await VehicleTable.aggregate([
+      {
+        $match: {
+          stationId,
+          vehicleStatus: "active",
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $group: {
+          _id: "$vehicleMasterId", // deduplicate by vehicleMasterId
+          vehicleModel: { $first: "$vehicleModel" },
+          perDayCost: { $first: "$perDayCost" },
+          weekendCost: { $first: "$weekendCost" },
+          freeKms: { $first: "$freeKms" },
+          weekendFreeKms: { $first: "$weekendFreeKms" },
+          vehiclePlan: { $first: "$vehiclePlan" },
+        },
+      },
+      {
+        $facet: {
+          total: [{ $count: "count" }],
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $lookup: {
+                from: "vehiclemasters", // actual MongoDB collection name
+                localField: "_id",
+                foreignField: "_id",
+                as: "master",
+              },
+            },
+            { $unwind: "$master" },
+          ],
+        },
+      },
+    ]);
+
+    const total = result.total[0]?.count || 0;
+    const uniqueVehicles = result.data;
+
+    const data = uniqueVehicles.map((v) => {
+      const pricing = [
+        {
+          planName: "Per Day",
+          planDuration: 1,
+          planPrice: v.perDayCost,
+          kmLimit: v.freeKms,
+        },
+        {
+          planName: "Weekend",
+          planDuration: 1,
+          planPrice: v.weekendCost,
+          kmLimit: v.weekendFreeKms ?? null,
+        },
+        ...v.vehiclePlan.map((plan) => ({
+          planId: plan.planId,
+          planName: plan.planName,
+          planDuration: plan.planDuration,
+          planPrice: plan.planPrice,
+          kmLimit: plan.kmLimit,
+        })),
+      ];
+
+      return {
+        vehicleMasterId: v._id,
+        vehicleBrand: v.master?.vehicleBrand,
+        vehicleName: v.master?.vehicleName,
+        vehicleImage: v.master?.vehicleImage,
+        vehicleModel: v.vehicleModel,
+        pricing,
+      };
+    });
+
+    obj.data = data;
+    obj.pagination = {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page < Math.ceil(total / limit),
+    };
+    return obj;
+  } catch (error) {
+    console.log(error);
+    obj.status = 500;
+    obj.success = false;
     obj.message = "Internal server error";
   }
 
@@ -2336,5 +2516,7 @@ module.exports = {
   updateBooking,
   updateExtendBooking,
   rescheduleBooking,
+  getActiveBannerBooking,
+  getVehiclesByStation,
   deleteBooking,
 };

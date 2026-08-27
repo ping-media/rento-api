@@ -27,7 +27,8 @@ const vehicleTableSchema = new Schema(
   {
     vehicleMasterId: {
       type: Schema.Types.ObjectId,
-      ref: "vehiclemasters",
+      // ref: "vehiclemasters",
+      ref: "vehicleMaster",
       required: true,
     },
     vehicleNumber: {

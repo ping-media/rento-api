@@ -406,20 +406,23 @@ router.get("/getBooking", async (req, res) => {
   vehiclesService.getBooking(req, res);
 });
 
+router.get("/booking/active-banner/:userId", async (req, res) => {
+  vehiclesService.getActiveBannerBooking(req, res);
+});
+
+router.get("/vehicle/station/:stationId", async (req, res) => {
+  vehiclesService.getVehiclesByStation(req, res);
+});
+
 router.post("/createOrder", async (req, res) => {
   vehiclesService.createOrder(req, res);
 });
-
-// router.post("/createVehicleMaster", async (req, res) => {
-//   vehiclesService.createVehicleMaster(req, res);
-// })
 
 router.get("/getOrders", async (req, res) => {
   vehiclesService.getOrders(req, res);
 });
 
 //getCoupons bookingAvailability
-
 router.get("/getCoupons", Authentication, async (req, res) => {
   vehiclesService.getCoupons(req, res);
 });
