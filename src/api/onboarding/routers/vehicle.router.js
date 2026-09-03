@@ -549,10 +549,16 @@ router.put(
         if (latitude) objData.latitude = Number(latitude);
         if (longitude) objData.longitude = Number(longitude);
         if (radiusKm) objData.radiusKm = Number(radiusKm);
-        //console.log(objData)
+
         await Location.updateOne({ _id }, { $set: objData });
 
-        //console.log(updatedLocation)
+        if (locationName) {
+          await Station.updateMany(
+            { locationId: _id },
+            { $set: { city: locationName } },
+          );
+        }
+
         obj.message = "location updated successfully";
         obj.status = 200;
         return res.status(200).json(obj);

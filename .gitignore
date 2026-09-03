@@ -10,7 +10,6 @@ dist/
 # environment file
 .env
 
-package-lock.json
 backup*
 
 # Compiled Java class files

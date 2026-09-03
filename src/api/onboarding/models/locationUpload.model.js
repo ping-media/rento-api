@@ -3,6 +3,7 @@ const multer = require("multer");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 require("dotenv").config();
 const Location = require("../../../db/schemas/onboarding/location.schema");
+const Station = require("../../../db/schemas/onboarding/station.schema");
 const Log = require("../models/Logs.model");
 const { resizeImg } = require("../../../utils/resizeImage");
 
@@ -132,6 +133,11 @@ const fileUpload = async (req, res) => {
           },
         },
         { new: true },
+      );
+      // Update city name for all stations belonging to this location
+      await Station.updateMany(
+        { locationId: _id },
+        { $set: { city: locationName } },
       );
 
       return res.status(200).json({
