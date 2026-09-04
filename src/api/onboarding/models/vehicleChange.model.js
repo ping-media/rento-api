@@ -507,10 +507,6 @@ const vehicleChangeNew = async (req, res) => {
       }
     }
 
-    // const isSameVehicleMaster =
-    //   booking.vehicleMasterId.toString() ===
-    //   newVehicleData.vehicleMasterId.toString();
-
     let timeLineData = null;
 
     // --- Store old vehicle snapshot ---
@@ -642,15 +638,6 @@ const vehicleChangeNew = async (req, res) => {
         appliedPlans: newVehicleData.appliedPlans,
         tax: snapshotTax,
       },
-      // newVehicleSnapshot: {
-      //   vehicleTableId: newVehicleData._id,
-      //   vehicleMasterId: newVehicleData.vehicleMasterId,
-      //   vehicleName: newVehicleData.vehicleName,
-      //   vehicleNumber: newVehicleData.vehicleNumber,
-      //   rentalCost: newVehicleData.totalRentalCost,
-      //   appliedPlans: newVehicleData.appliedPlans,
-      //   tax: newVehicleData.tax,
-      // },
     });
 
     booking.markModified("bookingPrice.diffAmount");
@@ -659,11 +646,18 @@ const vehicleChangeNew = async (req, res) => {
     booking.markModified("vehicleBasic");
     booking.markModified("changeVehicle");
 
-    const changeVehicleMessage =
+    const oldVehicle =
       booking.changeVehicle.vehicleNumber !== "unassigned" &&
       booking.changeVehicle.vehicleTableId !== null
-        ? `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`
-        : `${newVehicleData.vehicleName}(${newVehicleData.vehicleNumber})`;
+        ? `(${booking.changeVehicle.vehicleNumber})`
+        : `${booking.changeVehicle.vehicleName || "--"}(--)`;
+    const changeVehicleMessage = `From ${oldVehicle} to (${newVehicleData.vehicleNumber})`;
+
+    // const changeVehicleMessage =
+    //   booking.changeVehicle.vehicleNumber !== "unassigned" &&
+    //   booking.changeVehicle.vehicleTableId !== null
+    //     ? `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`
+    //     : `${newVehicleData.vehicleName}(${newVehicleData.vehicleNumber})`;
 
     // --- Payment link if extra payment ---
     if (isExtraPayment) {
