@@ -440,17 +440,72 @@ const getVehiclesByStation = async (parms, query) => {
         $facet: {
           total: [{ $count: "count" }],
           data: [
-            { $skip: skip },
-            { $limit: limit },
             {
               $lookup: {
-                from: "vehiclemasters", // actual MongoDB collection name
+                from: "vehiclemasters",
                 localField: "_id",
                 foreignField: "_id",
                 as: "master",
               },
             },
             { $unwind: "$master" },
+            {
+              $set: {
+                startsWithNumber: {
+                  $regexMatch: {
+                    input: { $ifNull: ["$master.vehicleName", ""] },
+                    regex: /^[0-9]/,
+                  },
+                },
+                vehicleNameBase: {
+                  $let: {
+                    vars: {
+                      match: {
+                        $regexFind: {
+                          input: { $ifNull: ["$master.vehicleName", ""] },
+                          regex: /^(.*?)(?:\s+\d+[A-Za-z]*)?$/,
+                        },
+                      },
+                    },
+                    in: {
+                      $trim: {
+                        input: { $arrayElemAt: ["$$match.captures", 0] },
+                      },
+                    },
+                  },
+                },
+                vehicleVersion: {
+                  $let: {
+                    vars: {
+                      match: {
+                        $regexFind: {
+                          input: { $ifNull: ["$master.vehicleName", ""] },
+                          regex: /(\d+)[A-Za-z]*$/,
+                        },
+                      },
+                    },
+                    in: {
+                      $convert: {
+                        input: { $arrayElemAt: ["$$match.captures", 0] },
+                        to: "int",
+                        onError: 0,
+                        onNull: 0,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            {
+              $sort: {
+                startsWithNumber: 1,
+                vehicleNameBase: 1,
+                vehicleVersion: -1,
+                "master.vehicleName": 1,
+              },
+            },
+            { $skip: skip },
+            { $limit: limit },
           ],
         },
       },
