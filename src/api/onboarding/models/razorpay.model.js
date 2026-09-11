@@ -1121,4 +1121,5 @@ module.exports = {
   markExtendBookingAsFailed,
   markBookingAsFailed,
   verifyRazorpaySignature,
+  razorpay,
 };

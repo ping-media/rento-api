@@ -742,48 +742,119 @@ async function booking(
   }
 }
 
-// cron.schedule(
-//   "0 * * * *",
-//   async () => {
-//     console.log(
-//       "Running scheduler to cancel pending payments older than 1 hour..."
-//     );
+async function sendBookingConfirmationMessage({
+  userId,
+  stationMasterUserId,
+  stationName,
+  bookingPrice,
+  BookingStartDateAndTime,
+  bookingId,
+  vehicleName,
+  vehicleBasic,
+  paymentStatus,
+  session = undefined,
+}) {
+  function convertDateString(dateString) {
+    if (!dateString) return "Invalid date";
 
-//     try {
-//       const oneHourAgo = new Date();
-//       oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+    const date = new Date(dateString);
+    if (isNaN(date)) return "Invalid date";
 
-//       // Find and update bookings with paymentStatus "pending" older than 1 hour
-//       const result = await Booking.updateMany(
-//         {
-//           paymentStatus: "pending",
-//           createdAt: { $lte: oneHourAgo },
-//         },
-//         {
-//           $set: {
-//             paymentStatus: "failed",
-//             bookingStatus: "canceled",
-//             rideStatus: "canceled",
-//           },
-//         }
-//       );
+    const options = {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    };
 
-//       if (result.modifiedCount > 0) {
-//         console.log(
-//           `Canceled ${result.modifiedCount} bookings with pending payment.`
-//         );
-//       } else {
-//         console.log("No pending payments older than 1 hour to cancel.");
-//       }
-//     } catch (error) {
-//       console.error(
-//         "Error in scheduler for canceling pending payments:",
-//         error.message
-//       );
-//     }
-//   },
-//   { timezone: "UTC" }
-// );
+    return date.toLocaleString("en-US", options);
+  }
+
+  let user;
+  let stationMasterUser;
+
+  if (userId && stationMasterUserId) {
+    user = await User.findById(userId);
+    if (!user) {
+      await Log({
+        message: `User not found with ID: ${userId}`,
+        functionName: "sendBookingConfirmationMessage",
+      });
+      return;
+    }
+
+    stationMasterUser =
+      await User.findById(stationMasterUserId).session(session);
+    if (!stationMasterUser) {
+      await Log({
+        message: `Station master user not found with ID: ${stationMasterUserId}`,
+        functionName: "sendBookingConfirmationMessage",
+        userId,
+      });
+      return;
+    }
+  }
+
+  const station = await Station.findOne({ stationName })
+    .select("latitude longitude")
+    .session(session);
+
+  if (!station) {
+    console.error(`Station not found for stationName: ${stationName}`);
+    return;
+  }
+
+  const { latitude, longitude } = station;
+  const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+
+  const totalPrice =
+    bookingPrice.discountTotalPrice > 0
+      ? bookingPrice.discountTotalPrice
+      : bookingPrice.totalPrice;
+
+  const date = convertDateString(BookingStartDateAndTime);
+
+  const messageData = [
+    user.firstName,
+    vehicleName,
+    date,
+    bookingId,
+    stationName,
+    mapLink,
+    stationMasterUser.contact,
+  ];
+
+  if (paymentStatus === "paid") {
+    messageData.push(totalPrice, vehicleBasic.refundableDeposit);
+    await whatsappMessage([user.contact], "booking_confirm_paid", messageData);
+  } else if (paymentStatus === "partially_paid") {
+    const remainingAmount = Number(totalPrice) - Number(bookingPrice.userPaid);
+    messageData.push(
+      bookingPrice.userPaid,
+      remainingAmount,
+      vehicleBasic.refundableDeposit,
+    );
+    await whatsappMessage(
+      [user.contact],
+      "booking_confirmed_partial_paid",
+      messageData,
+    );
+  } else if (paymentStatus === "cash") {
+    messageData.push(totalPrice, vehicleBasic.refundableDeposit);
+    await whatsappMessage([user.contact], "booking_confirm_cash", messageData);
+  }
+
+  sendEmailForBookingToStationMaster(
+    userId,
+    stationMasterUserId,
+    vehicleName,
+    BookingStartDateAndTime,
+    BookingEndDateAndTime,
+    bookingId,
+  );
+}
 
 const createOrder = async (o) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
@@ -5290,129 +5361,129 @@ const getVehicleTblDataAllStation = async (query) => {
   return response;
 };
 
-// Helper function to group vehicles by name
-function groupVehiclesByName(vehicles) {
-  const vehicleMap = new Map();
+// // Helper function to group vehicles by name
+// function groupVehiclesByName(vehicles) {
+//   const vehicleMap = new Map();
 
-  vehicles.forEach((vehicle) => {
-    const vehicleName = vehicle.vehicleName;
+//   vehicles.forEach((vehicle) => {
+//     const vehicleName = vehicle.vehicleName;
 
-    if (vehicleMap.has(vehicleName)) {
-      // If vehicle with this name already exists, add this vehicle's data to the additionalData array
-      const existingVehicle = vehicleMap.get(vehicleName);
+//     if (vehicleMap.has(vehicleName)) {
+//       // If vehicle with this name already exists, add this vehicle's data to the additionalData array
+//       const existingVehicle = vehicleMap.get(vehicleName);
 
-      // Initialize additionalData array if it doesn't exist
-      if (!existingVehicle.additionalData) {
-        existingVehicle.additionalData = [];
-        // Add the first vehicle's details to the array (deep clone to avoid circular references)
-        existingVehicle.additionalData.push(
-          JSON.parse(JSON.stringify(existingVehicle.vehicleDetails)),
-        );
-      }
+//       // Initialize additionalData array if it doesn't exist
+//       if (!existingVehicle.additionalData) {
+//         existingVehicle.additionalData = [];
+//         // Add the first vehicle's details to the array (deep clone to avoid circular references)
+//         existingVehicle.additionalData.push(
+//           JSON.parse(JSON.stringify(existingVehicle.vehicleDetails)),
+//         );
+//       }
 
-      // Add current vehicle details to the array (deep clone to avoid circular references)
-      existingVehicle.additionalData.push(
-        JSON.parse(JSON.stringify(vehicle.vehicleDetails)),
-      );
+//       // Add current vehicle details to the array (deep clone to avoid circular references)
+//       existingVehicle.additionalData.push(
+//         JSON.parse(JSON.stringify(vehicle.vehicleDetails)),
+//       );
 
-      // Initialize stations array if it doesn't exist
-      if (!existingVehicle.stations) {
-        existingVehicle.stations = [];
-        // Add the first vehicle's station data
-        existingVehicle.stations.push(
-          JSON.parse(JSON.stringify(existingVehicle.stationData)),
-        );
-      }
+//       // Initialize stations array if it doesn't exist
+//       if (!existingVehicle.stations) {
+//         existingVehicle.stations = [];
+//         // Add the first vehicle's station data
+//         existingVehicle.stations.push(
+//           JSON.parse(JSON.stringify(existingVehicle.stationData)),
+//         );
+//       }
 
-      // Check if this station already exists in the stations array
-      const stationExists = existingVehicle.stations.some(
-        (station) => station.stationId === vehicle.stationData.stationId,
-      );
+//       // Check if this station already exists in the stations array
+//       const stationExists = existingVehicle.stations.some(
+//         (station) => station.stationId === vehicle.stationData.stationId,
+//       );
 
-      if (!stationExists) {
-        // Add current vehicle's station data
-        existingVehicle.stations.push(
-          JSON.parse(JSON.stringify(vehicle.stationData)),
-        );
-      }
+//       if (!stationExists) {
+//         // Add current vehicle's station data
+//         existingVehicle.stations.push(
+//           JSON.parse(JSON.stringify(vehicle.stationData)),
+//         );
+//       }
 
-      // Remove the vehicleDetails to avoid duplication
-      delete existingVehicle.vehicleDetails;
+//       // Remove the vehicleDetails to avoid duplication
+//       delete existingVehicle.vehicleDetails;
 
-      // Update the map
-      vehicleMap.set(vehicleName, existingVehicle);
-    } else {
-      // First time seeing this vehicle name
-      // Create a new object with proper structure
-      const newVehicle = JSON.parse(JSON.stringify(vehicle)); // Deep clone to avoid circular references
+//       // Update the map
+//       vehicleMap.set(vehicleName, existingVehicle);
+//     } else {
+//       // First time seeing this vehicle name
+//       // Create a new object with proper structure
+//       const newVehicle = JSON.parse(JSON.stringify(vehicle)); // Deep clone to avoid circular references
 
-      // Initialize the additionalData array with this vehicle's details
-      newVehicle.additionalData = [
-        JSON.parse(JSON.stringify(vehicle.vehicleDetails)),
-      ];
+//       // Initialize the additionalData array with this vehicle's details
+//       newVehicle.additionalData = [
+//         JSON.parse(JSON.stringify(vehicle.vehicleDetails)),
+//       ];
 
-      // Initialize stations array with this vehicle's station data
-      newVehicle.stations = [JSON.parse(JSON.stringify(vehicle.stationData))];
+//       // Initialize stations array with this vehicle's station data
+//       newVehicle.stations = [JSON.parse(JSON.stringify(vehicle.stationData))];
 
-      // Remove the individual vehicleDetails to avoid duplication
-      delete newVehicle.vehicleDetails;
+//       // Remove the individual vehicleDetails to avoid duplication
+//       delete newVehicle.vehicleDetails;
 
-      vehicleMap.set(vehicleName, newVehicle);
-    }
-  });
+//       vehicleMap.set(vehicleName, newVehicle);
+//     }
+//   });
 
-  // Convert map values to array
-  return Array.from(vehicleMap.values());
-}
+//   // Convert map values to array
+//   return Array.from(vehicleMap.values());
+// }
 
-// Helper function to group vehicles by name
-function groupVehiclesByName(vehicles) {
-  const vehicleMap = new Map();
+// // Helper function to group vehicles by name
+// function groupVehiclesByName(vehicles) {
+//   const vehicleMap = new Map();
 
-  vehicles.forEach((vehicle) => {
-    const vehicleName = vehicle.vehicleName;
+//   vehicles.forEach((vehicle) => {
+//     const vehicleName = vehicle.vehicleName;
 
-    if (vehicleMap.has(vehicleName)) {
-      // If vehicle with this name already exists, add this vehicle's data to additionalData array
-      const existingVehicle = vehicleMap.get(vehicleName);
+//     if (vehicleMap.has(vehicleName)) {
+//       // If vehicle with this name already exists, add this vehicle's data to additionalData array
+//       const existingVehicle = vehicleMap.get(vehicleName);
 
-      if (!existingVehicle.additionalData.vehicles) {
-        // Create vehicles array if it doesn't exist yet, and add the first vehicle's data
-        existingVehicle.additionalData.vehicles = [
-          existingVehicle.additionalData,
-        ];
-      }
+//       if (!existingVehicle.additionalData.vehicles) {
+//         // Create vehicles array if it doesn't exist yet, and add the first vehicle's data
+//         existingVehicle.additionalData.vehicles = [
+//           existingVehicle.additionalData,
+//         ];
+//       }
 
-      // Add current vehicle data to the array
-      existingVehicle.additionalData.vehicles.push(vehicle.additionalData);
+//       // Add current vehicle data to the array
+//       existingVehicle.additionalData.vehicles.push(vehicle.additionalData);
 
-      // Add station data to stations array if it doesn't already exist
-      if (!existingVehicle.stations) {
-        existingVehicle.stations = [existingVehicle.stationData];
-      }
+//       // Add station data to stations array if it doesn't already exist
+//       if (!existingVehicle.stations) {
+//         existingVehicle.stations = [existingVehicle.stationData];
+//       }
 
-      // Check if this station already exists in the stations array
-      const stationExists = existingVehicle.stations.some(
-        (station) => station.stationId === vehicle.stationData.stationId,
-      );
+//       // Check if this station already exists in the stations array
+//       const stationExists = existingVehicle.stations.some(
+//         (station) => station.stationId === vehicle.stationData.stationId,
+//       );
 
-      if (!stationExists) {
-        existingVehicle.stations.push(vehicle.stationData);
-      }
+//       if (!stationExists) {
+//         existingVehicle.stations.push(vehicle.stationData);
+//       }
 
-      // Update the map
-      vehicleMap.set(vehicleName, existingVehicle);
-    } else {
-      // First time seeing this vehicle name
-      // Create a new object with stations array
-      vehicle.stations = [vehicle.stationData];
-      vehicleMap.set(vehicleName, vehicle);
-    }
-  });
+//       // Update the map
+//       vehicleMap.set(vehicleName, existingVehicle);
+//     } else {
+//       // First time seeing this vehicle name
+//       // Create a new object with stations array
+//       vehicle.stations = [vehicle.stationData];
+//       vehicleMap.set(vehicleName, vehicle);
+//     }
+//   });
 
-  // Convert map values to array
-  return Array.from(vehicleMap.values());
-}
+//   // Convert map values to array
+//   return Array.from(vehicleMap.values());
+// }
 
 const getPlanData = async (query) => {
   const obj = {
@@ -5913,4 +5984,5 @@ module.exports = {
   getMessages,
   getVehicleTbl,
   getVehicleTblDataAllStation,
+  sendBookingConfirmationMessage,
 };

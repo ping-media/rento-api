@@ -10,6 +10,7 @@ const {
 const {
   updateRideStartDetails,
 } = require("../../../helper/updateRideStartDetails");
+const { razorpay } = require("./razorpay.model");
 
 // Validate required environment variables
 const {
@@ -450,8 +451,40 @@ const savePickupImageLinks = async (req, res) => {
       (paymentMethod === "partiallyPay" || paymentMethod === "online") &&
       booking.createdAt >= RRN_CHECK_START_DATE
     ) {
-      const isRrnNumberFound =
+      let isRrnNumberFound =
         (booking?.bookingPrice?.rrnNumber || "")?.trim() !== "";
+
+      // Fallback: webhook may not have landed yet — check Razorpay directly
+      if (!isRrnNumberFound && booking.paymentgatewayOrderId) {
+        try {
+          const paymentsResponse = await razorpay.orders.fetchPayments(
+            booking.paymentgatewayOrderId,
+          );
+
+          const capturedPayment = paymentsResponse?.items?.find(
+            (p) => p.status === "captured",
+          );
+
+          if (capturedPayment) {
+            await Booking.updateOne(
+              { _id },
+              {
+                $set: {
+                  "bookingPrice.rrnNumber":
+                    capturedPayment.acquirer_data?.rrn ||
+                    capturedPayment.acquirer_data?.bank_transaction_id ||
+                    null,
+                },
+              },
+            );
+
+            isRrnNumberFound = true;
+          }
+        } catch (rzpError) {
+          console.error("Razorpay live status check failed:", rzpError.message);
+          // fall through — isRrnNumberFound stays false, original message returned
+        }
+      }
 
       if (!isRrnNumberFound) {
         return res.json({

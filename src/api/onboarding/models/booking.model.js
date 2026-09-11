@@ -852,6 +852,40 @@ const initiateBooking = async (req, res) => {
       return res.json({ message: "User account is deleted", status: 400 });
     }
 
+    // --- Idempotency guard against duplicate/retry requests ---
+    // Cash bookings go straight to bookingStatus "done" with no order id,
+    // so the existing dedup block below (which only checks "pending" bookings
+    // with a paymentgatewayOrderId) never catches cash retries. This catches
+    // any payment method, including cash.
+    const DUPLICATE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+    const recentDuplicateBooking = await Booking.findOne({
+      userId: customerId,
+      vehicleMasterId: bookingData?.vehicleMasterId,
+      stationName: bookingData?.stationName,
+      BookingStartDateAndTime: bookingData?.BookingStartDateAndTime,
+      BookingEndDateAndTime: bookingData?.BookingEndDateAndTime,
+      bookingStatus: { $ne: "canceled" },
+      createdAt: { $gte: new Date(Date.now() - DUPLICATE_WINDOW_MS) },
+    }).session(session);
+
+    if (recentDuplicateBooking) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({
+        status: 200,
+        message: "Booking already created",
+        data: {
+          orderId: recentDuplicateBooking.paymentgatewayOrderId || "",
+          booking_id: recentDuplicateBooking._id,
+          bookingId: recentDuplicateBooking.bookingId,
+          payableAmount:
+            recentDuplicateBooking.bookingPrice?.userPaid ||
+            recentDuplicateBooking.bookingPrice?.discountTotalPrice ||
+            recentDuplicateBooking.bookingPrice?.totalPrice,
+        },
+      });
+    }
+
     // Check for existing pending booking to avoid duplicates
     if (
       paymentMethod !== "cash" &&
@@ -863,9 +897,24 @@ const initiateBooking = async (req, res) => {
         stationName: bookingData?.stationName,
         BookingStartDateAndTime: bookingData?.BookingStartDateAndTime,
         BookingEndDateAndTime: bookingData?.BookingEndDateAndTime,
-        bookingStatus: "pending",
-        paymentStatus: "pending",
-        paymentgatewayOrderId: { $exists: true, $ne: null },
+        $or: [
+          // previously created via online/partiallyPay, still awaiting payment
+          {
+            bookingStatus: "pending",
+            paymentStatus: "pending",
+            paymentgatewayOrderId: { $exists: true, $ne: null },
+          },
+          // previously created via cash, ride not started yet — safe to convert
+          {
+            bookingStatus: "done",
+            paymentMethod: "cash",
+            paymentStatus: "pending",
+            rideStatus: "pending",
+          },
+        ],
+        // bookingStatus: "pending",
+        // paymentStatus: "pending",
+        // paymentgatewayOrderId: { $exists: true, $ne: null },
       }).session(session);
 
       if (existingBooking) {
@@ -990,6 +1039,12 @@ const initiateBooking = async (req, res) => {
               paymentInitiatedDate: razorData?.created_at,
               paymentgatewayOrderId: razorData?.id,
               paymentgatewayReceiptId: razorData?.receipt,
+              // revert the temporary cancellation now that a fresh
+              // Razorpay order was created successfully — otherwise
+              // the booking stays stuck as "canceled" even after payment
+              bookingStatus: "pending",
+              paymentStatus: "pending",
+              rideStatus: "pending",
             },
           },
           { new: true },
@@ -1037,6 +1092,52 @@ const initiateBooking = async (req, res) => {
           freeLimit: correctedFreeLimit,
         },
       };
+    }
+
+    // --- Vehicle inventory/capacity check ---
+    // Without this, nothing stops more bookings being created for a
+    // vehicle model+station than physical units actually exist.
+    const stationForCapacityCheck = await Station.findOne({
+      stationName: bookingData?.stationName,
+    }).session(session);
+
+    if (!stationForCapacityCheck) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ status: 400, message: "Invalid station" });
+    }
+
+    const totalActiveUnits = await VehicleTable.countDocuments({
+      vehicleMasterId: bookingData?.vehicleMasterId,
+      stationId: stationForCapacityCheck.stationId,
+      vehicleStatus: "active",
+    }).session(session);
+
+    const conflictingBookingsCount = await Booking.countDocuments({
+      vehicleMasterId: bookingData?.vehicleMasterId,
+      stationName: bookingData?.stationName,
+      bookingStatus: { $ne: "canceled" },
+      rideStatus: { $ne: "completed" },
+      paymentStatus: {
+        $in: ["paid", "partially_paid", "partiallyPay", "pending"],
+      },
+      $or: [
+        { rideStatus: "ongoing" },
+        {
+          BookingStartDateAndTime: { $lt: bookingData?.BookingEndDateAndTime },
+          BookingEndDateAndTime: { $gt: bookingData?.BookingStartDateAndTime },
+        },
+      ],
+    }).session(session);
+
+    if (conflictingBookingsCount >= totalActiveUnits) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({
+        status: 400,
+        message:
+          "No vehicles available for the selected date and time. Please choose a different slot.",
+      });
     }
 
     // is amount goes to zero after discount
