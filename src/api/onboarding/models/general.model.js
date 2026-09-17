@@ -490,6 +490,79 @@ const getGeneral = async (req, res) => {
   }
 };
 
+// Whitelist of top-level fields that can be toggled/updated via this endpoint.
+// Add new keys here later — no other code changes needed (plug and play).
+const ALLOWED_GENERAL_FIELDS = [
+  // "maintenance",
+  // "testMode",
+  "showVehicleCount",
+  // "vehicleLevelWeekendPrice",
+];
+
+const postGeneral = async (req, res) => {
+  try {
+    const updates = req.body;
+
+    if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        message: "Request body must be an object of field-value pairs.",
+      });
+    }
+
+    const requestedKeys = Object.keys(updates);
+
+    if (requestedKeys.length === 0) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        message: "No fields provided to update.",
+      });
+    }
+
+    const invalidKeys = requestedKeys.filter(
+      (key) => !ALLOWED_GENERAL_FIELDS.includes(key),
+    );
+
+    if (invalidKeys.length > 0) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        message: `Invalid field(s): ${invalidKeys.join(", ")}`,
+      });
+    }
+
+    const setPayload = {};
+    requestedKeys.forEach((key) => {
+      setPayload[key] = updates[key];
+    });
+
+    const generalSettings = await General.findOneAndUpdate(
+      {},
+      { $set: setPayload },
+      { new: true, upsert: true, runValidators: true },
+    );
+
+    const { extraAddOn, __v, ...rest } = generalSettings.toObject();
+
+    res.status(200).json({
+      status: 200,
+      success: true,
+      message: "General settings updated successfully.",
+      data: rest,
+    });
+  } catch (error) {
+    console.error("Error updating general settings:", error);
+    res.status(500).json({
+      status: 500,
+      success: false,
+      message: "Server error while updating general settings.",
+      error: error.message,
+    });
+  }
+};
+
 const getExtraAddOns = async (req, res) => {
   const { isWeb = false } = req.query;
   const page = parseInt(req.query.page) || 1;
@@ -565,6 +638,7 @@ module.exports = {
   manageExtraAddOn,
   getExtraAddOns,
   getGeneral,
+  postGeneral,
   updateGeneralInfo,
   addAndDeleteSlides,
   addAndDeleteTestimonial,

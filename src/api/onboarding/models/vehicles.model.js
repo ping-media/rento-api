@@ -3569,8 +3569,14 @@ const getVehicleTbl = async (query) => {
             vehicleNumber: vehicle.vehicleNumber,
             reason: "Vehicle master is inactive",
           });
+        } else if (vehicle.conflictingMaintenance.length > 0) {
+          unavailabilityReasons.push({
+            vehicleId: vehicle._id,
+            vehicleNumber: vehicle.vehicleNumber,
+            reason: "Vehicle is under maintenance",
+            maintenanceId: vehicle.conflictingMaintenance[0]._id,
+          });
         } else if (vehicle.conflictingBookings.length > 0) {
-          // const bookingId = vehicle.conflictingBookings[0].bookingId;
           const blockingBooking =
             vehicle.conflictingBookings.find(
               (b) =>
@@ -3586,13 +3592,6 @@ const getVehicleTbl = async (query) => {
               : "Vehicle is already booked",
             bookingId: blockingBooking?.bookingId,
             // bookingId: vehicle.conflictingBookings[0].bookingId,
-          });
-        } else if (vehicle.conflictingMaintenance.length > 0) {
-          unavailabilityReasons.push({
-            vehicleId: vehicle._id,
-            vehicleNumber: vehicle.vehicleNumber,
-            reason: "Vehicle is under maintenance",
-            maintenanceId: vehicle.conflictingMaintenance[0]._id,
           });
         }
       });

@@ -20,6 +20,7 @@ const {
   getAllVehiclesData,
   updateMultipleVehicles,
   getVehicleIds,
+  getAvailableVehicleIds,
 } = require("../models/getAllVehicleDataAdmin");
 const { documentUpload, getDocument } = require("../models/DocumentUpload");
 const { getAllDocument } = require("../models/getAllDocumentAdmin");
@@ -84,6 +85,7 @@ const {
   updateGeneralInfo,
   addAndDeleteTestimonial,
   addAndDeleteSlides,
+  postGeneral,
 } = require("../models/general.model");
 const {
   initiateBooking,
@@ -150,6 +152,10 @@ router.post("/updateGeneralTestimonial", Authentication, async (req, res) => {
 
 router.get("/general", async (req, res) => {
   getGeneral(req, res);
+});
+
+router.post("/general/settings", Authentication, async (req, res) => {
+  postGeneral(req, res);
 });
 
 router.get("/addOn", async (req, res) => {
@@ -796,6 +802,10 @@ router.get("/getAllVehiclesIdsData", Authentication, async (req, res) => {
   getVehicleIds(req, res);
 });
 
+router.get("/vehicles/available", async (req, res) => {
+  getAvailableVehicleIds(req, res);
+});
+
 router.get("/getAllInvoice", Authentication, async (req, res) => {
   vehiclesService.getAllInvoice(req, res);
 });
@@ -856,78 +866,9 @@ router.post("/validedToken", async (req, res) => {
   }
 });
 
-// router.post("/validedToken", async (req, res) => {
-//   const { token, _id, dataFlag } = req.body;
-//   const flag = dataFlag !== undefined ? dataFlag : true;
-
-//   try {
-//     let userId = _id;
-//     let tokenExpiringSoon = false;
-
-//     if (!userId) {
-//       if (!token) {
-//         return res
-//           .status(401)
-//           .json({ message: "Authentication token is required" });
-//       }
-
-//       const decoded = jwt.verify(token, process.env.BCRYPT_TOKEN);
-//       req.user = decoded;
-//       userId = req.user.id;
-
-//       // Check if token expires in less than 2 days
-//       const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
-//       if (expiresIn < 172800) {
-//         // 2 days in seconds
-//         tokenExpiringSoon = true;
-//       }
-//     }
-
-//     const user = await User.findOne({ _id: userId });
-//     const userDocument = await Document.findOne({ userId: userId });
-
-//     if (!user) {
-//       return res.json({ isUserValid: false });
-//     }
-
-//     if (user.status === "active" && flag === true) {
-//       let profileImage = "";
-//       if (userDocument) {
-//         const file = userDocument.files?.filter((file) =>
-//           file?.fileName?.includes("Selfie")
-//         );
-//         if (file) {
-//           profileImage = file[0]?.imageUrl || "";
-//         }
-//       }
-
-//       const newData = { ...user?._doc, profileImage };
-//       return res.json({
-//         data: newData,
-//         isUserValid: true,
-//         tokenExpiringSoon, // Frontend can use this to refresh token
-//       });
-//     } else if (user.status === "active" && flag === false) {
-//       return res.json({ isUserValid: true, tokenExpiringSoon });
-//     }
-
-//     return res.json({ isUserValid: false });
-//   } catch (error) {
-//     console.error("Error during token validation:", error.message);
-//     return res
-//       .status(401)
-//       .json({ isUserValid: false, message: "Invalid or expired token" });
-//   }
-// });
-
 router.post("/uploadDocument", (req, res) => {
   upload.array("images", 5)(req, res, function (err) {
     if (err instanceof multer.MulterError) {
-      // if (err.code === "LIMIT_FILE_SIZE") {
-      //   return res
-      //     .status(400)
-      //     .json({ message: "File too large. Max size is 2MB per file." });
-      // } else
       if (err.code === "LIMIT_UNEXPECTED_FILE") {
         return res
           .status(400)
@@ -951,57 +892,6 @@ router.post("/uploadDocument", (req, res) => {
   });
 });
 
-// router.delete("/deleteDocument", async (req, res) => {
-//   const obj = { status: 200, message: "Document deleted successfully", data: [] };
-
-//   try {
-//     const { _id, userId } = req.query;
-
-//     // Validate the presence of `_id`
-//     if (!_id) {
-//       obj.status = 400; // Bad Request
-//       obj.message = "Document _id is required";
-//       return res.status(400).json(obj);
-//     }
-
-//     // Validate the presence of `userId` for logging
-//     // if (!userId) {
-//     //   obj.status = 400;
-//     //   obj.message = "User ID is required for logging";
-//     //   return res.status(400).json(obj);
-//     // }
-
-//     // Check if the document exists
-//     const document = await Document.findById(_id);
-//     if (!document) {
-//       obj.status = 404; // Not Found
-//       obj.message = "Document with the given _id not found";
-//       return res.status(404).json(obj);
-//     }
-
-//     // Delete the document
-//     await Document.deleteOne({ _id });
-
-//     // Log the deletion
-//     await Log({
-//       message: `Document with ID ${_id} deleted successfully`,
-//       functionName: "deleteDocument",
-//       userId,
-//     });
-
-//     // Send success response
-//     return res.status(200).json(obj);
-
-//   } catch (error) {
-//     console.error("Error in deleteDocument:", error.message);
-
-//     // Handle unexpected errors
-//     obj.status = 500;
-//     obj.message = "An error occurred while deleting the document";
-//     return res.status(500).json(obj);
-//   }
-// });
-
 router.post("/deleteDocument", async (req, res) => {
   const response = { status: 200, message: "", data: [] };
 
@@ -1023,12 +913,6 @@ router.post("/deleteDocument", async (req, res) => {
       response.message = "Document not found";
       return res.json(response);
     }
-
-    // if (!document.files || !Array.isArray(document.files)) {
-    //   response.status = 400;
-    //   response.message = "Files array not found in the document";
-    //   return res.json(response);
-    // }
 
     // Filter out the file with the specified fileName
     const updatedFiles = document.files.filter(
@@ -1073,11 +957,6 @@ router.get("/getDocument", async (req, res) => {
 // get All Document
 router.get("/getAllDocument", async (req, res) => {
   getAllDocument(req, res);
-  // await Log({
-  //   message: res.message,
-  //   functionName: "deleteLoaction",
-  //   userId : res.userId,
-  // });
 });
 
 router.post("/emailOtp", async (req, res) => {
@@ -1441,10 +1320,6 @@ router.get("/maintenanceVehicle", Authentication, async (req, res) => {
   getMaintenanceVehicle(req, res);
 });
 
-// router.get("/maintenanceVehicle", Authentication, async (req, res) => {
-//   getMaintenanceVehicle(req, res);
-// });
-
 router.post("/createTimeline", async (req, res) => {
   timelineFunction(req, res);
 });
@@ -1452,13 +1327,6 @@ router.post("/createTimeline", async (req, res) => {
 router.get("/getTimelineData", Authentication, async (req, res) => {
   timelineFunctionForGet(req, res);
 });
-
-// router.get("/cron", async (req, res) => {
-//   console.log("Cron job is working");
-//   //res.send("Cron job is working");
-//   cancelPendingPayments(req, res);
-//   res.json({ message: "Cron job executed !" });
-// });
 
 router.post("/extendBooking", async (req, res) => {
   extentBooking(req, res);
