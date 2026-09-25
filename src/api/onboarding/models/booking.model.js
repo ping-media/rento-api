@@ -1503,7 +1503,7 @@ const initiateExtensionBooking = async (req, res) => {
         .json({ status: 404, message: "Booking not found" });
     }
 
-    // ─── Extend Duration Validations ───────────────────────────────────────
+    // ─── Extend Duration Validations
     const extendDuration = data?.extendAmount?.extendDuration;
 
     // 1. Must be whole number
@@ -1540,7 +1540,6 @@ const initiateExtensionBooking = async (req, res) => {
         message: "Extension duration must be at least 24 hours.",
       });
     }
-    // ───────────────────────────────────────────────────────────────────────
 
     const user = await User.findById(booking.userId).session(session);
     let finalAmount = amount;
@@ -1592,10 +1591,6 @@ const initiateExtensionBooking = async (req, res) => {
         booking.bookingPrice.extendAmount = [];
       }
 
-      // if (data.BookingEndDateAndTime) {
-      //   booking.BookingEndDateAndTime = data.BookingEndDateAndTime;
-      // }
-
       const extendEntry = {
         ...data.extendAmount,
         paymentInitiatedDate: razorData?.created_at,
@@ -1626,27 +1621,6 @@ const initiateExtensionBooking = async (req, res) => {
         });
       }
 
-      // const existingIds = booking.bookingPrice.extendAmount.map((e) => e.id);
-      // if (!existingIds.includes(data.extendAmount.id)) {
-      //   const extendEntry = {
-      //     ...data.extendAmount,
-      //     paymentInitiatedDate: razorData?.created_at,
-      //     orderId: razorData?.id || "",
-      //   };
-      //   booking.bookingPrice.extendAmount.push(extendEntry);
-
-      //   // Backup snapshot so webhook can recover full metadata if cron deletes the entry
-      //   if (!booking.bookingPrice.extendAmountBackup) {
-      //     booking.bookingPrice.extendAmountBackup = [];
-      //   }
-      //   const backupExists = booking.bookingPrice.extendAmountBackup.some(
-      //     (e) => e.id === data.extendAmount.id,
-      //   );
-      //   if (!backupExists) {
-      //     booking.bookingPrice.extendAmountBackup.push(extendEntry);
-      //   }
-      // }
-
       if (!booking.extendBooking) {
         booking.extendBooking = {};
       }
@@ -1659,12 +1633,6 @@ const initiateExtensionBooking = async (req, res) => {
         booking.extendBooking.oldBooking.push(data.oldBookings);
       }
 
-      // booking.bookingStatus = "extended";
-
-      // Mark nested objects as modified
-      // booking.markModified("bookingPrice.extendAmountBackup");
-      // booking.markModified("bookingPrice.extendAmount");
-      // booking.markModified("bookingPrice");
       booking.markModified("extendBooking");
 
       await booking.save({ session });

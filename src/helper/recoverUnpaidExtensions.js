@@ -149,13 +149,6 @@ const recoverUnpaidExtensions = async () => {
 
           shouldDelete = false;
         }
-        // } catch (err) {
-        //   console.error(
-        //     `Razorpay fetch failed for orderId ${ext.orderId}:`,
-        //     err.message,
-        //   );
-        //   shouldDelete = false;
-        // }
       } else {
         // no orderId means payment was never initiated, safe to delete
         shouldDelete = true;

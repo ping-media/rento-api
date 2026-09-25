@@ -241,6 +241,10 @@ router.get("/getVehicleTblDataAllStation", async (req, res) => {
   vehiclesService.getVehicleTblDataAllStation(req, res);
 });
 
+router.get("/extension/check", async (req, res) => {
+  vehiclesService.checkVehicleForExtension(req, res);
+});
+
 router.get("/getAllVehiclesAvailable", async (req, res) => {
   vehiclesService.getVehicleTbl(req, res);
 });

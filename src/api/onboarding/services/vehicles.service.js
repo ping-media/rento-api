@@ -24,6 +24,7 @@ const {
   getPlanData,
   getAllInvoice,
   getVehicleTbl,
+  checkVehicleForExtension,
 } = require("../models/vehicles.model");
 
 const {
@@ -138,6 +139,20 @@ exports.getCoupons = async (req, res) => {
 };
 
 // for checking vehicle is available or not
+exports.checkVehicleForExtension = async (req, res) => {
+  try {
+    const result = await checkVehicleForExtension(req.query, req.headers);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
 exports.getVehicleTbl = async (req, res) => {
   try {
     const result = await getVehicleTbl(req.query, req.headers);
