@@ -2424,6 +2424,28 @@ const checkVehicleForExtension = async (query) => {
       return { status: 404, message: "Vehicle not found", data: [] };
     }
 
+    const vehicleMasterDoc = await VehicleMaster.findById(
+      vehicle.vehicleMasterId,
+    ).lean();
+
+    if (
+      vehicle.vehicleStatus !== "active" ||
+      vehicleMasterDoc?.status === "inactive"
+    ) {
+      return {
+        status: 404,
+        message: "Vehicle is disabled, contact the station or hub",
+        data: [],
+        unavailabilityReasons: [
+          {
+            vehicleId: vehicle._id,
+            vehicleNumber: vehicle.vehicleNumber,
+            reason: "Vehicle is disabled, contact the station or hub",
+          },
+        ],
+      };
+    }
+
     // Conflict check scoped to THIS exact vehicle only — not the model/station pool
     const conflictingBooking = await Booking.findOne({
       vehicleTableId: vehicle._id,
@@ -2463,10 +2485,9 @@ const checkVehicleForExtension = async (query) => {
       };
     }
 
-    const [stationDoc, vehicleMasterDoc] = await Promise.all([
-      Station.findOne({ stationId: vehicle.stationId }).lean(),
-      VehicleMaster.findById(vehicle.vehicleMasterId).lean(),
-    ]);
+    const stationDoc = await Station.findOne({
+      stationId: vehicle.stationId,
+    }).lean();
 
     const stationData = {
       weekendPriceIncrease: "active",
@@ -2840,8 +2861,6 @@ const checkVehicleForExtension = async (query) => {
     }
 
     response.data = [{ ...adjustedVehicle, ...pricingFields }];
-
-    // response.data = [adjustedVehicle];
   } catch (error) {
     console.error("Error in checkVehicleForExtension:", error.message);
     response.status = 500;

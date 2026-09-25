@@ -1437,7 +1437,6 @@ const initiateExtensionBooking = async (req, res) => {
   session.startTransaction();
 
   try {
-    // let { data, extendId, amount } = req.body;
     let { data, extendId } = req.body;
     const amount =
       (data?.extendAmount?.amount || 0) +
