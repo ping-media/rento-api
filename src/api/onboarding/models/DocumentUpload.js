@@ -57,23 +57,6 @@ const upload = multer({
 const documentUpload = async (req, res) => {
   try {
     const { userId, docType, _id, deleteRec } = req.body;
-    //  return console.log(req.files)
-
-    // if (_id) {
-    //   if (deleteRec) {
-    //     await Document.deleteOne({ _id });
-    //     await Log({
-    //       message: `Document with ID ${_id} deleted`,
-    //       functionName: "documentUpload",
-    //       userId,
-    //     });
-    //     return res.status(200).json({
-    //       message: "Document deleted successfully",
-    //       status: 200,
-    //       data: _id,
-    //     });
-    //   }
-    // }
 
     if (_id) {
       if (deleteRec) {
@@ -235,16 +218,12 @@ const getDocument = async (req, res) => {
       });
     }
 
-    const documents = await Document.find({ userId })
-      // .select("+createdAt +updatedAt")
-      .populate("userId");
-    //console.log(documents)
+    const documents = await Document.find({ userId }).populate("userId");
+
     if (documents.length == 0) {
-      // const documents = await User.findOne({ _id: userId });
       const documents = await User.findById(userId)
         .select("+createdAt +updatedAt")
         .lean();
-      console.log(documents);
       return res.status(200).json({
         status: 200,
         message: "User retrieved successfully.",

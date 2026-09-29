@@ -8,6 +8,11 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
     },
+    rating: {
+      average: { type: Number, default: 5, min: 0, max: 5 },
+      totalReviews: { type: Number, default: 0 },
+      negativeReviews: { type: Number, default: 0 }, // count of 1-2 star reviews
+    },
     mobileToken: { type: String },
     mobileTokens: [
       {
@@ -52,12 +57,6 @@ const userSchema = new mongoose.Schema(
     addresses: {
       type: [{ type: String, trim: true }],
       default: [],
-      // validate: {
-      //   validator: function (arr) {
-      //     return arr.length <= 5;
-      //   },
-      //   message: "Maximum 5 addresses allowed",
-      // },
     },
 
     lastLocation: {
@@ -149,8 +148,9 @@ userSchema.pre("save", function (next) {
 });
 
 // Auth & identity
-// (contact already indexed via unique: true)
 userSchema.index({ email: 1 });
+
+userSchema.index({ "rating.average": 1, status: 1 });
 
 // Role & status
 userSchema.index({ userType: 1 });

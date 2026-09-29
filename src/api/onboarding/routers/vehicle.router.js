@@ -115,6 +115,7 @@ const {
   sendPushNotificationUsingUserId,
 } = require("../../../utils/pushNotification");
 const { getStationMap } = require("../models/vehicles.model");
+const { updateVehicleMeter } = require("../../../helper/updateOdoMeterReading");
 // const { cancelPendingPayments } = require("../utils/cron.js");
 
 // create messages
@@ -1119,6 +1120,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     paymentMode,
     refundAmount,
     endDateTime,
+    imageLinks,
   } = req.body;
 
   const obj = { status: 200, message: "", data: {} };
@@ -1139,7 +1141,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       return res.json(obj);
     }
 
-    // ─── Server-side KM calculation ───────────────────────────────────────────
+    // ─── Server-side KM calculation Start
     const pickupDoc = await pickupImage.findOne({ bookingId });
 
     const startReading = Number(pickupDoc?.startMeterReading || 0);
@@ -1187,7 +1189,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     const extraKm = Math.max(0, totalDrivenKm - allowedKm);
     const serverLateFeeBasedOnKM =
       extraKm * Number(vehicleBasic?.extraKmCharge || 0);
-    // ──────────────────────────────────────────────────────────────────────────
+    // ─── Server-side KM calculation End
 
     let lateFeePaymentMethod = "NA";
     let additionFeePaymentMethod = "NA";
@@ -1236,11 +1238,45 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     }
 
     // Update pickup image document with end reading
-    await pickupImage.updateOne(
-      { bookingId },
-      { $set: { endMeterReading, rideEndDate } },
-      { new: true },
-    );
+    let parsedImageLinks = [];
+    if (imageLinks) {
+      if (typeof imageLinks === "string") {
+        try {
+          parsedImageLinks = JSON.parse(imageLinks);
+        } catch {
+          return res.json({
+            status: 400,
+            message: "Invalid imageLinks format",
+          });
+        }
+      } else {
+        parsedImageLinks = imageLinks;
+      }
+      if (!Array.isArray(parsedImageLinks)) {
+        return res.json({ status: 400, message: "Invalid imageLinks format" });
+      }
+    }
+
+    const endFilesObj = {};
+    parsedImageLinks.forEach((file, index) => {
+      if (!file.fileName || !file.imageUrl) return;
+      endFilesObj[`file_${index}`] = {
+        fileName: file.fileName,
+        imageUrl: file.imageUrl,
+      };
+    });
+
+    const pickupUpdate = { endMeterReading, rideEndDate };
+    if (Object.keys(endFilesObj).length > 0) {
+      pickupUpdate.endFiles = endFilesObj;
+    }
+
+    await pickupImage.updateOne({ bookingId }, { $set: pickupUpdate });
+    // await pickupImage.updateOne(
+    //   { bookingId },
+    //   { $set: { endMeterReading, rideEndDate } },
+    //   { new: true },
+    // );
 
     let paymentStatus = booking?.paymentStatus;
     if (refundAmount > 0) {
@@ -1275,6 +1311,11 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
         },
         { new: true },
       );
+    }
+
+    // update the vehicle odometer reading
+    if (rideStatus === "completed") {
+      await updateVehicleMeter(vehicleBasic?.vehicleNumber, endMeterReading);
     }
 
     await Log({

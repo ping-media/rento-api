@@ -149,6 +149,10 @@ const bookingSchema = new Schema(
       type: String,
       required: true,
     },
+    isRated: {
+      type: Boolean,
+      default: false,
+    },
     changeVehicle: {
       type: Object,
     },

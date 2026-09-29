@@ -11,6 +11,7 @@ const {
   updateRideStartDetails,
 } = require("../../../helper/updateRideStartDetails");
 const { razorpay } = require("./razorpay.model");
+const { updateVehicleMeter } = require("../../../helper/updateOdoMeterReading");
 
 // Validate required environment variables
 const {
@@ -40,8 +41,6 @@ const s3 = new S3Client({
     secretAccessKey: AWS_SECRET_ACCESS_KEY,
   },
 });
-
-const isDev = process.env.NODE_ENV === "development";
 
 // Function to upload document
 const pickupImageUp = async (req, res) => {
@@ -284,12 +283,6 @@ const pickupImageUp = async (req, res) => {
   }
 };
 
-const normalizeAltContact = (value) => {
-  if (!value) return null;
-  const cleaned = value.trim();
-  return /^\d{10}$/.test(cleaned) ? cleaned : null;
-};
-
 // function to start ride and save vehicle images
 const savePickupImageLinks = async (req, res) => {
   try {
@@ -392,11 +385,6 @@ const savePickupImageLinks = async (req, res) => {
 
     // continue with rest of the code
     let parsedImageLinks = [];
-
-    // if (!isDev) {
-    // if (!imageLinks) {
-    //   return res.status(400).json({ message: "imageLinks required" });
-    // }
 
     if (imageLinks) {
       if (typeof imageLinks === "string") {
@@ -633,6 +621,20 @@ const savePickupImageLinks = async (req, res) => {
         { new: true, upsert: true },
       );
 
+      // updating the old vehicle odometer reading
+      if (booking.rideStatus !== "pending") {
+        await updateVehicleMeter(
+          booking?.changeVehicle?.vehicleNumber || vehicleNumber,
+          oldVehicleEndMeterReading,
+        );
+      }
+
+      // updating the new vehicle oddometer reading
+      await updateVehicleMeter(
+        booking.vehicleBasic.vehicleNumber,
+        startMeterReading,
+      );
+
       // updating diff amount flag
       await Booking.updateOne(
         { _id },
@@ -684,6 +686,11 @@ const savePickupImageLinks = async (req, res) => {
     });
 
     await newDocument.save();
+    // updating the vehicle odometer reading
+    await updateVehicleMeter(
+      booking.vehicleBasic.vehicleNumber,
+      startMeterReading,
+    );
 
     const OTP = Math.floor(1000 + Math.random() * 9000);
 

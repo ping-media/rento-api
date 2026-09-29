@@ -649,15 +649,9 @@ const vehicleChangeNew = async (req, res) => {
     const oldVehicle =
       booking.changeVehicle.vehicleNumber !== "unassigned" &&
       booking.changeVehicle.vehicleTableId !== null
-        ? `(${booking.changeVehicle.vehicleNumber})`
+        ? `${booking.changeVehicle.vehicleName || "--"}(${booking.changeVehicle.vehicleNumber})`
         : `${booking.changeVehicle.vehicleName || "--"}(--)`;
-    const changeVehicleMessage = `From ${oldVehicle} to (${newVehicleData.vehicleNumber})`;
-
-    // const changeVehicleMessage =
-    //   booking.changeVehicle.vehicleNumber !== "unassigned" &&
-    //   booking.changeVehicle.vehicleTableId !== null
-    //     ? `From (${booking.changeVehicle.vehicleNumber}) to (${newVehicleData.vehicleNumber})`
-    //     : `${newVehicleData.vehicleName}(${newVehicleData.vehicleNumber})`;
+    const changeVehicleMessage = `From ${oldVehicle} to ${newVehicleData.vehicleName}(${newVehicleData.vehicleNumber})`;
 
     // --- Payment link if extra payment ---
     if (isExtraPayment) {

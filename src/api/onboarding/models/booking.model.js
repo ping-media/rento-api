@@ -20,7 +20,6 @@ const User = require("../../../db/schemas/onboarding/user.schema.js");
 const Razorpay = require("razorpay");
 const Logs = require("../../../db/schemas/onboarding/log.js");
 const { updateCouponUsage } = require("../../../helper/updateCouponCount.js");
-// const { generateTempId } = require("../../../utils/generateBookingId.js");
 const Station = require("../../../db/schemas/onboarding/station.schema.js");
 require("dotenv").config();
 
@@ -187,6 +186,7 @@ const getBooking = async (query) => {
               contact: 1,
               altContact: 1,
               email: 1,
+              rating: 1,
               createdAt: 1,
               updatedAt: 1,
             },
@@ -582,7 +582,7 @@ const getBookings = async (query) => {
       const booking = await Booking.findById(_id)
         .populate(
           "userId",
-          "firstName lastName contact altContact email kycApproved",
+          "firstName lastName contact altContact email kycApproved rating",
         )
         .populate("vehicleTableId", "vehiclePlan freeKms perDayCost")
         .populate("vehicleMasterId", "gstPercentage")
