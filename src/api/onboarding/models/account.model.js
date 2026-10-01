@@ -697,12 +697,19 @@ async function getAllDataCount(query) {
 
     const bookingsCount = await Booking.countDocuments(createdFilter);
 
+    // const [activeUserCount, inactiveUserCount] = await Promise.all([
+    //   User.countDocuments({ status: "active" }),
+    //   User.countDocuments({ status: "inactive" }),
+    // ]);
+
     obj.data = {
       bookingsCount,
       cancelBookingsCount,
       extendBookingCount,
       CashPaymentReceivedCount: payOnPickupCount + amountLeftObjectCount,
       Amount,
+      // activeUserCount,
+      // inactiveUserCount,
     };
 
     return obj;

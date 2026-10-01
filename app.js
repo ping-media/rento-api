@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const zlib = require("zlib");
 require("dotenv").config();
 
 // adding routers
@@ -42,6 +43,17 @@ const startServer = async () => {
 
   app.get("/", (req, res) => {
     res.send("Hi there, Welcome to rento bikes");
+  });
+
+  app.get("/r/:data", (req, res) => {
+    try {
+      const compressed = Buffer.from(req.params.data, "base64url");
+      const payload = JSON.parse(zlib.inflateRawSync(compressed).toString());
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${payload.p}&text=${encodeURIComponent(payload.m)}`;
+      return res.redirect(302, whatsappUrl);
+    } catch {
+      return res.status(400).send("This link is invalid or malformed.");
+    }
   });
 
   // use routes

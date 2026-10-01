@@ -116,7 +116,29 @@ const {
 } = require("../../../utils/pushNotification");
 const { getStationMap } = require("../models/vehicles.model");
 const { updateVehicleMeter } = require("../../../helper/updateOdoMeterReading");
-// const { cancelPendingPayments } = require("../utils/cron.js");
+const {
+  toWhatsappUrl,
+  buildCompletedMessage,
+  buildReminderMessage,
+} = require("../../../utils/whatsappTemplates");
+
+function formatDate(isoString) {
+  return new Date(isoString).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function formatTime(isoString) {
+  return new Date(isoString).toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  });
+}
 
 // create messages
 router.post("/sendBookingDetailesTosocial", async (req, res) => {
@@ -1125,8 +1147,15 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
 
   const obj = { status: 200, message: "", data: {} };
   try {
-    const booking = await Booking.findOne({ _id });
+    const booking = await Booking.findOne({ _id }).populate(
+      "userId",
+      "contact firstName lastName",
+    );
     let { vehicleBasic, bookingPrice, BookingEndDateAndTime } = booking;
+
+    const station = await Station.findOne({
+      stationId: booking.stationId,
+    }).select("mapLink googleReviewLink");
 
     const rideStatusFromBooking = booking?.rideStatus;
     if (rideStatusFromBooking === "completed") {
@@ -1278,10 +1307,42 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     //   { new: true },
     // );
 
+    // checking whether the full amount is refunded or partial before changing the status to refunded
     let paymentStatus = booking?.paymentStatus;
-    if (refundAmount > 0) {
+
+    const isCouponApplied = !!bookingPrice?.discountCuopon?.couponId;
+    const expectedTotal = isCouponApplied
+      ? bookingPrice.discountTotalPrice
+      : bookingPrice.totalPrice;
+
+    const mainBookingCollected =
+      booking.paymentMethod === "partiallyPay"
+        ? bookingPrice.userPaid +
+          (bookingPrice.AmountLeftAfterUserPaid?.status === "paid"
+            ? bookingPrice.AmountLeftAfterUserPaid.amount
+            : 0)
+        : expectedTotal;
+
+    const paidExtendTotal = (bookingPrice.extendAmount || [])
+      .filter((e) => e.status === "paid")
+      .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
+    const paidDiffTotal = (bookingPrice.diffAmount || [])
+      .filter((d) => d.status === "paid")
+      .reduce(
+        (sum, d) => sum + Number(d.amount || 0) - Number(d.refundAmount || 0),
+        0,
+      );
+
+    const totalCollected =
+      mainBookingCollected + paidExtendTotal + paidDiffTotal;
+
+    if (refundAmount > 0 && refundAmount >= totalCollected) {
       paymentStatus = "refunded";
     }
+    // if (refundAmount > 0) {
+    //   paymentStatus = "refunded";
+    // }
 
     if (closingDate) {
       await Booking.updateOne(
@@ -1333,11 +1394,65 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
           : "Completed"
     } successful`;
 
+    const finalExtraCharges =
+      Number(bookingPrice.extraAddonPrice || 0) +
+      Number(newBookingPrice.lateFeeBasedOnHour || 0) +
+      Number(newBookingPrice.lateFeeBasedOnKM || 0) +
+      Number(newBookingPrice.additionalPrice || 0);
+
+    const finalAmount =
+      expectedTotal +
+      Number(newBookingPrice.lateFeeBasedOnHour || 0) +
+      Number(newBookingPrice.lateFeeBasedOnKM || 0) +
+      Number(newBookingPrice.additionalPrice || 0) +
+      paidExtendTotal +
+      paidDiffTotal;
+
+    const amountPaid =
+      mainBookingCollected +
+      Number(newBookingPrice.lateFeeBasedOnHour || 0) +
+      Number(newBookingPrice.lateFeeBasedOnKM || 0) +
+      Number(newBookingPrice.additionalPrice || 0) +
+      paidExtendTotal +
+      paidDiffTotal;
+
+    const completedMessage = buildCompletedMessage({
+      bookingId: booking.bookingId,
+      vehicleName: `${booking.vehicleBrand} ${booking.vehicleName}`,
+      vehicleNo: vehicleBasic.vehicleNumber,
+      pickupDate: formatDate(booking.BookingStartDateAndTime),
+      pickupTime: formatTime(booking.BookingStartDateAndTime),
+      returnDate: formatDate(rideEndDate),
+      returnTime: formatTime(rideEndDate),
+      startKm: startReading,
+      endKm: endReading,
+      totalKm: totalDrivenKm,
+      freeKm: allowedKm,
+      extraKm: extraKm,
+      rentalAmount: bookingPrice.bookingPrice,
+      extraCharges: finalExtraCharges,
+      discount: bookingPrice.discountPrice,
+      extensionCharges: paidExtendTotal,
+      vehicleChangeCharges: paidDiffTotal,
+      finalAmount: finalAmount,
+      amountPaid: amountPaid,
+      deposit: vehicleBasic.refundableDeposit,
+      depositRefunded: newBookingPrice.refundAmount || undefined,
+      balancePayable: finalAmount - amountPaid,
+      reviewLink: station?.googleReviewLink,
+    });
+
+    const whatsappUrl = toWhatsappUrl(
+      `+91${booking.userId.contact}`,
+      completedMessage,
+    );
+
     const response = {
       lateFeeBasedOnHour,
       lateFeeBasedOnKM: serverLateFeeBasedOnKM, // return server value so frontend stays in sync
       totalDrivenKm,
       rideStatus,
+      whatsappUrl,
     };
     obj.data = response;
     return res.status(200).json(obj);
@@ -1460,6 +1575,54 @@ router.post("/sendReminder", Authentication, async (req, res) => {
   } catch (error) {
     console.error("Error occurred:", error);
     return res.status(500).send({ status: 500, message: error.message });
+  }
+});
+
+router.get("/booking/:id/reminder-link", Authentication, async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ _id: req.params.id }).populate(
+      "userId",
+      "contact firstName lastName",
+    );
+
+    if (!booking) {
+      return res
+        .status(404)
+        .json({ status: 404, message: "Booking not found" });
+    }
+
+    const station = await Station.findOne({
+      stationId: booking.stationId,
+    }).select("mapLink");
+
+    const { vehicleBasic } = booking;
+
+    if (["completed", "refunded", "canceled"].includes(booking.rideStatus)) {
+      return res.status(400).json({
+        status: 400,
+        message: "Reminder not applicable for this booking's current status",
+      });
+    }
+
+    const reminderMessage = buildReminderMessage({
+      customerName: `${booking.userId.firstName} ${booking.userId.lastName}`,
+      bookingId: booking.bookingId,
+      vehicleName: `${booking.vehicleBrand} ${booking.vehicleName}`,
+      vehicleNumber: vehicleBasic.vehicleNumber,
+      dropDate: formatDate(booking.BookingEndDateAndTime),
+      dropTime: formatTime(booking.BookingEndDateAndTime),
+      dropLocation: station?.mapLink,
+      lateFee: vehicleBasic.lateFee,
+    });
+
+    const whatsappUrl = toWhatsappUrl(
+      `+91${booking.userId.contact}`,
+      reminderMessage,
+    );
+
+    return res.json({ status: 200, whatsappUrl });
+  } catch (error) {
+    return res.status(500).json({ status: 500, message: error.message });
   }
 });
 

@@ -21,12 +21,35 @@ const Razorpay = require("razorpay");
 const Logs = require("../../../db/schemas/onboarding/log.js");
 const { updateCouponUsage } = require("../../../helper/updateCouponCount.js");
 const Station = require("../../../db/schemas/onboarding/station.schema.js");
+const {
+  buildExtensionConfirmedMessage,
+  toWhatsappUrl,
+  buildExtensionRequestMessage,
+} = require("../../../utils/whatsappTemplates.js");
 require("dotenv").config();
 
 const razorpay = new Razorpay({
   key_id: process.env.VITE_RAZOR_KEY_ID,
   key_secret: process.env.VITE_RAZOR_KEY_SECRET,
 });
+
+function formatDate(isoString) {
+  return new Date(isoString).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function formatTime(isoString) {
+  return new Date(isoString).toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  });
+}
 
 const getBooking = async (query) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
@@ -2188,9 +2211,39 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
           );
         }
 
+        const extendedUser = await User.findById(booking.userId).select(
+          "contact",
+        );
+        const station = await Station.findOne({
+          stationId: booking.stationId,
+        }).select("mapLink");
+
+        const confirmedMessage = buildExtensionConfirmedMessage({
+          bookingId: booking.bookingId,
+          vehicleName: `${booking.vehicleBrand} ${booking.vehicleName}`,
+          vehicleNo: booking.vehicleBasic.vehicleNumber,
+          stationLocation: station?.mapLink,
+          extensionStart: formatDate(data.extendAmount.BookingStartDateAndTime),
+          extensionStartTime: formatTime(
+            data.extendAmount.BookingStartDateAndTime,
+          ),
+          extensionEnd: formatDate(data.extendAmount.bookingEndDateAndTime),
+          extensionEndTime: formatTime(data.extendAmount.bookingEndDateAndTime),
+          extensionDuration: data.extendAmount.extendDuration,
+          amountPaid: amount,
+          newDropDate: formatDate(booking.BookingEndDateAndTime),
+          newDropTime: formatTime(booking.BookingEndDateAndTime),
+        });
+
+        const whatsappUrl = toWhatsappUrl(
+          `+91${extendedUser.contact}`,
+          confirmedMessage,
+        );
+
         return res.json({
           success: true,
           message: "Ride extended successfully",
+          whatsappUrl,
           timeLine: {
             currentBooking_id: booking._id,
             timeLine: [
@@ -2271,9 +2324,40 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
     });
 
     if (paymentLink?.paymentLinkId) {
+      const extendedUser = await User.findById(booking.userId).select(
+        "contact",
+      );
+      const station = await Station.findOne({
+        stationId: booking.stationId,
+      }).select("mapLink");
+
+      const requestMessage = buildExtensionRequestMessage({
+        bookingId: booking.bookingId,
+        vehicleName: `${booking.vehicleBrand} ${booking.vehicleName}`,
+        vehicleNo: booking.vehicleBasic.vehicleNumber,
+        stationLocation: station?.mapLink,
+        extensionStart: formatDate(data.extendAmount.BookingStartDateAndTime),
+        extensionStartTime: formatTime(
+          data.extendAmount.BookingStartDateAndTime,
+        ),
+        extensionEnd: formatDate(data.extendAmount.bookingEndDateAndTime),
+        extensionEndTime: formatTime(data.extendAmount.bookingEndDateAndTime),
+        extensionDuration: data.extendAmount.extendDuration,
+        payableAmount: amount,
+        newDropDate: formatDate(data.extendAmount.bookingEndDateAndTime),
+        newDropTime: formatTime(data.extendAmount.bookingEndDateAndTime),
+        paymentLink: paymentLink.paymentLink,
+      });
+
+      const whatsappUrl = toWhatsappUrl(
+        `+91${extendedUser.contact}`,
+        requestMessage,
+      );
+
       res.status(200).json({
         success: true,
         message: "extend request placed",
+        whatsappUrl,
         timeLine: paymentLink?.timeLineData || null,
       });
     } else {

@@ -4,6 +4,7 @@ const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const { resizeImg } = require("../../../utils/resizeImage");
 const User = require("../../../db/schemas/onboarding/user.schema");
+const Station = require("../../../db/schemas/onboarding/station.schema");
 const {
   checkVehicleAvailability,
 } = require("../../../utils/booking/checkVehicleAvailability");
@@ -12,6 +13,28 @@ const {
 } = require("../../../helper/updateRideStartDetails");
 const { razorpay } = require("./razorpay.model");
 const { updateVehicleMeter } = require("../../../helper/updateOdoMeterReading");
+const {
+  toWhatsappUrl,
+  buildConfirmationMessage,
+} = require("../../../utils/whatsappTemplates");
+
+function formatDate(isoString) {
+  return new Date(isoString).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function formatTime(isoString) {
+  return new Date(isoString).toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  });
+}
 
 // Validate required environment variables
 const {
@@ -403,7 +426,7 @@ const savePickupImageLinks = async (req, res) => {
 
     const booking = await Booking.findOne({ _id }).populate(
       "userId",
-      "kycApproved",
+      "kycApproved contact firstName lastName",
     );
 
     if (!booking) {
@@ -432,6 +455,45 @@ const savePickupImageLinks = async (req, res) => {
     }
 
     const { vehicleBasic, paymentMethod, bookingStatus } = booking;
+
+    const isFirstStart = booking.rideStatus === "pending";
+
+    const buildStartRideWhatsappUrl = async () => {
+      const bp = booking.bookingPrice;
+
+      const station = await Station.findOne({
+        stationId: booking.stationId,
+      }).select("mapLink");
+
+      const isFullyPaid = bp.AmountLeftAfterUserPaid.status === "paid";
+      const finalTotalAmount =
+        bp.discountPrice > 0 ? bp.discountTotalPrice : bp.totalPrice;
+
+      const confirmationMessage = buildConfirmationMessage({
+        bookingId: booking.bookingId,
+        vehicleName: `${booking.vehicleBrand} ${booking.vehicleName}`,
+        vehicleNo: booking.vehicleBasic.vehicleNumber,
+        hubLocation: booking.stationName,
+        pickupDate: formatDate(booking.BookingStartDateAndTime),
+        pickupTime: formatTime(booking.BookingStartDateAndTime),
+        dropDate: formatDate(booking.BookingEndDateAndTime),
+        dropTime: formatTime(booking.BookingEndDateAndTime),
+        location: station?.mapLink,
+        bookingPrice: bp.bookingPrice,
+        discount: bp.discountPrice,
+        accessoriesTotal: bp.extraAddonPrice,
+        finalTotal: finalTotalAmount,
+        paid: isFullyPaid ? finalTotalAmount : bp.userPaid,
+        balancePayable: isFullyPaid ? 0 : bp.AmountLeftAfterUserPaid.amount,
+        deposit: booking.vehicleBasic.refundableDeposit,
+        distanceLimit: booking.vehicleBasic.freeLimit,
+        extraUsageRate: booking.vehicleBasic.extraKmCharge,
+        lateFee: booking.vehicleBasic.lateFee,
+        speedLimit: booking.vehicleBasic.speedLimit,
+      });
+
+      return toWhatsappUrl(`+91${booking.userId.contact}`, confirmationMessage);
+    };
 
     const RRN_CHECK_START_DATE = new Date("2026-04-01");
 
@@ -666,11 +728,16 @@ const savePickupImageLinks = async (req, res) => {
       }
 
       if (newDocument) {
+        const whatsappUrl = isFirstStart
+          ? await buildStartRideWhatsappUrl()
+          : undefined;
+
         return res.json({
           status: 200,
           message: "Ride updated successfully.",
           newDocument: newDocument.toObject({ flattenMaps: true }),
           vehicleNumber: vehicleBasic?.vehicleNumber,
+          whatsappUrl,
         });
       }
     }
@@ -705,12 +772,17 @@ const savePickupImageLinks = async (req, res) => {
       paymentMethod,
     });
 
+    const whatsappUrl = isFirstStart
+      ? await buildStartRideWhatsappUrl()
+      : undefined;
+
     return res.json({
       status: 200,
       message: "Ride started successfully.",
       newDocument,
       vehicleNumber: vehicleBasic?.vehicleNumber,
       endOtp: OTP,
+      whatsappUrl,
     });
   } catch (error) {
     console.error("Error uploading files:", error);
