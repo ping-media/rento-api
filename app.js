@@ -49,7 +49,14 @@ const startServer = async () => {
     try {
       const compressed = Buffer.from(req.params.data, "base64url");
       const payload = JSON.parse(zlib.inflateRawSync(compressed).toString());
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${payload.p}&text=${encodeURIComponent(payload.m)}`;
+
+      const userAgent = req.headers["user-agent"] || "";
+      const isAndroid = /Android/i.test(userAgent);
+
+      const whatsappUrl = isAndroid
+        ? `whatsapp://send?phone=${payload.p}&text=${encodeURIComponent(payload.m)}`
+        : `https://api.whatsapp.com/send?phone=${payload.p}&text=${encodeURIComponent(payload.m)}`;
+
       return res.redirect(302, whatsappUrl);
     } catch {
       return res.status(400).send("This link is invalid or malformed.");
