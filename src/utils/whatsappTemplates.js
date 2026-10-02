@@ -82,29 +82,32 @@ function buildReminderMessage({
   dropTime,
   dropLocation,
   lateFee,
+  supportContact,
 }) {
-  return `\u{1F514} RENTO BIKES \u2013 RIDE REMINDER
+  return `\u{1F514} *RENTO BIKES \u2014 RIDE REMINDER*
 
-Hello ${customerName} \u{1F44B}
+Hello *${customerName}* \u{1F44B}
 
-Your bike rental is ending soon.
+Your bike rental is *ending soon*.
 
-\u{1F4CB} Booking ID: #${bookingId}
-\u{1F3CD}\uFE0F ${vehicleName}
-${vehicleNumber}
+\u{1F4CB} *Booking ID:* #${bookingId}
+\u{1F3CD}\uFE0F *Vehicle:* ${vehicleName}
+\u{1F522} *Vehicle No.:* ${vehicleNumber}
 
+\u{1F4C5} *Return Date:* ${dropDate}
+\u23F0 *Return Time:* ${dropTime}
+\u{1F4CD} *Return Location:* ${dropLocation}
 
-\u{1F4C5} Return: ${dropDate}
-\u23F0 Time: ${dropTime}
-\u{1F4CD} ${dropLocation}
+Please *RETURN* the vehicle on time or *EXTEND* your ride through the Rento Bikes app.
 
-Please *RETURN the vehicle on time* or *EXTEND your ride* through the Rento Bikes app.
+\u{1F4B0} *Late Fee:* \u20b9${lateFee}/hour
 
-\u{1F4B0} Late Fee: \u20b9${lateFee}/hour
+\u26A0\uFE0F Please do not keep the vehicle beyond the scheduled return time without extending your booking.
 
-\u26A0\uFE0F Please do not keep the vehicle beyond the scheduled time without extending your booking.
+Need help with your booking?
+\u{1F4DE} *Rento Bikes Support:* ${supportContact}
 
-Thank you for choosing Rento Bikes! \u{1F6F5}`;
+Thank you for choosing *Rento Bikes!* \u{1F6F5}`;
 }
 
 function buildCompletedMessage({

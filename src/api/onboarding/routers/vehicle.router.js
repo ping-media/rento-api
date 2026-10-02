@@ -1580,10 +1580,10 @@ router.post("/sendReminder", Authentication, async (req, res) => {
 
 router.get("/booking/:id/reminder-link", Authentication, async (req, res) => {
   try {
-    const booking = await Booking.findOne({ _id: req.params.id }).populate(
-      "userId",
-      "contact firstName lastName",
-    );
+    const booking = await Booking.findOne({ _id: req.params.id }).populate([
+      { path: "userId", select: "contact firstName lastName" },
+      { path: "stationMasterUserId", select: "contact" },
+    ]);
 
     if (!booking) {
       return res
@@ -1613,6 +1613,7 @@ router.get("/booking/:id/reminder-link", Authentication, async (req, res) => {
       dropTime: formatTime(booking.BookingEndDateAndTime),
       dropLocation: station?.mapLink,
       lateFee: vehicleBasic.lateFee,
+      supportContact: booking.stationMasterUserId?.contact,
     });
 
     const whatsappUrl = toWhatsappUrl(
