@@ -1418,6 +1418,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
 
     const completedMessage = buildCompletedMessage({
       bookingId: booking.bookingId,
+      customerName: `${booking.userId.firstName} ${booking.userId.lastName}`,
       vehicleName: `${booking.vehicleBrand} ${booking.vehicleName}`,
       vehicleNo: vehicleBasic.vehicleNumber,
       pickupDate: formatDate(booking.BookingStartDateAndTime),

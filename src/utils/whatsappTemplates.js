@@ -5,12 +5,18 @@ function toWhatsappUrl(phoneNumber, message) {
   const compressed = zlib.deflateRawSync(payload).toString("base64url");
   return `https://api.rentobikes.com/r/${compressed}`;
 }
-// function toWhatsappUrl(phoneNumber, message) {
-//   return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-// }
+
+function toTitleCase(str) {
+  return str.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function stripVehicleYear(vehicleName) {
+  return vehicleName.replace(/\s*\(\d{4}\)\s*/g, "").trim();
+}
 
 function buildConfirmationMessage({
   bookingId,
+  customerName,
   vehicleName,
   vehicleNo,
   hubLocation,
@@ -42,18 +48,20 @@ function buildConfirmationMessage({
     .filter(Boolean)
     .join("\n");
 
-  return `\u{1F3CD}\uFE0F RENTO BIKES \u2013 BOOKING CONFIRMATION
+  return `\u{1F3CD}\uFE0F RENTO BIKES 
+  
+\u2013 BOOKING CONFIRMATION
 
-Hello \u{1F44B}
+Hello *${toTitleCase(customerName)}* \u{1F44B}
 
 Your booking details are below:
 
-\u{1F4CB} Booking ID: #${bookingId}
-\u{1F3CD}\uFE0F Vehicle: ${vehicleName}
-\u{1F522} Vehicle No: ${vehicleNo}
-\u{1F4CD} Pickup & Drop Hub: ${hubLocation}
-\u{1F4C5} *Pickup: ${pickupDate}, ${pickupTime}*
-\u{1F4C5} *Drop-off: ${dropDate}, ${dropTime}*
+\u{1F4CB} Booking ID: *#${bookingId}*
+\u{1F3CD}\uFE0F Vehicle: *${toTitleCase(stripVehicleYear(vehicleName))}*
+\u{1F522} Vehicle No: *${vehicleNo}*
+\u{1F4CD} Pickup & Drop Hub: *${hubLocation}*
+\u{1F4C5} Pickup: *${pickupDate}, ${pickupTime}*
+\u{1F4C5} Drop-off: *${dropDate}, ${dropTime}*
 
 \u{1F4CD} PICKUP & RETURN LOCATION
 ${location}
@@ -84,19 +92,23 @@ function buildReminderMessage({
   lateFee,
   supportContact,
 }) {
-  return `\u{1F514} *RENTO BIKES \u2014 RIDE REMINDER*
+  const cleanVehicleName = toTitleCase(stripVehicleYear(vehicleName));
 
-Hello *${customerName}* \u{1F44B}
+  return `\u{1F514} *RENTO BIKES* 
+  
+\u2014 REMINDER REQUEST 
+
+Hello *${toTitleCase(customerName)}* \u{1F44B}
 
 Your bike rental is *ending soon*.
 
-\u{1F4CB} *Booking ID:* #${bookingId}
-\u{1F3CD}\uFE0F *Vehicle:* ${vehicleName}
-\u{1F522} *Vehicle No.:* ${vehicleNumber}
+\u{1F4CB} Booking ID: *#${bookingId}*
+\u{1F3CD}\uFE0F Vehicle: *${cleanVehicleName}*
+\u{1F522} Vehicle No: *${vehicleNumber}*
 
-\u{1F4C5} *Return Date:* ${dropDate}
-\u23F0 *Return Time:* ${dropTime}
-\u{1F4CD} *Return Location:* ${dropLocation}
+\u{1F4C5} Return Date: *${dropDate}*
+\u23F0 Return Time: *${dropTime}*
+\u{1F4CD} Return Location: ${dropLocation}
 
 Please *RETURN* the vehicle on time or *EXTEND* your ride through the Rento Bikes app.
 
@@ -112,6 +124,7 @@ Thank you for choosing *Rento Bikes!* \u{1F6F5}`;
 
 function buildCompletedMessage({
   bookingId,
+  customerName,
   vehicleName,
   vehicleNo,
   pickupDate,
@@ -125,6 +138,8 @@ function buildCompletedMessage({
   extraKm,
   rentalAmount,
   extraCharges,
+  extensionCharges,
+  vehicleChangeCharges,
   discount,
   finalAmount,
   amountPaid,
@@ -133,6 +148,7 @@ function buildCompletedMessage({
   balancePayable,
   reviewLink,
 }) {
+  const cleanVehicleName = toTitleCase(stripVehicleYear(vehicleName));
   const paymentLines = [
     `Rental Amount: \u20b9${rentalAmount}`,
     extraCharges ? `Extra Charges: \u20b9${extraCharges}` : null,
@@ -156,20 +172,22 @@ function buildCompletedMessage({
 
   const reviewBlock = reviewLink ? `\n\nRate Us on Google ${reviewLink}` : "";
 
-  return `\u{1F3C1} RENTO BIKES \u2013 RIDE COMPLETED
+  return `\u{1F3C1} RENTO BIKES 
+  
+\u2013 RIDE COMPLETED
 
-Hello \u{1F44B}
+Hello *${toTitleCase(customerName)}* \u{1F44B}
 
 Your ride has been successfully completed.
 
 \u{1F4CB} BOOKING DETAILS
-Booking ID: #${bookingId}
-Vehicle: ${vehicleName}
-Vehicle No:${vehicleNo}
+Booking ID: *#${bookingId}*
+Vehicle: *${cleanVehicleName}*
+Vehicle No: *${vehicleNo}*
 
 \u{1F4C5} RENTAL PERIOD
-Pickup: ${pickupDate}, ${pickupTime}
-Returned: ${returnDate}, ${returnTime}
+Pickup: *${pickupDate}, ${pickupTime}*
+Returned: *${returnDate}, ${returnTime}*
 
 
 \u{1F6E3}\uFE0F DISTANCE
@@ -200,81 +218,71 @@ function buildExtensionConfirmedMessage({
   vehicleName,
   vehicleNo,
   stationLocation,
-  extensionStart,
-  extensionStartTime,
-  extensionEnd,
-  extensionEndTime,
-  extensionDuration,
-  amountPaid,
   newDropDate,
   newDropTime,
+  amountPaid,
+  customerName,
+  supportContact,
 }) {
-  return `\u2705 RENTO BIKES \u2013 EXTENSION CONFIRMED
+  const cleanVehicleName = toTitleCase(stripVehicleYear(vehicleName));
+  const location =
+    stationLocation || "Please contact support for location details";
 
-Hello \u{1F44B}
+  return `\u{1F6F5} *RENTO BIKES* \u{1F6F5}
 
-Your ride has been extended successfully.
+\u{1F514} EXTENSION CONFIRMATION
 
-\u{1F4CB} Booking ID: #${bookingId}
-\u{1F3CD}\uFE0F Vehicle: ${vehicleName}
-\u{1F522} Vehicle No: ${vehicleNo}
+Hello *${toTitleCase(customerName)}* \u{1F44B}
 
-\u{1F4C5} EXTENSION PERIOD
-From: ${extensionStart}, ${extensionStartTime}
-To: ${extensionEnd}, ${extensionEndTime}
-Duration: ${extensionDuration} day(s)
+Your ride extension has been *confirmed successfully*. \u2705
 
-\u{1F4B0} Amount Paid: \u20b9${amountPaid}
+\u{1F4CB} Booking ID: #*${bookingId}*
+\u{1F3CD}\uFE0F Vehicle: *${cleanVehicleName}*
+\u{1F522} Vehicle No: *${vehicleNo}*
 
-\u{1F4C5} *New Drop-off: ${newDropDate}, ${newDropTime}*
-\u{1F4CD} DROP LOCATION
-${stationLocation}
+\u{1F4C5} New Return Date: *${newDropDate}*
+\u23F0 New Return Time: *${newDropTime}*
+\u{1F4CD} Return Location: *${location}*
 
-Thank you for choosing Rento Bikes! \u{1F6F5}`;
+\u{1F4B0} Amount Paid: *\u20b9${amountPaid}*
+
+Thank you for choosing *Rento Bikes!* \u{1F6F5}
+\u{1F4DE} Support: ${supportContact}`;
 }
 
 function buildExtensionRequestMessage({
+  customerName,
   bookingId,
   vehicleName,
   vehicleNo,
-  stationLocation,
-  extensionStart,
-  extensionStartTime,
-  extensionEnd,
-  extensionEndTime,
   extensionDuration,
   payableAmount,
-  newDropDate,
-  newDropTime,
   paymentLink,
+  supportContact,
 }) {
-  return `\u{1F514} RENTO BIKES \u2013 EXTENSION REQUEST
+  const cleanVehicleName = toTitleCase(stripVehicleYear(vehicleName));
+  return `\u{1F6F5} *RENTO BIKES* \u{1F6F5}
 
-Hello \u{1F44B}
+\u{1F514} EXTENSION REQUEST
 
-You requested to extend your ride. Please complete the payment to confirm.
+Hello *${toTitleCase(customerName)}*\u{1F44B}
 
-\u{1F4CB} Booking ID: #${bookingId}
-\u{1F3CD}\uFE0F Vehicle: ${vehicleName}
-\u{1F522} Vehicle No: ${vehicleNo}
+You have requested to extend your ride. Please complete the payment to confirm your extension.
 
-\u{1F4C5} EXTENSION PERIOD (on payment confirmation)
-From: ${extensionStart}, ${extensionStartTime}
-To: ${extensionEnd}, ${extensionEndTime}
-Duration: ${extensionDuration} day(s)
+\u{1F4CB} Booking ID: *#${bookingId}*
+\u{1F3CD}\uFE0F Vehicle: *${cleanVehicleName}*
+\u{1F522} Vehicle No:*${vehicleNo}*
 
-\u{1F4B0} Payable Amount: \u20b9${payableAmount}
+\u{1F4C5} EXTENSION DURATION: *${extensionDuration} day(s)*
 
-\u{1F4C5} *New Drop-off: ${newDropDate}, ${newDropTime}*
-\u{1F4CD} DROP LOCATION
-${stationLocation}
+\u{1F4B0} Payable Amount: *\u20b9${payableAmount}*
 
-\u{1F517} Complete Payment:
-${paymentLink}
+PAYMENT LINK: *${paymentLink}*
 
-\u26A0\uFE0F Your extension will be confirmed only after payment is completed.
+Your extension will be confirmed only after the payment is completed.
 
-Thank you for choosing Rento Bikes! \u{1F6F5}`;
+Need help?
+\u{1F4DE} Rento Bikes Support: ${supportContact}`;
 }
 
 module.exports = {

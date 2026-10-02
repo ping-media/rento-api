@@ -471,6 +471,7 @@ const savePickupImageLinks = async (req, res) => {
 
       const confirmationMessage = buildConfirmationMessage({
         bookingId: booking.bookingId,
+        customerName: `${booking.userId.firstName} ${booking.userId.lastName}`,
         vehicleName: `${booking.vehicleBrand} ${booking.vehicleName}`,
         vehicleNo: booking.vehicleBasic.vehicleNumber,
         hubLocation: booking.stationName,

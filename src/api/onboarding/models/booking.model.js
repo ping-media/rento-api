@@ -2114,7 +2114,11 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
   }
 
   try {
-    const booking = await Booking.findById(_id);
+    const booking = await Booking.findById(_id).populate(
+      "userId",
+      "contact firstName lastName",
+    );
+
     if (!booking) {
       return res.status(200).json({ message: "Booking not found" });
     }
@@ -2211,34 +2215,39 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
           );
         }
 
-        const extendedUser = await User.findById(booking.userId).select(
-          "contact",
-        );
-        const station = await Station.findOne({
-          stationId: booking.stationId,
-        }).select("mapLink");
+        // building the whatsapp message link
+        let whatsappUrl;
+        try {
+          const station = await Station.findOne({
+            stationId: booking.stationId,
+          }).select("mapLink");
 
-        const confirmedMessage = buildExtensionConfirmedMessage({
-          bookingId: booking.bookingId,
-          vehicleName: `${booking.vehicleBrand} ${booking.vehicleName}`,
-          vehicleNo: booking.vehicleBasic.vehicleNumber,
-          stationLocation: station?.mapLink,
-          extensionStart: formatDate(data.extendAmount.BookingStartDateAndTime),
-          extensionStartTime: formatTime(
-            data.extendAmount.BookingStartDateAndTime,
-          ),
-          extensionEnd: formatDate(data.extendAmount.bookingEndDateAndTime),
-          extensionEndTime: formatTime(data.extendAmount.bookingEndDateAndTime),
-          extensionDuration: data.extendAmount.extendDuration,
-          amountPaid: amount,
-          newDropDate: formatDate(booking.BookingEndDateAndTime),
-          newDropTime: formatTime(booking.BookingEndDateAndTime),
-        });
+          const stationMaster = await User.findById(
+            booking.stationMasterUserId,
+          ).select("contact");
 
-        const whatsappUrl = toWhatsappUrl(
-          `+91${extendedUser.contact}`,
-          confirmedMessage,
-        );
+          const confirmedMessage = buildExtensionConfirmedMessage({
+            customerName: `${booking.userId.firstName} ${booking.userId.lastName}`,
+            bookingId: booking.bookingId,
+            vehicleName: `${booking.vehicleBrand} ${booking.vehicleName}`,
+            vehicleNo: booking.vehicleBasic.vehicleNumber,
+            stationLocation: station?.mapLink,
+            newDropDate: formatDate(data.extendAmount.BookingEndDateAndTime),
+            newDropTime: formatTime(data.extendAmount.BookingEndDateAndTime),
+            amountPaid: amount,
+            supportContact: stationMaster?.contact,
+          });
+
+          whatsappUrl = toWhatsappUrl(
+            `+91${booking.userId.contact}`,
+            confirmedMessage,
+          );
+        } catch (whatsappError) {
+          console.error(
+            "WhatsApp link generation failed:",
+            whatsappError.message,
+          );
+        }
 
         return res.json({
           success: true,
@@ -2324,35 +2333,33 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
     });
 
     if (paymentLink?.paymentLinkId) {
-      const extendedUser = await User.findById(booking.userId).select(
-        "contact",
-      );
-      const station = await Station.findOne({
-        stationId: booking.stationId,
-      }).select("mapLink");
+      let whatsappUrl;
+      try {
+        const stationMaster = await User.findById(
+          booking.stationMasterUserId,
+        ).select("contact");
 
-      const requestMessage = buildExtensionRequestMessage({
-        bookingId: booking.bookingId,
-        vehicleName: `${booking.vehicleBrand} ${booking.vehicleName}`,
-        vehicleNo: booking.vehicleBasic.vehicleNumber,
-        stationLocation: station?.mapLink,
-        extensionStart: formatDate(data.extendAmount.BookingStartDateAndTime),
-        extensionStartTime: formatTime(
-          data.extendAmount.BookingStartDateAndTime,
-        ),
-        extensionEnd: formatDate(data.extendAmount.bookingEndDateAndTime),
-        extensionEndTime: formatTime(data.extendAmount.bookingEndDateAndTime),
-        extensionDuration: data.extendAmount.extendDuration,
-        payableAmount: amount,
-        newDropDate: formatDate(data.extendAmount.bookingEndDateAndTime),
-        newDropTime: formatTime(data.extendAmount.bookingEndDateAndTime),
-        paymentLink: paymentLink.paymentLink,
-      });
+        const requestMessage = buildExtensionRequestMessage({
+          customerName: `${booking.userId.firstName} ${booking.userId.lastName}`,
+          bookingId: booking.bookingId,
+          vehicleName: `${booking.vehicleBrand} ${booking.vehicleName}`,
+          vehicleNo: booking.vehicleBasic.vehicleNumber,
+          extensionDuration: data.extendAmount.extendDuration,
+          payableAmount: amount,
+          paymentLink: paymentLink.paymentLink,
+          supportContact: stationMaster?.contact,
+        });
 
-      const whatsappUrl = toWhatsappUrl(
-        `+91${extendedUser.contact}`,
-        requestMessage,
-      );
+        whatsappUrl = toWhatsappUrl(
+          `+91${booking.userId.contact}`,
+          requestMessage,
+        );
+      } catch (error) {
+        console.error(
+          "WhatsApp link generation failed:",
+          whatsappError.message,
+        );
+      }
 
       res.status(200).json({
         success: true,
