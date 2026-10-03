@@ -459,15 +459,42 @@ const savePickupImageLinks = async (req, res) => {
     const isFirstStart = booking.rideStatus === "pending";
 
     const buildStartRideWhatsappUrl = async () => {
-      const bp = booking.bookingPrice;
+      const freshBooking = await Booking.findOne({ _id }).select(
+        "bookingPrice paymentMethod",
+      );
+      const bp = freshBooking?.bookingPrice || {};
 
       const station = await Station.findOne({
         stationId: booking.stationId,
       }).select("mapLink");
 
-      const isFullyPaid = bp.AmountLeftAfterUserPaid.status === "paid";
-      const finalTotalAmount =
-        bp.discountPrice > 0 ? bp.discountTotalPrice : bp.totalPrice;
+      // same calculation as /rideUpdate
+      const isCouponApplied = !!bp?.discountCuopon?.couponId;
+      const expectedTotal =
+        Number(isCouponApplied ? bp.discountTotalPrice : bp.totalPrice) || 0;
+
+      const mainBookingCollected =
+        freshBooking?.paymentMethod === "partiallyPay"
+          ? Number(bp.userPaid || 0) +
+            (bp.AmountLeftAfterUserPaid?.status === "paid"
+              ? Number(bp.AmountLeftAfterUserPaid.amount || 0)
+              : 0)
+          : expectedTotal;
+
+      const paidExtendTotal = (bp.extendAmount || [])
+        .filter((e) => e.status === "paid")
+        .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
+      const paidDiffTotal = (bp.diffAmount || [])
+        .filter((d) => d.status === "paid")
+        .reduce(
+          (sum, d) => sum + Number(d.amount || 0) - Number(d.refundAmount || 0),
+          0,
+        );
+
+      const finalTotalAmount = expectedTotal + paidExtendTotal + paidDiffTotal;
+      const paidAmount = mainBookingCollected + paidExtendTotal + paidDiffTotal;
+      const balancePayable = Math.max(0, finalTotalAmount - paidAmount);
 
       const confirmationMessage = buildConfirmationMessage({
         bookingId: booking.bookingId,
@@ -484,8 +511,8 @@ const savePickupImageLinks = async (req, res) => {
         discount: bp.discountPrice,
         accessoriesTotal: bp.extraAddonPrice,
         finalTotal: finalTotalAmount,
-        paid: isFullyPaid ? finalTotalAmount : bp.userPaid,
-        balancePayable: isFullyPaid ? 0 : bp.AmountLeftAfterUserPaid.amount,
+        paid: paidAmount,
+        balancePayable,
         deposit: booking.vehicleBasic.refundableDeposit,
         distanceLimit: booking.vehicleBasic.freeLimit,
         extraUsageRate: booking.vehicleBasic.extraKmCharge,

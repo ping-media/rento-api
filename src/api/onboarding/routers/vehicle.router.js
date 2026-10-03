@@ -62,6 +62,7 @@ const {
   timelineFunction,
   timelineFunctionForGet,
   addTimelineNote,
+  timelineFunctionServer,
 } = require("../models/timeline.model");
 const {
   // vehicleChangeInBooking,
@@ -1301,11 +1302,6 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     }
 
     await pickupImage.updateOne({ bookingId }, { $set: pickupUpdate });
-    // await pickupImage.updateOne(
-    //   { bookingId },
-    //   { $set: { endMeterReading, rideEndDate } },
-    //   { new: true },
-    // );
 
     // checking whether the full amount is refunded or partial before changing the status to refunded
     let paymentStatus = booking?.paymentStatus;
@@ -1385,6 +1381,51 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       userId,
     });
 
+    // create the timeline on the server
+    let timeLineData = null;
+    if (rideStatus === "completed") {
+      const serverLateFeeAmount =
+        Number(lateFeeBasedOnHour || 0) + Number(serverLateFeeBasedOnKM || 0);
+
+      timeLineData = {
+        userId: booking.userId?._id,
+        bookingId: booking.bookingId,
+        currentBooking_id: _id,
+        timeLine: [
+          {
+            title: "Booking Completed",
+            refundAmount: Number(refundAmount || 0),
+            paymentAmount: serverLateFeeAmount > 0 ? serverLateFeeAmount : 0,
+            paymentMode: paymentMode && paymentMode !== "NA" ? paymentMode : "",
+            date: Date.now(),
+          },
+        ],
+      };
+
+      try {
+        const timelineResult = await timelineFunctionServer(timeLineData);
+
+        if (timelineResult?.status !== 200) {
+          // ride is already completed, so don't fail the request
+          console.error("Timeline creation failed:", timelineResult?.message);
+          await Log({
+            message: `Timeline creation failed for ${_id}: ${timelineResult?.message}`,
+            functionName: "rideUpdate",
+            userId,
+          });
+          timeLineData = null;
+        }
+      } catch (timelineError) {
+        console.error("Timeline creation failed:", timelineError);
+        await Log({
+          message: `Timeline creation failed for ${_id}: ${timelineError.message}`,
+          functionName: "rideUpdate",
+          userId,
+        });
+        timeLineData = null;
+      }
+    }
+
     obj.status = 200;
     obj.message = `Ride ${
       rideStatus === "canceled"
@@ -1454,6 +1495,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       totalDrivenKm,
       rideStatus,
       whatsappUrl,
+      timeLineData,
     };
     obj.data = response;
     return res.status(200).json(obj);
