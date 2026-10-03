@@ -15,6 +15,10 @@ const {
 } = require("../../../constant");
 const { whatsappMessage } = require("../../../utils/whatsappMessage");
 const { sendOtpByEmail } = require("../../../utils/emailSend");
+const {
+  normalizeIndianPhone,
+  escapeRegex,
+} = require("../../../utils/normalizeIndianPhone");
 
 async function updateUser({
   _id,
@@ -248,6 +252,8 @@ const getAllUsersAdmin = async (query) => {
       order = "desc",
     } = query;
 
+    const normalizedSearch = search ? normalizeIndianPhone(search) : "";
+
     // Validate and normalize inputs
     const pageNumber = parseInt(page, 10);
     const pageSize = parseInt(limit, 10);
@@ -268,7 +274,7 @@ const getAllUsersAdmin = async (query) => {
     if (firstName) filter.firstName = firstName;
     if (lastName) filter.lastName = lastName;
     if (email) filter.email = email;
-    if (contact) filter.contact = contact;
+    if (contact) filter.contact = normalizeIndianPhone(contact);
     if (userType) filter.userType = userType;
     if (kycApproved) filter.kycApproved = kycApproved;
     if (isEmailVerified) filter.isEmailVerified = isEmailVerified;
@@ -277,17 +283,24 @@ const getAllUsersAdmin = async (query) => {
 
     // Handle search functionality
     if (search) {
+      const safeSearch = escapeRegex(search);
+      const searchRegex = { $regex: safeSearch, $options: "i" };
+
       filter.$or = [
-        { firstName: { $regex: search, $options: "i" } },
-        { lastName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { contact: { $regex: search, $options: "i" } },
-        { userType: { $regex: search, $options: "i" } },
-        { isDocumentVerified: { $regex: search, $options: "i" } },
-        { isContactVerified: { $regex: search, $options: "i" } },
-        { isEmailVerified: { $regex: search, $options: "i" } },
-        { status: { $regex: search, $options: "i" } },
-        { kycApproved: { $regex: search, $options: "i" } },
+        { firstName: searchRegex },
+        { lastName: searchRegex },
+        { email: searchRegex },
+        {
+          contact: normalizedSearch
+            ? { $regex: escapeRegex(normalizedSearch), $options: "i" }
+            : searchRegex,
+        },
+        { userType: searchRegex },
+        { isDocumentVerified: searchRegex },
+        { isContactVerified: searchRegex },
+        { isEmailVerified: searchRegex },
+        { status: searchRegex },
+        { kycApproved: searchRegex },
       ];
     }
 
@@ -1199,7 +1212,7 @@ async function saveUser(userData) {
         };
       }
 
-      if (userType !== "admin") {
+      if (userType !== "admin" && userType !== "manager") {
         if (!userObj.altContact || userObj.altContact === "") {
           return { status: 400, message: "AltContact is required." };
         }
@@ -1227,11 +1240,11 @@ async function saveUser(userData) {
         }
       }
 
-      if (userType !== "admin" && userType !== "manager") {
-        if (userObj.dateofbirth && !isAtLeast18(userObj.dateofbirth)) {
-          return { status: 400, message: "User should be 18 or older." };
-        }
-      }
+      // if (userType !== "admin" && userType !== "manager") {
+      //   if (userObj.dateofbirth && !isAtLeast18(userObj.dateofbirth)) {
+      //     return { status: 400, message: "User should be 18 or older." };
+      //   }
+      // }
 
       Object.keys(userObj).forEach((key) => {
         if (

@@ -9,6 +9,7 @@ const {
   getNotificationsSettings,
   refreshToken,
   logout,
+  changePassword,
 } = require("../models/login.model");
 
 exports.adminLogin = async (req, res) => {
@@ -91,7 +92,23 @@ exports.logout = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const result = await updateProfile(req.body);
+    const { id } = req.user;
+    const result = await updateProfile({ ...req.body, _id: id });
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { id } = req.user;
+    const result = await changePassword({ ...req.body, _id: id });
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({

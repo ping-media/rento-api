@@ -218,7 +218,7 @@ async function updateProfile({
   email,
   contact,
   altContact,
-  password,
+  // password,
 }) {
   const obj = {
     status: 200,
@@ -253,7 +253,7 @@ async function updateProfile({
   if (email) updateFields.email = email;
   if (contact) updateFields.contact = contact;
   if (altContact) updateFields.altContact = altContact;
-  if (password) updateFields.password = bcrypt.hashSync(password, 10);
+  // if (password) updateFields.password = bcrypt.hashSync(password, 10);
 
   const updatedUser = await User.findByIdAndUpdate(_id, updateFields, {
     new: true,
@@ -275,6 +275,62 @@ async function updateProfile({
   obj.data = userData;
   obj.token = token;
   obj.Station = stationData;
+
+  return obj;
+}
+
+async function changePassword({ _id, currentPassword, newPassword }) {
+  const obj = {
+    status: 200,
+    message: "Password changed successfully",
+  };
+
+  if (!_id) {
+    obj.status = 400;
+    obj.message = "User ID is required.";
+    return obj;
+  }
+
+  if (!currentPassword || !newPassword) {
+    obj.status = 400;
+    obj.message = "Current password and new password are required.";
+    return obj;
+  }
+
+  if (newPassword.length < 8) {
+    obj.status = 400;
+    obj.message = "New password must be at least 8 characters.";
+    return obj;
+  }
+
+  if (currentPassword === newPassword) {
+    obj.status = 400;
+    obj.message = "New password must be different from the current password.";
+    return obj;
+  }
+
+  const user = await User.findById(_id);
+  if (!user) {
+    obj.status = 404;
+    obj.message = "User not found.";
+    return obj;
+  }
+
+  if (user.status === "inactive") {
+    obj.status = 403;
+    obj.message = "User is not active.";
+    return obj;
+  }
+
+  const isMatch = bcrypt.compareSync(currentPassword, user.password);
+  if (!isMatch) {
+    obj.status = 401;
+    obj.message = "Current password is incorrect.";
+    return obj;
+  }
+
+  user.password = bcrypt.hashSync(newPassword, 10);
+  await user.save();
 
   return obj;
 }
@@ -371,6 +427,7 @@ async function resendOtp({ Contact, email }) {
 module.exports = {
   loginUser,
   updateProfile,
+  changePassword,
   adminLogin,
   guestLogin,
   logout,

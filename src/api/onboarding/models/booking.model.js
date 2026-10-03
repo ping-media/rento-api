@@ -26,6 +26,10 @@ const {
   toWhatsappUrl,
   buildExtensionRequestMessage,
 } = require("../../../utils/whatsappTemplates.js");
+const {
+  normalizeIndianPhone,
+  escapeRegex,
+} = require("../../../utils/normalizeIndianPhone.js");
 require("dotenv").config();
 
 const razorpay = new Razorpay({
@@ -81,6 +85,10 @@ const getBooking = async (query) => {
       includeCanceled = false,
     } = query;
 
+    const normalizedContact = contact ? normalizeIndianPhone(contact) : "";
+
+    const normalizedSearch = search ? normalizeIndianPhone(search) : "";
+
     if (_id) {
       if (_id.length !== 24) {
         await Log({
@@ -121,7 +129,7 @@ const getBooking = async (query) => {
     const matchFilters = {};
     if (bookingId) {
       matchFilters.bookingId = {
-        $regex: bookingId,
+        $regex: escapeRegex(bookingId),
         $options: "i",
       };
     }
@@ -129,7 +137,7 @@ const getBooking = async (query) => {
     if (vehicleName) matchFilters.vehicleName = vehicleName;
     if (vehicleNumber) {
       matchFilters["vehicleBasic.vehicleNumber"] = {
-        $regex: vehicleNumber,
+        $regex: escapeRegex(vehicleNumber),
         $options: "i",
       };
     }
@@ -157,9 +165,6 @@ const getBooking = async (query) => {
       matchFilters.bookingStatus = { $ne: "canceled" };
     }
 
-    // else if (!includeCanceled && !search) {
-    //   matchFilters.bookingStatus = { $ne: "canceled" };
-    // }
     if (paymentStatus) matchFilters.paymentStatus = paymentStatus;
     if (userId) matchFilters.userId = userId;
     if (rideStatus) matchFilters.rideStatus = rideStatus;
@@ -251,20 +256,20 @@ const getBooking = async (query) => {
     const populatedFilters = {};
     if (fullName) {
       populatedFilters["userId.fullName"] = {
-        $regex: fullName,
+        $regex: escapeRegex(fullName),
         $options: "i",
       };
     }
-    if (contact) {
+    if (normalizedContact) {
       populatedFilters["userId.contact"] = {
-        $regex: contact,
+        $regex: normalizedContact,
         $options: "i",
       };
     }
 
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, "i");
+      const searchRegex = new RegExp(escapeRegex(search), "i");
 
       const searchConditions = [
         { bookingId: searchRegex },
@@ -278,7 +283,12 @@ const getBooking = async (query) => {
         { rideStatus: searchRegex },
         { payInitFrom: searchRegex },
         { "userId.fullName": searchRegex },
-        { "userId.contact": searchRegex },
+        {
+          "userId.contact": normalizedSearch
+            ? new RegExp(normalizedSearch, "i")
+            : searchRegex,
+        },
+        // { "userId.contact": searchRegex },
       ];
 
       // Handle date search based on dateCheck flag

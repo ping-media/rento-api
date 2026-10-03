@@ -2,60 +2,7 @@ const Coupon = require("../../../db/schemas/onboarding/coupons.schema");
 
 const mongoose = require("mongoose"); // Ensure mongoose is imported
 const Log = require("../models/Logs.model");
-
-// const getCoupons = async (query) => {
-//   const obj = { status: 200, message: "Data fetched successfully", data: [], pagination: {} };
-
-//   try {
-//       const { _id, page = 1, limit = 10 } = query;
-
-//       // Fetch by ID if provided
-//       if (_id) {
-//           if (!mongoose.Types.ObjectId.isValid(_id)) {
-//               obj.status = 400;
-//               obj.message = "Invalid _id format";
-//               return obj;
-//           }
-
-//           const coupon = await Coupon.findById(_id);
-//           if (!coupon) {
-//               obj.message = "No Records Found";
-//               return obj;
-//           }
-
-//           obj.data = [coupon];
-//           return obj;
-//       }
-
-//       const skip = (page - 1) * limit;
-
-//       const totalRecords = await Coupon.count();
-
-//       const coupons = await Coupon.find()
-//           //.select("couponName discount discountType ")
-//           .skip(skip)
-//           .limit(Number(limit))
-//           .sort({ createdAt: -1 });
-
-//       if (!coupons.length) {
-//           obj.message = "No Records Found";
-//           return obj;
-//       }
-
-//       obj.data = coupons;
-//       obj.pagination = {
-//           totalPages: Math.ceil(totalRecords / limit),
-//           currentPage: Number(page),
-//           limit: Number(limit),
-//       };
-//   } catch (error) {
-//       console.error("Error fetching coupons:", error);
-//       obj.status = 500;
-//       obj.message = "Internal Server Error";
-//   }
-
-//   return obj;
-// };
+const { escapeRegex } = require("../../../utils/normalizeIndianPhone");
 
 const getCoupons = async (query) => {
   const obj = {
@@ -88,10 +35,12 @@ const getCoupons = async (query) => {
 
     let searchQuery = {};
     if (search) {
+      const searchRegex = { $regex: escapeRegex(search), $options: "i" };
+
       searchQuery = {
         $or: [
-          { couponName: { $regex: search, $options: "i" } },
-          { discountType: { $regex: search, $options: "i" } },
+          { couponName: searchRegex },
+          { discountType: searchRegex },
           ...(isNaN(Number(search)) ? [] : [{ discount: Number(search) }]),
         ],
       };

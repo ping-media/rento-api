@@ -82,20 +82,6 @@ exports.sendOtpByEmailForBooking = async (req, res) => {
   }
 };
 
-// exports.sendInvoiceByEmail = async (req, res) => {
-//   try {
-//     const result = await sendInvoiceByEmail(req.body,req.query,req.headers);
-//     return res.status(200).json(result);
-//   } catch (err) {
-//     // return res.json({
-//     //   message: err.message,
-//     //   name: err.name,
-//     //   stack: err.stack,
-//     //   status: 400,
-//     // });
-//   }
-// }
-
 exports.getStationData = async (req, res) => {
   try {
     const result = await getStationData(req.query, req.headers);

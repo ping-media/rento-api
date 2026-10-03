@@ -1,7 +1,7 @@
 const router = require("express").Router();
-// const elementService = require('../services/user.service');
 const loginService = require("../services/login.service");
 const auth = require("../../../middlewares/auth/index");
+const Authentication = require("../../../middlewares/Authentication");
 
 // guest login
 router.post("/guest", async (req, res) => {
@@ -25,8 +25,12 @@ router.post("/refreshToken", async (req, res) => {
   loginService.refreshToken(req, res);
 });
 
-router.post("/updateProfile", async (req, res) => {
+router.post("/updateProfile", Authentication, async (req, res) => {
   loginService.updateProfile(req, res);
+});
+
+router.post("/change-password", Authentication, async (req, res) => {
+  loginService.changePassword(req, res);
 });
 
 // Verify Otp

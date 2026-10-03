@@ -267,26 +267,33 @@ const getAllVehiclesData = async (req, res) => {
     if (stationId) filter.stationId = stationId;
 
     if (vehicleStatus)
-      filter.vehicleStatus = { $regex: vehicleStatus, $options: "i" };
-    if (condition) filter.condition = { $regex: condition, $options: "i" };
+      filter.vehicleStatus = {
+        $regex: escapeRegex(vehicleStatus),
+        $options: "i",
+      };
+    if (condition)
+      filter.condition = { $regex: escapeRegex(condition), $options: "i" };
     if (vehicleName)
-      filter.vehicleName = { $regex: vehicleName, $options: "i" };
+      filter.vehicleName = { $regex: escapeRegex(vehicleName), $options: "i" };
     if (vehicleBrand)
-      filter.vehicleBrand = { $regex: vehicleBrand, $options: "i" };
+      filter.vehicleBrand = {
+        $regex: escapeRegex(vehicleBrand),
+        $options: "i",
+      };
     if (_id) filter._id = mongoose.Types.ObjectId(_id);
 
     let stationNameFilter = {};
     if (stationName) {
       stationNameFilter = {
         "stationData.stationName": {
-          $regex: stationName,
+          $regex: escapeRegex(stationName),
           $options: "i",
         },
       };
     }
 
     if (search) {
-      const searchRegex = { $regex: search, $options: "i" };
+      const searchRegex = { $regex: escapeRegex(search), $options: "i" };
       filter.$or = [
         { vehicleName: searchRegex },
         { vehicleBrand: searchRegex },
@@ -621,211 +628,6 @@ const getVehicleIds = async (req, res) => {
     });
   }
 };
-// const getVehicleIds = async (req, res) => {
-//   try {
-//     const { vehicleName, stationId } = req.query;
-
-//     if (!vehicleName) {
-//       return res.json({
-//         status: 400,
-//         message: "vehicleName is required",
-//         data: [],
-//       });
-//     }
-
-//     const filter = {};
-
-//     if (stationId) {
-//       filter.stationId = stationId;
-//     }
-
-//     const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-//     const nowIST = new Date(new Date().getTime() + IST_OFFSET_MS);
-
-//     const vehicles = await vehicleTable.aggregate([
-//       ...(stationId ? [{ $match: filter }] : []), // Apply stationId filter first if exists
-//       {
-//         $lookup: {
-//           from: "vehiclemasters",
-//           localField: "vehicleMasterId",
-//           foreignField: "_id",
-//           as: "vehicleMasterData",
-//         },
-//       },
-//       {
-//         $lookup: {
-//           from: "stations",
-//           localField: "stationId",
-//           foreignField: "stationId",
-//           as: "stationData",
-//         },
-//       },
-//       {
-//         $lookup: {
-//           from: "maintenancevehicles",
-//           localField: "_id",
-//           foreignField: "vehicleTableId",
-//           as: "maintenanceData",
-//         },
-//       },
-//       {
-//         $addFields: {
-//           activeMaintenance: {
-//             $filter: {
-//               input: "$maintenanceData",
-//               as: "m",
-//               cond: {
-//                 $and: [
-//                   { $eq: ["$$m.status", "active"] },
-//                   {
-//                     $lte: [
-//                       { $toString: "$$m.startDate" },
-//                       { $toString: nowIST },
-//                     ],
-//                   },
-//                   {
-//                     $gte: [{ $toString: "$$m.endDate" }, { $toString: nowIST }],
-//                   },
-//                 ],
-//               },
-//             },
-//           },
-//         },
-//       },
-//       {
-//         $addFields: {
-//           isUnderMaintenance: {
-//             $gt: [{ $size: "$activeMaintenance" }, 0],
-//           },
-//           maintenanceInfo: {
-//             $arrayElemAt: ["$activeMaintenance", 0],
-//           },
-//         },
-//       },
-//       {
-//         $unwind: {
-//           path: "$vehicleMasterData",
-//           preserveNullAndEmptyArrays: true,
-//         },
-//       },
-//       {
-//         $unwind: {
-//           path: "$stationData",
-//           preserveNullAndEmptyArrays: true,
-//         },
-//       },
-//       {
-//         $match: {
-//           "vehicleMasterData.vehicleName": {
-//             $regex: escapeRegex(vehicleName),
-//             $options: "i",
-//           },
-//         },
-//       },
-//       {
-//         $project: {
-//           _id: 1,
-//           vehicleNumber: 1,
-//           vehicleMasterId: 1,
-//           stationId: 1,
-//           lastMeterReading: 1,
-//           stationName: "$stationData.stationName",
-//           isUnderMaintenance: 1,
-//           maintenanceInfo: {
-//             _id: "$maintenanceInfo._id",
-//             startDate: "$maintenanceInfo.startDate",
-//             endDate: "$maintenanceInfo.endDate",
-//             reason: "$maintenanceInfo.reason",
-//           },
-//         },
-//       },
-//     ]);
-
-//     const vehicleIds = vehicles.map((v) => v._id);
-
-//     const currentBookings = await Booking.find(
-//       {
-//         vehicleTableId: { $in: vehicleIds },
-//         vehicleAssigned: true,
-//         rideStatus: { $in: ["ongoing", "pending"] },
-//       },
-//       { bookingId: 1, vehicleTableId: 1 },
-//     );
-
-//     const nowISO = new Date().toISOString();
-//     const vehicleMasterIds = [
-//       ...new Set(vehicles.map((v) => v.vehicleMasterId.toString())),
-//     ];
-
-//     const unassignedPendingCount = await Booking.countDocuments({
-//       vehicleAssigned: false,
-//       rideStatus: "pending",
-//       bookingStatus: { $ne: "canceled" },
-//       paymentStatus: {
-//         $in: ["paid", "partially_paid", "partiallyPay", "pending"],
-//       },
-//       BookingEndDateAndTime: { $gt: nowISO }, // not already expired
-//       vehicleMasterId: {
-//         $in: vehicleMasterIds.map((id) => new mongoose.Types.ObjectId(id)),
-//       },
-//       ...(stationId ? { stationId } : {}),
-//     });
-
-//     const currentBookingMap = {};
-//     currentBookings.forEach((b) => {
-//       currentBookingMap[b.vehicleTableId.toString()] = b;
-//     });
-
-//     const vehicleData = vehicles.map((vehicle) => ({
-//       _id: vehicle._id,
-//       vehicleNumber: vehicle.vehicleNumber,
-//       vehicleMasterId: vehicle.vehicleMasterId,
-//       stationId: vehicle.stationId,
-//       stationName: vehicle.stationName,
-//       OdometerReading: vehicle.lastMeterReading,
-//       isUnderMaintenance: vehicle.isUnderMaintenance ?? false,
-//       maintenanceInfo: vehicle.maintenanceInfo
-//         ? {
-//             _id: vehicle.maintenanceInfo._id,
-//             startDate: vehicle.maintenanceInfo.startDate,
-//             endDate: vehicle.maintenanceInfo.endDate,
-//             reason: vehicle.maintenanceInfo.reason,
-//           }
-//         : null,
-//       currentBooking: currentBookingMap[vehicle._id.toString()]
-//         ? {
-//             bookingId: currentBookingMap[vehicle._id.toString()].bookingId,
-//             _id: currentBookingMap[vehicle._id.toString()]._id,
-//           }
-//         : null,
-//     }));
-
-//     const freeVehicles = vehicleData.filter(
-//       (v) => !v.currentBooking && !v.isUnderMaintenance,
-//     );
-//     const actualFreeCount = Math.max(
-//       0,
-//       freeVehicles.length - unassignedPendingCount,
-//     );
-
-//     return res.json({
-//       status: 200,
-//       message: "Vehicle data fetched successfully",
-//       count: vehicleData.length,
-//       freeCount: freeVehicles.length,
-//       actualFreeCount,
-//       reservedByPendingBookings: unassignedPendingCount,
-//       data: vehicleData,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching vehicle IDs:", error.message);
-//     return res.json({
-//       status: 500,
-//       message: "An error occurred while fetching vehicle IDs",
-//       data: [],
-//     });
-//   }
-// };
 
 const getAvailableVehicleIds = async (req, res) => {
   try {

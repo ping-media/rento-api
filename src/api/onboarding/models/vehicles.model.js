@@ -2313,11 +2313,13 @@ const getVehicleMasterData = async (query) => {
     if (vehicleCategory) filter.vehicleCategory = vehicleCategory;
 
     if (search) {
+      const searchRegex = { $regex: escapeRegex(search), $options: "i" };
+
       filter.$or = [
-        { vehicleName: { $regex: search, $options: "i" } },
-        { vehicleType: { $regex: search, $options: "i" } },
-        { vehicleBrand: { $regex: search, $options: "i" } },
-        { vehicleCategory: { $regex: search, $options: "i" } },
+        { vehicleName: searchRegex },
+        { vehicleType: searchRegex },
+        { vehicleBrand: searchRegex },
+        { vehicleCategory: searchRegex },
       ];
     }
 
@@ -5697,10 +5699,12 @@ const getPlanData = async (query) => {
     }
 
     if (search) {
+      const searchRegex = { $regex: escapeRegex(search), $options: "i" };
+
       matchFilter.$or = [
-        { planName: { $regex: search, $options: "i" } },
-        { stationName: { $regex: search, $options: "i" } },
-        { vehicleName: { $regex: search, $options: "i" } },
+        { planName: searchRegex },
+        { stationName: searchRegex },
+        { vehicleName: searchRegex },
       ];
     }
 
@@ -5808,9 +5812,11 @@ async function getLocationData(query) {
     if (state) filter.state = state;
 
     if (search) {
+      const searchRegex = { $regex: escapeRegex(search), $options: "i" };
+
       filter.$or = [
-        { locationName: { $regex: search, $options: "i" } },
-        { locationStatus: { $regex: search, $options: "i" } },
+        { locationName: searchRegex },
+        { locationStatus: searchRegex },
       ];
     }
 
@@ -5962,11 +5968,13 @@ const getStationData = async (query) => {
   if (weekendPriceType) filter.weekendPriceType = weekendPriceType;
 
   if (search) {
+    const searchRegex = { $regex: escapeRegex(search), $options: "i" };
+
     filter.$or = [
-      { stationName: { $regex: search, $options: "i" } },
-      { city: { $regex: search, $options: "i" } },
-      { state: { $regex: search, $options: "i" } },
-      { country: { $regex: search, $options: "i" } },
+      { stationName: searchRegex },
+      { city: searchRegex },
+      { state: searchRegex },
+      { country: searchRegex },
     ];
   }
 
