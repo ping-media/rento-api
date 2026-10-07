@@ -46,7 +46,7 @@ async function otpGenerat(req, res) {
     }
 
     if (user.status === "inactive") {
-      const message = "User not active";
+      const message = "User not active! Contact support.";
       await createLog(message, "optGernet", user._id, 400);
       return res.json({ status: 400, message });
     }

@@ -22,6 +22,7 @@ const {
   addOrUpdateMobileToken,
   updateStationInfo,
   getCustomerKycStatus,
+  updateUserByAdmin,
 } = require("../models/account.model");
 
 exports.updateUser = async (req, res) => {
@@ -127,6 +128,28 @@ exports.getAllDataCount = async (req, res) => {
 exports.saveUser = async (req, res) => {
   try {
     const result = await saveUser(req.body);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
+exports.updateUserByAdmin = async (req, res) => {
+  try {
+    const { userType } = req.user;
+    if (userType !== "admin") {
+      return res.status(200).json({
+        success: false,
+        status: 401,
+        message: "unauthorized access",
+      });
+    }
+    const result = await updateUserByAdmin(req.body);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({

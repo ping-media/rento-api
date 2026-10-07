@@ -1302,6 +1302,173 @@ async function saveUser(userData) {
   }
 }
 
+async function updateUserByAdmin(userData) {
+  const { _id, ...fields } = userData;
+
+  try {
+    const validateId = (id) => id && id.length === 24;
+    const isValidContact = (number) => contactValidation(number);
+    const isValidEmail = (email) => emailValidation(email);
+    const isValidEnum = (value, validList) => validList.includes(value);
+
+    if (!_id || !validateId(_id)) {
+      return { status: 400, message: "Invalid _id" };
+    }
+
+    const existingUser = await User.findById(_id);
+    if (!existingUser) {
+      return { status: 404, message: "User not found" };
+    }
+
+    // Only these fields can be changed through this endpoint
+    const allowedFields = [
+      "userType",
+      "status",
+      "altContact",
+      "firstName",
+      "lastName",
+      "contact",
+      "email",
+      "kycApproved",
+      "isEmailVerified",
+      "isContactVerified",
+      "isDocumentVerified",
+      "drivingLicence",
+      "idProof",
+      "addressProof",
+      "dateofbirth",
+      "gender",
+    ];
+
+    // Pick only allowed fields that actually have a value (no defaults)
+    const userObj = {};
+    allowedFields.forEach((key) => {
+      const value = fields[key];
+      if (value !== undefined && value !== null && value !== "") {
+        userObj[key] = value;
+      }
+    });
+
+    if (Object.keys(userObj).length === 0) {
+      return { status: 400, message: "No valid fields provided to update" };
+    }
+
+    // Validate only the fields that were sent
+    const yesNoList = ["yes", "no"];
+
+    if (userObj.userType !== undefined) {
+      if (!isValidEnum(userObj.userType, ["manager", "customer", "admin"])) {
+        return { status: 400, message: "Invalid user type" };
+      }
+    }
+
+    if (userObj.status !== undefined) {
+      if (!isValidEnum(userObj.status, ["active", "inactive"])) {
+        return { status: 400, message: "Invalid user status" };
+      }
+    }
+
+    const yesNoFields = [
+      ["kycApproved", "Invalid KYC approval status"],
+      ["isEmailVerified", "Invalid email verification status"],
+      ["isContactVerified", "Invalid contact verification status"],
+      ["isDocumentVerified", "Invalid document verification status"],
+    ];
+    for (const [key, message] of yesNoFields) {
+      if (userObj[key] !== undefined && !isValidEnum(userObj[key], yesNoList)) {
+        return { status: 400, message };
+      }
+    }
+
+    if (userObj.email !== undefined) {
+      if (!isValidEmail(userObj.email)) {
+        return { status: 400, message: "Invalid email address" };
+      }
+      const finalUserType = userObj.userType || existingUser.userType;
+      if (finalUserType === "manager" || finalUserType === "admin") {
+        const emailExists = await User.findOne({
+          email: userObj.email,
+          _id: { $ne: _id },
+        });
+        if (emailExists) {
+          return { status: 409, message: "This email already exists" };
+        }
+      }
+    }
+
+    if (userObj.contact !== undefined) {
+      if (!isValidContact(userObj.contact)) {
+        return { status: 400, message: "Invalid phone number" };
+      }
+      const contactExists = await User.findOne({
+        contact: userObj.contact,
+        _id: { $ne: _id },
+      });
+      if (contactExists) {
+        return { status: 409, message: "This contact number already exists" };
+      }
+    }
+
+    if (userObj.altContact !== undefined) {
+      if (!isValidContact(userObj.altContact)) {
+        return { status: 400, message: "Invalid alternative contact number" };
+      }
+      const finalContact = userObj.contact || existingUser.contact;
+      if (userObj.altContact === finalContact) {
+        return {
+          status: 400,
+          message:
+            "Alternate contact should not be the same as primary contact.",
+        };
+      }
+      const altExists = await User.findOne({
+        contact: userObj.altContact,
+        _id: { $ne: _id },
+      });
+      if (altExists) {
+        return { status: 409, message: "This contact number already exists" };
+      }
+    }
+
+    if (userObj.dateofbirth !== undefined && userObj.dateofbirth !== "Na") {
+      const dobDate = new Date(userObj.dateofbirth);
+      if (isNaN(dobDate.getTime())) {
+        return { status: 400, message: "Invalid date of birth" };
+      }
+      const today = new Date();
+      let age = today.getFullYear() - dobDate.getFullYear();
+      const hasHadBirthday =
+        today.getMonth() > dobDate.getMonth() ||
+        (today.getMonth() === dobDate.getMonth() &&
+          today.getDate() >= dobDate.getDate());
+      if (!hasHadBirthday) age -= 1;
+      if (age < 18) {
+        return { status: 400, message: "User should be 18 or older." };
+      }
+    }
+
+    const updateQuery = { $set: userObj };
+
+    // Keep the same address history behaviour as saveUser
+    if (
+      userObj.addressProof &&
+      existingUser.addressProof &&
+      userObj.addressProof !== existingUser.addressProof
+    ) {
+      updateQuery.$push = { addresses: existingUser.addressProof };
+    }
+
+    const data = await User.findByIdAndUpdate(_id, updateQuery, {
+      new: true,
+    });
+
+    return { status: 200, message: "User updated successfully", data: data };
+  } catch (error) {
+    console.error("Error in updateUserByAdmin:", error.message);
+    return { status: 500, message: "Internal server error" };
+  }
+}
+
 async function updateImage(req) {
   const obj = { status: 200, message: "image updated successfully", data: "" };
   console.log(req.file);
@@ -1404,6 +1571,7 @@ module.exports = {
   getAllUsersAdmin,
   updateUser,
   saveUser,
+  updateUserByAdmin,
   getUserProfile,
   searchUser,
   updateImage,

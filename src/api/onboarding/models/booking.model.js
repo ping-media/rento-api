@@ -879,10 +879,25 @@ const initiateBooking = async (req, res) => {
 
     const customer = await User.findById(customerId);
 
+    if (!customer) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ message: "Customer not found", status: 404 });
+    }
+
     if ((customer?.isDeleted ?? false) === true) {
       await session.abortTransaction();
       session.endSession();
       return res.json({ message: "User account is deleted", status: 400 });
+    }
+
+    if (customer?.status !== "active") {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({
+        message: "User account is inactive. Please contact support.",
+        status: 403,
+      });
     }
 
     // --- Idempotency guard against duplicate/retry requests ---
@@ -1495,6 +1510,14 @@ const initiateExtensionBooking = async (req, res) => {
 
     const booking = await Booking.findById(_id);
 
+    if (!booking) {
+      await session.abortTransaction();
+      session.endSession();
+      return res
+        .status(200)
+        .json({ status: 404, message: "Booking not found" });
+    }
+
     if (booking.rideStatus === "completed") {
       await session.abortTransaction();
       session.endSession();
@@ -1521,19 +1544,34 @@ const initiateExtensionBooking = async (req, res) => {
 
     const customer = await User.findById(customerId);
 
+    if (!customer) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ message: "Customer not found", status: 404 });
+    }
+
     if ((customer?.isDeleted ?? false) === true) {
       await session.abortTransaction();
       session.endSession();
       return res.json({ message: "User account is deleted", status: 400 });
     }
 
-    if (!booking) {
+    if (customer?.status !== "active") {
       await session.abortTransaction();
       session.endSession();
-      return res
-        .status(200)
-        .json({ status: 404, message: "Booking not found" });
+      return res.json({
+        message: "User account is inactive. Please contact support.",
+        status: 403,
+      });
     }
+
+    // if (!booking) {
+    //   await session.abortTransaction();
+    //   session.endSession();
+    //   return res
+    //     .status(200)
+    //     .json({ status: 404, message: "Booking not found" });
+    // }
 
     // ─── Extend Duration Validations
     const extendDuration = data?.extendAmount?.extendDuration;
@@ -1682,6 +1720,10 @@ const initiateExtensionBooking = async (req, res) => {
           amount: finalAmount,
         },
       });
+    } else {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ status: 500, message: "Failed to initiate payment" });
     }
   } catch (error) {
     await session.abortTransaction();
@@ -2126,11 +2168,32 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
   try {
     const booking = await Booking.findById(_id).populate(
       "userId",
-      "contact firstName lastName",
+      "contact firstName lastName status isDeleted",
     );
 
     if (!booking) {
       return res.status(200).json({ message: "Booking not found" });
+    }
+
+    const customer = booking.userId;
+
+    if (!customer) {
+      return res
+        .status(200)
+        .json({ success: false, message: "Customer not found" });
+    }
+
+    if ((customer?.isDeleted ?? false) === true) {
+      return res
+        .status(200)
+        .json({ success: false, message: "User account is deleted" });
+    }
+
+    if (customer?.status !== "active") {
+      return res.status(200).json({
+        success: false,
+        message: "User account is inactive. Please contact support.",
+      });
     }
 
     const allowedPaymentStatuses = ["paid", "partiallyPay", "partially_paid"];
@@ -2365,10 +2428,7 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
           requestMessage,
         );
       } catch (error) {
-        console.error(
-          "WhatsApp link generation failed:",
-          whatsappError.message,
-        );
+        console.error("WhatsApp link generation failed:", error.message);
       }
 
       res.status(200).json({

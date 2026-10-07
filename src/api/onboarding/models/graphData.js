@@ -274,13 +274,6 @@ async function getGraphDayDetail(req, res) {
     return res.json({ status: 400, message: "date or startDate is required" });
 
   try {
-    // const dayStart = startDate
-    //   ? new Date(startDate + "T00:00:00.000Z")
-    //   : new Date(date + "T00:00:00.000Z");
-    // const dayEnd = endDate
-    //   ? new Date(endDate + "T23:59:59.999Z")
-    //   : new Date(date + "T23:59:59.999Z");
-
     // Use IST midnight (UTC+5:30 = subtract 5:30 from midnight IST to get UTC equivalent)
     const toISTDayStart = (dateStr) =>
       new Date(dateStr + "T00:00:00.000+05:30");
@@ -295,19 +288,6 @@ async function getGraphDayDetail(req, res) {
     filter.$and = [
       { ...(stationId ? { stationId } : {}) },
       {
-        // $or: [
-        //   {
-        //     paymentInitiatedDate: {
-        //       $gte: dayStart.getTime(),
-        //       $lt: dayEnd.getTime(),
-        //     },
-        //   },
-        //   {
-        //     paymentInitiatedDate: {
-        //       $gte: Math.floor(dayStart.getTime() / 1000),
-        //       $lt: Math.floor(dayEnd.getTime() / 1000),
-        //     },
-        //   },
         $or: [
           { createdAt: { $gte: dayStart, $lt: dayEnd } },
           {

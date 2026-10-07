@@ -40,6 +40,10 @@ router.post("/signup", async (req, res) => {
   accountService.saveUser(req, res);
 });
 
+router.post("/change-user-profile", Authentication, async (req, res) => {
+  accountService.updateUserByAdmin(req, res);
+});
+
 router.get("/getAllDataCount", Authentication, async (req, res) => {
   accountService.getAllDataCount(req, res);
 });
