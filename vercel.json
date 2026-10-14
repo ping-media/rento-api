@@ -23,7 +23,7 @@
       "schedule": "*/10 * * * *"
     },
     {
-      "path": "/api/cron/absentees",
+      "path": "/api/absentees-cron",
       "schedule": "*/15 * * * *"
     }
   ]
