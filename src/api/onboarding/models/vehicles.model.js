@@ -1664,6 +1664,7 @@ async function createStation({
   state,
   city,
   userId,
+  fleetIds,
   address,
   pinCode,
   openStartTime,
@@ -1680,11 +1681,20 @@ async function createStation({
   addonId,
   status,
   deleteRec,
+  attendanceRadiusMeters,
+  requiredCheckIn,
+  lateGraceMinutes,
+  requiredCheckOut,
+  earlyLeaveGraceMinutes,
+  halfDayCheckIn,
+  halfDayCheckOut,
+  fullDayHours,
 }) {
   const response = { status: 200, message: "Operation successful", data: [] };
   const logError = async (message, functionName, userId) => {
     await Log({ message, functionName, userId });
   };
+
   function convertTo24Hour(timeString) {
     // Split the string into time and period (AM/PM)
     const [time, period] = timeString.split(" "); // "10:00 PM" -> ["10:00", "PM"]
@@ -1700,10 +1710,108 @@ async function createStation({
 
     return hour24; // Return only the hour in 24-hour format
   }
+
+  const FLEET_USER_TYPES = ["manager"];
+
+  // A user is "taken" if they are manager OR fleet of any other station
+  const findAssignedConflict = async (ids, currentStationId) => {
+    const objectIds = ids.map((id) => ObjectId(id));
+    const filter = {
+      $or: [{ userId: { $in: objectIds } }, { fleetIds: { $in: objectIds } }],
+    };
+    if (currentStationId) filter._id = { $ne: ObjectId(currentStationId) };
+    return Station.findOne(filter).select("stationName").lean();
+  };
+
+  // Returns an error message string, or null when everything is valid
+  const validateStaffAssignment = async ({
+    managerIds,
+    fleet,
+    effectiveManagers,
+    effectiveFleet,
+    currentStationId,
+  }) => {
+    const all = [...managerIds, ...fleet];
+    if (all.some((id) => id.length !== 24)) return "Invalid user ID";
+
+    // Final state of the station must not have anyone in both roles
+    if (effectiveFleet.some((id) => effectiveManagers.includes(id))) {
+      return "Manager cannot also be added as fleet staff";
+    }
+
+    const users = await User.find({
+      _id: { $in: all.map((id) => ObjectId(id)) },
+    });
+    if (users.length !== all.length) return "User not found";
+
+    const byId = new Map(users.map((u) => [String(u._id), u]));
+    if (managerIds.some((id) => byId.get(id).userType !== "manager")) {
+      return "Assigned manager must be an existing manager";
+    }
+    if (fleet.some((id) => !FLEET_USER_TYPES.includes(byId.get(id).userType))) {
+      return "Fleet users must be valid fleet staff";
+    }
+
+    const conflict = await findAssignedConflict(all, currentStationId);
+    if (conflict) {
+      return `A selected user is already assigned to station "${conflict.stationName}"`;
+    }
+    return null;
+  };
+
   if (openStartTime && openEndTime) {
     openStartTime = convertTo24Hour(openStartTime);
     openEndTime = convertTo24Hour(openEndTime);
   }
+
+  // const userIds = [
+  //   ...new Set(
+  //     (Array.isArray(userId) ? userId : String(userId || "").split(","))
+  //       .map((id) => String(id).trim())
+  //       .filter(Boolean),
+  //   ),
+  // ];
+  // userId = userIds[0]; // keeps logError/Log working with a single id
+  userId = userId ? String(userId).trim() : undefined;
+  const userIds = userId ? [userId] : [];
+
+  // fleetIds not sent = leave as is, sent (even empty) = replace the list
+  const fleetProvided = fleetIds !== undefined && fleetIds !== null;
+  const fleetIdList = [
+    ...new Set(
+      (Array.isArray(fleetIds) ? fleetIds : String(fleetIds || "").split(","))
+        .map((id) => String(id).trim())
+        .filter(Boolean),
+    ),
+  ];
+
+  const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
+  // if (
+  //   (requiredCheckIn && !hhmm.test(requiredCheckIn)) ||
+  //   (requiredCheckOut && !hhmm.test(requiredCheckOut)) ||
+  //   (attendanceRadiusMeters !== undefined &&
+  //     !(
+  //       Number(attendanceRadiusMeters) >= 20 &&
+  //       Number(attendanceRadiusMeters) <= 5000
+  //     ))
+  // ) {
+  if (
+    (halfDayCheckIn && !hhmm.test(halfDayCheckIn)) ||
+    (halfDayCheckOut && !hhmm.test(halfDayCheckOut)) ||
+    (requiredCheckIn && halfDayCheckIn && halfDayCheckIn <= requiredCheckIn) ||
+    (requiredCheckOut &&
+      halfDayCheckOut &&
+      halfDayCheckOut >= requiredCheckOut) ||
+    (fullDayHours !== undefined &&
+      fullDayHours !== "" &&
+      !(Number(fullDayHours) >= 0 && Number(fullDayHours) <= 24))
+  ) {
+    response.status = 401;
+    response.message =
+      "Invalid attendance settings (times as HH:mm, radius 20-5000 m)";
+    return response;
+  }
+
   const stationData = {
     country: "India",
     stationId,
@@ -1716,7 +1824,16 @@ async function createStation({
     openEndTime,
     latitude,
     longitude,
-    userId,
+    userId: userIds.length ? userIds : undefined,
+    fleetIds: fleetProvided ? fleetIdList : undefined,
+    attendanceRadiusMeters,
+    "attendanceRules.checkInTime": requiredCheckIn,
+    "attendanceRules.lateGraceMinutes": lateGraceMinutes,
+    "attendanceRules.checkOutTime": requiredCheckOut,
+    "attendanceRules.earlyLeaveGraceMinutes": earlyLeaveGraceMinutes,
+    "attendanceRules.halfDayCheckInTime": halfDayCheckIn,
+    "attendanceRules.halfDayCheckOutTime": halfDayCheckOut,
+    "attendanceRules.fullDayHours": fullDayHours,
     mapLink,
     googleReviewLink,
     stationName,
@@ -1814,6 +1931,26 @@ async function createStation({
       }
 
       // Update existing station
+      if (userIds.length || fleetProvided) {
+        const staffError = await validateStaffAssignment({
+          managerIds: userIds,
+          fleet: fleetIdList,
+          effectiveManagers: userIds.length
+            ? userIds
+            : (station.userId || []).map(String),
+          effectiveFleet: fleetProvided
+            ? fleetIdList
+            : (station.fleetIds || []).map(String),
+          currentStationId: _id,
+        });
+        if (staffError) {
+          response.status = 401;
+          response.message = staffError;
+          logError(staffError, "createStation", userId);
+          return response;
+        }
+      }
+
       await Station.updateOne({ _id: ObjectId(_id) }, { $set: stationData });
       response.message = "Station updated successfully";
       response.data = stationData;
@@ -1841,40 +1978,52 @@ async function createStation({
     }
 
     // Validate userId
-    if (userId.length !== 24) {
+    const staffError = await validateStaffAssignment({
+      managerIds: userIds,
+      fleet: fleetIdList,
+      effectiveManagers: userIds,
+      effectiveFleet: fleetIdList,
+    });
+    if (staffError) {
       response.status = 401;
-      response.message = "Invalid user ID";
-      logError(
-        "Invalid user ID found during the creating station",
-        "createStation",
-        userId,
-      );
-
+      response.message = staffError;
+      logError(staffError, "createStation", userId);
       return response;
     }
-    const user = await User.findOne({ _id: ObjectId(userId) });
-    if (!user) {
-      response.status = 401;
-      response.message = "User not found";
-      logError(
-        "User not found during the creating station",
-        "createStation",
-        userId,
-      );
+    // if (userId.length !== 24) {
+    //   response.status = 401;
+    //   response.message = "Invalid user ID";
+    //   logError(
+    //     "Invalid user ID found during the creating station",
+    //     "createStation",
+    //     userId,
+    //   );
 
-      return response;
-    }
-    if (user.userType !== "manager") {
-      response.status = 401;
-      response.message = "User is not a manager";
-      logError(
-        "User is not a manager found during the creating station",
-        "createStation",
-        userId,
-      );
+    //   return response;
+    // }
+    // const user = await User.findOne({ _id: ObjectId(userId) });
+    // if (!user) {
+    //   response.status = 401;
+    //   response.message = "User not found";
+    //   logError(
+    //     "User not found during the creating station",
+    //     "createStation",
+    //     userId,
+    //   );
 
-      return response;
-    }
+    //   return response;
+    // }
+    // if (user.userType !== "manager") {
+    //   response.status = 401;
+    //   response.message = "User is not a manager";
+    //   logError(
+    //     "User is not a manager found during the creating station",
+    //     "createStation",
+    //     userId,
+    //   );
+
+    //   return response;
+    // }
 
     // Validate locationId
     if (locationId.length !== 24) {
@@ -1915,20 +2064,6 @@ async function createStation({
       return response;
     }
 
-    // Generate a random stationId if not provided
-    // if (!stationId) {
-    //   let isUnique = false;
-    //   while (!isUnique) {
-    //     const generatedId = generateRandomId();
-    //     const existingStation = await Station.findOne({ stationId: generatedId });
-    //     if (!existingStation) {
-    //       stationId = generatedId;
-    //       isUnique = true;
-    //     }
-    //   }
-    //   stationData.stationId = stationId;
-    // }
-
     // Validate stationId
     if (stationId.length !== 6 || isNaN(stationId)) {
       response.status = 401;
@@ -1942,19 +2077,6 @@ async function createStation({
       return response;
     }
 
-    // const stationExists = await Station.findOne({ stationId });
-    // console.log(stationExists);
-    // if (stationExists) {
-    //   response.status = 401;
-    //   response.message = "Station already exists";
-    //   logError(
-    //     "Station already exists found during the creating station",
-    //     "createStation",
-    //     userId,
-    //   );
-
-    //   return response;
-    // }
     const stationExists = await Station.findOne({
       $or: [{ stationId }, { stationName }],
     });
@@ -1991,9 +2113,18 @@ async function createStation({
 
     response.data = stationData;
   } catch (error) {
-    response.status = 500;
-    response.message = `Server error: ${error.message}`;
-    logError(`Server error: ${error.message}`, "createStation", userId);
+    if (
+      error.code === 11000 &&
+      (error.keyPattern?.userId || error.keyPattern?.fleetIds)
+    ) {
+      response.status = 401;
+      response.message =
+        "A selected user is already assigned to another station";
+    } else {
+      response.status = 500;
+      response.message = `Server error: ${error.message}`;
+    }
+    logError(`Error: ${error.message}`, "createStation", userId);
   }
 
   return response;
@@ -4791,6 +4922,7 @@ const getVehicleTblData = async (query) => {
         vehicleType: vehicle.vehicleMasterData?.vehicleType || "",
         vehicleImage: vehicle.vehicleMasterData?.vehicleImage || "",
         stationName: vehicle.stationData?.stationName || "",
+        stationMapLink: vehicle.stationData?.mapLink || "",
       };
     });
 
@@ -4810,6 +4942,7 @@ const getVehicleTblData = async (query) => {
         vehicleType: vehicle.vehicleMasterData?.vehicleType || "",
         vehicleImage: vehicle.vehicleMasterData?.vehicleImage || "",
         stationName: vehicle.stationData?.stationName || "",
+        stationMapLink: vehicle.stationData?.mapLink || "",
       };
     });
 
@@ -5964,7 +6097,11 @@ const getStationData = async (query) => {
   if (city) filter.city = city;
   if (state) filter.state = state;
   if (pinCode) filter.pinCode = pinCode;
-  if (userId) filter.userId = userId;
+  // if (userId) filter.userId = userId;
+  if (userId) {
+    const uid = ObjectId(userId);
+    filter.$and = [{ $or: [{ userId: uid }, { fleetIds: uid }] }];
+  }
   if (weekendPriceType) filter.weekendPriceType = weekendPriceType;
 
   if (search) {
@@ -6008,10 +6145,15 @@ const getStationData = async (query) => {
       { $limit: Number(limit) },
     ]);
 
-    await station.populate(response, {
-      path: "userId",
-      select: "firstName lastName contact",
-    });
+    await station.populate(response, [
+      {
+        path: "userId",
+        select: "firstName lastName contact",
+      },
+      ...(_id
+        ? [{ path: "fleetIds", select: "firstName lastName contact" }]
+        : []),
+    ]);
 
     if (response.length) {
       obj.data = response;

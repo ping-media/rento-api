@@ -9,7 +9,10 @@ require("dotenv").config();
 const axios = require("axios");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
-const { fileUpload } = require("../models/locationUpload.model");
+const {
+  fileUpload,
+  updateLocation,
+} = require("../models/locationUpload.model");
 const {
   VehicalfileUpload,
   enableOrDisableVehicles,
@@ -122,6 +125,7 @@ const {
   buildCompletedMessage,
   buildReminderMessage,
 } = require("../../../utils/whatsappTemplates");
+const OptionalAuthentication = require("../../../middlewares/OptionalAuthentication");
 
 function formatDate(isoString) {
   return new Date(isoString).toLocaleDateString("en-IN", {
@@ -291,7 +295,7 @@ router.post("/createBooking", async (req, res) => {
   vehiclesService.booking(req, res);
 });
 
-router.post("/initiate-booking", async (req, res) => {
+router.post("/initiate-booking", OptionalAuthentication, async (req, res) => {
   initiateBooking(req, res);
 });
 
@@ -466,23 +470,36 @@ router.get("/getVehicleBookrecode", async (req, res) => {
 });
 
 // Configure Multer to use Memory Storage
+const MAX_IMAGE_MB = 4; // Vercel rejects request bodies over 4.5 MB
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  // limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: MAX_IMAGE_MB * 1024 * 1024, files: 1 },
 });
+
+const uploadImage = (req, res, next) =>
+  upload.single("image")(req, res, (err) => {
+    if (!err) return next();
+    return res.json({
+      status: 400,
+      message:
+        err.code === "LIMIT_FILE_SIZE"
+          ? `Image is too large. Maximum size is ${MAX_IMAGE_MB} MB.`
+          : err.message || "File upload failed",
+    });
+  });
 
 router.post(
   "/createLocation",
   Authentication,
-  upload.single("image"),
+  uploadImage,
   async (req, res) => {
     if (!req.file) {
       return res
         .status(400)
-        .json({ message: "File upload failed. No file provided." });
+        .json({ message: "Image is required for a new location." });
     }
-    fileUpload(req, res);
-    // vehiclesService.createLocation(req, res);
+    await fileUpload(req, res);
   },
 );
 
@@ -549,60 +566,90 @@ router.put("/updateLastLocation", async (req, res) => {
 });
 
 // Update Location (image is optional)
-router.put(
-  "/updateLocation",
-  Authentication,
-  upload.single("image"),
-  async (req, res) => {
-    const obj = {
-      status: 200,
-      message: "location update successfully",
-      data: [],
-    };
+router.put("/updateLocation", Authentication, uploadImage, async (req, res) => {
+  await updateLocation(req, res);
+});
 
-    try {
-      if (req.file) {
-        await fileUpload(req, res);
-      }
-      const _id = req.body._id;
-      const locationName = req.body.locationName;
-      const locationStatus = req.body.locationStatus;
-      const latitude = req.body.latitude;
-      const longitude = req.body.longitude;
-      const radiusKm = req.body.radiusKm;
-      if (_id) {
-        const find = await Location.findOne({ _id });
-        if (!find) {
-          obj.status = 400;
-          obj.message = "Location id is required";
-          return res.json(obj);
-        }
-        const objData = {};
-        if (locationName) objData.locationName = locationName;
-        if (locationStatus) objData.locationStatus = locationStatus;
-        if (latitude) objData.latitude = Number(latitude);
-        if (longitude) objData.longitude = Number(longitude);
-        if (radiusKm) objData.radiusKm = Number(radiusKm);
+// router.put("/updateLocation", Authentication, uploadImage, async (req, res) => {
+//   const {
+//     _id,
+//     locationName,
+//     locationStatus,
+//     latitude,
+//     longitude,
+//     radiusKm,
+//     showLocationName,
+//   } = req.body;
 
-        await Location.updateOne({ _id }, { $set: objData });
+//   const obj = {
+//     status: 200,
+//     message: "location update successfully",
+//     data: [],
+//   };
 
-        if (locationName) {
-          await Station.updateMany(
-            { locationId: _id },
-            { $set: { city: locationName } },
-          );
-        }
+//   try {
+//     // if (req.file) {
+//     //   await fileUpload(req, res);
+//     // }
+//     // const _id = req.body._id;
+//     // const locationName = req.body.locationName;
+//     // const locationStatus = req.body.locationStatus;
+//     // const latitude = req.body.latitude;
+//     // const longitude = req.body.longitude;
+//     // const radiusKm = req.body.radiusKm;
 
-        obj.message = "location updated successfully";
-        obj.status = 200;
-        return res.status(200).json(obj);
-      }
-    } catch (error) {
-      console.error("Error updating location:", error.message);
-      res.json({ message: "An error occurred while updating location" });
-    }
-  },
-);
+//     if (_id) {
+//       const find = await Location.findOne({ _id });
+
+//       if (!find) {
+//         obj.status = 400;
+//         obj.message = "Location id is required";
+//         return res.json(obj);
+//       }
+
+//       const objData = {};
+//       if (locationName) objData.locationName = locationName;
+//       if (locationStatus) objData.locationStatus = locationStatus;
+//       if (latitude) objData.latitude = Number(latitude);
+//       if (longitude) objData.longitude = Number(longitude);
+//       if (radiusKm) objData.radiusKm = Number(radiusKm);
+
+//       const parseBool = (v) =>
+//         v === undefined || v === ""
+//           ? undefined
+//           : v === true || v === "true" || v === "1";
+//       const showName = parseBool(showLocationName);
+//       if (showName !== undefined) objData.showLocationName = showName;
+
+//       if (req.file) {
+//         const { imageUrl, imageFileName, error } = await uploadLocationImage(
+//           req.file,
+//         );
+//         if (error) {
+//           return res.json({ status: 400, message: error });
+//         }
+//         objData.locationImage = imageUrl;
+//         objData.imageFileName = imageFileName;
+//       }
+
+//       await Location.updateOne({ _id }, { $set: objData });
+
+//       if (locationName) {
+//         await Station.updateMany(
+//           { locationId: _id },
+//           { $set: { city: locationName } },
+//         );
+//       }
+
+//       obj.message = "location updated successfully";
+//       obj.status = 200;
+//       return res.status(200).json(obj);
+//     }
+//   } catch (error) {
+//     console.error("Error updating location:", error.message);
+//     res.json({ message: "An error occurred while updating location" });
+//   }
+// });
 
 router.delete("/deleteLocation", async (req, res) => {
   const obj = {
@@ -868,6 +915,25 @@ router.post("/validedToken", async (req, res) => {
       return res.json({ isUserValid: false });
     }
 
+    // Manager must have at least one station assigned
+    let stationData = null;
+
+    if (String(user.userType || "").toLowerCase() === "manager") {
+      stationData = await Station.find({
+        $or: [{ userId: user._id }, { fleetIds: user._id }],
+        status: "active",
+      })
+        .select("_id stationId locationId stationName")
+        .lean();
+
+      if (!stationData.length) {
+        return res.json({
+          isUserValid: false,
+          message: "No station is assigned to this manager",
+        });
+      }
+    }
+
     if (user.status === "active" && flag === true) {
       let profileImage = "";
       if (userDocument) {
@@ -1127,6 +1193,8 @@ router.post(
 
 // Update booking route
 router.put("/rideUpdate", Authentication, async (req, res) => {
+  const USER = req.user;
+
   const {
     _id,
     endMeterReading,
@@ -1147,6 +1215,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
   } = req.body;
 
   const obj = { status: 200, message: "", data: {} };
+
   try {
     const booking = await Booking.findOne({ _id }).populate(
       "userId",
@@ -1398,6 +1467,12 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
             paymentAmount: serverLateFeeAmount > 0 ? serverLateFeeAmount : 0,
             paymentMode: paymentMode && paymentMode !== "NA" ? paymentMode : "",
             date: Date.now(),
+            ...(USER && {
+              createdBy: {
+                id: USER.id,
+                firstName: USER.firstName,
+              },
+            }),
           },
         ],
       };
@@ -1479,7 +1554,7 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
       finalAmount: finalAmount,
       amountPaid: amountPaid,
       deposit: vehicleBasic.refundableDeposit,
-      depositRefunded: newBookingPrice.refundAmount || undefined,
+      depositRefunded: vehicleBasic.refundableDeposit,
       balancePayable: finalAmount - amountPaid,
       reviewLink: station?.googleReviewLink,
     });

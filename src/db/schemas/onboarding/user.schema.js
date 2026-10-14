@@ -65,6 +65,13 @@ const userSchema = new mongoose.Schema(
       capturedAt: { type: Date, default: null }, // when was this last updated
     },
 
+    weeklyOff: {
+      type: Number, // 0 = Sunday ... 6 = Saturday, null = no weekly off
+      min: 0,
+      max: 6,
+      default: null,
+    },
+
     contact: {
       type: String,
       required: true,

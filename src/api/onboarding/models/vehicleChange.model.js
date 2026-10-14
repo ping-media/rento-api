@@ -437,6 +437,7 @@ const vehicleChange = async (req, res) => {
 };
 
 const vehicleChangeNew = async (req, res) => {
+  const USER = req.user;
   const { booking_id, newVehicleTableId } = req.body;
   const isAdmin =
     req.user?.userType === "admin" || req.user?.userType === "manager";
@@ -673,7 +674,6 @@ const vehicleChangeNew = async (req, res) => {
               changeToVehicle: changeVehicleMessage,
               date: Date.now(),
               paymentAmount: hasUnpaidOriginalBalance ? 0 : pendingPayment,
-              // paymentAmount: pendingPayment,
               updatedPendingAmount: hasUnpaidOriginalBalance
                 ? pendingPayment
                 : undefined,
@@ -681,6 +681,12 @@ const vehicleChangeNew = async (req, res) => {
               oldAmount: oldRemainingValue,
               newAmount: newRemainingCost,
               PaymentLink: paymentData.paymentLink,
+              ...(USER && {
+                createdBy: {
+                  id: USER.id,
+                  firstName: USER.firstName,
+                },
+              }),
             },
           ],
         };
@@ -704,6 +710,12 @@ const vehicleChangeNew = async (req, res) => {
             updatedPendingAmount: hasUnpaidOriginalBalance
               ? pendingPayment
               : undefined,
+            ...(USER && {
+              createdBy: {
+                id: USER.id,
+                firstName: USER.firstName,
+              },
+            }),
           },
         ],
       };

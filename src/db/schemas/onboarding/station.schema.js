@@ -19,6 +19,12 @@ const stationSchema = new Schema(
         ref: "User",
       },
     ],
+    fleetIds: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     stationName: {
       type: String,
       required: true,
@@ -135,6 +141,33 @@ const stationSchema = new Schema(
       enum: ["active", "inactive"],
       default: "inactive",
     },
+    attendanceRadiusMeters: {
+      type: Number,
+      default: 200,
+      min: 20,
+      max: 5000,
+    },
+    attendanceRules: {
+      halfDayCheckInTime: {
+        type: String,
+        match: /^([01]\d|2[0-3]):[0-5]\d$/, // check-in after this = half day
+      },
+      halfDayCheckOutTime: {
+        type: String,
+        match: /^([01]\d|2[0-3]):[0-5]\d$/, // check-out before this = half day
+      },
+      fullDayHours: { type: Number, default: 12, min: 0, max: 24 }, // hour-based fallback, 0 = off
+      checkInTime: {
+        type: String,
+        match: /^([01]\d|2[0-3]):[0-5]\d$/, // "10:00", leave empty to disable
+      },
+      lateGraceMinutes: { type: Number, default: 15, min: 0 },
+      checkOutTime: {
+        type: String,
+        match: /^([01]\d|2[0-3]):[0-5]\d$/,
+      },
+      earlyLeaveGraceMinutes: { type: Number, default: 0, min: 0 },
+    },
     status: {
       type: String,
       enum: ["active", "inactive"],
@@ -154,7 +187,22 @@ stationSchema.index({ stationName: 1 });
 stationSchema.index({ status: 1 });
 
 // User ↔ station mapping
-stationSchema.index({ userId: 1 });
+// stationSchema.index({ userId: 1 });
+stationSchema.index(
+  { userId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { "userId.0": { $exists: true } },
+  },
+);
+
+stationSchema.index(
+  { fleetIds: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { "fleetIds.0": { $exists: true } },
+  },
+);
 
 // City dashboards
 stationSchema.index({ city: 1, status: 1 });
@@ -167,6 +215,16 @@ stationSchema.index({ status: 1, createdAt: -1 });
 
 // weekendPriceType
 stationSchema.index({ weekendPriceType: 1 });
+
+stationSchema.pre("validate", function (next) {
+  if (this.userId?.length && this.fleetIds?.length) {
+    const managers = new Set(this.userId.map(String));
+    if (this.fleetIds.some((id) => managers.has(String(id)))) {
+      return next(new Error("Manager cannot also be added as fleet staff"));
+    }
+  }
+  next();
+});
 
 const station = mongoose.model("station", stationSchema);
 

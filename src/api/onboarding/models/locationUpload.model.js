@@ -36,10 +36,38 @@ const s3 = new S3Client({
 });
 
 // Configure Multer to use Memory Storage
-const upload = multer({
-  storage: multer.memoryStorage(), // Store files in memory for manual upload to S3
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB file size limit
-});
+// const upload = multer({
+//   storage: multer.memoryStorage(), // Store files in memory for manual upload to S3
+//   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB file size limit
+// });
+
+const parseBool = (v) =>
+  v === undefined || v === ""
+    ? undefined
+    : v === true || v === "true" || v === "1";
+
+const uploadLocationImage = async (file) => {
+  const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp"];
+  if (!allowedMimeTypes.includes(file.mimetype)) {
+    return {
+      error: "Invalid file format. Only PNG, JPG, and WEBP are allowed.",
+    };
+  }
+  const resizedImageBuffer = await resizeImg(file);
+  const safeFileName = `${Date.now()}-${path.basename(file.originalname)}`;
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: AWS_BUCKET_NAME,
+      Key: safeFileName,
+      Body: resizedImageBuffer,
+      ContentType: file.mimetype,
+    }),
+  );
+  return {
+    imageUrl: `https://${AWS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${safeFileName}`,
+    imageFileName: safeFileName,
+  };
+};
 
 // Route to upload the image
 const fileUpload = async (req, res) => {
@@ -52,8 +80,11 @@ const fileUpload = async (req, res) => {
       latitude,
       longitude,
       radiusKm,
+      showLocationName,
     } = req.body;
-    //console.log(req.file)
+
+    const showName = parseBool(showLocationName);
+
     if (!_id) {
       const findName = await Location.findOne({ locationName });
       if (findName) {
@@ -127,6 +158,7 @@ const fileUpload = async (req, res) => {
             locationImage: imageUrl,
             locationStatus,
             imageFileName,
+            ...(showName !== undefined && { showLocationName: showName }),
             ...(latitude !== undefined && { latitude: Number(latitude) }),
             ...(longitude !== undefined && { longitude: Number(longitude) }),
             ...(radiusKm !== undefined && { radiusKm: Number(radiusKm) }),
@@ -151,6 +183,7 @@ const fileUpload = async (req, res) => {
         _id,
         locationStatus,
         imageFileName,
+        ...(showName !== undefined && { showLocationName: showName }),
         ...(latitude !== undefined && { latitude: Number(latitude) }),
         ...(longitude !== undefined && { longitude: Number(longitude) }),
         ...(radiusKm !== undefined && { radiusKm: Number(radiusKm) }),
@@ -175,4 +208,81 @@ const fileUpload = async (req, res) => {
   }
 };
 
-module.exports = { fileUpload };
+const updateLocation = async (req, res) => {
+  const {
+    _id,
+    locationName,
+    locationStatus,
+    latitude,
+    longitude,
+    radiusKm,
+    showLocationName,
+  } = req.body;
+
+  const obj = {
+    status: 200,
+    message: "location update successfully",
+    data: [],
+  };
+
+  try {
+    // if (req.file) {
+    //   await fileUpload(req, res);
+    // }
+    // const _id = req.body._id;
+    // const locationName = req.body.locationName;
+    // const locationStatus = req.body.locationStatus;
+    // const latitude = req.body.latitude;
+    // const longitude = req.body.longitude;
+    // const radiusKm = req.body.radiusKm;
+
+    if (_id) {
+      const find = await Location.findOne({ _id });
+
+      if (!find) {
+        obj.status = 400;
+        obj.message = "Location id is required";
+        return res.json(obj);
+      }
+
+      const objData = {};
+      if (locationName) objData.locationName = locationName;
+      if (locationStatus) objData.locationStatus = locationStatus;
+      if (latitude) objData.latitude = Number(latitude);
+      if (longitude) objData.longitude = Number(longitude);
+      if (radiusKm) objData.radiusKm = Number(radiusKm);
+
+      const showName = parseBool(showLocationName);
+      if (showName !== undefined) objData.showLocationName = showName;
+
+      if (req.file) {
+        const { imageUrl, imageFileName, error } = await uploadLocationImage(
+          req.file,
+        );
+        if (error) {
+          return res.json({ status: 400, message: error });
+        }
+        objData.locationImage = imageUrl;
+        objData.imageFileName = imageFileName;
+      }
+
+      await Location.updateOne({ _id }, { $set: objData });
+
+      if (locationName) {
+        await Station.updateMany(
+          { locationId: _id },
+          { $set: { city: locationName } },
+        );
+      }
+
+      obj.message = "location updated successfully";
+      obj.status = 200;
+      return res.status(200).json(obj);
+    }
+  } catch (error) {
+    console.error("Error updating location:", error.message);
+    res.json({ message: "An error occurred while updating location" });
+  }
+};
+
+module.exports = { fileUpload, updateLocation };

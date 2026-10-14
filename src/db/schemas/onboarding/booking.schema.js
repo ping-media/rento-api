@@ -36,8 +36,6 @@ const bookingSchema = new Schema(
     },
     stationId: {
       type: String,
-      //default:"Na"
-      // required: true
     },
     stationName: {
       type: String,

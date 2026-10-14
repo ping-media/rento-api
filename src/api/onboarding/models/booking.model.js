@@ -833,11 +833,22 @@ const createOrderId = async ({
 };
 
 const initiateBooking = async (req, res) => {
+  const USER = req.user;
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     let { bookingData, paymentMethod, isAdminBooking = false } = req.body;
+
+    if (isAdminBooking && !USER) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({
+        status: 401,
+        message: "Authentication required for admin booking",
+      });
+    }
 
     if (!bookingData?.userId || !paymentMethod) {
       await session.abortTransaction();
@@ -1254,6 +1265,12 @@ const initiateBooking = async (req, res) => {
               title: "Booking Created",
               date: Date.now(),
               bookingEndDateAndTime: bookingData?.BookingEndDateAndTime || "",
+              ...(isAdminBooking && {
+                createdBy: {
+                  id: USER.id,
+                  firstName: USER?.firstName ?? null,
+                },
+              }),
             },
           ],
         };
@@ -1270,6 +1287,7 @@ const initiateBooking = async (req, res) => {
             },
           ],
         };
+
         await timelineFunctionServer(timeLineData_2);
 
         if (response?.data?.userId) {
@@ -1372,6 +1390,12 @@ const initiateBooking = async (req, res) => {
             title: "Booking Created",
             date: Date.now(),
             bookingEndDateAndTime: bookingData?.BookingEndDateAndTime || "",
+            ...(isAdminBooking && {
+              createdBy: {
+                id: USER.id,
+                firstName: USER?.firstName ?? null,
+              },
+            }),
           },
         ],
       };
@@ -1394,20 +1418,7 @@ const initiateBooking = async (req, res) => {
         customBookingId: response?.data?.bookingId,
       });
 
-      // console.log(
-      //   "[initiateBooking] razorData:",
-      //   JSON.stringify(razorData, null, 2),
-      // );
-      // console.log("[initiateBooking] response.data._id:", response?.data?._id);
-
       if (razorData?.status === "created") {
-        // console.log("[initiateBooking] Entering update block");
-        // console.log("[initiateBooking] Values to set:", {
-        //   payInitFrom: "Razorpay",
-        //   paymentInitiatedDate: razorData?.created_at,
-        //   paymentgatewayOrderId: razorData?.id,
-        //   paymentgatewayReceiptId: razorData?.receipt,
-        // });
         const updateResult = await Booking.findByIdAndUpdate(
           response?.data?._id,
           {
@@ -1421,10 +1432,6 @@ const initiateBooking = async (req, res) => {
           // { session },
           { new: true },
         );
-        // console.log(
-        //   "[initiateBooking] updateResult after fix:",
-        //   updateResult?.paymentgatewayOrderId,
-        // );
 
         const timeLineData = {
           currentBooking_id: response.data?._id,
@@ -2142,7 +2149,7 @@ const updateExtendBooking = async (req, res) => {
 };
 
 const initiateExtendBookingAfterPayment = async (req, res) => {
-  const { userType } = req.user;
+  const { userType, id: USERID, firstName } = req.user;
   let {
     _id,
     bookingId,
@@ -2276,6 +2283,12 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
               paymentAmount: amount || 0,
               endDate: data.BookingEndDateAndTime,
               extended: true,
+              ...(USERID && {
+                createdBy: {
+                  id: USERID,
+                  firstName: firstName,
+                },
+              }),
             },
           ],
         });
@@ -2338,6 +2351,12 @@ const initiateExtendBookingAfterPayment = async (req, res) => {
                 paymentAmount: amount || 0,
                 endDate: data.BookingEndDateAndTime,
                 extended: true,
+                ...(USERID && {
+                  createdBy: {
+                    id: USERID,
+                    firstName: firstName,
+                  },
+                }),
               },
             ],
           },
@@ -2538,6 +2557,7 @@ const updateBooking = async (req, res) => {
 };
 
 const rescheduleBooking = async (req, res) => {
+  const USER = req.user;
   const { BookingStartDateAndTime, BookingEndDateAndTime, _id } = req.body;
 
   if (!_id || !BookingStartDateAndTime || !BookingEndDateAndTime) {
@@ -2594,6 +2614,12 @@ const rescheduleBooking = async (req, res) => {
             start: isStartUpdate ? newStart : null,
             end: isEndUpdate ? newEnd : null,
           },
+          ...(USER && {
+            createdBy: {
+              id: USER.id,
+              firstName: USER.firstName,
+            },
+          }),
         },
       ],
     };

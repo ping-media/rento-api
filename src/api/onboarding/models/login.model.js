@@ -110,9 +110,9 @@ async function adminLogin({ email, password }) {
       }
 
       if (userType == "manager") {
-        stationData = await Station.findOne({ userId: _id }).select(
-          " stationName stationId locationId",
-        );
+        stationData = await Station.findOne({
+          $or: [{ userId: _id }, { fleetIds: _id }],
+        }).select(" stationName stationId locationId");
       }
     }
     if (!result) {
@@ -136,8 +136,18 @@ async function adminLogin({ email, password }) {
       return obj;
     }
 
+    if (result.userType == "manager" && !stationData) {
+      obj.status = 403;
+      obj.message = "No station is assigned to this manager";
+      return obj;
+    }
+
     const token = JWT.sign(
-      { id: result._id, userType: result.userType },
+      {
+        id: result._id,
+        userType: result.userType,
+        firstName: result.firstName,
+      },
       BCRYPT_TOKEN,
       {
         expiresIn: "43200m",

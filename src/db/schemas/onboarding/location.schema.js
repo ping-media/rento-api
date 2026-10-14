@@ -14,6 +14,10 @@ const locationSchema = new Schema(
     imageFileName: {
       type: String,
     },
+    showLocationName: {
+      type: Boolean,
+      default: true, // when true, the frontend shows the location name
+    },
     latitude: {
       type: Number,
       default: null,

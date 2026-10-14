@@ -338,7 +338,9 @@ const getAllUsersAdmin = async (query) => {
       };
 
       if (user.userType === "manager") {
-        const station = await Station.find({ userId: user._id });
+        const station = await Station.find({
+          $or: [{ userId: user._id }, { fleetIds: user._id }],
+        });
 
         userWithDocs = {
           ...userWithDocs,
@@ -1349,6 +1351,26 @@ async function updateUserByAdmin(userData) {
       }
     });
 
+    // weeklyOff: 0 = Sunday ... 6 = Saturday, "none" clears it.
+    // Empty or missing means "no change", like the other fields.
+    const rawWeeklyOff = fields.weeklyOff;
+    if (rawWeeklyOff === "none") {
+      userObj.weeklyOff = null;
+    } else if (
+      rawWeeklyOff !== undefined &&
+      rawWeeklyOff !== null &&
+      rawWeeklyOff !== ""
+    ) {
+      const n = Number(rawWeeklyOff);
+      if (!Number.isInteger(n) || n < 0 || n > 6) {
+        return {
+          status: 400,
+          message: "Invalid weekly off (0 = Sunday ... 6 = Saturday)",
+        };
+      }
+      userObj.weeklyOff = n;
+    }
+
     if (Object.keys(userObj).length === 0) {
       return { status: 400, message: "No valid fields provided to update" };
     }
@@ -1359,6 +1381,16 @@ async function updateUserByAdmin(userData) {
     if (userObj.userType !== undefined) {
       if (!isValidEnum(userObj.userType, ["manager", "customer", "admin"])) {
         return { status: 400, message: "Invalid user type" };
+      }
+    }
+
+    if (typeof userObj.weeklyOff === "number") {
+      const targetType = userObj.userType || existingUser.userType;
+      if (targetType !== "manager") {
+        return {
+          status: 400,
+          message: "Weekly off can only be set for managers",
+        };
       }
     }
 
@@ -1460,7 +1492,7 @@ async function updateUserByAdmin(userData) {
 
     const data = await User.findByIdAndUpdate(_id, updateQuery, {
       new: true,
-    });
+    }).select("-password");
 
     return { status: 200, message: "User updated successfully", data: data };
   } catch (error) {

@@ -89,6 +89,19 @@ const startServer = async () => {
         });
       }
     });
+    app.get("/api/cron/absentees", async (req, res) => {
+      console.log("🧪 Testing cron locally...");
+      try {
+        const cronHandler = require("./api/absentees-cron");
+        await cronHandler(req, res);
+      } catch (error) {
+        console.error("❌ Cron error:", error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
   }
 
   app.use((req, res) => {
