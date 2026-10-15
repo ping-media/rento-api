@@ -474,11 +474,16 @@ const MAX_IMAGE_MB = 4; // Vercel rejects request bodies over 4.5 MB
 
 const upload = multer({
   storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_IMAGE_MB * 1024 * 1024 },
+});
+
+const singleUpload = multer({
+  storage: multer.memoryStorage(),
   limits: { fileSize: MAX_IMAGE_MB * 1024 * 1024, files: 1 },
 });
 
 const uploadImage = (req, res, next) =>
-  upload.single("image")(req, res, (err) => {
+  singleUpload.single("image")(req, res, (err) => {
     if (!err) return next();
     return res.json({
       status: 400,
