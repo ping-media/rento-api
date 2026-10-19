@@ -2130,6 +2130,65 @@ async function createStation({
   return response;
 }
 
+async function updateStationWeeklyOff({ _id, stationWeeklyOff }) {
+  const response = {
+    status: 200,
+    message: "Weekly off updated successfully",
+    data: [],
+  };
+
+  try {
+    if (!_id || String(_id).length !== 24) {
+      response.status = 401;
+      response.message = "Invalid _id";
+      return response;
+    }
+
+    if (stationWeeklyOff === undefined) {
+      response.status = 401;
+      response.message = "stationWeeklyOff is required";
+      return response;
+    }
+
+    // "none" / "" / null => no weekly off
+    let value = null;
+    if (
+      stationWeeklyOff !== "none" &&
+      stationWeeklyOff !== "" &&
+      stationWeeklyOff !== null
+    ) {
+      value = Number(stationWeeklyOff);
+      if (!Number.isInteger(value) || value < 0 || value > 6) {
+        response.status = 401;
+        response.message =
+          "Weekly off must be 0 (Sunday) to 6 (Saturday) or none";
+        return response;
+      }
+    }
+
+    const station = await Station.findOneAndUpdate(
+      { _id: ObjectId(_id) },
+      { $set: { stationWeeklyOff: value } },
+      { new: true, runValidators: true },
+    )
+      .select("stationName stationWeeklyOff")
+      .lean();
+
+    if (!station) {
+      response.status = 404;
+      response.message = "Station not found";
+      return response;
+    }
+
+    response.data = station;
+  } catch (error) {
+    response.status = 500;
+    response.message = `Server error: ${error.message}`;
+  }
+
+  return response;
+}
+
 async function createVehicleMaster({
   vehicleName,
   vehicleType,
@@ -6137,6 +6196,8 @@ const getStationData = async (query) => {
               1,
             ],
           },
+          // old stations don't have this field stored, so default it to null
+          stationWeeklyOff: { $ifNull: ["$stationWeeklyOff", null] },
         },
       },
 
@@ -6313,6 +6374,7 @@ module.exports = {
   discountCoupons,
   getAllInvoice,
   createStation,
+  updateStationWeeklyOff,
   searchVehicle,
   getLocations,
   booking,

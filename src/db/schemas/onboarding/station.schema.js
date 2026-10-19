@@ -168,6 +168,16 @@ const stationSchema = new Schema(
       },
       earlyLeaveGraceMinutes: { type: Number, default: 0, min: 0 },
     },
+    stationWeeklyOff: {
+      type: Number, // 0 = Sunday ... 6 = Saturday, null = no weekly off
+      min: [0, "Weekly off must be between 0 (Sunday) and 6 (Saturday)"],
+      max: [6, "Weekly off must be between 0 (Sunday) and 6 (Saturday)"],
+      default: null,
+      validate: {
+        validator: (v) => v === null || v === undefined || Number.isInteger(v),
+        message: "Weekly off must be a whole number (0-6) or null",
+      },
+    },
     status: {
       type: String,
       enum: ["active", "inactive"],

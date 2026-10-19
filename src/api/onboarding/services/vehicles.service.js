@@ -25,6 +25,7 @@ const {
   getAllInvoice,
   getVehicleTbl,
   checkVehicleForExtension,
+  updateStationWeeklyOff,
 } = require("../models/vehicles.model");
 
 const {
@@ -553,6 +554,15 @@ exports.createStation = async (req, res) => {
       stack: err.stack,
       status: 400,
     });
+  }
+};
+
+exports.updateStationWeeklyOff = async (req, res) => {
+  try {
+    const result = await updateStationWeeklyOff(req.body);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.json({ message: err.message, name: err.name, status: 400 });
   }
 };
 

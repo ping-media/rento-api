@@ -126,6 +126,7 @@ const {
   buildReminderMessage,
 } = require("../../../utils/whatsappTemplates");
 const OptionalAuthentication = require("../../../middlewares/OptionalAuthentication");
+const { adminOnly } = require("../../../middlewares/AdminCheck");
 
 function formatDate(isoString) {
   return new Date(isoString).toLocaleDateString("en-IN", {
@@ -221,6 +222,15 @@ router.post("/VehicleBookrecode", async (req, res) => {
 router.post("/createStation", Authentication, async (req, res) => {
   vehiclesService.createStation(req, res);
 });
+
+router.post(
+  "/changeStationWeeklyOff",
+  Authentication,
+  adminOnly,
+  async (req, res) => {
+    vehiclesService.updateStationWeeklyOff(req, res);
+  },
+);
 
 router.post("/create-station-addon", Authentication, async (req, res) => {
   handleStationAddon(req, res);

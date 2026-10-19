@@ -30,6 +30,7 @@ const {
   normalizeIndianPhone,
   escapeRegex,
 } = require("../../../utils/normalizeIndianPhone.js");
+const { checkStationWeeklyOff } = require("../../../utils/stationWeeklyOff.js");
 require("dotenv").config();
 
 const razorpay = new Razorpay({
@@ -1164,6 +1165,18 @@ const initiateBooking = async (req, res) => {
       await session.abortTransaction();
       session.endSession();
       return res.json({ status: 400, message: "Invalid station" });
+    }
+
+    // --- Station weekly off check ---
+    const weeklyOffCheck = checkStationWeeklyOff(
+      stationForCapacityCheck,
+      bookingData?.BookingStartDateAndTime,
+    );
+
+    if (weeklyOffCheck.isOff) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ status: 400, message: weeklyOffCheck.message });
     }
 
     const totalActiveUnits = await VehicleTable.countDocuments({
