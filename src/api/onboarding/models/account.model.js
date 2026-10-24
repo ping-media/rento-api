@@ -1501,6 +1501,72 @@ async function updateUserByAdmin(userData) {
   }
 }
 
+async function changeUserToManager(userData) {
+  const { _id } = userData || {};
+
+  try {
+    if (!_id || typeof _id !== "string" || _id.length !== 24) {
+      return { status: 400, message: "Invalid _id" };
+    }
+
+    const existingUser = await User.findById(_id);
+    if (!existingUser || existingUser.isDeleted) {
+      return { status: 404, message: "User not found" };
+    }
+
+    if (existingUser.userType === "manager") {
+      return { status: 409, message: "User is already a manager" };
+    }
+
+    if (existingUser.userType !== "customer") {
+      return {
+        status: 400,
+        message: "Only customers can be changed to manager",
+      };
+    }
+
+    // managers and admins must have a unique email (same rule as updateUserByAdmin)
+    if (existingUser.email) {
+      const emailExists = await User.findOne({
+        email: existingUser.email.toLowerCase(),
+        userType: { $in: ["manager", "admin"] },
+        _id: { $ne: _id },
+      }).collation({ locale: "en", strength: 2 });
+
+      if (emailExists) {
+        return {
+          status: 409,
+          message:
+            "A manager or admin already uses this email, change it before making this user a manager",
+        };
+      }
+    }
+
+    // the filter re-checks userType, so two admins clicking at once can't both succeed
+    const data = await User.findOneAndUpdate(
+      { _id, userType: "customer", isDeleted: false, status: "active" },
+      { $set: { userType: "manager" } },
+      { new: true },
+    ).select("-password -otp");
+
+    if (!data) {
+      return {
+        status: 409,
+        message: "User was changed by someone else, refresh and try again",
+      };
+    }
+
+    return {
+      status: 200,
+      message: "Customer changed to manager successfully",
+      data,
+    };
+  } catch (error) {
+    console.error("Error in changeUserToManager:", error.message);
+    return { status: 500, message: "Internal server error" };
+  }
+}
+
 async function updateImage(req) {
   const obj = { status: 200, message: "image updated successfully", data: "" };
   console.log(req.file);
@@ -1610,4 +1676,5 @@ module.exports = {
   getUserByContact,
   addOrUpdateMobileToken,
   updateStationInfo,
+  changeUserToManager,
 };

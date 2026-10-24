@@ -55,6 +55,7 @@ const { sendInvoiceByEmail } = require("../../../utils/emailSend");
 const {
   kycApprovalFunction,
   getKycData,
+  kycUnverifyFunction,
 } = require("../models/kycapproval.model");
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const {
@@ -1171,6 +1172,10 @@ router.post("/sendEmailForBookingDetails", async (req, res) => {
 
 router.post("/kycApproval", Authentication, async (req, res) => {
   kycApprovalFunction(req, res);
+});
+
+router.post("/kyc-unverify", Authentication, adminOnly, async (req, res) => {
+  kycUnverifyFunction(req, res);
 });
 
 router.get("/get-kyc-data", Authentication, async (req, res) => {

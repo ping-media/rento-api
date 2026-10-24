@@ -6,6 +6,7 @@ const { otpGenerat, verify, softDeleteUser } = require("../models/otp.model");
 const { emailOtp } = require("../models/otpSendByEmail");
 const Authentication = require("../../../middlewares/Authentication");
 const { getTransactionReport } = require("../models/account.model");
+const { adminOnly } = require("../../../middlewares/AdminCheck");
 
 // Update User
 router.post("/profile", async (req, res) => {
@@ -43,6 +44,15 @@ router.post("/signup", async (req, res) => {
 router.post("/change-user-profile", Authentication, async (req, res) => {
   accountService.updateUserByAdmin(req, res);
 });
+
+router.post(
+  "/change-user-role",
+  Authentication,
+  adminOnly,
+  async (req, res) => {
+    accountService.changeUserToManager(req, res);
+  },
+);
 
 router.get("/getAllDataCount", Authentication, async (req, res) => {
   accountService.getAllDataCount(req, res);

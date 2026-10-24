@@ -23,6 +23,7 @@ const {
   updateStationInfo,
   getCustomerKycStatus,
   updateUserByAdmin,
+  changeUserToManager,
 } = require("../models/account.model");
 
 exports.updateUser = async (req, res) => {
@@ -150,6 +151,20 @@ exports.updateUserByAdmin = async (req, res) => {
       });
     }
     const result = await updateUserByAdmin(req.body);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
+exports.changeUserToManager = async (req, res) => {
+  try {
+    const result = await changeUserToManager(req.body);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(400).json({
