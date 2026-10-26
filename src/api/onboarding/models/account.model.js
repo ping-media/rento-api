@@ -20,6 +20,9 @@ const {
   escapeRegex,
 } = require("../../../utils/normalizeIndianPhone");
 
+const PASSWORD_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
+
 async function updateUser({
   _id,
   userType,
@@ -1187,8 +1190,7 @@ async function saveUser(userData) {
       gender,
     };
     if (password) {
-      const passwordRegex =
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
+      const passwordRegex = PASSWORD_REGEX;
       if (!passwordRegex.test(password)) {
         return {
           status: 400,
@@ -1318,8 +1320,13 @@ async function updateUserByAdmin(userData) {
     }
 
     const existingUser = await User.findById(_id);
+
     if (!existingUser) {
       return { status: 404, message: "User not found" };
+    }
+
+    if (existingUser.isDeleted) {
+      return { status: 409, message: "Deleted user can't be modified" };
     }
 
     // Only these fields can be changed through this endpoint
@@ -1502,11 +1509,24 @@ async function updateUserByAdmin(userData) {
 }
 
 async function changeUserToManager(userData) {
-  const { _id } = userData || {};
+  const { _id, password } = userData || {};
 
   try {
     if (!_id || typeof _id !== "string" || _id.length !== 24) {
       return { status: 400, message: "Invalid _id" };
+    }
+
+    if (!password) {
+      return { status: 400, message: "Password is required" };
+    }
+
+    const passwordRegex = PASSWORD_REGEX;
+    if (!passwordRegex.test(password)) {
+      return {
+        status: 400,
+        message:
+          "Password must be 8–20 chars, with uppercase, lowercase, number & special.",
+      };
     }
 
     const existingUser = await User.findById(_id);
@@ -1522,6 +1542,21 @@ async function changeUserToManager(userData) {
       return {
         status: 400,
         message: "Only customers can be changed to manager",
+      };
+    }
+
+    if (!existingUser.email || !emailValidation(existingUser.email)) {
+      return {
+        status: 400,
+        message:
+          "Add a valid email to this customer first, managers log in with email and password",
+      };
+    }
+
+    if (existingUser.status !== "active") {
+      return {
+        status: 400,
+        message: "Activate this user before changing to manager",
       };
     }
 
@@ -1542,10 +1577,11 @@ async function changeUserToManager(userData) {
       }
     }
 
-    // the filter re-checks userType, so two admins clicking at once can't both succeed
+    const hashedPassword = await bcrypt.hash(password, 8);
+
     const data = await User.findOneAndUpdate(
-      { _id, userType: "customer", isDeleted: false, status: "active" },
-      { $set: { userType: "manager" } },
+      { _id, userType: "customer", isDeleted: { $ne: true }, status: "active" },
+      { $set: { userType: "manager", password: hashedPassword } },
       { new: true },
     ).select("-password -otp");
 
