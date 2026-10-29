@@ -393,7 +393,6 @@ const updateStationInfo = async (query) => {
     } = query;
 
     if (!_id) {
-      console.log(_id);
       return {
         success: false,
         message: "Station id not found!",

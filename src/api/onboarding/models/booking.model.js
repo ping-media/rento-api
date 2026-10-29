@@ -325,9 +325,34 @@ const getBooking = async (query) => {
     const skip = (page - 1) * limit;
     const countPipeline = [...pipeline, { $count: "total" }];
 
-    pipeline.push({ $sort: { [sortby]: sortorder } });
+    // Ongoing rides first, only for search results and only when the frontend didn't send sortBy
+    const prioritizeOngoing = !!search && !sortBy;
+
+    if (prioritizeOngoing) {
+      pipeline.push({
+        $addFields: {
+          _ongoingFirst: {
+            $cond: [{ $eq: ["$rideStatus", "ongoing"] }, 0, 1],
+          },
+        },
+      });
+      pipeline.push({
+        $sort: { _ongoingFirst: 1, [sortby]: sortorder, _id: -1 },
+      });
+    } else {
+      pipeline.push({ $sort: { [sortby]: sortorder } });
+    }
+
     pipeline.push({ $skip: skip });
     pipeline.push({ $limit: Number(limit) });
+
+    if (prioritizeOngoing) {
+      pipeline.push({ $project: { _ongoingFirst: 0 } });
+    }
+
+    // pipeline.push({ $sort: { [sortby]: sortorder } });
+    // pipeline.push({ $skip: skip });
+    // pipeline.push({ $limit: Number(limit) });
 
     const [bookings, countResult] = await Promise.all([
       Booking.aggregate(pipeline),

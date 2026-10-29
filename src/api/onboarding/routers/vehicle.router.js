@@ -108,6 +108,7 @@ const {
 const {
   uploadImageToBucketForPickupImage,
   deleteImageFromBucket,
+  replacePickupImage,
 } = require("../models/uploadAndDeleteImage.modal");
 const { sendMessageAfterBooking } = require("../../../utils");
 const {
@@ -1093,6 +1094,13 @@ router.post(
     }
     uploadImageToBucketForPickupImage(req, res);
   },
+);
+
+router.post(
+  "/replace-pickup-image",
+  upload.single("image"),
+  Authentication,
+  replacePickupImage,
 );
 
 router.post("/start-ride", Authentication, async (req, res) => {
