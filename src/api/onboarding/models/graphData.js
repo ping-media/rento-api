@@ -268,10 +268,20 @@ async function getBookingGraphData(req, res) {
 }
 
 async function getGraphDayDetail(req, res) {
-  const { stationId, date, startDate, endDate } = req.query;
+  const { stationId, date, startDate, endDate, type } = req.query;
 
   if (!date && !startDate)
     return res.json({ status: 400, message: "date or startDate is required" });
+
+  const VALID_TYPES = ["booking", "extension", "vehicleChange"];
+  const typeFilter = VALID_TYPES.includes(type) ? type : "all";
+
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  // 20 when a page is requested, 25 when nothing is sent, hard cap at 100
+  const limit = Math.min(
+    Math.max(parseInt(req.query.limit, 10) || (req.query.page ? 20 : 25), 1),
+    100,
+  );
 
   try {
     // Use IST midnight (UTC+5:30 = subtract 5:30 from midnight IST to get UTC equivalent)
@@ -398,6 +408,7 @@ async function getGraphDayDetail(req, res) {
             breakdown.push({
               type: "booking",
               bookingId: item.bookingId,
+              booking_id: item._id,
               amount: totalAmount,
               baseAmount: amount,
               lateFee: lateFeeTotal,
@@ -485,16 +496,49 @@ async function getGraphDayDetail(req, res) {
     // sort by payment time desc
     breakdown.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    const total = breakdown.reduce((sum, b) => sum + b.amount, 0);
+    const sumOf = (rows) => rows.reduce((sum, b) => sum + b.amount, 0);
+    const byType = (t) => breakdown.filter((b) => b.type === t);
+
+    // full-range numbers for the filter chips, unaffected by pagination
+    const counts = {
+      all: breakdown.length,
+      booking: byType("booking").length,
+      extension: byType("extension").length,
+      vehicleChange: byType("vehicleChange").length,
+    };
+    const totals = {
+      all: sumOf(breakdown),
+      booking: sumOf(byType("booking")),
+      extension: sumOf(byType("extension")),
+      vehicleChange: sumOf(byType("vehicleChange")),
+    };
+
+    const filtered = typeFilter === "all" ? breakdown : byType(typeFilter);
+
+    const totalRecords = filtered.length;
+    const totalPages = Math.max(Math.ceil(totalRecords / limit), 1);
+    const pagedBreakdown = filtered.slice((page - 1) * limit, page * limit);
+
+    const sum = (rows, k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
 
     return res.json({
       status: 200,
       message: "Day detail fetched successfully",
       data: {
         date,
-        total,
-        count: breakdown.length,
-        breakdown,
+        total: totals.all,
+        count: counts.all,
+        counts,
+        totals,
+        breakdown: pagedBreakdown,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalRecords, // rows matching the active type filter
+          limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
       },
     });
   } catch (error) {

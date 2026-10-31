@@ -679,12 +679,23 @@ async function getAllDataCount(query) {
 
         // ─── LATE FEES — no independent payment date exists on this field today,
         // so it's still tied to the booking's createdAt window (see note below).
-        const lateFeeTotal = paidInRange
-          ? (Number(bp.lateFeeBasedOnHour) > 0
-              ? Number(bp.lateFeeBasedOnHour)
-              : 0) +
-            (Number(bp.lateFeeBasedOnKM) > 0 ? Number(bp.lateFeeBasedOnKM) : 0)
-          : 0;
+        const lateFeeTotal =
+          paidInRange &&
+          bp.lateFeePaymentMethod &&
+          bp.lateFeePaymentMethod !== "NA"
+            ? (Number(bp.lateFeeBasedOnHour) > 0
+                ? Number(bp.lateFeeBasedOnHour)
+                : 0) +
+              (Number(bp.lateFeeBasedOnKM) > 0
+                ? Number(bp.lateFeeBasedOnKM)
+                : 0)
+            : 0;
+        // const lateFeeTotal = paidInRange
+        //   ? (Number(bp.lateFeeBasedOnHour) > 0
+        //       ? Number(bp.lateFeeBasedOnHour)
+        //       : 0) +
+        //     (Number(bp.lateFeeBasedOnKM) > 0 ? Number(bp.lateFeeBasedOnKM) : 0)
+        //   : 0;
 
         // ─── ADDITIONAL FEES — same caveat as late fees
         const additionalFeeTotal =
