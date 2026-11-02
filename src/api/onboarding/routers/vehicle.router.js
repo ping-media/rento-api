@@ -891,7 +891,7 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
   }
 });
 
-router.get("/getAllVehiclesData", Authentication, async (req, res) => {
+router.get("/getAllVehiclesData/report", Authentication, async (req, res) => {
   getVehicleExport(req, res);
 });
 
