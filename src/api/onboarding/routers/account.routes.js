@@ -17,7 +17,11 @@ router.post("/mobileToken", async (req, res) => {
   accountService.addOrUpdateMobileToken(req, res);
 });
 
-router.get("/getAllUsers", async (req, res) => {
+router.get("/getAllUsers", Authentication, async (req, res) => {
+  accountService.getUserExport(req, res);
+});
+
+router.get("/getAllUsers/report", async (req, res) => {
   accountService.getAllUsers(req, res);
 });
 

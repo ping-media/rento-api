@@ -237,6 +237,111 @@ const updateManyVehicles = async (filter, updateData) => {
     };
   }
 };
+const EXPORT_CHUNK_SIZE = 500;
+
+const getVehicleExport = async (req, res) => {
+  const response = {
+    status: 200,
+    message: "Data fetched successfully",
+    data: [],
+  };
+
+  try {
+    const { cursor, stationId } = req.query;
+
+    if (cursor && !mongoose.Types.ObjectId.isValid(cursor)) {
+      return res.json({ status: 400, message: "Invalid cursor", data: [] });
+    }
+
+    const baseFilter = {};
+    if (stationId) baseFilter.stationId = stationId;
+
+    // First call only: total count so the frontend can show progress
+    if (!cursor) {
+      response.total = await vehicleTable.countDocuments(baseFilter);
+
+      if (response.total === 0) {
+        return res.json({
+          ...response,
+          message: "No records found",
+          pagination: {
+            limit: EXPORT_CHUNK_SIZE,
+            hasMore: false,
+            nextCursor: null,
+          },
+        });
+      }
+    }
+
+    const rows = await vehicleTable.aggregate([
+      {
+        $match: cursor
+          ? {
+              ...baseFilter,
+              _id: { $gt: new mongoose.Types.ObjectId(cursor) },
+            }
+          : baseFilter,
+      },
+      { $sort: { _id: 1 } },
+      { $limit: EXPORT_CHUNK_SIZE + 1 }, // one extra row tells us if there is a next chunk
+      {
+        $lookup: {
+          from: "vehiclemasters",
+          localField: "vehicleMasterId",
+          foreignField: "_id",
+          as: "vehicleMasterData",
+          pipeline: [{ $project: { vehicleName: 1, vehicleBrand: 1 } }],
+        },
+      },
+      {
+        $lookup: {
+          from: "stations",
+          localField: "stationId",
+          foreignField: "stationId",
+          as: "stationData",
+          pipeline: [{ $project: { stationName: 1 } }],
+        },
+      },
+      {
+        $project: {
+          vehicleNumber: 1,
+          kmsRun: 1,
+          lastServiceDate: 1,
+          perDayCost: 1,
+          createdAt: 1,
+          "vehiclePlan.planDuration": 1,
+          "vehiclePlan.planPrice": 1,
+          vehicleName: {
+            $arrayElemAt: ["$vehicleMasterData.vehicleName", 0],
+          },
+          vehicleBrand: {
+            $arrayElemAt: ["$vehicleMasterData.vehicleBrand", 0],
+          },
+          stationName: { $arrayElemAt: ["$stationData.stationName", 0] },
+        },
+      },
+    ]);
+
+    const hasMore = rows.length > EXPORT_CHUNK_SIZE;
+    const data = hasMore ? rows.slice(0, EXPORT_CHUNK_SIZE) : rows;
+
+    response.data = data;
+    response.pagination = {
+      limit: EXPORT_CHUNK_SIZE,
+      hasMore,
+      nextCursor: hasMore ? data[data.length - 1]._id.toString() : null,
+    };
+
+    return res.json(response);
+  } catch (error) {
+    console.error("Error exporting vehicles:", error.message);
+    return res.json({
+      status: 500,
+      message: "An error occurred while exporting vehicle data",
+      data: [],
+    });
+  }
+};
 
 const getAllVehiclesData = async (req, res) => {
   const response = {
@@ -787,4 +892,5 @@ module.exports = {
   updateMultipleVehicles,
   getVehicleIds,
   getAvailableVehicleIds,
+  getVehicleExport,
 };

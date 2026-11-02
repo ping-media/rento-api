@@ -24,6 +24,7 @@ const {
   updateMultipleVehicles,
   getVehicleIds,
   getAvailableVehicleIds,
+  getVehicleExport,
 } = require("../models/getAllVehicleDataAdmin");
 const { documentUpload, getDocument } = require("../models/DocumentUpload");
 const { getAllDocument } = require("../models/getAllDocumentAdmin");
@@ -456,6 +457,10 @@ router.get("/getBooking", async (req, res) => {
   vehiclesService.getBooking(req, res);
 });
 
+router.get("/getBooking/report", Authentication, async (req, res) => {
+  vehiclesService.getBookingExport(req, res);
+});
+
 router.get("/booking/active-banner/:userId", async (req, res) => {
   vehiclesService.getActiveBannerBooking(req, res);
 });
@@ -884,6 +889,10 @@ router.delete("/deleteVehicleMaster", async (req, res) => {
     obj.message = "An error occurred while deleting VehicleMaster";
     return res.json(obj);
   }
+});
+
+router.get("/getAllVehiclesData", Authentication, async (req, res) => {
+  getVehicleExport(req, res);
 });
 
 router.get("/getAllVehiclesData", async (req, res) => {

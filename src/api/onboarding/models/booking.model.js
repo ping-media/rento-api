@@ -56,6 +56,169 @@ function formatTime(isoString) {
   });
 }
 
+const EXPORT_CHUNK_SIZE = 500;
+const EXPORT_MAX_ROWS = 5000;
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+const getBookingExport = async (query) => {
+  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+
+  try {
+    const { startDate, endDate, cursor, stationId } = query;
+
+    if (
+      !DATE_ONLY_REGEX.test(startDate || "") ||
+      !DATE_ONLY_REGEX.test(endDate || "") ||
+      isNaN(new Date(`${startDate}T00:00:00Z`).getTime()) ||
+      isNaN(new Date(`${endDate}T00:00:00Z`).getTime())
+    ) {
+      obj.status = 400;
+      obj.message = "startDate and endDate are required (YYYY-MM-DD)";
+      return obj;
+    }
+
+    if (startDate > endDate) {
+      obj.status = 400;
+      obj.message = "startDate cannot be after endDate";
+      return obj;
+    }
+
+    if (cursor && !ObjectId.isValid(cursor)) {
+      obj.status = 400;
+      obj.message = "Invalid cursor";
+      return obj;
+    }
+
+    // Stored dates are IST wall-clock strings with a fake "Z", so compare as strings.
+    // rangeStart has no "Z" so "...T00:00:00Z" and "...T00:00:00.000Z" both sort after it;
+    // rangeEnd keeps "Z" so "...T23:59:59.000Z" and "...T23:59:59Z" both sort at or before it.
+    const rangeStart = `${startDate}T00:00:00`;
+    const rangeEnd = `${endDate}T23:59:59Z`;
+
+    // Overlap rule: booking starts before the range ends AND ends after the range starts
+    const baseFilter = {
+      BookingStartDateAndTime: { $lte: rangeEnd },
+      BookingEndDateAndTime: { $gte: rangeStart },
+    };
+    if (stationId) baseFilter.stationId = stationId;
+
+    // First call only: count and enforce the cap
+    if (!cursor) {
+      const total = await Booking.countDocuments(baseFilter);
+      obj.total = total;
+
+      if (total > EXPORT_MAX_ROWS) {
+        obj.status = 400;
+        obj.message = `Found ${total} bookings, the maximum per export is ${EXPORT_MAX_ROWS}. Please narrow the date range.`;
+        return obj;
+      }
+
+      if (total === 0) {
+        obj.message = "No records found";
+        obj.pagination = {
+          limit: EXPORT_CHUNK_SIZE,
+          hasMore: false,
+          nextCursor: null,
+        };
+        return obj;
+      }
+    }
+
+    const pipeline = [
+      {
+        $match: cursor
+          ? { ...baseFilter, _id: { $gt: new ObjectId(cursor) } }
+          : baseFilter,
+      },
+      { $sort: { _id: 1 } },
+      { $limit: EXPORT_CHUNK_SIZE + 1 }, // one extra row tells us if there is a next chunk
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "userId",
+          pipeline: [
+            {
+              $project: {
+                bookingId: 1,
+                BookingStartDateAndTime: 1,
+                BookingEndDateAndTime: 1,
+                vehicleBrand: 1,
+                vehicleName: 1,
+                "vehicleBasic.vehicleNumber": 1,
+                paymentStatus: 1,
+                bookingStatus: 1,
+                rideStatus: 1,
+                "userId.fullName": 1,
+                "userId.contact": 1,
+                "userId.altContact": 1,
+                "userId.email": 1,
+                "bookingPrice.isDiscountZero": 1,
+                "bookingPrice.discountTotalPrice": 1,
+                "bookingPrice.totalPrice": 1,
+                "bookingPrice.extendAmount.status": 1,
+                "bookingPrice.extendAmount.amount": 1,
+                "bookingPrice.extendAmount.addOnAmount": 1,
+                "bookingPrice.extendAmount.tax": 1,
+                "bookingPrice.extendAmount.addonTax": 1,
+                "bookingPrice.extendAmount.bookingEndDateAndTime": 1,
+                "bookingPrice.diffAmount.status": 1,
+                "bookingPrice.diffAmount.amount": 1,
+                "bookingPrice.diffAmount.refundAmount": 1,
+              },
+            },
+          ],
+        },
+      },
+      { $unwind: { path: "$userId", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          "userId.fullName": {
+            $concat: [
+              { $ifNull: ["$userId.firstName", ""] },
+              {
+                $cond: {
+                  if: {
+                    $and: [
+                      { $ne: ["$userId.firstName", null] },
+                      { $ne: ["$userId.lastName", null] },
+                    ],
+                  },
+                  then: " ",
+                  else: "",
+                },
+              },
+              { $ifNull: ["$userId.lastName", ""] },
+            ],
+          },
+        },
+      },
+    ];
+
+    const rows = await Booking.aggregate(pipeline);
+    const hasMore = rows.length > EXPORT_CHUNK_SIZE;
+    const data = hasMore ? rows.slice(0, EXPORT_CHUNK_SIZE) : rows;
+
+    obj.data = data;
+    obj.pagination = {
+      limit: EXPORT_CHUNK_SIZE,
+      hasMore,
+      nextCursor: hasMore ? data[data.length - 1]._id.toString() : null,
+    };
+  } catch (error) {
+    console.error("Error exporting bookings:", error);
+    await Log({
+      message: `Error exporting bookings: ${error.message}`,
+      functionName: "bookingExport",
+    });
+    obj.status = 500;
+    obj.message = "Internal server error";
+  }
+
+  return obj;
+};
+
 const getBooking = async (query) => {
   const obj = { status: 200, message: "Data fetched successfully", data: [] };
 
@@ -2867,4 +3030,5 @@ module.exports = {
   getActiveBannerBooking,
   getVehiclesByStation,
   deleteBooking,
+  getBookingExport,
 };

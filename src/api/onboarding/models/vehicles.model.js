@@ -2717,170 +2717,6 @@ const checkVehicleForExtension = async (query) => {
     }
     const pricingRules = cachedPricingRules;
 
-    // if (pricingRules) {
-    //   const originalPerDayCost = adjustedVehicle.perDayCost;
-    //   const startDateObj = new Date(startDate);
-    //   const endDateObj = new Date(endDate);
-    //   const durationInHours = (endDateObj - startDateObj) / (1000 * 60 * 60);
-    //   const bookingDurationDays =
-    //     durationInHours < 24 ? 1 : Math.ceil(durationInHours / 24);
-
-    //   let totalRentalCost = 0;
-    //   const daysBreakdown = [];
-    //   const appliedPlans = [];
-    //   let remainingDays = bookingDurationDays;
-    //   let currentDate = new Date(startDateObj);
-
-    //   const weekendPercentage =
-    //     adjustedVehicle.stationData?.weekendPercentage || 0;
-    //   const stationWeekendEnabled =
-    //     adjustedVehicle.stationData?.weekendPriceIncrease === "active";
-    //   const useVehicleLevelWeekendPrice = true;
-    //   const vehicleWeekendCost = adjustedVehicle?.weekendCost;
-    //   const vehicleWeekendKmLimit = adjustedVehicle?.weekendFreeKms ?? null;
-
-    //   if (
-    //     adjustedVehicle.vehiclePlan &&
-    //     adjustedVehicle.vehiclePlan.length > 0
-    //   ) {
-    //     const sortedPlans = [...adjustedVehicle.vehiclePlan].sort(
-    //       (a, b) => b.planDuration - a.planDuration,
-    //     );
-    //     for (const plan of sortedPlans) {
-    //       if (remainingDays >= plan.planDuration) {
-    //         const times = Math.floor(remainingDays / plan.planDuration);
-    //         totalRentalCost += times * plan.planPrice;
-    //         appliedPlans.push({
-    //           days: plan.planDuration,
-    //           count: times,
-    //           planPrice: plan.planPrice,
-    //           kmLimit: plan.kmLimit ?? 0,
-    //         });
-    //         remainingDays -= times * plan.planDuration;
-    //         currentDate.setDate(
-    //           currentDate.getDate() + times * plan.planDuration,
-    //         );
-    //       }
-    //     }
-    //   }
-
-    //   for (let i = 0; i < remainingDays; i++) {
-    //     const dayOfWeek = currentDate.getDay();
-    //     const isWeekend =
-    //       dayOfWeek === 0 ||
-    //       dayOfWeek === 6 ||
-    //       (dayOfWeek === 5 &&
-    //         new Date(currentDate.getTime() + 24 * 60 * 60 * 1000).getDay() ===
-    //           6 &&
-    //         remainingDays > 1);
-
-    //     let dailyRate = originalPerDayCost;
-
-    //     if (isWeekend) {
-    //       if (useVehicleLevelWeekendPrice) {
-    //         if (vehicleWeekendCost != null && vehicleWeekendCost > 0)
-    //           dailyRate = vehicleWeekendCost;
-    //       } else if (stationWeekendEnabled && weekendPercentage !== 0) {
-    //         const weekendPriceType =
-    //           adjustedVehicle?.stationData?.weekendPriceType || "percentage";
-    //         dailyRate +=
-    //           weekendPriceType === "fixed"
-    //             ? weekendPercentage
-    //             : (originalPerDayCost * weekendPercentage) / 100;
-    //       }
-    //     }
-
-    //     if (pricingRules.specialDays && pricingRules.specialDays.length > 0) {
-    //       for (const specialDay of pricingRules.specialDays) {
-    //         const fromDate = new Date(specialDay.From);
-    //         const toDate = new Date(specialDay.Too);
-    //         if (currentDate >= fromDate && currentDate <= toDate) {
-    //           dailyRate +=
-    //             specialDay.PriceType === "+"
-    //               ? (originalPerDayCost * specialDay.Price) / 100
-    //               : -(originalPerDayCost * specialDay.Price) / 100;
-    //           break;
-    //         }
-    //       }
-    //     }
-
-    //     totalRentalCost += dailyRate;
-
-    //     const isWeekendKmApplied =
-    //       isWeekend &&
-    //       useVehicleLevelWeekendPrice &&
-    //       vehicleWeekendKmLimit != null &&
-    //       vehicleWeekendKmLimit > 0;
-
-    //     daysBreakdown.push({
-    //       date: new Date(currentDate),
-    //       isWeekend,
-    //       dailyRate: Math.round(dailyRate),
-    //       weekendPriceApplied: isWeekend
-    //         ? useVehicleLevelWeekendPrice
-    //           ? vehicleWeekendCost != null && vehicleWeekendCost > 0
-    //           : stationWeekendEnabled && weekendPercentage !== 0
-    //         : false,
-    //       weekendPriceType: useVehicleLevelWeekendPrice
-    //         ? "vehicleLevel"
-    //         : adjustedVehicle?.stationData?.weekendPriceType || "percentage",
-    //       kmLimit: isWeekendKmApplied
-    //         ? vehicleWeekendKmLimit
-    //         : adjustedVehicle.freeKms,
-    //     });
-
-    //     currentDate.setDate(currentDate.getDate() + 1);
-    //   }
-
-    //   adjustedVehicle.originalPerDayCost = originalPerDayCost;
-    //   adjustedVehicle._daysBreakdown = daysBreakdown;
-    //   adjustedVehicle.totalRentalCost = Math.round(totalRentalCost);
-    //   adjustedVehicle.appliedPlans = appliedPlans;
-
-    //   const gstPercentage = adjustedVehicle?.vehicleMasterData?.gstPercentage;
-    //   const isGstActive =
-    //     adjustedVehicle?.stationData?.isGstActive === "active";
-    //   adjustedVehicle.tax =
-    //     isGstActive && gstPercentage > 0
-    //       ? calculateTax(Math.round(totalRentalCost), gstPercentage)
-    //       : 0;
-
-    //   const startDay = startDateObj.getDay();
-    //   const isStartWeekend = startDay === 0 || startDay === 6;
-
-    //   if (useVehicleLevelWeekendPrice) {
-    //     adjustedVehicle.perDayCost =
-    //       isStartWeekend && vehicleWeekendCost != null && vehicleWeekendCost > 0
-    //         ? Math.round(vehicleWeekendCost)
-    //         : originalPerDayCost;
-    //   } else if (
-    //     isStartWeekend &&
-    //     stationWeekendEnabled &&
-    //     weekendPercentage !== 0
-    //   ) {
-    //     const weekendPriceType =
-    //       adjustedVehicle?.stationData?.weekendPriceType || "percentage";
-    //     adjustedVehicle.perDayCost = Math.round(
-    //       weekendPriceType === "fixed"
-    //         ? originalPerDayCost + weekendPercentage
-    //         : originalPerDayCost +
-    //             (originalPerDayCost * weekendPercentage) / 100,
-    //     );
-    //   } else {
-    //     adjustedVehicle.perDayCost = originalPerDayCost;
-    //   }
-
-    //   const isStartWeekendKmApplied =
-    //     isStartWeekend &&
-    //     useVehicleLevelWeekendPrice &&
-    //     vehicleWeekendKmLimit != null &&
-    //     vehicleWeekendKmLimit > 0;
-
-    //   adjustedVehicle.weekdayFreeKms = adjustedVehicle.freeKms;
-    //   adjustedVehicle.freeKms = isStartWeekendKmApplied
-    //     ? vehicleWeekendKmLimit
-    //     : adjustedVehicle.freeKms;
-    // }
     let pricingFields = {};
 
     if (pricingRules) {
@@ -2896,7 +2732,25 @@ const checkVehicleForExtension = async (query) => {
       let totalRentalCost = 0;
       const daysBreakdown = [];
       const appliedPlans = [];
-      let remainingDays = bookingDurationDays;
+      // let remainingDays = bookingDurationDays;
+      // Days in the month the booking starts in (UTC getters: fake-Z IST wall-clock string)
+      const startMonthDays = new Date(
+        Date.UTC(
+          startDateObj.getUTCFullYear(),
+          startDateObj.getUTCMonth() + 1,
+          0,
+        ),
+      ).getUTCDate();
+
+      const hasMonthlyPlan = (adjustedVehicle.vehiclePlan || []).some(
+        (p) => p.planDuration === 30,
+      );
+
+      // 31-day month + 31-day booking => the 30-day plan covers the whole month
+      const isFullMonthBooking =
+        hasMonthlyPlan && bookingDurationDays === 31 && startMonthDays === 31;
+
+      let remainingDays = isFullMonthBooking ? 30 : bookingDurationDays;
       let currentDate = new Date(startDateObj);
 
       const weekendPercentage =
@@ -4156,7 +4010,25 @@ const getVehicleTbl = async (query) => {
         const daysBreakdown = [];
         const appliedPlans = [];
 
-        let remainingDays = bookingDurationDays;
+        // let remainingDays = bookingDurationDays;
+        // Days in the month the booking starts in
+        const startMonthDays = new Date(
+          Date.UTC(
+            startDateObj.getUTCFullYear(),
+            startDateObj.getUTCMonth() + 1,
+            0,
+          ),
+        ).getUTCDate();
+
+        const hasMonthlyPlan = (adjustedVehicle.vehiclePlan || []).some(
+          (p) => p.planDuration === 30,
+        );
+
+        // 31-day month + 31-day booking => the 30-day plan covers the whole month
+        const isFullMonthBooking =
+          hasMonthlyPlan && bookingDurationDays === 31 && startMonthDays === 31;
+
+        let remainingDays = isFullMonthBooking ? 30 : bookingDurationDays;
         let currentDate = new Date(startDateObj);
 
         // Get weekend percentage from station data instead of global pricing rules
@@ -4532,8 +4404,6 @@ const getVehicleTblData = async (query) => {
                     ],
                   },
                 ],
-                // BookingEndDateAndTime: { $gt: startDate },
-                // BookingStartDateAndTime: { $lt: endDate },
               },
             },
             // Only project fields we actually use — don't load entire booking documents
@@ -4741,7 +4611,7 @@ const getVehicleTblData = async (query) => {
       {
         $match: {
           // vehicleStatus: "active",
-          // "vehicleMasterData.status": { $ne: "inactive" },
+          "vehicleMasterData.status": { $ne: "inactive" },
           ...(vehicleBrand
             ? { "vehicleMasterData.vehicleBrand": vehicleBrand }
             : {}),
@@ -5056,10 +4926,6 @@ const getVehicleTblData = async (query) => {
       paginatedAvailable = paginatedAvailable.map((groupedVehicle) => {
         const adjustedVehicle = { ...groupedVehicle };
         const originalPerDayCost = adjustedVehicle.perDayCost;
-        // const weekendCost =
-        //   adjustedVehicle?.weekendCost != null
-        //     ? adjustedVehicle.weekendCost
-        //     : originalPerDayCost;
 
         const startDateObj = new Date(startDate);
         const endDateObj = new Date(endDate);
@@ -5073,7 +4939,25 @@ const getVehicleTblData = async (query) => {
         const daysBreakdown = [];
         const appliedPlans = [];
 
-        let remainingDays = bookingDurationDays;
+        // let remainingDays = bookingDurationDays;
+        // Days in the month the booking starts in (IST-adjusted)
+        const startMonthDays = new Date(
+          Date.UTC(
+            startDateObj.getUTCFullYear(),
+            startDateObj.getUTCMonth() + 1,
+            0,
+          ),
+        ).getUTCDate();
+
+        const hasMonthlyPlan = (adjustedVehicle.vehiclePlan || []).some(
+          (p) => p.planDuration === 30,
+        );
+
+        // 31-day month + 31-day booking => the 30-day plan covers the whole month
+        const isFullMonthBooking =
+          hasMonthlyPlan && bookingDurationDays === 31 && startMonthDays === 31;
+
+        let remainingDays = isFullMonthBooking ? 30 : bookingDurationDays;
         let currentDate = new Date(startDateObj);
 
         // Get weekend percentage from station data instead of global pricing rules

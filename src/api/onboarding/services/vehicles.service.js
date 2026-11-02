@@ -39,6 +39,7 @@ const {
   getBooking,
   getActiveBannerBooking,
   getVehiclesByStation,
+  getBookingExport,
 } = require("../models/booking.model");
 const {
   getVehicleBookrecode,
@@ -365,6 +366,20 @@ exports.getBookings = async (req, res) => {
 exports.getBooking = async (req, res) => {
   try {
     const result = await getBooking(req.query, req.headers);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.json({
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      status: 400,
+    });
+  }
+};
+
+exports.getBookingExport = async (req, res) => {
+  try {
+    const result = await getBookingExport(req.query, req.headers);
     return res.status(200).json(result);
   } catch (err) {
     return res.json({

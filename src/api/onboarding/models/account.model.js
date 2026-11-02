@@ -175,6 +175,63 @@ const getCustomerKycStatus = async (query) => {
   return obj;
 };
 
+const EXPORT_CHUNK_SIZE = 500;
+
+const getUserExport = async (query) => {
+  const obj = { status: 200, message: "Data fetched successfully", data: [] };
+
+  try {
+    const { cursor } = query;
+
+    if (cursor && !mongoose.Types.ObjectId.isValid(cursor)) {
+      obj.status = 400;
+      obj.message = "Invalid cursor";
+      return obj;
+    }
+
+    const baseFilter = { userType: "customer" };
+
+    // First call only: total count so the frontend can show progress
+    if (!cursor) {
+      obj.total = await User.countDocuments(baseFilter);
+
+      if (obj.total === 0) {
+        obj.message = "No records found";
+        obj.pagination = {
+          limit: EXPORT_CHUNK_SIZE,
+          hasMore: false,
+          nextCursor: null,
+        };
+        return obj;
+      }
+    }
+
+    const rows = await User.find(
+      cursor ? { ...baseFilter, _id: { $gt: cursor } } : baseFilter,
+    )
+      .select("firstName lastName contact altContact email createdAt")
+      .sort({ _id: 1 })
+      .limit(EXPORT_CHUNK_SIZE + 1) // one extra row tells us if there is a next chunk
+      .lean();
+
+    const hasMore = rows.length > EXPORT_CHUNK_SIZE;
+    const data = hasMore ? rows.slice(0, EXPORT_CHUNK_SIZE) : rows;
+
+    obj.data = data;
+    obj.pagination = {
+      limit: EXPORT_CHUNK_SIZE,
+      hasMore,
+      nextCursor: hasMore ? data[data.length - 1]._id.toString() : null,
+    };
+  } catch (error) {
+    console.error("Error exporting users:", error.message);
+    obj.status = 500;
+    obj.message = `Server error: ${error.message}`;
+  }
+
+  return obj;
+};
+
 const getAllUsers = async (query) => {
   const obj = {
     status: 200,
@@ -1723,4 +1780,5 @@ module.exports = {
   addOrUpdateMobileToken,
   updateStationInfo,
   changeUserToManager,
+  getUserExport,
 };
