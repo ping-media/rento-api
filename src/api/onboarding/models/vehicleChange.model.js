@@ -1,5 +1,6 @@
 const Booking = require("../../../db/schemas/onboarding/booking.schema");
 const Log = require("../../../db/schemas/onboarding/log");
+const MaintenanceRequest = require("../../../db/schemas/onboarding/maintenanceRequest.schema");
 const Station = require("../../../db/schemas/onboarding/station.schema");
 const {
   calculateVehicleChangePricing,
@@ -453,6 +454,19 @@ const vehicleChangeNew = async (req, res) => {
     const booking = await Booking.findById(booking_id);
     if (!booking) {
       return res.json({ success: false, message: "Booking not found." });
+    }
+
+    // a vehicle under service can't be swapped: the request still points at this vehicle and its readings
+    const openService = await MaintenanceRequest.exists({
+      bookingId: booking._id,
+      status: { $in: ["pending", "in_progress", "completed"] },
+    });
+    if (openService) {
+      return res.json({
+        success: false,
+        message:
+          "This vehicle is under service. Approve or cancel the service request before changing the vehicle.",
+      });
     }
 
     const lastDiff = booking.bookingPrice.diffAmount?.at(-1);

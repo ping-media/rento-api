@@ -492,12 +492,7 @@ const getGeneral = async (req, res) => {
 
 // Whitelist of top-level fields that can be toggled/updated via this endpoint.
 // Add new keys here later — no other code changes needed (plug and play).
-const ALLOWED_GENERAL_FIELDS = [
-  // "maintenance",
-  // "testMode",
-  "showVehicleCount",
-  // "vehicleLevelWeekendPrice",
-];
+const ALLOWED_GENERAL_FIELDS = ["showVehicleCount"];
 
 const postGeneral = async (req, res) => {
   try {
@@ -633,6 +628,80 @@ const getExtraAddOns = async (req, res) => {
   }
 };
 
+const APP_PLATFORMS = ["android", "ios"];
+const VERSION_REGEX = /^\d+\.\d+\.\d+$/; // 1.6.2
+
+const postAppInfo = async (req, res) => {
+  try {
+    const { platform, latestVersion, forceUpdate } = req.body || {};
+
+    if (!APP_PLATFORMS.includes(platform)) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        message: "platform must be 'android' or 'ios'.",
+      });
+    }
+
+    if (latestVersion === undefined && forceUpdate === undefined) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        message: "Provide latestVersion and/or forceUpdate.",
+      });
+    }
+
+    const setPayload = {};
+
+    if (latestVersion !== undefined) {
+      if (
+        typeof latestVersion !== "string" ||
+        !VERSION_REGEX.test(latestVersion.trim())
+      ) {
+        return res.status(400).json({
+          status: 400,
+          success: false,
+          message: "latestVersion must look like 1.6.2",
+        });
+      }
+      setPayload[`appInfo.${platform}.latestVersion`] = latestVersion.trim();
+    }
+
+    if (forceUpdate !== undefined) {
+      if (typeof forceUpdate !== "boolean") {
+        return res.status(400).json({
+          status: 400,
+          success: false,
+          message: "forceUpdate must be true or false.",
+        });
+      }
+      setPayload[`appInfo.${platform}.forceUpdate`] = forceUpdate;
+    }
+
+    const generalSettings = await General.findOneAndUpdate(
+      {},
+      { $set: setPayload },
+      { new: true, upsert: true, runValidators: true },
+    );
+
+    const { extraAddOn, __v, ...rest } = generalSettings.toObject();
+
+    return res.status(200).json({
+      status: 200,
+      success: true,
+      message: "App info updated successfully.",
+      data: rest,
+    });
+  } catch (error) {
+    console.error("Error updating app info:", error);
+    return res.status(500).json({
+      status: 500,
+      success: false,
+      message: "Server error while updating app info.",
+    });
+  }
+};
+
 module.exports = {
   createAndUpdateGeneral,
   manageExtraAddOn,
@@ -642,4 +711,5 @@ module.exports = {
   updateGeneralInfo,
   addAndDeleteSlides,
   addAndDeleteTestimonial,
+  postAppInfo,
 };

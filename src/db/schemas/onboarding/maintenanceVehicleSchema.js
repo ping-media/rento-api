@@ -10,14 +10,14 @@ const maintenanceVehicleSchema = new Schema(
     },
     startDate: {
       type: String,
-      require: true,
+      required: true,
     },
     createDate: {
       type: Number,
     },
     endDate: {
       type: String,
-      require: true,
+      required: true,
     },
     actualEndDate: {
       type: String,
@@ -41,6 +41,7 @@ const maintenanceVehicleSchema = new Schema(
       enum: ["admin", "manager"],
       default: "admin",
     },
+    unblockedById: { type: Schema.Types.ObjectId, ref: "User" },
     status: {
       type: String,
       enum: ["active", "inactive"],

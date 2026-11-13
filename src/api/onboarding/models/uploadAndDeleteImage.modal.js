@@ -1,4 +1,3 @@
-const multer = require("multer");
 const { resizeImg } = require("../../../utils/resizeImage");
 const {
   DeleteObjectCommand,
@@ -10,10 +9,6 @@ const pickupImage = require("../../../db/schemas/onboarding/pickupImageUpload");
 const Log = require("./Logs.model");
 
 require("dotenv").config();
-
-// const upload = multer({
-//   storage: multer.memoryStorage(),
-// });
 
 const {
   AWS_REGION,
@@ -269,8 +264,62 @@ const deleteImageFromBucket = async (req, res) => {
   }
 };
 
+const uploadMaintenanceImage = async (req, res) => {
+  try {
+    const { _id, userType } = req.user;
+
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ status: 400, success: false, message: "No file uploaded." });
+    }
+    if (!req.file.mimetype.startsWith("image/")) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        message: "Only image files are allowed.",
+      });
+    }
+
+    const file = req.file;
+    const resizedImageBuffer = await resizeImg(file);
+    const ext = file.mimetype.split("/")[1] || "jpg";
+    const fileName = `maintenance/${_id}_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`;
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: fileName,
+        Body: resizedImageBuffer,
+        ContentType: file.mimetype,
+      }),
+    );
+
+    const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+
+    console.log(
+      `Maintenance image uploaded by ${userType} ${_id}: ${fileName}`,
+    );
+
+    return res.status(200).json({
+      status: 200,
+      success: true,
+      message: "Image uploaded successfully.",
+      data: { imageUrl, fileName },
+    });
+  } catch (error) {
+    console.error("Maintenance image upload error:", error);
+    return res.status(500).json({
+      status: 500,
+      success: false,
+      message: "Failed to upload image.",
+    });
+  }
+};
+
 module.exports = {
   replacePickupImage,
   uploadImageToBucketForPickupImage,
   deleteImageFromBucket,
+  uploadMaintenanceImage,
 };

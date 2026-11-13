@@ -92,6 +92,7 @@ const {
   addAndDeleteTestimonial,
   addAndDeleteSlides,
   postGeneral,
+  postAppInfo,
 } = require("../models/general.model");
 const {
   initiateBooking,
@@ -130,6 +131,7 @@ const {
 } = require("../../../utils/whatsappTemplates");
 const OptionalAuthentication = require("../../../middlewares/OptionalAuthentication");
 const { adminOnly } = require("../../../middlewares/AdminCheck");
+const MaintenanceRequest = require("../../../db/schemas/onboarding/maintenanceRequest.schema");
 
 function formatDate(isoString) {
   return new Date(isoString).toLocaleDateString("en-IN", {
@@ -189,6 +191,15 @@ router.get("/general", async (req, res) => {
 router.post("/general/settings", Authentication, async (req, res) => {
   postGeneral(req, res);
 });
+
+router.post(
+  "/general/app-info",
+  Authentication,
+  adminOnly,
+  async (req, res) => {
+    postAppInfo(req, res);
+  },
+);
 
 router.get("/addOn", async (req, res) => {
   getExtraAddOns(req, res);
@@ -1274,6 +1285,17 @@ router.put("/rideUpdate", Authentication, async (req, res) => {
     if (rideStatusFromBooking === "canceled") {
       obj.status = 400;
       obj.message = "Ride already canceled";
+      return res.json(obj);
+    }
+
+    const openService = await MaintenanceRequest.exists({
+      bookingId: booking._id,
+      status: { $in: ["pending", "in_progress", "completed"] },
+    });
+    if (openService) {
+      obj.status = 400;
+      obj.message =
+        "This vehicle is under service. Approve or cancel the service request before ending the ride.";
       return res.json(obj);
     }
 

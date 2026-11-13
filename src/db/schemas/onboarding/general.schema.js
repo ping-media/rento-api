@@ -91,6 +91,10 @@ const GeneralSchema = new Schema(
           type: Boolean,
         },
       },
+      ios: {
+        latestVersion: { type: String },
+        forceUpdate: { type: Boolean },
+      },
     },
     maintenance: { type: Boolean, default: false },
     testMode: { type: Boolean, default: true },

@@ -5786,8 +5786,7 @@ const getPlanData = async (query) => {
 
     const skip = (page - 1) * limit;
 
-    // Aggregation pipeline with pagination
-    const plans = await Plan.aggregate([
+    const basePipeline = [
       {
         $lookup: {
           from: "stations",
@@ -5804,9 +5803,7 @@ const getPlanData = async (query) => {
           as: "vehicleMasterData",
         },
       },
-      {
-        $unwind: { path: "$stationData", preserveNullAndEmptyArrays: true },
-      },
+      { $unwind: { path: "$stationData", preserveNullAndEmptyArrays: true } },
       {
         $unwind: {
           path: "$vehicleMasterData",
@@ -5828,14 +5825,97 @@ const getPlanData = async (query) => {
         },
       },
       { $match: matchFilter },
-      { $sort: { planDuration: 1 } },
+    ];
+
+    // Aggregation pipeline with pagination
+    const plans = await Plan.aggregate([
+      ...basePipeline,
+      {
+        $addFields: {
+          planDurationNum: {
+            $convert: {
+              input: "$planDuration",
+              to: "double",
+              onError: null,
+              onNull: null,
+            },
+          },
+        },
+      },
+      { $sort: { planDurationNum: 1, _id: 1 } },
+      { $unset: "planDurationNum" },
       { $skip: skip },
       { $limit: Number(limit) },
-      // { $sort: { createdAt: -1 } },
     ]);
 
+    const countResult = await Plan.aggregate([
+      ...basePipeline,
+      { $count: "total" },
+    ]);
     // Total records count
-    const totalRecords = await Plan.countDocuments(matchFilter);
+    const totalRecords = countResult[0]?.total || 0;
+
+    // const plans = await Plan.aggregate([
+    //   {
+    //     $lookup: {
+    //       from: "stations",
+    //       localField: "stationId",
+    //       foreignField: "stationId",
+    //       as: "stationData",
+    //     },
+    //   },
+    //   {
+    //     $lookup: {
+    //       from: "vehiclemasters",
+    //       localField: "vehicleMasterId",
+    //       foreignField: "_id",
+    //       as: "vehicleMasterData",
+    //     },
+    //   },
+    //   {
+    //     $unwind: { path: "$stationData", preserveNullAndEmptyArrays: true },
+    //   },
+    //   {
+    //     $unwind: {
+    //       path: "$vehicleMasterData",
+    //       preserveNullAndEmptyArrays: true,
+    //     },
+    //   },
+    //   {
+    //     $project: {
+    //       planName: 1,
+    //       planDuration: 1,
+    //       planPrice: 1,
+    //       kmLimit: 1,
+    //       stationId: 1,
+    //       vehicleMasterId: 1,
+    //       locationId: 1,
+    //       planDetails: 1,
+    //       stationName: "$stationData.stationName",
+    //       vehicleName: "$vehicleMasterData.vehicleName",
+    //     },
+    //   },
+    //   { $match: matchFilter },
+    //   {
+    //     $addFields: {
+    //       planDurationNum: {
+    //         $convert: {
+    //           input: "$planDuration",
+    //           to: "double",
+    //           onError: null,
+    //           onNull: null,
+    //         },
+    //       },
+    //     },
+    //   },
+    //   { $sort: { planDurationNum: 1, _id: 1 } },
+    //   { $unset: "planDurationNum" },
+    //   { $skip: skip },
+    //   { $limit: Number(limit) },
+    // ]);
+
+    // Total records count
+    // const totalRecords = await Plan.countDocuments(matchFilter);
 
     if (!plans.length) {
       obj.message = "No records found";

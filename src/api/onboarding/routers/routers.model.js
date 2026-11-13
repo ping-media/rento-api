@@ -7,6 +7,7 @@ const RazorPayRoute = require("./razorpay.routes");
 const MobileTokenRoute = require("./mobile-token.routes");
 const UserReviewRoute = require("./user-review.routes");
 const AttendanceRoute = require("./attendance.routes");
+const MaintenanceRoute = require("./maintenance.routes");
 const LogRoute = require("./log.routes");
 
 const router = express();
@@ -17,6 +18,7 @@ router.use("/api", vehicleRoute);
 router.use("/api", RazorPayRoute);
 router.use("/api", MobileTokenRoute);
 router.use("/api", UserReviewRoute);
+router.use("/api", MaintenanceRoute);
 router.use("/api", AttendanceRoute);
 router.use("/api", LogRoute);
 

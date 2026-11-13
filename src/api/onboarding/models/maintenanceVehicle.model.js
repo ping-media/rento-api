@@ -1,6 +1,10 @@
 const mongoose = require("mongoose");
 const MaintenanceVehicle = require("../../../db/schemas/onboarding/maintenanceVehicleSchema");
-const { getVehicleTbl } = require("../models/vehicles.model");
+// const { getVehicleTbl } = require("../models/vehicles.model");
+const MaintenanceRequest = require("../../../db/schemas/onboarding/maintenanceRequest.schema");
+const {
+  createRepairRequestsForBlocks,
+} = require("../../../helper/maintenanceHelper");
 
 const getMaintenanceVehicle = async (req, res) => {
   try {
@@ -77,7 +81,7 @@ const getMaintenanceVehicle = async (req, res) => {
 };
 
 const maintenanceVehicleFunction = async (req, res) => {
-  const { userType } = req.user;
+  const { _id, userType } = req.user;
 
   const {
     vehicleTableId,
@@ -88,6 +92,7 @@ const maintenanceVehicleFunction = async (req, res) => {
     maintenanceIds,
     reason,
     action,
+    repair,
   } = req.body;
 
   // Validate input for new or edit operations
@@ -130,6 +135,16 @@ const maintenanceVehicleFunction = async (req, res) => {
 
     if (action === "delete") {
       if (maintenanceIds?.length > 0) {
+        const hasHistory = await MaintenanceRequest.exists({
+          maintenanceVehicleId: { $in: maintenanceIds },
+        });
+        if (hasHistory) {
+          return res.json({
+            status: 400,
+            success: false,
+            message: "Cannot delete: some records have repair requests linked",
+          });
+        }
         const deleted = await MaintenanceVehicle.deleteMany({
           _id: {
             $in: maintenanceIds.map((id) => new mongoose.Types.ObjectId(id)),
@@ -146,6 +161,17 @@ const maintenanceVehicleFunction = async (req, res) => {
           status: 400,
           success: false,
           message: "maintenanceId is required for deletion",
+        });
+      }
+
+      const hasHistory = await MaintenanceRequest.exists({
+        maintenanceVehicleId: maintenanceId,
+      });
+      if (hasHistory) {
+        return res.json({
+          status: 400,
+          success: false,
+          message: "Cannot delete: this record has a repair request linked",
         });
       }
 
@@ -173,12 +199,26 @@ const maintenanceVehicleFunction = async (req, res) => {
           message: "Unable to update the Maintenance record! try again.",
         });
       }
+
+      const hasOpenRequest = await MaintenanceRequest.exists({
+        maintenanceVehicleId: { $in: maintenanceIds },
+        status: { $in: ["pending", "in_progress", "completed"] },
+      });
+      if (hasOpenRequest) {
+        return res.json({
+          status: 400,
+          success: false,
+          message:
+            "Some records have open repair requests. Approve or cancel them first.",
+        });
+      }
+
       const existingMaintenance = await MaintenanceVehicle.updateMany(
-        // { _id: { $in: maintenanceIds } },
         {
           _id: {
             $in: maintenanceIds.map((id) => new mongoose.Types.ObjectId(id)),
           },
+          status: "active",
         },
         [
           {
@@ -207,6 +247,27 @@ const maintenanceVehicleFunction = async (req, res) => {
           status: 400,
           success: false,
           message: "Maintenance record not found",
+        });
+      }
+
+      if (existingMaintenance.status !== "active") {
+        return res.json({
+          status: 400,
+          success: false,
+          message: "Maintenance record is already unblocked",
+        });
+      }
+
+      const hasOpenRequest = await MaintenanceRequest.exists({
+        maintenanceVehicleId: maintenanceId,
+        status: { $in: ["pending", "in_progress", "completed"] },
+      });
+      if (hasOpenRequest) {
+        return res.json({
+          status: 400,
+          success: false,
+          message:
+            "This vehicle has an open repair request. Approve or cancel it first.",
         });
       }
 
@@ -280,15 +341,45 @@ const maintenanceVehicleFunction = async (req, res) => {
         });
       }
 
-      await MaintenanceVehicle.insertMany(bulkData);
+      if (repair) {
+        // block + repair request are created together, or not at all
+        const session = await mongoose.startSession();
+        try {
+          await session.withTransaction(async () => {
+            const inserted = await MaintenanceVehicle.insertMany(bulkData, {
+              session,
+            });
+            await createRepairRequestsForBlocks({
+              blocks: inserted,
+              repair,
+              reason,
+              userId: _id,
+              userType,
+              session,
+            });
+          });
+        } finally {
+          await session.endSession();
+        }
+      } else {
+        await MaintenanceVehicle.insertMany(bulkData);
+      }
+      // await MaintenanceVehicle.insertMany(bulkData);
 
       return res.status(200).json({
         status: 200,
         success: true,
-        message: `${bulkData.length} vehicle(s) added to maintenance`,
+        // message: `${bulkData.length} vehicle(s) added to maintenance`,
+        message: `${bulkData.length} vehicle(s) added to maintenance${repair ? " with repair request" : ""}`,
       });
     }
   } catch (error) {
+    if (error.isBusiness)
+      return res.json({
+        status: error.status,
+        success: false,
+        message: error.message,
+      });
     console.error("Error during maintenance vehicle process:", error);
     return res.json({
       status: 500,

@@ -42,6 +42,8 @@ const computeVehicleAvailability = async ({
   stationId,
   blockStartDate,
   blockEndDate,
+  blockStartDateTime,
+  blockEndDateTime,
 }) => {
   const filter = {};
   if (stationId) {
@@ -52,6 +54,11 @@ const computeVehicleAvailability = async ({
     blockStartDate,
     blockEndDate,
   );
+
+  const maintWindowStart =
+    blockStartDateTime || `${String(blockStartDate).slice(0, 10)}T00:00`;
+  const maintWindowEnd =
+    blockEndDateTime || `${String(blockEndDate).slice(0, 10)}T23:59`;
 
   const vehicles = await vehicleTable.aggregate([
     ...(stationId ? [{ $match: filter }] : []),
@@ -90,18 +97,35 @@ const computeVehicleAvailability = async ({
                 { $eq: ["$$m.status", "active"] },
                 {
                   $lt: [
-                    { $toString: "$$m.startDate" },
-                    { $toString: windowEnd },
+                    { $substrCP: [{ $toString: "$$m.startDate" }, 0, 16] },
+                    maintWindowEnd,
                   ],
                 },
                 {
                   $gt: [
-                    { $toString: "$$m.endDate" },
-                    { $toString: windowStart },
+                    { $substrCP: [{ $toString: "$$m.endDate" }, 0, 16] },
+                    maintWindowStart,
                   ],
                 },
               ],
             },
+            // cond: {
+            //   $and: [
+            //     { $eq: ["$$m.status", "active"] },
+            //     {
+            //       $lt: [
+            //         { $toString: "$$m.startDate" },
+            //         { $toString: windowEnd },
+            //       ],
+            //     },
+            //     {
+            //       $gt: [
+            //         { $toString: "$$m.endDate" },
+            //         { $toString: windowStart },
+            //       ],
+            //     },
+            //   ],
+            // },
           },
         },
       },
@@ -736,7 +760,14 @@ const getVehicleIds = async (req, res) => {
 
 const getAvailableVehicleIds = async (req, res) => {
   try {
-    const { vehicleName, stationId, blockStartDate, blockEndDate } = req.query;
+    const {
+      vehicleName,
+      stationId,
+      blockStartDate,
+      blockEndDate,
+      blockStartDateTime,
+      blockEndDateTime,
+    } = req.query;
 
     if (!vehicleName) {
       return res.json({
@@ -746,13 +777,19 @@ const getAvailableVehicleIds = async (req, res) => {
       });
     }
 
-    const { freeVehicles, actualFreeCount, unassignedPendingCount } =
-      await computeVehicleAvailability({
-        vehicleName,
-        stationId,
-        blockStartDate,
-        blockEndDate,
-      });
+    const {
+      // vehicleData,
+      freeVehicles,
+      actualFreeCount,
+      unassignedPendingCount,
+    } = await computeVehicleAvailability({
+      vehicleName,
+      stationId,
+      blockStartDate,
+      blockEndDate,
+      blockStartDateTime,
+      blockEndDateTime,
+    });
 
     return res.json({
       status: 200,
@@ -760,6 +797,13 @@ const getAvailableVehicleIds = async (req, res) => {
       count: freeVehicles.length,
       actualFreeCount,
       reservedByPendingBookings: unassignedPendingCount,
+      // debug: {
+      //   totalMatched: vehicleData.length,
+      //   underMaintenance: vehicleData.filter((v) => v.isUnderMaintenance)
+      //     .length,
+      //   hasCurrentBooking: vehicleData.filter((v) => v.currentBooking).length,
+      //   data: vehicleData,
+      // },
       data: freeVehicles,
     });
   } catch (error) {
