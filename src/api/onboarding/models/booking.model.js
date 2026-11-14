@@ -750,13 +750,15 @@ const getVehiclesByStation = async (parms, query) => {
           planPrice: v.weekendCost,
           kmLimit: v.weekendFreeKms ?? null,
         },
-        ...v.vehiclePlan.map((plan) => ({
-          planId: plan.planId,
-          planName: plan.planName,
-          planDuration: plan.planDuration,
-          planPrice: plan.planPrice,
-          kmLimit: plan.kmLimit,
-        })),
+        ...[...(v.vehiclePlan || [])]
+          .sort((a, b) => (a.planDuration ?? 0) - (b.planDuration ?? 0))
+          .map((plan) => ({
+            planId: plan.planId,
+            planName: plan.planName,
+            planDuration: plan.planDuration,
+            planPrice: plan.planPrice,
+            kmLimit: plan.kmLimit,
+          })),
       ];
 
       return {
