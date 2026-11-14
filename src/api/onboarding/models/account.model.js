@@ -1099,7 +1099,7 @@ async function getTransactionReport(req, res) {
   }
 }
 
-async function saveUser(userData) {
+async function saveUser(userData, authenticatedUser = null) {
   const {
     _id,
     userType = "customer",
@@ -1128,7 +1128,6 @@ async function saveUser(userData) {
     message: "Data processed successfully",
     data: [],
   };
-  //console.log(userData)
 
   function isAtLeast18(dob) {
     const dobDate = new Date(dob); // Parse the DOB string into a Date object
@@ -1155,6 +1154,7 @@ async function saveUser(userData) {
     if (_id && !validateId(_id)) {
       return { status: 400, message: "Invalid _id" };
     }
+
     if (!_id) {
       if (userType == "manager" || userType == "admin") {
         const existingUser = await User.findOne({ email });
@@ -1352,7 +1352,12 @@ async function saveUser(userData) {
 
       return { status: 200, message: "User updated successfully", data: data };
     } else {
-      if (!firstName || !lastName || !contact || !email) {
+      if (
+        !firstName ||
+        !lastName ||
+        !contact ||
+        (!authenticatedUser && !email)
+      ) {
         return { status: 400, message: "Missing required fields for new user" };
       }
 
@@ -1360,7 +1365,9 @@ async function saveUser(userData) {
       const newUser = new User(userObj);
       await newUser.save();
       whatsappMessage([contact], "welcome_customer", [firstName]);
-      sendOtpByEmail(email, firstName, lastName);
+      if (email) {
+        sendOtpByEmail(email, firstName, lastName);
+      }
       return {
         status: 200,
         message: "User created successfully",

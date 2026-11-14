@@ -7,6 +7,7 @@ const { emailOtp } = require("../models/otpSendByEmail");
 const Authentication = require("../../../middlewares/Authentication");
 const { getTransactionReport } = require("../models/account.model");
 const { adminOnly } = require("../../../middlewares/AdminCheck");
+const OptionalAuthentication = require("../../../middlewares/OptionalAuthentication");
 
 // Update User
 router.post("/profile", async (req, res) => {
@@ -41,7 +42,7 @@ router.post("/image-upload", upload.single("profileImg"), async (req, res) => {
   accountService.updateImage(req, res);
 });
 
-router.post("/signup", async (req, res) => {
+router.post("/signup", OptionalAuthentication, async (req, res) => {
   accountService.saveUser(req, res);
 });
 
